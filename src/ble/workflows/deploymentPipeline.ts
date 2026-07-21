@@ -61,6 +61,9 @@ export async function resetOps(
         await executeResetToDefaults(session, {
             currentOps,
             skipIdentityReset: true,
+            // syncAiModel owns model state in the deployment pipeline - the
+            // reset must not erase the model it just loaded (op14/15 + flash)
+            preserveModel: true,
             onProgress: (step) => {
                 log(`[ResetOps] ${step}`)
             }
@@ -121,8 +124,13 @@ export async function syncAiModel(
             }
             const { firmwareModelId: numericId, versionNumber: numericVer } = firmwareIds
             const { modelExt: tflExt, labelsExt } = AiModelService.getModelFileExtensions(targetModel)
-            const tflFilename = `${numericId}V${numericVer}.${tflExt}`
-            const labelsFilename = `${numericId}V${numericVer}.${labelsExt}`
+            // Uppercase: both the app's transfer validator and the firmware's
+            // fileRx require uppercase 8.3 names - a lowercase extension
+            // ('1V1.tfl') failed validation BEFORE any transfer, so the model
+            // never reached the SD card (bench 21 Jul). FAT is case-insensitive,
+            // so loadmodel finds the file either way.
+            const tflFilename = `${numericId}V${numericVer}.${tflExt}`.toUpperCase()
+            const labelsFilename = `${numericId}V${numericVer}.${labelsExt}`.toUpperCase()
 
             // 3. Check current OPs to see if model is already loaded
             const ops = currentOps || await session.execute(() => commandRegistry.getops())
@@ -174,10 +182,21 @@ export async function syncAiModel(
                     if (!modelBytes) {
                         throw new Error(`Failed to read model bytes from ${localFiles.modelUri}`)
                     }
+                    // Live feedback: a model is minutes of BLE transfer, and the
+                    // old mapping moved the overall bar 4% total - invisible.
+                    // The step line carries percentage + KB (throttled to whole
+                    // percents; onProgress fires per packet).
+                    let lastPct = -1
                     await runFileTransferPipeline(device, {
                         filename: tflFilename,
                         data: modelBytes,
-                        onProgress: (p) => setProgress(0.14 + (p.percentage / 100) * 0.04)
+                        onProgress: (p) => {
+                            setProgress(0.14 + (p.percentage / 100) * 0.04)
+                            if (p.percentage !== lastPct) {
+                                lastPct = p.percentage
+                                setStep(`Transferring model… ${p.percentage}% (${Math.round(p.bytesSent / 1024)}/${Math.round(p.totalBytes / 1024)} KB)`)
+                            }
+                        }
                     })
                     addLog(`✅ ${tflFilename} transferred`)
                 }
@@ -192,7 +211,7 @@ export async function syncAiModel(
                     await runFileTransferPipeline(device, {
                         filename: labelsFilename,
                         data: labelsBytes,
-                        onProgress: () => {}
+                        onProgress: (p) => setStep(`Transferring labels… ${p.percentage}%`)
                     })
                     addLog(`✅ ${labelsFilename} transferred`)
                 }
@@ -213,7 +232,7 @@ export async function syncAiModel(
 
         } catch (e) {
             logWarn('Failed to update AI model:', e)
-            addLog('AI model update failed, continuing...')
+            addLog('⚠️ AI model update FAILED — the deployment will record but not classify. See device log.')
         }
     } else if (eraseStaleModels) {
         // No AI model assigned — check if device has a stale model loaded

@@ -668,6 +668,30 @@ export const useStartDeployment = ({
                 logWarn('[Deployment] Light check failed (non-fatal):', lightError)
             }
 
+            // 7d. Model verification: read back op14/15 and say LOUDLY whether
+            // the NN is actually armed for this deployment. Guards the whole
+            // class of silent-modelless starts (bench 21 Jul: sessions logged
+            // 'motion detected' forever because resetOps had erased the model
+            // after syncAiModel loaded it).
+            try {
+                const finalOps = await bleSession?.execute(commandRegistry.getops)
+                if (!finalOps) {
+                    // A failed read must NOT masquerade as 'NO MODEL LOADED'
+                    throw new Error('No operational parameters returned from device')
+                }
+                const modelId = parseInt(finalOps[OP_PARAMETER.MODEL_PROJECT] ?? '0', 10) || 0
+                const modelVer = parseInt(finalOps[OP_PARAMETER.MODEL_VERSION] ?? '0', 10) || 0
+                if (project.model_id && modelId !== 0) {
+                    progress.addLog(`🧠 AI model active on device (ID ${modelId} v${modelVer})`)
+                } else if (project.model_id && modelId === 0) {
+                    progress.addLog('⚠️ NO MODEL LOADED — the camera will capture on motion but nothing will be classified. Re-run the deployment or check the model sync log above.')
+                } else {
+                    progress.addLog('No on-device AI model for this project (motion-capture only)')
+                }
+            } catch (verifyError) {
+                logWarn('[Deployment] Model verification read failed (non-fatal):', verifyError)
+            }
+
             progress.setFinishStep('Complete')
             progress.setFinishProgress(1.0)
             progress.setIsSuccess(true)

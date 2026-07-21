@@ -8,6 +8,15 @@ export interface ResetToDefaultsOptions {
     isCancelled?: () => boolean
     currentOps?: string[] | null
     skipIdentityReset?: boolean
+    /**
+     * Keep the loaded AI model: skip erasemodel AND leave op14/op15
+     * (MODEL_PROJECT/MODEL_VERSION) untouched. Deployment flows must set
+     * this - syncAiModel is the model authority there, and the old
+     * behaviour erased the freshly-synced model AFTER the sync step
+     * (pipeline order: syncAiModel -> ... -> resetOps), so every model
+     * deployment started modelless: MD wakes fired but the NN never ran.
+     */
+    preserveModel?: boolean
 }
 
 /**
@@ -51,6 +60,12 @@ export async function executeResetToDefaults(
             if (parseInt(currentOps[index], 10) > 0) continue
         }
 
+        // 1b) Preserve the model binding when the caller owns model state
+        if (options?.preserveModel &&
+            (index === OP_PARAMETER.MODEL_PROJECT || index === OP_PARAMETER.MODEL_VERSION)) {
+            continue
+        }
+
         // 2) Do not reset tracking parameters and counters
         if (
             index === OP_PARAMETER.NUM_NN_ANALYSES ||
@@ -75,8 +90,9 @@ export async function executeResetToDefaults(
 
     log(`[ResetDefaults] ${opsToWrite.length} OPs need writing, model loaded: ${hasModel}`)
 
-    // Step 3: Erase AI model if one is loaded
-    if (hasModel) {
+    // Step 3: Erase AI model if one is loaded (never in deployment flows -
+    // erasing here destroyed the flash cache the sync step had just ensured)
+    if (hasModel && !options?.preserveModel) {
         onProgress?.('Erasing AI model...', 0.2)
         log('[ResetDefaults] Erasing AI model...')
         try {
