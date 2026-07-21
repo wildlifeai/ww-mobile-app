@@ -363,7 +363,7 @@ export const FirmwareUpdateScreen = () => {
                                 : '⚠️ Battery is below 30%. Updating with low battery risks bricking the device. Charge before continuing.'}
                         </WWText>
                         <View style={styles.overrideRow}>
-                            <Checkbox
+                            <Checkbox.Android
                                 status={externalPowerConfirmed ? 'checked' : 'unchecked'}
                                 onPress={() => setExternalPowerConfirmed(v => !v)}
                                 color="#FFF3E0"
@@ -458,7 +458,7 @@ export const FirmwareUpdateScreen = () => {
                             <View style={styles.sourceSelection}>
                                 <RadioButton.Group onValueChange={value => setHimaxSource(value as HimaxFirmwareSource)} value={himaxSource}>
                                     <View style={styles.radioRow}>
-                                        <RadioButton
+                                        <RadioButton.Android
                                             value="sdcard"
                                             disabled={!selectedOption.existsOnSd}
                                         />
@@ -470,7 +470,7 @@ export const FirmwareUpdateScreen = () => {
                                         </WWText>
                                     </View>
                                     <View style={styles.radioRow}>
-                                        <RadioButton
+                                        <RadioButton.Android
                                             value="download"
                                             disabled={!selectedOption.dbRecord}
                                         />
