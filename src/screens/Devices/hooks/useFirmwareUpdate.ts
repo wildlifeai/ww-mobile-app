@@ -472,7 +472,16 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
             const line: string = event.line
 
             if (line.includes('Wake') && !line.includes('Wakeup_event')) {
-                advancePhase('waking')
+                // The AI processor emits 'Wake <utc>' EVERY time it wakes -
+                // including when woken for the SD-card transfer. advancePhase is
+                // forward-only and 'waking' sits after 'transferring', so an early
+                // Wake used to leapfrog the phase and block
+                // advancePhase('transferring'), hiding transfer progress for the
+                // whole upload. Only the wake following the flash command
+                // ('sending') is the one this phase describes.
+                if (phaseRef.current === 'sending') {
+                    advancePhase('waking')
+                }
             } else if (line.includes('erase_firmware_slot') || line.includes('Erasing firmware slot') || line.includes('erased OK')) {
                 // Current firmware: "erase_firmware_slot: slot N ..." / "... erased OK".
                 // Legacy strings kept for backward compatibility with older HX6538 builds.
@@ -664,6 +673,9 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
 
             // 2. Transfer firmware to SD card
             advancePhase('transferring')
+            // Clear the previous pass's progress so the transfer card starts
+            // fresh for image 2 of a dual-camera update
+            if (!unmountedRef.current) setFileTransferProgress(null)
             appendLog(`${passLabel}Transferring firmware to device SD card...`)
             const configBytes = await FirmwareService.readFirmwareAsBytes(localUri)
 
@@ -686,6 +698,9 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                 } else {
                     appendLog(`${passLabel}Transfer complete.`)
                 }
+                // Transfer done - drop the progress card (presence == in flight;
+                // on failure the pipeline throws and the failed card stays up)
+                if (!unmountedRef.current) setFileTransferProgress(null)
             } else {
                 throw new Error('Failed to read firmware bytes')
             }
