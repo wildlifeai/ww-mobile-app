@@ -9,6 +9,7 @@ import { DfuService } from '../../../services/DfuService'
 import FirmwareService, { DownloadState, DownloadProgressData } from '../../../services/FirmwareService'
 import ReferenceDataService from '../../../services/ReferenceDataService'
 import Firmware from '../../../database/models/Firmware'
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake'
 import { runFileTransferPipeline } from '../../../ble/protocol/fileTransfer'
 import { FileTransferProgress } from '../../../ble/protocol/fileTransfer/fileTransferTypes'
 import { verifyConfigDefaults } from '../../../ble/workflows/configVerification'
@@ -23,6 +24,10 @@ import { convertBleToSemanticVersion } from '../../../utils/versionUtils'
 // ────────────────────────────────────────────────────────────────────
 
 export type FirmwareTarget = 'ble' | 'himax'
+
+// Tag for expo-keep-awake so this hook's activation cannot clobber the
+// file-transfer pipeline's own per-transfer tags
+const KEEP_AWAKE_TAG = 'firmware-update'
 
 export type UpdatePhase =
     | 'idle'
@@ -285,6 +290,19 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
     const [downloadProgress, setDownloadProgress] = useState<DownloadProgressData | null>(null)
     
     const abortControllerRef = useRef<AbortController | null>(null)
+
+    // Keep the screen awake for the WHOLE update, not just the file transfer
+    // (runFileTransferPipeline holds its own per-transfer tag). The Himax
+    // flash phase (5-10 min of waiting) and the BLE DFU had no coverage: the
+    // screen sleeping backgrounds the app, iOS throttles/park the BLE link,
+    // and the session dies mid-update.
+    useEffect(() => {
+        if (!isUpdating) return
+        activateKeepAwakeAsync(KEEP_AWAKE_TAG).catch(() => { /* best effort */ })
+        return () => {
+            Promise.resolve().then(() => deactivateKeepAwake(KEEP_AWAKE_TAG)).catch(() => { /* best effort */ })
+        }
+    }, [isUpdating])
 
     // Pre-flight
     const [batteryLevel, setBatteryLevel] = useState<number | null>(null)
