@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { Alert } from 'react-native'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 // unused import
 import { OP_PARAMETER } from '../../../hooks/useDeviceSettings'
@@ -12,7 +13,11 @@ export interface CameraTestParams {
     ledBrightness: number
     flashDuration: number
     flashLed: number
+    wbRedGain: number      // op27, Q8.8 (256 = 1.0x, 0 = correction off). RP3 colour camera only
+    wbBlueGain: number     // op28, Q8.8 (256 = 1.0x, 0 = correction off). RP3 colour camera only
 }
+
+// (The day/night light-sensor state moved to its own flow - see useLightSensor.ts)
 
 export interface AEData {
     integration: string
@@ -36,7 +41,16 @@ export interface UseCameraSettingsTestOptions {
 const DEFAULT_PARAMS: CameraTestParams = {
     ledBrightness: 5,
     flashDuration: 100,
-    flashLed: 0
+    flashLed: 0,
+    wbRedGain: 286,
+    wbBlueGain: 326
+}
+
+/** Parse one op value out of a getops array; returns fallback when absent/non-numeric (older firmware). */
+const opInt = (ops: string[], index: number, fallback: number): number => {
+    if (!ops || ops.length <= index) return fallback
+    const v = parseInt(ops[index], 10)
+    return isNaN(v) ? fallback : v
 }
 
 export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) => {
@@ -45,12 +59,13 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
     const [aeData, setAeData] = useState<AEData | null>(null)
     const [capturedImages, setCapturedImages] = useState<CapturedImageInfo[]>([])
     const [isApplying, setIsApplying] = useState(false)
+    const [applyStage, setApplyStage] = useState<string>('')
 
     // Refs for closures
     const currentParamsRef = useRef(cameraParams)
     const currentTestModeBitsRef = useRef(testModeBits)
     const currentAeDataRef = useRef(aeData)
-    const pendingCameraDisableRef = useRef(false)
+
 
     useEffect(() => { currentParamsRef.current = cameraParams }, [cameraParams])
     useEffect(() => { currentTestModeBitsRef.current = testModeBits }, [testModeBits])
@@ -63,21 +78,11 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
             testModeBits: currentTestModeBitsRef.current,
             aeData: currentAeDataRef.current
         }, ...prev])
-
-        // Disable camera AFTER the image download is complete.
-        // Previously this was done inline in applyAndCapture() but that
-        // sent setop 10 0 while the binary image was still streaming,
-        // causing a TIMEOUT error on the command response.
-        if (pendingCameraDisableRef.current && device) {
-            pendingCameraDisableRef.current = false
-            const session = createBleSession(device)
-            session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.CAMERA_ENABLED, value: 0 }))
-                .catch(e => logError('[CameraSettingsTest] Failed to disable camera after capture:', e))
-        }
-    }, [device])
+    }, [])
     
     const handleCaptureError = useCallback((e: Error) => {
         logError('[CameraSettingsTest] Capture failed:', e)
+        Alert.alert('Camera Preview Failed', e?.message || 'An error occurred while capturing preview image.')
     }, [])
 
     // Setup Capture Preview hook
@@ -133,6 +138,31 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
         return () => { bleEventBus.removeListener('textLine', messageListener); }
     }, [device])
 
+    // Seed the UI once per mount from the device's real op values, so the lab
+    // shows what the camera is actually using (not just factory defaults).
+    const didSeedRef = useRef(false)
+    useEffect(() => {
+        if (!device?.connected || didSeedRef.current) return
+        didSeedRef.current = true
+        const seed = async () => {
+            try {
+                const session = createBleSession(device)
+                const ops = await session.execute(() => commandRegistry.getops())
+                setCameraParams(prev => ({
+                    ...prev,
+                    ledBrightness: opInt(ops, OP_PARAMETER.LED_BRIGHTNESS, prev.ledBrightness),
+                    flashLed: opInt(ops, OP_PARAMETER.FLASH_LED, prev.flashLed),
+                    wbRedGain: opInt(ops, OP_PARAMETER.WB_RED_GAIN, prev.wbRedGain),
+                    wbBlueGain: opInt(ops, OP_PARAMETER.WB_BLUE_GAIN, prev.wbBlueGain)
+                }))
+            } catch (e) {
+                // Non-fatal: the lab still works with defaults; values sync on Apply.
+                logError('[CameraSettingsTest] Failed to seed params from device:', e)
+            }
+        }
+        seed()
+    }, [device])
+
     const updateCameraParam = useCallback(<K extends keyof CameraTestParams>(key: K, value: CameraTestParams[K]) => {
         setCameraParams(prev => {
             return { ...prev, [key]: value }
@@ -153,34 +183,48 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
     const applyAndCapture = useCallback(async () => {
         if (!device) return
         setIsApplying(true)
+        setApplyStage('Reading current parameters...')
         try {
-            // 1. Write flash parameters AND quiesce background triggers.
-            //    MD_INTERVAL=0 and TIMELAPSE_INTERVAL=0 are critical: if a prior
-            //    deployment left these non-zero, the device re-enters monitoring mode
-            //    after the test capture and fires the flash LED repeatedly.
             const session = createBleSession(device);
-            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.MD_INTERVAL, value: 0 }))
-            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TIMELAPSE_INTERVAL, value: 0 }))
-            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.LED_BRIGHTNESS, value: cameraParams.ledBrightness }))
-            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_DURATION, value: cameraParams.flashDuration }))
-            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_LED, value: cameraParams.flashLed }))
-            
-            // Small buffer to let DPD fully settle
-            await new Promise(res => setTimeout(res, 500))
 
-            // 3. Trigger capture via the standard capture flow.
-            //    startCapture enables the camera (setop 10 1), waits for DPD,
-            //    then issues 'AI capture 1 1000'.
-            //    NOTE: startCapture resolves after txfile is acknowledged, NOT
-            //    after the binary download completes. Camera disable is deferred
-            //    to handleImageReceived to avoid sending commands during transfer.
-            pendingCameraDisableRef.current = true
-            await capturePreview.startCapture(1, 1000)
+            // Read current params to avoid redundant writes.
+            // Only brightness (OP 9) and flash LED (OP 13) need checking.
+            const currentOps = await session.execute(() => commandRegistry.getops())
+
+            setApplyStage('Applying flash settings...')
+            if (currentOps[OP_PARAMETER.LED_BRIGHTNESS] !== String(cameraParams.ledBrightness)) {
+                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.LED_BRIGHTNESS, value: cameraParams.ledBrightness }))
+            }
+            if (currentOps[OP_PARAMETER.FLASH_LED] !== String(cameraParams.flashLed)) {
+                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_LED, value: cameraParams.flashLed }))
+            }
+
+            // White-balance gains (op27/28) - only meaningful on the RP3 colour
+            // camera; harmless no-ops on HM0360 builds. 0 disables correction.
+            // Older firmware doesn't have these OPs at all (getops returns a
+            // shorter array) - guard on length so we don't issue a setop the
+            // device will reject, aborting the whole Apply flow.
+            setApplyStage('Applying white balance...')
+            if (currentOps.length > OP_PARAMETER.WB_RED_GAIN && currentOps[OP_PARAMETER.WB_RED_GAIN] !== String(cameraParams.wbRedGain)) {
+                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.WB_RED_GAIN, value: cameraParams.wbRedGain }))
+            }
+            if (currentOps.length > OP_PARAMETER.WB_BLUE_GAIN && currentOps[OP_PARAMETER.WB_BLUE_GAIN] !== String(cameraParams.wbBlueGain)) {
+                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.WB_BLUE_GAIN, value: cameraParams.wbBlueGain }))
+            }
+
+            // 2. Wait for the device to naturally enter DPD (Sleep).
+            setApplyStage('Waiting for device to sleep...')
+            await session.waitForSleep(3000)
+
+            // 3. Trigger capture via the standard capture flow (AI capture 1 500).
+            setApplyStage('')
+            await capturePreview.startCapture(1, 500)
 
         } catch (e) {
             logError('[CameraSettingsTest] Error applying params or capturing:', e)
         } finally {
             setIsApplying(false)
+            setApplyStage('')
         }
     }, [device, cameraParams, capturePreview])
 
@@ -196,6 +240,7 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
         applyAndCapture,
         resetTestMode,
         isApplying,
+        applyStage,
         aeData,
         capturedImages,
         capturePreview

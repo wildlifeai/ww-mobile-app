@@ -1,12 +1,11 @@
 import { useReducer, useCallback } from 'react'
 import { View, ScrollView, StyleSheet } from 'react-native'
 import { Text, Button, Card, ProgressBar, useTheme } from 'react-native-paper'
-import { useRoute } from '@react-navigation/native'
+import { useRoute, RouteProp } from '@react-navigation/native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { RouteProp } from '@react-navigation/native'
 import { RootStackParamList } from '../../navigation/types'
 import { useAppSelector } from '../../redux'
-import { useDeviceSettings, FACTORY_DEFAULTS, OP_PARAMETER } from '../../hooks/useDeviceSettings'
+import { useDeviceSettings, FACTORY_DEFAULTS, OP_PARAMETER, RESET_PRESERVED_OPS } from '../../hooks/useDeviceSettings'
 import { WWText } from '../../components/ui/WWText'
 
 type RouteType = RouteProp<RootStackParamList, 'DeviceResetScreen'>
@@ -38,7 +37,7 @@ const initialState: ResetState = {
 const resetReducer = (state: ResetState, action: ResetAction): ResetState => {
     switch (action.type) {
         case 'START':
-            return { ...state, status: 'running', currentStep: 'Starting...', progress: 0, logs: [], errorMessage: null }
+            return { ...state, status: 'running', currentStep: 'Starting…', progress: 0, logs: [], errorMessage: null }
         case 'PROGRESS':
             return { ...state, currentStep: action.step, progress: action.progress, logs: [...state.logs, action.step] }
         case 'LOG':
@@ -55,31 +54,50 @@ const resetReducer = (state: ResetState, action: ResetAction): ResetState => {
 }
 
 /**
- * Default values table data for display
+ * Display names for resettable OPs. The table below is DERIVED from
+ * FACTORY_DEFAULTS minus executeResetToDefaults' skip-list, so this screen
+ * can never again under-report what the reset writes (it previously
+ * hard-coded ops 6-18 while the reset touched the whole 0-33 table).
  */
-const DEFAULT_VALUES_TABLE: { name: string; index: number; value: number }[] = [
-    { name: 'Sequence Number', index: OP_PARAMETER.SEQUENCE_NUMBER, value: FACTORY_DEFAULTS[OP_PARAMETER.SEQUENCE_NUMBER] },
-    { name: 'NN Analyses', index: OP_PARAMETER.NUM_NN_ANALYSES, value: FACTORY_DEFAULTS[OP_PARAMETER.NUM_NN_ANALYSES] },
-    { name: 'Positive NN', index: OP_PARAMETER.NUM_POSITIVE_NN_ANALYSES, value: FACTORY_DEFAULTS[OP_PARAMETER.NUM_POSITIVE_NN_ANALYSES] },
-    { name: 'Cold Boots', index: OP_PARAMETER.NUM_COLD_BOOTS, value: FACTORY_DEFAULTS[OP_PARAMETER.NUM_COLD_BOOTS] },
-    { name: 'Warm Boots', index: OP_PARAMETER.NUM_WARM_BOOTS, value: FACTORY_DEFAULTS[OP_PARAMETER.NUM_WARM_BOOTS] },
-    { name: 'Num Pictures', index: OP_PARAMETER.NUM_PICTURES, value: FACTORY_DEFAULTS[OP_PARAMETER.NUM_PICTURES] },
-    { name: 'Picture Interval', index: OP_PARAMETER.PICTURE_INTERVAL, value: FACTORY_DEFAULTS[OP_PARAMETER.PICTURE_INTERVAL] },
-    { name: 'Timelapse Interval', index: OP_PARAMETER.TIMELAPSE_INTERVAL, value: FACTORY_DEFAULTS[OP_PARAMETER.TIMELAPSE_INTERVAL] },
-    { name: 'Inactivity Timeout', index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: FACTORY_DEFAULTS[OP_PARAMETER.INTERVAL_BEFORE_DPD] },
-    { name: 'LED Brightness', index: OP_PARAMETER.LED_BRIGHTNESS, value: FACTORY_DEFAULTS[OP_PARAMETER.LED_BRIGHTNESS] },
-    { name: 'Camera Enabled', index: OP_PARAMETER.CAMERA_ENABLED, value: FACTORY_DEFAULTS[OP_PARAMETER.CAMERA_ENABLED] },
-    { name: 'MD Interval', index: OP_PARAMETER.MD_INTERVAL, value: FACTORY_DEFAULTS[OP_PARAMETER.MD_INTERVAL] },
-    { name: 'Flash Duration', index: OP_PARAMETER.FLASH_DURATION, value: FACTORY_DEFAULTS[OP_PARAMETER.FLASH_DURATION] },
-    { name: 'Flash LED', index: OP_PARAMETER.FLASH_LED, value: FACTORY_DEFAULTS[OP_PARAMETER.FLASH_LED] },
-    { name: 'Model Project (OP14)', index: OP_PARAMETER.MODEL_PROJECT, value: FACTORY_DEFAULTS[OP_PARAMETER.MODEL_PROJECT] },
-    { name: 'Model Version (OP15)', index: OP_PARAMETER.MODEL_VERSION, value: FACTORY_DEFAULTS[OP_PARAMETER.MODEL_VERSION] },
-    { name: 'Model Threshold', index: OP_PARAMETER.MODEL_THRESHOLD, value: FACTORY_DEFAULTS[OP_PARAMETER.MODEL_THRESHOLD] },
-    { name: 'MD Sensitivity', index: OP_PARAMETER.MD_SENSITIVITY, value: FACTORY_DEFAULTS[OP_PARAMETER.MD_SENSITIVITY] },
-    { name: 'Test Mode Bits', index: OP_PARAMETER.TEST_MODE_BITS, value: FACTORY_DEFAULTS[OP_PARAMETER.TEST_MODE_BITS] },
-    { name: 'Images Count', index: OP_PARAMETER.IMAGES_COUNT, value: FACTORY_DEFAULTS[OP_PARAMETER.IMAGES_COUNT] },
-    { name: 'Images File Index', index: OP_PARAMETER.IMAGES_FILE_INDEX, value: FACTORY_DEFAULTS[OP_PARAMETER.IMAGES_FILE_INDEX] },
-]
+const OP_NAMES: Record<number, string> = {
+    [OP_PARAMETER.PICTURE_INTERVAL]: 'Picture Interval',
+    [OP_PARAMETER.TIMELAPSE_INTERVAL]: 'Timelapse Interval',
+    [OP_PARAMETER.INTERVAL_BEFORE_DPD]: 'Inactivity Timeout',
+    [OP_PARAMETER.LED_BRIGHTNESS]: 'LED Brightness',
+    [OP_PARAMETER.CAMERA_ENABLED]: 'Camera Enabled',
+    [OP_PARAMETER.MD_INTERVAL]: 'MD Interval',
+    [OP_PARAMETER.FLASH_DURATION]: 'Flash Duration',
+    [OP_PARAMETER.FLASH_LED]: 'Flash LED',
+    [OP_PARAMETER.MODEL_PROJECT]: 'Model Project',
+    [OP_PARAMETER.MODEL_VERSION]: 'Model Version',
+    [OP_PARAMETER.MODEL_THRESHOLD]: 'Model Threshold',
+    [OP_PARAMETER.MD_SENSITIVITY]: 'MD Sensitivity',
+    [OP_PARAMETER.TEST_MODE_BITS]: 'Test Mode Bits',
+    [OP_PARAMETER.MD_FLASH_LED]: 'MD Flash LED',
+    [OP_PARAMETER.MD_FLASH_BRIGHTNESS_PERCENT]: 'MD Flash Brightness %',
+    [OP_PARAMETER.AE_DARK_THRESHOLD]: 'AE Dark Threshold',
+    [OP_PARAMETER.AE_CHECK_INTERVAL]: 'AE Check Interval (min)',
+    [OP_PARAMETER.AE_FLASH_STATE]: 'AE Flash State',
+    [OP_PARAMETER.SLOT_SWITCH]: 'Auto Day/Night Switch',
+    [OP_PARAMETER.WB_RED_GAIN]: 'WB Red Gain',
+    [OP_PARAMETER.WB_BLUE_GAIN]: 'WB Blue Gain',
+    [OP_PARAMETER.CAM_AE_ENABLE]: 'Camera Auto-Exposure',
+    [OP_PARAMETER.CAM_AE_TARGET]: 'AE Target Luma',
+    [OP_PARAMETER.CAM_WB_MODE]: 'White Balance Mode',
+    [OP_PARAMETER.CAM_RESOLUTION]: 'Capture Resolution',
+    [OP_PARAMETER.MD_BLOCK_NUM_MAX]: 'MD Global-Motion Max',
+}
+
+// Single source of truth from the reset workflow itself; SEQUENCE_NUMBER is
+// excluded from display too (only reset while still zero - a fresh device)
+const RESET_SKIPPED = new Set<number>([...RESET_PRESERVED_OPS, OP_PARAMETER.SEQUENCE_NUMBER])
+
+const DEFAULT_VALUES_TABLE: { name: string; index: number; value: number }[] =
+    Object.entries(FACTORY_DEFAULTS)
+        .map(([k, v]) => ({ index: Number(k), value: v }))
+        .filter(e => !RESET_SKIPPED.has(e.index))
+        .sort((a, b) => a.index - b.index)
+        .map(e => ({ name: OP_NAMES[e.index] ?? `OP ${e.index}`, index: e.index, value: e.value }))
 
 interface DefaultValueRowProps {
     name: string
@@ -134,18 +152,9 @@ export const DeviceResetScreen = () => {
 
                 <Card style={styles.card}>
                     <Card.Content>
-                        <WWText variant="titleMedium" style={styles.cardTitle}>
-                            Factory Reset
-                        </WWText>
                         <WWText variant="bodyMedium" style={{ color: colors.onSurfaceVariant, marginBottom: 12 }}>
-                            This will reset ALL operational parameters to their firmware defaults,
-                            erase any loaded AI model, clear the deployment ID, and zero the GPS coordinates.
+                            This will reset the following parameters to their default values, clear deployment ID and zero the GPS coordinates.
                         </WWText>
-                        <WWText variant="bodySmall" style={{ color: colors.error, marginBottom: 16 }}>
-                            ⚠️ This action cannot be undone. All counters (boot counts, NN analyses)
-                            will also be reset to zero.
-                        </WWText>
-
                         {!isConnected && (
                             <View style={[styles.banner, { backgroundColor: colors.errorContainer }]}>
                                 <WWText style={{ color: colors.onErrorContainer }}>

@@ -147,12 +147,8 @@ export const ModelValidationTestScreen = () => {
         try {
             const session = createBleSession(connectedDevice)
             
-            // Wake up AI processor
-            addLog("Waking AI processor...")
-            await session.execute(() => commandRegistry.aiver())
-
             // Step 1: Check if the files exist on the SD card
-            addLog("Step 1: Checking SD card for existing files...")
+            // (dir command automatically wakes the AI processor if in DPD)
             
             const files = await session.execute(commandRegistry.dir) as string[]
             const hasTfl = files.some(f => f.toUpperCase().includes(tflFilename.toUpperCase()))
@@ -315,7 +311,7 @@ export const ModelValidationTestScreen = () => {
                         disabled={isProcessing || !connectedDevice?.connected}
                         style={styles.button}
                     >
-                        {isProcessing ? "Processing..." : "Validate & Load Model"}
+                        {isProcessing ? "Processing…" : "Validate & Load Model"}
                     </Button>
 
                     {!connectedDevice?.connected && (
@@ -334,7 +330,7 @@ export const ModelValidationTestScreen = () => {
                         {logs.map((log) => (
                             <Text key={log} style={styles.logText}>{log}</Text>
                         ))}
-                        {logs.length === 0 && <Text style={styles.logText}>Ready...</Text>}
+                        {logs.length === 0 && <Text style={styles.logText}>Ready…</Text>}
                     </View>
                 </Card.Content>
             </Card>

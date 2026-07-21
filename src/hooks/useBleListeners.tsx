@@ -19,6 +19,8 @@ import { ImageReassembler } from "../utils/ImageReassembler"
 import { imageReassemblerEmitter, readlineParserEmitter } from "../ble/emitters"
 import { rxRouter } from "../ble/protocol/rxRouter"
 import { bleEventBus, BleEvent } from "../ble/protocol/eventBus"
+import { bleTransport } from "../ble/protocol/bleTransportController"
+import { markPeripheralRemoved } from "./useScanLoop"
 
 // Lazy-load the emitter to avoid accessing NativeModules during import
 let _bleManagerEmitter: NativeEventEmitter | null = null
@@ -47,9 +49,17 @@ export type UpdateValueEventType = {
 */
 export const useBleListeners = () => {
 	const devices = useAppSelector((state) => state.devices)
+	const isEngineerConsoleActive = useAppSelector((state) => state.scanning.isEngineerConsoleActive)
 	const { pingsPause } = useBleActions()
 
 	const dispatch = useAppDispatch()
+
+	// Ref so the scanStoppedEvent callback can read the latest value
+	// without needing it as a dependency (which would re-register all listeners).
+	const isEngineerConsoleActiveRef = useRef(isEngineerConsoleActive)
+	useEffect(() => {
+		isEngineerConsoleActiveRef.current = isEngineerConsoleActive
+	}, [isEngineerConsoleActive])
 	
     // Create a persistent instance of ImageReassembler for this session
     const reassemblerRef = useRef<ImageReassembler | null>(null)
@@ -102,9 +112,21 @@ export const useBleListeners = () => {
     // Subscribe to bleEventBus for telemetry rendering in UI
     useEffect(() => {
         const handleRawRx = (event: BleEvent & { type: 'RAW_RX' }) => {
-            log(`[useBleListeners] RAW_RX received for ${event.deviceId}: ${event.line}`)
-            
-            // Look for transfer startup string (e.g. "12169 bytes in 592009C0.JPG")
+            // During an exclusive transfer (file TX) the device streams a high rate
+            // of "ftx ack N" lines. Logging each to the console AND dispatching it into
+            // the Redux Engineer-Console log grows an array that is re-copied and
+            // re-rendered on every ack; that JS-thread work compounds and throttles the
+            // BLE write callbacks (measured: per-packet write time climbing 260→350ms+
+            // and throughput decaying over a transfer). The transfer has its own
+            // structured logging, so skip the teletype capture while it holds the lock.
+            const transferActive = bleTransport.isLocked
+
+            if (!transferActive) {
+                log(`[useBleListeners] RAW_RX received for ${event.deviceId}: ${event.line}`)
+            }
+
+            // Look for transfer startup string (e.g. "12169 bytes in 592009C0.JPG").
+            // Cheap regex — keep it running so incoming image transfers still init.
             const imageStartMatch = event.line.match(/^\s*(\d+)\s+bytes\s+in\s+([A-Za-z0-9_.-]+)/i)
             if (imageStartMatch) {
                 const size = parseInt(imageStartMatch[1], 10)
@@ -112,6 +134,8 @@ export const useBleListeners = () => {
                 log(`[useBleListeners] Detected image transfer start: ${filename} (${size} bytes)`)
                 reassemblerRef.current?.initialize(size)
             }
+
+            if (transferActive) return
 
             dispatch(
                 logAdded({
@@ -126,6 +150,7 @@ export const useBleListeners = () => {
         };
 
         const handleRawTx = (event: BleEvent & { type: 'RAW_TX' }) => {
+            if (bleTransport.isLocked) return
             log(`[useBleListeners] RAW_TX received for ${event.deviceId}: ${event.command}`)
             dispatch(
                 logAdded({
@@ -177,17 +202,30 @@ export const useBleListeners = () => {
 	)
 
 	const deviceDisconnectedEvent = useCallback(
-		(data: { peripheral: string }) => {
+		async (data: { peripheral: string }) => {
 			log(
 				`Peripheral disconnect event triggered. Disconnecting: ${data.peripheral}`,
 			)
 
+			// CRITICAL: Emit DISCONNECT signal FIRST so commandQueue and runCommand
+			// reject all in-flight/queued commands immediately (fail-fast).
+			bleEventBus.emitEvent({
+				type: 'DEVICE_SIGNAL',
+				signal: 'DISCONNECT',
+				deviceId: data.peripheral,
+				ts: Date.now(),
+			})
+
 			// CRITICAL: Clear any pending buffers to prevent stuck state on reconnect
 			rxRouter.clearBuffer(data.peripheral)
 
-			/** Clear the device out on Android systems */
-			Platform.OS === "android" &&
-				guard(() => BleManager.removePeripheral(data.peripheral))
+			/** Clear the device out on Android systems and wait for GATT cleanup */
+			if (Platform.OS === "android") {
+				await guard(() => BleManager.removePeripheral(data.peripheral))
+				// Mark as already removed so flushBleCache skips the redundant
+				// removePeripheral call that blocks Android's BLE scanner.
+				markPeripheralRemoved(data.peripheral)
+			}
 
 			dispatch(deviceDisconnect({ id: data.peripheral }))
 		},
@@ -206,22 +244,27 @@ export const useBleListeners = () => {
 			return p.name && isOurDevice(p.name)
 		})
 
+		// During Engineer Console scanning, skip the notFoundAnymore cleanup.
+		// getDiscoveredPeripherals() returns stale data when removePeripheral
+		// was called on a previous disconnect, causing a signalLost flip-flop
+		// that blocks auto-connect for ~20 seconds.
 		const notFoundAnymore: Peripheral[] = []
-
-		Object.keys(devicesRef.current).forEach((key) => {
-			const peripheral = devicesRef.current[key]
-			if (
-				!filteredPeripherals.find(
-					(filteredPeripheral) => filteredPeripheral.id === peripheral.id,
-				)
-			) {
-				if (peripheral.connected) {
-					log(`Disconnecting device ${peripheral.id} after scan stopped.`)
-					// disconnectDevice(peripheral) // USER REQUEST: Prevent auto-disconnect
+		if (!isEngineerConsoleActiveRef.current) {
+			Object.keys(devicesRef.current).forEach((key) => {
+				const peripheral = devicesRef.current[key]
+				if (
+					!filteredPeripherals.find(
+						(filteredPeripheral) => filteredPeripheral.id === peripheral.id,
+					)
+				) {
+					if (peripheral.connected) {
+						log(`Disconnecting device ${peripheral.id} after scan stopped.`)
+						// disconnectDevice(peripheral) // USER REQUEST: Prevent auto-disconnect
+					}
+					notFoundAnymore.push(peripheral)
 				}
-				notFoundAnymore.push(peripheral)
-			}
-		})
+			})
+		}
 
 		dispatch(
 			deviceSignalChanged({
@@ -240,30 +283,19 @@ export const useBleListeners = () => {
 
 		dispatch(scanStop())
 	}, [dispatch, pingsPause])
+	const setupSubscriptions = useCallback(() => {
+		return [
+			getBleManagerEmitter().addListener("BleManagerDiscoverPeripheral", discoveredPeripheralEvent),
+			getBleManagerEmitter().addListener("BleManagerStopScan", scanStoppedEvent),
+			getBleManagerEmitter().addListener("BleManagerDisconnectPeripheral", deviceDisconnectedEvent),
+			getBleManagerEmitter().addListener("BleManagerDidUpdateValueForCharacteristic", readlineParser),
+		]
+	}, [discoveredPeripheralEvent, scanStoppedEvent, deviceDisconnectedEvent, readlineParser])
 
 	useEffect(() => {
-		const discoverDeviceFunc = getBleManagerEmitter().addListener(
-			"BleManagerDiscoverPeripheral",
-			discoveredPeripheralEvent,
-		)
-		const scanStoppedEventFunc = getBleManagerEmitter().addListener(
-			"BleManagerStopScan",
-			scanStoppedEvent,
-		)
-		const deviceDisconnectedEventFunc = getBleManagerEmitter().addListener(
-			"BleManagerDisconnectPeripheral",
-			deviceDisconnectedEvent,
-		)
-		const readlineParserFunc = getBleManagerEmitter().addListener(
-			"BleManagerDidUpdateValueForCharacteristic",
-			readlineParser,
-		)
-
+		const subs = setupSubscriptions()
 		return () => {
-			discoverDeviceFunc.remove()
-			scanStoppedEventFunc.remove()
-			deviceDisconnectedEventFunc.remove()
-			readlineParserFunc.remove()
+			subs.forEach(sub => sub.remove())
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])

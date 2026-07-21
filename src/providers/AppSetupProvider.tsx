@@ -92,7 +92,7 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 		return (
 			<View style={styles.loadingContainer}>
 				<ActivityIndicator size="large" color="#2e7d32" />
-				<Text style={styles.loadingText}>Initializing...</Text>
+				<Text style={styles.loadingText}>Initializing…</Text>
 			</View>
 		)
 	}

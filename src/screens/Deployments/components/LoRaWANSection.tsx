@@ -22,7 +22,7 @@ export const LoRaWANSection = ({ device, onShowHelp }: Props) => {
     const handlePing = useCallback(async () => {
         if (!device) return
         setStatus('testing')
-        setMessage('Sending ping...')
+        setMessage('Sending ping…')
         try {
             const session = createBleSession(device)
             await session.execute(commandRegistry.pingToNetwork)
@@ -73,7 +73,7 @@ export const LoRaWANSection = ({ device, onShowHelp }: Props) => {
                         <View style={styles.statusRow}>
                     <Text variant="bodyMedium" style={dynamicStyles.statusText}>
                         Status: {status === 'idle' ? 'Not Tested' :
-                            status === 'testing' ? 'Testing...' :
+                            status === 'testing' ? 'Testing…' :
                                 status === 'success' ? 'Command Sent' : 'Failed'}
                     </Text>
                     {status === 'success' && <WWIcon source="check-circle" color={theme.colors.primary} size={24} />}

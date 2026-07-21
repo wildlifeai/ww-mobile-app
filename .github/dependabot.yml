@@ -1,0 +1,13 @@
+# Keeps GitHub Actions pins current via PRs. Workflow dependencies are pinned
+# (actions to release tags, CLIs to exact versions) so upstream releases can't
+# silently break CI — this config is how those pins get bumped deliberately.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns:
+          - '*'

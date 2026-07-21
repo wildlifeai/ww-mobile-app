@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, StyleSheet } from 'react-native'
-import { Card, Text, IconButton, useTheme, Divider } from 'react-native-paper'
+import { Card, Text, IconButton, useTheme, Divider, TouchableRipple } from 'react-native-paper'
 import { WWIcon } from '../../../components/ui/WWIcon'
 import { ProjectWithDetails } from '../../../types/project'
 import { useAppNavigation } from '../../../hooks/useAppNavigation'
@@ -46,37 +46,54 @@ export const ProjectDetailsCard: React.FC<Props> = ({
         websiteValue: { color: theme.colors.primary },
     }
 
+    const handleHeaderPress = () => {
+        if (isProjectAdmin) {
+            navigation.navigate('EditProjectScreen', { projectId: project.id })
+        } else {
+            navigation.navigate('ProjectVisualizationScreen', { projectId: project.id })
+        }
+    }
+
     return (
         <Card mode="outlined" style={styles.card}>
             <Card.Content>
                 <View style={styles.headerRow}>
-                    <View style={styles.flex1}>
-                        <Text
-                            variant="titleMedium"
-                            style={[styles.sectionTitle, dynamicStyles.sectionTitle]}
-                        >
-                            Project Details
-                        </Text>
-                        {project.organisation?.name && (
+                    <TouchableRipple onPress={handleHeaderPress} borderless style={styles.headerTitleTouchable}>
+                        <View style={styles.flex1}>
                             <Text
-                                variant="bodyMedium"
-                                style={dynamicStyles.orgName}
+                                variant="titleMedium"
+                                style={[styles.sectionTitle, dynamicStyles.sectionTitle]}
                             >
-                                {project.organisation.name}
+                                Project Details
                             </Text>
-                        )}
-                    </View>
+                            {project.organisation?.name && (
+                                <Text
+                                    variant="bodyMedium"
+                                    style={dynamicStyles.orgName}
+                                >
+                                    {project.organisation.name}
+                                </Text>
+                            )}
+                        </View>
+                    </TouchableRipple>
 
-                    {isProjectAdmin && (
-                        <View style={styles.actionButtons}>
+                    <View style={styles.actionButtons}>
+                        {isProjectAdmin ? (
                             <IconButton
                                 icon="cog"
                                 size={24}
-                                onPress={() => navigation.navigate('EditProjectScreen', { projectId: project.id })}
+                                onPress={handleHeaderPress}
                                 testID="edit-button"
                             />
-                        </View>
-                    )}
+                        ) : (
+                            <IconButton
+                                icon="chevron-right"
+                                size={24}
+                                onPress={handleHeaderPress}
+                                testID="view-details-button"
+                            />
+                        )}
+                    </View>
                 </View>
 
                 <View>
@@ -278,6 +295,10 @@ export const ProjectDetailsCard: React.FC<Props> = ({
 const styles = StyleSheet.create({
     card: {
         marginBottom: 16,
+    },
+    headerTitleTouchable: {
+        flex: 1,
+        borderRadius: 8,
     },
     headerRow: {
         flexDirection: "row",

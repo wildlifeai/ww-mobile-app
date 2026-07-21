@@ -21,6 +21,15 @@ export interface EnvironmentConfig {
 }
 
 /**
+ * Website URL per environment, used for:
+ * - Password reset email redirects (resetPasswordForEmail redirectTo)
+ * - Universal Links / App Links prefix in React Navigation
+ */
+export const WEBSITE_URL = __DEV__
+	? "http://localhost:5173"
+	: "https://wildlifewatcher.ai"
+
+/**
  * Environment-specific Supabase configurations
  *
  * Security Note: Local keys are non-sensitive development credentials.

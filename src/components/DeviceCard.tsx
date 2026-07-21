@@ -46,7 +46,7 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
 
     const handleStatusPress = () => {
         if (statusInfo?.hasLink && statusInfo.deploymentId) {
-            (navigation as any).navigate('DeploymentDetails', { deploymentId: statusInfo.deploymentId })
+            (navigation as any).navigate('DeviceMonitoringSummary', { deploymentId: statusInfo.deploymentId })
         }
     }
 

@@ -38,7 +38,7 @@ jobs:
 
       - uses: expo/expo-github-action@v8
         with:
-          eas-version: latest
+          eas-version: 20.1.0  # pinned: bump deliberately (EAS service stays compatible across CLI minors)
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Determine build profile
@@ -61,6 +61,9 @@ jobs:
             echo "platform=all" >> $GITHUB_OUTPUT
             echo "submit=false" >> $GITHUB_OUTPUT
           fi
+
+      - name: Validate dependencies
+        run: npm run validate:deps
 
       - name: EAS Build
         run: |

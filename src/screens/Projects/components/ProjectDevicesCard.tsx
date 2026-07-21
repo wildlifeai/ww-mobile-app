@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { View, StyleSheet } from 'react-native'
-import { Card, Text, IconButton, Divider, ActivityIndicator, useTheme } from 'react-native-paper'
+import { Card, Text, IconButton, Divider, ActivityIndicator, useTheme, TouchableRipple } from 'react-native-paper'
 import { Q } from '@nozbe/watermelondb'
 import database from '../../../database'
 import Deployment from '../../../database/models/Deployment'
@@ -13,12 +13,21 @@ interface Props {
     projectName: string
 }
 
+interface DeviceItem {
+    id: string
+    name: string
+    bluetoothId: string
+    isActive: boolean
+    activeDeploymentId?: string
+    lastDeploymentId?: string
+}
+
 export const ProjectDevicesCard: React.FC<Props> = ({ projectId, projectName }) => {
     const navigation = useAppNavigation()
     const theme = useTheme()
 
     const [{ devices, isLoading }, setState] = useState<{
-        devices: (Device & { isActive?: boolean })[]
+        devices: DeviceItem[]
         isLoading: boolean
     }>({ devices: [], isLoading: true })
 
@@ -33,7 +42,7 @@ export const ProjectDevicesCard: React.FC<Props> = ({ projectId, projectName }) 
         let isMounted = true
 
         const fetchDevices = async () => {
-            let nextDevices: any[] = []
+            let nextDevices: DeviceItem[] = []
             try {
                 // Find all deployments for this project to get device IDs
                 const deployments = await database.get<Deployment>('deployments')
@@ -50,13 +59,31 @@ export const ProjectDevicesCard: React.FC<Props> = ({ projectId, projectName }) 
                         .fetch()
                         
                     if (isMounted) {
-                        const devicesWithStatus = uniqueDevices.map(device => {
-                            const isActive = deployments.some(d => d.deviceId === device.id && !d.deploymentEnd)
+                        // Pre-group deployments by deviceId for O(1) lookup
+                        const deploymentsByDeviceId = new Map<string, { active?: Deployment; lastEnded?: Deployment }>()
+                        for (const d of deployments) {
+                            const entry = deploymentsByDeviceId.get(d.deviceId) || {}
+                            if (!d.deploymentEnd) {
+                                entry.active = d
+                            } else if (
+                                !entry.lastEnded ||
+                                new Date(d.deploymentEnd).getTime() > new Date(entry.lastEnded.deploymentEnd!).getTime()
+                            ) {
+                                entry.lastEnded = d
+                            }
+                            deploymentsByDeviceId.set(d.deviceId, entry)
+                        }
+
+                        const devicesWithStatus: DeviceItem[] = uniqueDevices.map(device => {
+                            const grouped = deploymentsByDeviceId.get(device.id)
+
                             return {
                                 id: device.id,
-                                name: device.name,
+                                name: device.name || device.bluetoothId || 'Unknown Device',
                                 bluetoothId: device.bluetoothId,
-                                isActive,
+                                isActive: !!grouped?.active,
+                                activeDeploymentId: grouped?.active?.id,
+                                lastDeploymentId: grouped?.lastEnded?.id,
                             }
                         })
                         
@@ -64,9 +91,7 @@ export const ProjectDevicesCard: React.FC<Props> = ({ projectId, projectName }) 
                         devicesWithStatus.sort((a, b) => {
                             if (a.isActive && !b.isActive) return -1
                             if (!a.isActive && b.isActive) return 1
-                            const nameA = a.name || a.bluetoothId || 'Unknown Device'
-                            const nameB = b.name || b.bluetoothId || 'Unknown Device'
-                            return nameA.localeCompare(nameB)
+                            return a.name.localeCompare(b.name)
                         })
 
                         nextDevices = devicesWithStatus
@@ -76,7 +101,7 @@ export const ProjectDevicesCard: React.FC<Props> = ({ projectId, projectName }) 
                 console.error("Failed to fetch project devices:", error)
             } finally {
                 if (isMounted) {
-                    setState({ devices: nextDevices as any, isLoading: false })
+                    setState({ devices: nextDevices, isLoading: false })
                 }
             }
         }
@@ -88,25 +113,40 @@ export const ProjectDevicesCard: React.FC<Props> = ({ projectId, projectName }) 
         }
     }, [projectId])
 
+    const handleDevicePress = (device: DeviceItem) => {
+        navigation.navigate('DeviceMonitoringSummary', { deviceId: device.id })
+    }
+
+    const handleCameraIconPress = (device: DeviceItem) => {
+        if (device.isActive && device.activeDeploymentId) {
+            navigation.navigate('DeviceMonitoringSummary', { deploymentId: device.activeDeploymentId })
+        } else if (device.lastDeploymentId) {
+            navigation.navigate('DeviceMonitoringSummary', { deploymentId: device.lastDeploymentId })
+        } else {
+            navigation.navigate('DeviceMonitoringSummary', { deviceId: device.id })
+        }
+    }
+
+    const handleSectionPress = () => {
+        navigation.navigate('ProjectDevicesScreen', { projectId, projectName })
+    }
+
     return (
         <Card mode="outlined" style={styles.card}>
             <Card.Content>
                 <View style={styles.sectionHeader}>
-                    <Text
-                        variant="titleMedium"
-                        style={dynamicStyles.title}
-                    >
-                        Wildlife Watchers ({devices.length})
-                    </Text>
+                    <TouchableRipple onPress={handleSectionPress} borderless style={styles.headerTitleTouchable}>
+                        <Text
+                            variant="titleMedium"
+                            style={dynamicStyles.title}
+                        >
+                            Wildlife Watchers ({devices.length})
+                        </Text>
+                    </TouchableRipple>
                     <IconButton
                         icon="eye"
                         size={24}
-                        onPress={() => {
-                            navigation.navigate("ProjectDevicesScreen", {
-                                projectId,
-                                projectName,
-                            })
-                        }}
+                        onPress={handleSectionPress}
                         testID="view-devices-button"
                     />
                 </View>
@@ -118,17 +158,31 @@ export const ProjectDevicesCard: React.FC<Props> = ({ projectId, projectName }) 
                 ) : devices.length > 0 ? (
                     <View style={styles.devicesList}>
                         {devices.slice(0, 5).map((device) => (
-                            <View key={device.id} style={styles.deviceListItem}>
-                                <View style={styles.deviceInfo}>
+                            <View
+                                key={device.id}
+                                style={styles.deviceListItem}
+                            >
+                                <TouchableRipple
+                                    onPress={() => handleCameraIconPress(device)}
+                                    borderless
+                                    style={styles.iconTouchable}
+                                >
                                     <View style={styles.iconContainer}>
                                         <WWIcon source="camera" size={24} color={device.isActive ? '#4CAF50' : '#9E9E9E'} />
                                     </View>
+                                </TouchableRipple>
+                                <TouchableRipple
+                                    onPress={() => handleDevicePress(device)}
+                                    borderless
+                                    style={styles.deviceDetailsTouchable}
+                                >
                                     <View style={styles.deviceDetails}>
                                         <Text variant="bodyMedium" style={dynamicStyles.deviceName}>
                                             {device.name}
                                         </Text>
                                     </View>
-                                </View>
+                                </TouchableRipple>
+                                <WWIcon source="chevron-right" size={20} color={theme.colors.onSurfaceVariant} />
                             </View>
                         ))}
                     </View>
@@ -146,33 +200,41 @@ const styles = StyleSheet.create({
     card: {
         marginBottom: 16,
     },
+    headerTitleTouchable: {
+        flex: 1,
+        borderRadius: 8,
+        justifyContent: 'center',
+    },
     sectionHeader: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
         flexWrap: "wrap",
         minHeight: 40,
-        marginBottom: 8,
     },
     divider: {
         marginBottom: 16,
     },
     devicesList: {
-        gap: 16,
+        gap: 4,
+    },
+    deviceDetailsTouchable: {
+        flex: 1,
+        borderRadius: 8,
     },
     deviceListItem: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
+        paddingVertical: 8,
+        paddingHorizontal: 4,
     },
-    deviceInfo: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        flex: 1,
-    },
+
     deviceDetails: {
         flex: 1,
+    },
+    iconTouchable: {
+        borderRadius: 20,
     },
     iconContainer: {
         width: 40,

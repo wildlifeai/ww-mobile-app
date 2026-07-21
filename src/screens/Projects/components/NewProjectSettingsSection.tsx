@@ -60,7 +60,7 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
     const [gpsHelpVisible, setGpsHelpVisible] = useState(false)
     const [expanded, setExpanded] = useState(false)
 
-    // Card title render helpers — matching StartDeployment pattern
+    // Card title render helpers: matching StartDeployment pattern
     const renderCaptureHelp = useCallback((props: any) => (
         <Button
             {...props}
@@ -175,7 +175,7 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
                                     return (
                                         <View testID="ai-model-select-loading">
                                             <ActivityIndicator testID="ai-model-select-loading-placeholder" />
-                                            <Text>Loading AI models...</Text>
+                                            <Text>Loading AI models…</Text>
                                         </View>
                                     )
                                 }

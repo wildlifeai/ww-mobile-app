@@ -1,5 +1,5 @@
-import React from 'react'
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
+import React, { useState, useCallback } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, TextInput } from 'react-native'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useExtendedTheme } from '../../../theme'
@@ -10,10 +10,14 @@ import { LiveActivityLog } from './LiveActivityLog'
 interface Props {
   device: ExtendedPeripheral | null
   captureMethodId?: number | null
-  onDisconnect: () => void
+  deploymentStartTime?: Date | string | null
+  onContinueMonitoring: () => void
+  onStopMonitoring: (notes: string) => void
+  isStoppingMonitoring?: boolean
 }
 
 const formatTime = (ms: number) => {
+  if (ms < 0) ms = 0
   const totalSeconds = Math.floor(ms / 1000)
   const hours = Math.floor(totalSeconds / 3600)
   const minutes = Math.floor((totalSeconds % 3600) / 60)
@@ -28,14 +32,79 @@ const formatTime = (ms: number) => {
 export const DeploymentMonitorView: React.FC<Props> = ({
   device,
   captureMethodId,
-  onDisconnect,
+  deploymentStartTime,
+  onContinueMonitoring,
+  onStopMonitoring,
+  isStoppingMonitoring,
 }) => {
   const { colors } = useExtendedTheme()
   const { bottom } = useSafeAreaInsets()
-  const { stats } = useDeploymentMonitor(device)
+  const { stats } = useDeploymentMonitor(device, deploymentStartTime)
+
+  const [isEnteringNotes, setIsEnteringNotes] = useState(false)
+  const [endNotes, setEndNotes] = useState('')
 
   const showMotion = captureMethodId === 1 || captureMethodId === 3
   const showTimelapse = captureMethodId === 2 || captureMethodId === 3
+
+  const handleStopPress = useCallback(() => {
+    setIsEnteringNotes(true)
+  }, [])
+
+  const handleStopCancel = useCallback(() => {
+    setIsEnteringNotes(false)
+    setEndNotes('')
+  }, [])
+
+  const handleStopConfirm = useCallback(() => {
+    setIsEnteringNotes(false)
+    onStopMonitoring(endNotes)
+    setEndNotes('')
+  }, [endNotes, onStopMonitoring])
+
+  if (isEnteringNotes) {
+    return (
+      <KeyboardAvoidingView 
+        style={[styles.container, { backgroundColor: colors.background }]}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.notesScrollContainer}>
+          <Text style={[styles.notesPageTitle, { color: colors.onSurface }]}>Stop Monitoring</Text>
+          <Text style={[styles.notesPageSubtitle, { color: colors.onSurfaceVariant }]}>
+            Please provide any notes about this deployment before stopping it.
+          </Text>
+
+          <Text style={[styles.notesPageLabel, { color: colors.onSurface }]}>Deployment Notes</Text>
+          <TextInput
+            placeholder="e.g. SD card full, Battery low, Device damaged..."
+            placeholderTextColor={colors.onSurfaceVariant}
+            multiline
+            textAlignVertical="top"
+            value={endNotes}
+            onChangeText={setEndNotes}
+            style={[styles.notesPageInput, { color: colors.onSurface, borderColor: colors.outline, backgroundColor: colors.surface }]}
+          />
+        </View>
+        <View style={[styles.notesPageFooter, { paddingBottom: bottom + 16, borderTopColor: colors.surfaceVariant }]}>
+          <TouchableOpacity
+            style={[styles.notesCancelBtn, { borderColor: colors.outline }]}
+            onPress={handleStopCancel}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.notesCancelText, { color: colors.onSurface }]}>Cancel</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.notesStopBtn, { backgroundColor: colors.error, borderColor: colors.error }]}
+            onPress={handleStopConfirm}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.notesStopText, { color: '#FFFFFF' }]}>Confirm Stop</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    )
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -85,17 +154,27 @@ export const DeploymentMonitorView: React.FC<Props> = ({
       {/* Spacer to push footer down */}
       <View style={{ flex: 1 }} />
 
-      {/* Footer */}
+      {/* Footer: Two Buttons */}
       <View style={[styles.footer, { borderTopColor: colors.surfaceVariant, paddingBottom: bottom + 16 }]}>
-        <Text style={[styles.footerNote, { color: colors.onSurfaceVariant }]}>
-          Note: The wildlife watcher will continue monitoring after disconnecting.
-        </Text>
         <TouchableOpacity
-          style={[styles.disconnectBtn, { borderColor: colors.error }]}
-          onPress={onDisconnect}
+          style={[styles.continueBtn, { backgroundColor: '#4CAF50' }]}
+          onPress={onContinueMonitoring}
           activeOpacity={0.7}
         >
-          <Text style={[styles.disconnectText, { color: colors.error }]}>Disconnect from Wildlife Watcher</Text>
+          <MaterialCommunityIcons name="check-circle-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+          <Text style={styles.continueBtnText}>Disconnect & Continue Monitoring</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.stopBtn, { borderColor: colors.error }]}
+          onPress={handleStopPress}
+          activeOpacity={0.7}
+          disabled={isStoppingMonitoring}
+        >
+          <MaterialCommunityIcons name="stop-circle-outline" size={20} color={colors.error} style={{ marginRight: 8 }} />
+          <Text style={[styles.stopBtnText, { color: colors.error }]}>
+            {isStoppingMonitoring ? 'Stopping…' : 'Stop Monitoring'}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -158,21 +237,90 @@ const styles = StyleSheet.create({
     padding: 16,
     borderTopWidth: 1,
     backgroundColor: 'transparent',
+    gap: 12,
   },
-  footerNote: {
-    fontSize: 12,
-    textAlign: 'center',
-    marginBottom: 12,
+  continueBtn: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  disconnectBtn: {
+  continueBtnText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  stopBtn: {
+    flexDirection: 'row',
     borderWidth: 1.5,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  disconnectText: {
+  stopBtnText: {
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  // Notes Page Styles
+  notesScrollContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+  },
+  notesPageTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  notesPageSubtitle: {
+    fontSize: 16,
+    marginBottom: 24,
+    lineHeight: 24,
+  },
+  notesPageLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  notesPageInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  notesPageFooter: {
+    flexDirection: 'row',
+    padding: 16,
+    borderTopWidth: 1,
+    gap: 12,
+  },
+  notesCancelBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notesCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  notesStopBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notesStopText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 })

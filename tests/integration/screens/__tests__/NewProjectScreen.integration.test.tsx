@@ -71,6 +71,7 @@ const createTestStore = (initialState = {}) => {
 				initialLoad: false,
 				sessionPersisted: true,
 				profileLoading: false,
+				pendingTutorial: false,
 				error: undefined,
 			},
 			...initialState,
@@ -115,7 +116,8 @@ describe("NewProjectScreen - AI Model Integration", () => {
 				model_family_id: null,
 				processing_log: null,
 				status: "validated",
-				version_number: null,
+				version_number: 1,
+			label_map: null,
 			},
 			{
 				id: "223e4567-e89b-12d3-a456-426614174001",
@@ -139,7 +141,8 @@ describe("NewProjectScreen - AI Model Integration", () => {
 				model_family_id: null,
 				processing_log: null,
 				status: "validated",
-				version_number: null,
+				version_number: 2,
+			label_map: null,
 			},
 		]
 
@@ -260,7 +263,7 @@ describe("NewProjectScreen - AI Model Integration", () => {
 
 		fireEvent.press(screen.getByText("Advanced Project Settings"))
 
-		// Assert — empty list still shows the dropdown with a "None" option
+		// Assert: empty list still shows the dropdown with a "None" option
 		await waitFor(() => {
 			expect(screen.getByTestId("ai-model-select-dropdown")).toBeOnTheScreen()
 		})
@@ -290,7 +293,7 @@ describe("NewProjectScreen - AI Model Integration", () => {
 
 		// Assert
 		expect(screen.getByTestId("ai-model-select-loading")).toBeOnTheScreen()
-		expect(screen.getByText("Loading AI models...")).toBeOnTheScreen()
+		expect(screen.getByText("Loading AI models…")).toBeOnTheScreen()
 	})
 
 	it("should display error state when AI models fail to load", async () => {
@@ -408,7 +411,8 @@ describe("NewProjectScreen - AI Model Integration", () => {
 				model_family_id: null,
 				processing_log: null,
 				status: "validated",
-				version_number: null,
+				version_number: 1,
+			label_map: null,
 			},
 		]
 
@@ -453,7 +457,7 @@ describe("NewProjectScreen - AI Model Integration", () => {
 		const submitButton = screen.getByText("Create Project")
 		fireEvent.press(submitButton)
 
-		// model_id defaults to "" (None) — no auto-selection anymore
+		// model_id defaults to "" (None): no auto-selection anymore
 		await waitFor(() => {
 			expect(mockCreateProject).toHaveBeenCalledWith(
 				expect.objectContaining({

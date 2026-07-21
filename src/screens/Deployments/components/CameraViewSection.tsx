@@ -1,10 +1,11 @@
 import { useCallback } from 'react'
-import { StyleSheet, View, Image } from 'react-native'
+import { StyleSheet, View, Image, Alert } from 'react-native'
 import { Card, Button, Text, ProgressBar, useTheme } from 'react-native-paper'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { useCapturePreview } from '../../../hooks/useCapturePreview'
 
 import { WWButton } from '../../../components/ui/WWButton'
+import { WWBleDisconnectedBanner } from '../../../components/ui/WWBleDisconnectedBanner'
 import { logError } from '../../../utils/logger'
 
 
@@ -28,6 +29,7 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
         onImageReceived: onImageCaptured,
         onError: (err) => {
             logError('Capture error:', err)
+            Alert.alert('Camera Preview Failed', err?.message || 'An error occurred while capturing preview image.')
         }
     })
 
@@ -59,6 +61,15 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
                     </View>
                 )}
 
+                <WWBleDisconnectedBanner connected={!!device?.connected} dfuInProgress={!!device?.dfuInProgress} />
+
+                {!capturedImageUri && !isCapturing && (
+                    <Text variant="bodySmall" style={styles.captionText}>
+                        Takes a photo with the active camera and shows it here (about 15 s) —
+                        use it to check aim, framing and image quality.
+                    </Text>
+                )}
+
                 {isCapturing && (
                     <View style={styles.progressContainer}>
                         <ProgressBar progress={captureProgress} color={theme.colors.primary} />
@@ -70,13 +81,15 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
 
                 <WWButton
                     mode="outlined"
-                    onPress={() => startCapture(1, 1)}
-                    disabled={!device || isCapturing}
+                    onPress={() => startCapture()}
+                    disabled={!device?.connected || isCapturing}
                     loading={isCapturing}
                 >
-                    <Text>{isCapturing
-                        ? (captureProgress > 0 ? `${captureStage} ${Math.round(captureProgress * 100)}%` : (captureStage || 'Capturing...'))
-                        : (capturedImageUri ? 'Test Again' : 'Test Camera View')}</Text>
+                    <Text>{!device?.connected
+                        ? 'Device Disconnected'
+                        : isCapturing
+                            ? (captureProgress > 0 ? `${captureStage} ${Math.round(captureProgress * 100)}%` : (captureStage || 'Capturing…'))
+                            : (capturedImageUri ? '📸 Take Another Photo' : '📸 Take Test Photo')}</Text>
                 </WWButton>
                 </Card.Content>
             </Card>
@@ -105,8 +118,18 @@ const styles = StyleSheet.create({
     progressContainer: {
         marginBottom: 8,
     },
+    captionText: {
+        marginBottom: 12,
+        opacity: 0.8,
+    },
     progressText: {
         textAlign: 'center',
         marginTop: 4,
+    },
+    disconnectedBanner: {
+        padding: 12,
+        backgroundColor: 'rgba(176, 0, 32, 0.1)',
+        borderRadius: 8,
+        marginBottom: 16,
     }
 })

@@ -1,6 +1,6 @@
 # Expo & EAS Guide
 
-> **Related**: [publishing_guide.md](publishing_guide.md) (store submission), [.env.example](../../.env.example) (environment variables), [GOOGLE-MAPS-SETUP.md](GOOGLE-MAPS-SETUP.md) (Maps API keys).
+> **Related**: [publishing_guide.md](publishing_guide.md) (store submission), [.env.example](../../.env.example) (environment variables), [Maps.md](Maps.md) (Maps API keys).
 
 ## Overview
 

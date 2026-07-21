@@ -50,7 +50,7 @@ export interface CommandContext<T = any> {
   isLongRunning?: boolean;
 
   /** If true, the command acquires an exclusive transport lock.
-   *  While held, the commandQueue rejects all other enqueue attempts. */
+   *  While held, the transport controller rejects all other enqueue attempts. */
   requiresExclusiveLock?: boolean;
 }
 
@@ -163,7 +163,12 @@ export function createMultiLineCommand<T>(
         if (!isDone) throw new Error(`${name}: Result accessed before complete`);
         return parseResult(lines);
       },
-      getResult: function() { return this.parser(); }
+      getResult: function() { return this.parser(); },
+      onTimeout: () => {
+        if (lines.length > 0) {
+          isDone = true;
+        }
+      }
     };
   };
 }
@@ -195,10 +200,13 @@ export const commandRegistry = {
     'aiinfo',
     () => 'AI info',
     /(?:Label|Serial|drive space)/i,
-    /(?:available|NACK)/i,
+    /(?:available|NACK|Unrecogni[sz]ed|Sleep)/i,
     (lines) => {
       const full = lines.join(' ');
-      if (full.toUpperCase().includes('NACK')) return { error: 'AI NACK' };
+      const upper = full.toUpperCase();
+      if (upper.includes('UNRECOGNISED') || upper.includes('UNRECOGNIZED')) return { error: 'AI UNRECOGNISED' };
+      if (upper.includes('SLEEP')) return { error: 'AI SLEEP' };
+      if (upper.includes('NACK')) return { error: 'AI NACK' };
       const totalMatch = full.match(/(\d+)\s*[Kk]\s*total/i);
       const freeMatch = full.match(/(\d+)\s*[Kk]\s*available/i);
       return {
@@ -206,7 +214,7 @@ export const commandRegistry = {
         free: freeMatch ? parseInt(freeMatch[1], 10) : undefined,
       };
     },
-    { timeoutMs: 12000, retryPolicy: { maxRetries: 0 }, failureRegex: /^(?:NACK|AI processor not responding)/i }
+    { timeoutMs: 12000, retryPolicy: { maxRetries: 0 }, failureRegex: /^(?:AI processor not responding)/i }
   ),
   wake: createSingleLineCommand<boolean>(
     'wake',
@@ -223,7 +231,7 @@ export const commandRegistry = {
   ),
   aifirmware: createSingleLineCommand<boolean>(
     'aifirmware',
-    (filename: string) => `AI firmware ${filename}`,
+    (filename: string, crc?: string) => crc ? `AI firmware ${filename} ${crc}` : `AI firmware ${filename}`,
     /Firmware update (OK|FAILED)(?: \(error (-?\d+)\))?/i,
     (match) => {
       if (match[1].toUpperCase() === 'FAILED') {
@@ -241,6 +249,13 @@ export const commandRegistry = {
       requiresExclusiveLock: true,
     }
   ),
+  aireset: createSingleLineCommand<boolean>(
+    'aireset',
+    () => 'AI reset',
+    /Forcing reset/i,
+    () => true,
+    { timeoutMs: 8000, retryPolicy: { maxRetries: 0 } }
+  ),
   version: createSingleLineCommand<string>(
     'version',
     () => 'ver',
@@ -251,7 +266,9 @@ export const commandRegistry = {
     'aiver',
     () => 'AI ver',
     /((?:WW500_[A-Z0-9_]+.+)|(?:V\s*\d+\.\d+\.\d+(?:-[\w.-]+)?))/i,
-    (match) => match[1]
+    (match) => match[1],
+    // 8s: AI processor may need DPD wake cycle (3-5s)
+    { timeoutMs: 8000 }
   ),
   dfu: createSingleLineCommand<boolean>(
     'dfu',
@@ -301,7 +318,9 @@ export const commandRegistry = {
   enableCamera: createSingleLineCommand<boolean>(
     'enableCamera',
     () => 'AI enable',
-    /Camera Enabled/i,
+    // Firmware replies "Enabled Camera System" (CLI-commands.c prvEnable);
+    // older builds said "Camera Enabled" - accept both.
+    /Enabled Camera System|Camera Enabled/i,
     () => true,
     { timeoutMs: 10000, failureRegex: /already enabled/i }
   ),
@@ -312,7 +331,7 @@ export const commandRegistry = {
     (uuid: string | null) => `AI setdid ${uuid || '00000000-0000-0000-0000-000000000000'}`,
     /^Deployment ID set to/i,
     () => true,
-    { failureRegex: /invalid/i, retryPolicy: { maxRetries: 3 } }
+    { timeoutMs: 8000, failureRegex: /invalid/i, retryPolicy: { maxRetries: 3 } }
   ),
 
   setgps: createSingleLineCommand<boolean>(
@@ -320,7 +339,7 @@ export const commandRegistry = {
     (gpsString: string) => `AI setgps ${gpsString}`,
     /^Device GPS set/i,
     () => true,
-    { failureRegex: /format error/i }
+    { timeoutMs: 8000, failureRegex: /format error/i }
   ),
 
   setop: createSingleLineCommand<boolean>(
@@ -328,21 +347,27 @@ export const commandRegistry = {
     ({ index, value }: { index: number, value: number | string }) => `AI setop ${index} ${value}`,
     /^(?:Set\s+OpParam.*?|Op(?:Param)?(?:\s+|\[)\d+\]?\s*=)/i,
     () => true,
-    { failureRegex: /Failed|Invalid/i, retryPolicy: { maxRetries: 2 } }
+    // 8s timeout: DPD wake cycle (boot → selftest → process → respond)
+    // takes 3-5s. Default 3s caused premature retries/duplicates.
+    { timeoutMs: 8000, failureRegex: /Failed|Invalid/i, retryPolicy: { maxRetries: 2 } }
   ),
 
   getops: createSingleLineCommand<string[]>(
     'getops',
     () => `AI getop -1`,
     /^OpParams\s+(.+)$/i,
-    (match) => match[1].trim().split(/\s+/)
+    (match) => match[1].trim().split(/\s+/),
+    // 8s: AI processor may need DPD wake cycle (3-5s)
+    { timeoutMs: 8000 }
   ),
 
   getop: createSingleLineCommand<string>(
     'getop',
     (index: number | string) => `AI getop ${index}`,
     /^Op(?:Param)?(?:\s+|\[)\d+\]?\s*=\s*(.*)$/i,
-    (match) => match[1].trim()
+    (match) => match[1].trim(),
+    // 8s: AI processor may need DPD wake cycle (3-5s)
+    { timeoutMs: 8000 }
   ),
 
   capture: createSingleLineCommand<string | boolean>(
@@ -397,11 +422,16 @@ export const commandRegistry = {
   ),
 
   // -- AI Advanced Commands --
+  // The md command sets the HM0360 motion detection sensitivity.
+  // Response: "MD sensitivity set to N". We keep maxRetries: 0 because
+  // the sensitivity is persisted to CONFIG.TXT regardless of whether
+  // the response arrives over BLE.
   md: createSingleLineCommand<boolean>(
     'md',
-    (level: number) => `md ${level}`,
-    /^MD Set/i,
-    () => true
+    (level: number) => `AI md ${level}`,
+    /^MD sensitivity set to/i,
+    () => true,
+    { timeoutMs: 5000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Sleep/i }
   ),
 
   erasemodel: createSingleLineCommand<boolean>(
@@ -426,6 +456,48 @@ export const commandRegistry = {
     /Camera type: (.*)/i,
     (match) => match[1].trim()
   ),
+
+  // -- Day/night dual-image camera switching --
+  // The device holds two firmware images in A/B flash slots: an HM0360 (night/IR)
+  // variant and an RP3/IMX708 (day/colour) variant. See slots/switchslot on the
+  // Himax CLI and camera_switch.c in the firmware.
+
+  /** Report the active firmware slot and the camera variant recorded in each slot. */
+  slots: createSingleLineCommand<{ activeSlot: number; running: string; slotA: string; slotB: string; autoSwitch: boolean }>(
+    'slots',
+    () => 'AI slots',
+    // The '. Auto-switch: on/off' suffix only exists on op26-capable firmware;
+    // older (but still slots-capable) images omit it, so keep that group
+    // optional or the whole command fails to parse on them.
+    /Active slot (\d) running '([^']*)'\. Slot A: '([^']*)', Slot B: '([^']*)'(?:\. Auto-switch: (on|off))?/i,
+    (match) => ({
+      activeSlot: parseInt(match[1], 10),
+      running: match[2],
+      slotA: match[3],
+      slotB: match[4],
+      autoSwitch: match[5] ? match[5].toLowerCase() === 'on' : false,
+    }),
+    // 8s: AI processor may need DPD wake cycle (3-5s)
+    { timeoutMs: 8000, failureRegex: /Slots error/i }
+  ),
+
+  /**
+   * Manually boot the firmware image in the other slot (day/night camera change).
+   * The device resets when it next sleeps, so expect a disconnect/Sleep+Wake
+   * cycle shortly after the response.
+   */
+  switchslot: createSingleLineCommand<{ newSlot: number; variant: string }>(
+    'switchslot',
+    () => 'AI switchslot',
+    /Switched to slot (\d) \('([^']*)'\)\. Reset scheduled\./i,
+    (match) => ({ newSlot: parseInt(match[1], 10), variant: match[2] }),
+    {
+      timeoutMs: 10000,
+      retryPolicy: { maxRetries: 0 },
+      idempotent: false,
+      failureRegex: /Slot switch failed/i,
+    }
+  ),
   
   flashh: createSingleLineCommand<boolean>(
     'flashh',
@@ -441,5 +513,24 @@ export const commandRegistry = {
     /End of directory|\d+\s+dirs?,\s+\d+\s+files?\.?/i,
     (lines) => lines,
     { timeoutMs: 10000 }
-  )
+  ),
+  inithm0360: createSingleLineCommand<boolean>(
+    'inithm0360',
+    () => 'AI inithm0360',
+    /^OK$/i,
+    () => true,
+    { timeoutMs: 10000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Error/i }
+  ),
+  format: createSingleLineCommand<boolean>(
+    'format',
+    () => 'AI format',
+    /(WARNING|Formatted OK|Format failed)/i,
+    (match) => {
+      if (match[0].toUpperCase().includes('FAILED')) {
+         throw new Error('Format failed');
+      }
+      return true;
+    },
+    { timeoutMs: 25000, retryPolicy: { maxRetries: 0 } }
+  ),
 };

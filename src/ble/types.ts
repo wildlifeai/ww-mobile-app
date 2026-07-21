@@ -37,40 +37,43 @@ export enum CommandNames {
 	setop = "setop",
 	getop = "getop",
 	getop_all = "getop_all",
-	getops = "getops",
 	ai_ver = "ai_ver",
 	erasemodel = "erasemodel",
 	loadmodel = "loadmodel",
 	wake = "wake",
 	camera_type = "camera_type",
+	slots = "slots",
+	switchslot = "switchslot",
 	md = "md",
 	setdid = "setdid",
 	getdid = "getdid",
 	ai_firmware = "ai_firmware",
+	inithm0360 = "inithm0360",
+	dir = "dir",
+	format = "format",
 
-	// Process commands (UPPERCASE - app-specific workflows)
-	SET_UTC = "SET_UTC",
-	SET_GPS = "SET_GPS",
+	// BLE-processor commands (lowercase)
+	setutc = "setutc",
 	SET_NUM_PICTURES = "SET_NUM_PICTURES",
 	SET_PICTURE_INTERVAL = "SET_PICTURE_INTERVAL",
 	SET_TIMELAPSE_INTERVAL = "SET_TIMELAPSE_INTERVAL",
 	SET_MOTION_DETECT_INTERVAL = "SET_MOTION_DETECT_INTERVAL",
 	DISABLE_MOTION_DETECT = "DISABLE_MOTION_DETECT",
 	DISABLE_TIMELAPSE = "DISABLE_TIMELAPSE",
-	ENABLE_CAMERA = "ENABLE_CAMERA",
-	DISABLE_CAMERA = "DISABLE_CAMERA",
 	TX_FILE = "TX_FILE",
 	CAPTURE_PREVIEW = "CAPTURE_PREVIEW",
 	UPDATE_BLE_FIRMWARE = "UPDATE_BLE_FIRMWARE",
 	UPDATE_HIMAX_FIRMWARE = "UPDATE_HIMAX_FIRMWARE",
 	MOTION_DETECTION_PREVIEW = "MOTION_DETECTION_PREVIEW",
 	CAMERA_SETTINGS_TEST = "CAMERA_SETTINGS_TEST",
+	LIGHT_SENSOR = "LIGHT_SENSOR",
 	FILE_TRANSFER_TEST = "FILE_TRANSFER_TEST",
 	MODEL_VALIDATION_TEST = "MODEL_VALIDATION_TEST",
 	TRANSFER_CONFIG = "TRANSFER_CONFIG",
 	TRANSFER_AI_MODEL = "TRANSFER_AI_MODEL",
 	FIRMWARE_STATUS = "FIRMWARE_STATUS",
 	RESET_TO_DEFAULTS = "RESET_TO_DEFAULTS",
+	DEV_DEPLOYMENT_TEST = "DEV_DEPLOYMENT_TEST",
 
 	// Local commands (UPPERCASE - app-only actions)
 	CLEAR_CONSOLE = "CLEAR_CONSOLE",
@@ -356,8 +359,8 @@ export const COMMANDS: {
 		description: "Flash blue LED (count duration_ms)",
 		type: 'command',
 	},
-	[CommandNames.SET_UTC]: {
-		name: CommandNames.SET_UTC,
+	[CommandNames.setutc]: {
+		name: CommandNames.setutc,
 		writeCommand: () => {
 			// Format: setutc YYYY-MM-DDTHH:MM:SSZ
 			const now = new Date()
@@ -368,13 +371,8 @@ export const COMMANDS: {
 		},
 		// Matches "RTC set to..." OR "System time set successfully" OR "UTC is: ..." (device echo/response variations)
 		readRegex: /(RTC\s+set\s+to|System\s+time\s+set\s+successfully|UTC\s+is:)/i,
-		description: "Set system time from UTC string",
-		type: 'process',
-	},
-	[CommandNames.SET_GPS]: {
-		name: CommandNames.SET_GPS,
-		description: "Set GPS location from phone (requires location access)",
-		type: 'process',
+		description: "Sync device clock to phone UTC (auto-generates timestamp)",
+		type: 'command',
 	},
 	[CommandNames.setop]: {
 		name: CommandNames.setop,
@@ -397,13 +395,6 @@ export const COMMANDS: {
 		writeCommand: () => `AI getop -1`,
 		readRegex: /^OpParams\s+(.+)$/i,
 		description: "Get all Operational Parameters at once",
-		type: 'command',
-	},
-	[CommandNames.getops]: {
-		name: CommandNames.getops,
-		readCommand: "getops",
-		readRegex: /OpParams:\s(.+)/,
-		description: "Get all operational parameters (array)",
 		type: 'command',
 	},
 	[CommandNames.ai_ver]: {
@@ -448,12 +439,45 @@ export const COMMANDS: {
 		description: "Get connected camera type",
 		type: 'command',
 	},
+	[CommandNames.slots]: {
+		name: CommandNames.slots,
+		readCommand: "AI slots",
+		readRegex: /Active slot (\d) running '([^']*)'/i,
+		description: "Report firmware slots and the camera variant in each (day/night switching)",
+		type: 'command',
+	},
+	[CommandNames.switchslot]: {
+		name: CommandNames.switchslot,
+		readCommand: "AI switchslot",
+		readRegex: /(Switched to slot \d|Slot switch failed)/i,
+		description: "Boot the other firmware slot (day/night camera change); device resets at next sleep",
+		type: 'command',
+	},
+	[CommandNames.inithm0360]: {
+		name: CommandNames.inithm0360,
+		writeCommand: () => 'AI inithm0360',
+		readRegex: /^(OK|Error)/i,
+		description: "Reinitialise HM0360 camera sensor registers (diagnostic for black images)",
+		type: 'command',
+	},
+	[CommandNames.dir]: {
+		name: CommandNames.dir,
+		writeCommand: () => 'AI dir',
+		description: "Lists the files in the current directory of the SD card",
+		type: 'command',
+	},
+	[CommandNames.format]: {
+		name: CommandNames.format,
+		writeCommand: () => 'AI format',
+		description: "Formats the SD card as FAT32 (run twice to confirm)",
+		type: 'command',
+	},
 	[CommandNames.md]: {
 		name: CommandNames.md,
 		writeCommand: (level?: string) => `AI md ${level || '0'}`,
 		expectedPattern: false,
 		description: "Set motion detection sensitivity (0-3)",
-		type: 'process',
+		type: 'command',
 	},
 	[CommandNames.setdid]: {
 		name: CommandNames.setdid,
@@ -476,58 +500,42 @@ export const COMMANDS: {
 		writeCommand: (count?: string) => `AI setop 5 ${count || '3'}`,
 		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
 		description: "Set number of images per trigger (default: 3)",
-		type: 'process',
+		type: 'command',
 	},
 	[CommandNames.SET_PICTURE_INTERVAL]: {
 		name: CommandNames.SET_PICTURE_INTERVAL,
 		writeCommand: (intervalMs?: string) => `AI setop 6 ${intervalMs || '1500'}`,
 		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
 		description: "Set interval between images in ms (default: 1500)",
-		type: 'process',
+		type: 'command',
 	},
 	[CommandNames.SET_TIMELAPSE_INTERVAL]: {
 		name: CommandNames.SET_TIMELAPSE_INTERVAL,
 		writeCommand: (intervalSec?: string) => `AI setop 7 ${intervalSec || '900'}`,
 		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
 		description: "Set timelapse interval in seconds, 0=off (default: 900)",
-		type: 'process',
+		type: 'command',
 	},
 	[CommandNames.SET_MOTION_DETECT_INTERVAL]: {
 		name: CommandNames.SET_MOTION_DETECT_INTERVAL,
 		writeCommand: (intervalMs?: string) => `AI setop 11 ${intervalMs || '1000'}`,
 		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
 		description: "Set motion detection interval in ms, 0=off (default: 1000)",
-		type: 'process',
+		type: 'command',
 	},
 	[CommandNames.DISABLE_MOTION_DETECT]: {
 		name: CommandNames.DISABLE_MOTION_DETECT,
 		writeCommand: () => 'AI setop 11 0',
 		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
 		description: "Disable motion detection",
-		type: 'process',
+		type: 'command',
 	},
 	[CommandNames.DISABLE_TIMELAPSE]: {
 		name: CommandNames.DISABLE_TIMELAPSE,
 		writeCommand: () => 'AI setop 7 0',
 		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
 		description: "Disable timelapse capture",
-		type: 'process',
-	},
-	[CommandNames.ENABLE_CAMERA]: {
-		name: CommandNames.ENABLE_CAMERA,
-		writeCommand: () => 'AI setop 10 1',
-		readRegex: /Set\s+OpParam\s+10\s+=\s+1/i,
-		description: "Enable camera and AI system",
-		type: 'process',
-		timeout: 10000,
-	},
-	[CommandNames.DISABLE_CAMERA]: {
-		name: CommandNames.DISABLE_CAMERA,
-		writeCommand: () => 'AI setop 10 0',
-		readRegex: /Set\s+OpParam\s+10\s+=\s+0/i,
-		description: "Disable camera and AI system",
-		type: 'process',
-		timeout: 10000,
+		type: 'command',
 	},
 	[CommandNames.temp]: {
 		name: CommandNames.temp,
@@ -559,9 +567,9 @@ export const COMMANDS: {
 	},
 	[CommandNames.setgps]: {
 		name: CommandNames.setgps,
-		writeCommand: (gpsString?: string) => `setgps ${gpsString || ''}`,
+		writeCommand: (gpsString?: string) => `AI setgps ${gpsString || ''}`.trim(),
 		readRegex: /Device GPS set/i,
-		description: "Set the GPS location",
+		description: "Set GPS location (lat,lng,alt)",
 		type: 'command',
 	},
 	[CommandNames.getutc]: {
@@ -588,7 +596,7 @@ export const COMMANDS: {
 	},
 	[CommandNames.CAPTURE_PREVIEW]: {
 		name: CommandNames.CAPTURE_PREVIEW,
-		writeCommand: () => "AI capture 1 1",
+		writeCommand: () => "AI capture 1 500",
 		readRegex: /Captured/i,
 		description: "Capture image for preview",
 		type: 'process',
@@ -611,6 +619,11 @@ export const COMMANDS: {
 	[CommandNames.CAMERA_SETTINGS_TEST]: {
 		name: CommandNames.CAMERA_SETTINGS_TEST,
 		description: "Open Camera Settings Test page",
+		type: 'process',
+	},
+	[CommandNames.LIGHT_SENSOR]: {
+		name: CommandNames.LIGHT_SENSOR,
+		description: "Day/night light sensor — decision, live AE readings and threshold tuning",
 		type: 'process',
 	},
 	[CommandNames.FILE_TRANSFER_TEST]: {
@@ -641,6 +654,11 @@ export const COMMANDS: {
 	[CommandNames.RESET_TO_DEFAULTS]: {
 		name: CommandNames.RESET_TO_DEFAULTS,
 		description: "Reset ALL operational parameters to factory defaults, erase AI model, clear deployment ID",
+		type: 'process',
+	},
+	[CommandNames.DEV_DEPLOYMENT_TEST]: {
+		name: CommandNames.DEV_DEPLOYMENT_TEST,
+		description: "Start monitoring with full parameter control (developer testing)",
 		type: 'process',
 	},
 	[CommandNames.CLEAR_CONSOLE]: {

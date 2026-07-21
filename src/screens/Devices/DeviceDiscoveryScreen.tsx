@@ -17,14 +17,12 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
     const { setIsOpen, isOpen } = useAppDrawer()
 
     const {
-        handleDisconnect,
         connectingDevice,
         connectionLogs,
         processing,
         // Scan session
-        scanSessionActive,
+        scanSessionState,
         scanSecondsRemaining,
-        scanSessionExpired,
         startScanSession,
         // Scanner Routing Dialog
         routingState,
@@ -37,25 +35,13 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
 
 
     if (processing && connectingDevice) {
-        const latestLog = connectionLogs.length > 0 ? connectionLogs[connectionLogs.length - 1] : 'Initializing...'
+        const latestLog = connectionLogs.length > 0 ? connectionLogs[connectionLogs.length - 1] : 'Initializing…'
         // Cap progress at 95% until complete (Using 8 as a good median for deployment connection logs)
         const progressValue = Math.min((connectionLogs.length / 8), 0.95)
 
         return (
             <SafeAreaView style={styles.container} edges={['top']}>
                 <OfflineIndicator />
-                <View style={styles.headerContainer}>
-                    <IconButton
-                        icon="arrow-left"
-                        iconColor={theme.colors.onSurface}
-                        size={28}
-                        style={styles.menuIcon}
-                        onPress={() => {
-                            // Provide an out if it gets stuck
-                            handleDisconnect(connectingDevice)
-                        }}
-                    />
-                </View>
 
                 <View style={styles.centerContent}>
                     <View style={styles.graphicContainer}>
@@ -67,7 +53,7 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
                     </View>
 
                     <Text variant="titleLarge" style={styles.connectingTitle}>
-                        Connecting to {connectingDevice.name || connectingDevice.id}
+                        Connecting to {connectingDevice.name || 'your Wildlife Watcher'}
                     </Text>
                     
                     <View style={styles.progressSection}>
@@ -99,7 +85,7 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
     const minutes = Math.floor(scanSecondsRemaining / 60)
     const seconds = scanSecondsRemaining % 60
     const countdownText = `${minutes}:${String(seconds).padStart(2, '0')}`
-    const scanProgress = 1 - (scanSecondsRemaining / 60)
+    const scanProgress = 1 - (scanSecondsRemaining / 15)
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -127,8 +113,8 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
                             />
                         </View>
 
-                        {/* Expired state — no device found after 60s */}
-                        {scanSessionExpired && (
+                        {/* Expired state: no device found after 15s */}
+                        {scanSessionState === 'expired' && (
                             <>
                                 <Text variant="headlineMedium" style={styles.autoTitleBold}>
                                     No devices found
@@ -149,8 +135,8 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
                             </>
                         )}
 
-                        {/* Active session — scanning with countdown */}
-                        {scanSessionActive && (
+                        {/* Active session: scanning with countdown */}
+                        {scanSessionState === 'active' && (
                             <>
                                 <Text variant="headlineMedium" style={styles.autoTitleBold}>
                                     Press the middle button on your device to connect to it
@@ -165,7 +151,7 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
                                     <View style={[styles.scanningLogContainer, { backgroundColor: theme.colors.surfaceVariant }]}>
                                         <ActivityIndicator size={16} color={theme.colors.primary} />
                                         <Text style={[styles.scanningLogText, { color: theme.colors.primary }]}>
-                                            Searching for devices... {countdownText}
+                                            Searching for devices… {countdownText}
                                         </Text>
                                     </View>
                                 </View>
@@ -181,8 +167,9 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
                             </>
                         )}
 
-                        {/* Initial state — no session started yet */}
-                        {!scanSessionActive && !scanSessionExpired && (
+
+                        {/* Initial state: no session started yet */}
+                        {scanSessionState === 'idle' && (
                             <>
                                 <Text variant="headlineMedium" style={styles.autoTitleBold}>
                                     Press the middle button on your device, then search
@@ -231,6 +218,7 @@ const styles = StyleSheet.create({
     },
     autoEmptyState: {
         flex: 1,
+        overflow: 'hidden',
     },
     menuIcon: {
         margin: 0,
@@ -244,7 +232,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingBottom: 60,
+        paddingBottom: 40,
         paddingHorizontal: 24,
     },
     connectingTitle: {
@@ -254,10 +242,10 @@ const styles = StyleSheet.create({
     },
     graphicContainer: {
         width: '100%',
-        height: 250,
+        maxHeight: 200,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 40,
+        marginBottom: 20,
     },
     scannerImage: {
         width: '100%',

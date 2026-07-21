@@ -9,7 +9,15 @@ import { log } from '../../../utils/logger'
  *   ROUTING_PENDING → ACCEPTED    (routed to a screen successfully)
  *   ROUTING_PENDING → REJECTED    (dialog dismissed / access denied)
  *   REJECTED → IGNORED_FOR_SESSION (permanent ignore for this focus session)
- *   Any → DISCOVERED              (on screen re-focus / manual reset)
+ *   DISCOVERED → SUSPENDED        (screen blur via suspend())
+ *   ROUTING_PENDING → SUSPENDED   (screen blur via suspend())
+ *   SUSPENDED → DISCOVERED        (screen focus via resume())
+ *   Any → DISCOVERED              (on resetAll() — new scan session only)
+ *
+ * Important: Use suspend()/resume() for focus changes.
+ * Only use resetAll() when starting a fresh scan session.
+ * resetAll() clears IGNORED_FOR_SESSION, which can cause reconnect loops
+ * if a device was explicitly dismissed in the current session.
  */
 export type AutoConnectDeviceState =
   | 'DISCOVERED'
@@ -17,6 +25,7 @@ export type AutoConnectDeviceState =
   | 'ACCEPTED'
   | 'REJECTED'
   | 'IGNORED_FOR_SESSION'
+  | 'SUSPENDED'
 
 /**
  * State machine for managing auto-connect behaviour per discovered device.
@@ -49,7 +58,8 @@ export function useAutoConnectStateMachine() {
 
   /**
    * Reset all devices back to DISCOVERED state.
-   * Called when the scanner screen regains focus.
+   * Called when starting a NEW scan session (user presses "Search").
+   * Do NOT call on focus changes — use suspend()/resume() instead.
    */
   const resetAll = useCallback(() => {
     stateMap.current.clear()
@@ -63,11 +73,46 @@ export function useAutoConnectStateMachine() {
     stateMap.current.delete(deviceId)
   }, [])
 
+  /**
+   * Suspend all eligible devices when screen loses focus.
+   * DISCOVERED and ROUTING_PENDING → SUSPENDED.
+   * ACCEPTED and IGNORED_FOR_SESSION are preserved — they represent
+   * completed lifecycle decisions that must survive navigation.
+   */
+  const suspend = useCallback(() => {
+    for (const [id, state] of stateMap.current) {
+      if (state === 'DISCOVERED' || state === 'ROUTING_PENDING') {
+        stateMap.current.set(id, 'SUSPENDED')
+      }
+    }
+    log('[AutoConnect] Suspended eligible devices')
+  }, [])
+
+  /**
+   * Resume all SUSPENDED devices back to DISCOVERED when screen regains focus.
+   * They become eligible for auto-connect again without losing
+   * IGNORED_FOR_SESSION decisions from the same session.
+   */
+  const resume = useCallback(() => {
+    let resumed = 0
+    for (const [id, state] of stateMap.current) {
+      if (state === 'SUSPENDED') {
+        stateMap.current.set(id, 'DISCOVERED')
+        resumed++
+      }
+    }
+    if (resumed > 0) {
+      log(`[AutoConnect] Resumed ${resumed} device(s)`)
+    }
+  }, [])
+
   return useMemo(() => ({
     getState,
     transition,
     canAutoConnect,
     resetAll,
     resetDevice,
-  }), [getState, transition, canAutoConnect, resetAll, resetDevice])
+    suspend,
+    resume,
+  }), [getState, transition, canAutoConnect, resetAll, resetDevice, suspend, resume])
 }

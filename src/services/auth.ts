@@ -13,6 +13,7 @@ import {
 } from "../redux/api/auth/types"
 
 import { log, logError, logWarn } from '../utils/logger'
+import { WEBSITE_URL } from "../config/environments"
 
 
 /**
@@ -245,6 +246,7 @@ const transformSupabaseUser = async (
 			email: user.email || "",
 			role: "project_member", // Default fallback. Note: Redux authSlice preserves the cached role!
 			organisation_id: null,
+			created_at: user.created_at,
 			// organisations intentionally omitted to preserve offline cache
 		},
 	}
@@ -482,7 +484,7 @@ export const setupAuthListener = (
 export const resetPassword = async (email: string): Promise<void> => {
 	try {
 		const { error } = await supabase().auth.resetPasswordForEmail(email, {
-			redirectTo: "wildlifewatcher://auth/reset-password",
+			redirectTo: `${WEBSITE_URL}/reset-password`,
 		})
 
 		if (error) {

@@ -1,5 +1,5 @@
 import { useForm } from "react-hook-form"
-import { StyleSheet, View, Image, Alert } from "react-native"
+import { StyleSheet, View, Image, Alert, Keyboard } from "react-native"
 import { Button, Checkbox, Text } from "react-native-paper"
 // import { CustomKeyboardAvoidingView } from "../../components/CustomKeyboardAvoidingView" - REMOVED
 import { WWScreenView } from "../../../components/ui/WWScreenView"
@@ -7,7 +7,7 @@ import { WWTextInput } from "../../../components/ui/WWTextInput"
 import { Field } from "../../../components/form/Field"
 import { useLoginMutation } from "../../../redux/api/auth"
 import { useAppDispatch } from "../../../redux"
-import { setCredentials } from "../../../redux/slices/authSlice"
+import { setCredentials, triggerTutorial } from "../../../redux/slices/authSlice"
 import { useAppNavigation } from "../../../hooks/useAppNavigation"
 import { WWText } from "../../../components/ui/WWText"
 import * as SecureStore from 'expo-secure-store'
@@ -54,6 +54,7 @@ export const Login = () => {
 	}, [setValue])
 
 	const onSubmit = async (data: FormData) => {
+		Keyboard.dismiss()
 		try {
 			// Transform email to identifier format for existing API
 			const loginData = {
@@ -77,6 +78,10 @@ export const Login = () => {
 				// Continue with login even if storage fails
 			}
 
+			// Trigger tutorial BEFORE setting credentials — setCredentials
+			// calls storeDataToStorage (async) which can break React batching,
+			// causing a render where token is set but pendingTutorial is false.
+			dispatch(triggerTutorial())
 			dispatch(setCredentials(response))
 		} catch (err) {
 			logError("❌ Login failed - Full error details:", {

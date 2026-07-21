@@ -26,7 +26,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ios: {
         supportsTablet: true,
         bundleIdentifier: BUNDLE_ID,
-        buildNumber: "45",
+        buildNumber: "60",
         config: {
             googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY_IOS,
         },
@@ -38,11 +38,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
             NSPhotoLibraryUsageDescription: "We need access to your photo library to select deployment photos.",
             NSPhotoLibraryAddUsageDescription: "We need access to save deployment photos to your library.",
             ITSAppUsesNonExemptEncryption: false
-        }
+        },
+        associatedDomains: [
+            'applinks:wildlifewatcher.ai'
+        ]
     },
     android: {
         package: BUNDLE_ID,
-        versionCode: 45,
+        versionCode: 60,
         adaptiveIcon: {
             foregroundImage: "./assets/adaptive-icon.png",
             backgroundColor: "#ffffff"
@@ -61,6 +64,20 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
             "BLUETOOTH_SCAN"
         ],
         softwareKeyboardLayoutMode: "pan",
+        intentFilters: [
+            {
+                action: "VIEW",
+                autoVerify: true,
+                data: [
+                    {
+                        scheme: "https",
+                        host: "wildlifewatcher.ai",
+                        pathPrefix: "/reset-password"
+                    }
+                ],
+                category: ["BROWSABLE", "DEFAULT"]
+            }
+        ],
     },
     web: {
         favicon: "./assets/favicon.png"
@@ -99,6 +116,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
             }
         ],
         "expo-localization",
+        [
+            "expo-image-picker",
+            {
+                "cameraPermission": "We need access to your camera to take photos of the deployment site.",
+                "photosPermission": "We need access to your photo library to select deployment photos."
+            }
+        ],
         [
             "expo-location",
             {

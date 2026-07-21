@@ -4,6 +4,7 @@ import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { createBleSession } from '../ble/session/createBleSession'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
 import { log, logError, logWarn } from '../utils/logger'
+import { executeResetToDefaults } from '../ble/workflows/resetToDefaults'
 
 
 /**
@@ -32,52 +33,135 @@ export const OP_PARAMETER = {
     TEST_MODE_BITS: 18,
     IMAGES_COUNT: 19,
     IMAGES_FILE_INDEX: 20,
+    /** LED used to illuminate motion-detection frames while asleep: 0 = none, 1 = visible, 2 = IR */
+    MD_FLASH_LED: 21,
+    /** Brightness of the motion-detection illumination (percent; 16 hardware levels) */
+    MD_FLASH_BRIGHTNESS_PERCENT: 22,
+    /** AE Mean (0-255) below this means the scene is dark and the flash is needed */
+    AE_DARK_THRESHOLD: 23,
+    /** Minutes between periodic AE light checks (flash in AE mode, timelapse disabled). 0 disables */
+    AE_CHECK_INTERVAL: 24,
+    /** Last AE flash decision (0/1). Runtime state - not user-set */
+    AE_FLASH_STATE: 25,
+    /** Automatic light-based camera image switching: 0 = off (manual switchslot only), 1 = automatic (planned) */
+    SLOT_SWITCH: 26,
+    /** Software white-balance RED gain, Q8.8 (256 = 1.0x, 0 = correction off). RP3 colour camera only */
+    WB_RED_GAIN: 27,
+    /** Software white-balance BLUE gain, Q8.8 (256 = 1.0x, 0 = correction off). RP3 colour camera only */
+    WB_BLUE_GAIN: 28,
+    /** RP camera auto-exposure: 0 = off (init-table exposure), 1 = on. See firmware ae.c */
+    CAM_AE_ENABLE: 29,
+    /** RP camera auto-exposure target: raw bright-quartile (p75) luma, 0-250 (0 = built-in default) */
+    CAM_AE_TARGET: 30,
+    /** RP camera white balance: 0 = off, 1 = auto (grey-world per frame), 2 = manual op27/op28 */
+    CAM_WB_MODE: 31,
+    /** RP camera capture resolution: 0 = 640x480, 1 = 1280x960 single JPEG — REQUIRES the NN off (op14 = 0), so deployments must reset this */
+    CAM_RESOLUTION: 32,
+    /** MD global-motion rejection: skip the capture when an MD wake moves MORE than this many of the 256 grid blocks (whole-scene shift = camera knock/pan or lighting change, not an animal). 0 disables */
+    MD_BLOCK_NUM_MAX: 33,
 } as const
+
+/**
+ * Test mode bitmask flags for OP_PARAMETER.TEST_MODE_BITS.
+ * These control diagnostic capture behaviour on the Himax firmware.
+ */
+// eslint-disable-next-line no-bitwise
+export const TEST_BIT_SAVE_BMP = 1 << 1  // bit 1 = 2 — alternates between JPG and BMP files
 
 /**
  * Factory default values for ALL operational parameters.
  * These match the firmware's behaviour when no MANIFEST folder exists on SD card.
  */
 export const FACTORY_DEFAULTS: Record<number, number> = {
-    [OP_PARAMETER.SEQUENCE_NUMBER]: 0,
+    [OP_PARAMETER.SEQUENCE_NUMBER]: 1,
     [OP_PARAMETER.NUM_NN_ANALYSES]: 0,
     [OP_PARAMETER.NUM_POSITIVE_NN_ANALYSES]: 0,
     [OP_PARAMETER.NUM_COLD_BOOTS]: 0,
     [OP_PARAMETER.NUM_WARM_BOOTS]: 0,
-    [OP_PARAMETER.NUM_PICTURES]: 3,
-    [OP_PARAMETER.PICTURE_INTERVAL]: 1500,
+    [OP_PARAMETER.NUM_PICTURES]: 1,
+    [OP_PARAMETER.PICTURE_INTERVAL]: 500,
     [OP_PARAMETER.TIMELAPSE_INTERVAL]: 0,
     [OP_PARAMETER.INTERVAL_BEFORE_DPD]: 1000,
     [OP_PARAMETER.LED_BRIGHTNESS]: 5,
-    [OP_PARAMETER.CAMERA_ENABLED]: 0,
+    [OP_PARAMETER.CAMERA_ENABLED]: 1,
     [OP_PARAMETER.MD_INTERVAL]: 0,
     [OP_PARAMETER.FLASH_DURATION]: 100,
     [OP_PARAMETER.FLASH_LED]: 0,
     [OP_PARAMETER.MODEL_PROJECT]: 0,
     [OP_PARAMETER.MODEL_VERSION]: 0,
-    [OP_PARAMETER.MODEL_THRESHOLD]: 50,
+    [OP_PARAMETER.MODEL_THRESHOLD]: 18,
     [OP_PARAMETER.MD_SENSITIVITY]: 1,
     [OP_PARAMETER.TEST_MODE_BITS]: 0,
     [OP_PARAMETER.IMAGES_COUNT]: 0,
     [OP_PARAMETER.IMAGES_FILE_INDEX]: 0,
+    [OP_PARAMETER.MD_FLASH_LED]: 2,
+    // 50%: bench 5% was too dim for night-time motion detection at typical
+    // camera-to-subject distances. The IR LED only fires during each MD
+    // frame's integration window (HM0360 STROBE-gated, ~15 ms pulses).
+    [OP_PARAMETER.MD_FLASH_BRIGHTNESS_PERCENT]: 50,
+    [OP_PARAMETER.AE_DARK_THRESHOLD]: 65,
+    [OP_PARAMETER.AE_CHECK_INTERVAL]: 15,
+    [OP_PARAMETER.AE_FLASH_STATE]: 0,
+    // 1 = automatic day/night camera switching after each AE light check.
+    // resetOps diff-writes this during every deployment, so monitoring runs
+    // switch cameras with the light. Requires both firmware slots labelled
+    // (a dual-image update leaves them so).
+    [OP_PARAMETER.SLOT_SWITCH]: 1,
+    [OP_PARAMETER.WB_RED_GAIN]: 286,
+    [OP_PARAMETER.WB_BLUE_GAIN]: 326,
+    // 29-33: firmware in-RAM defaults (fatfs_task.c op_parameter[]). Including
+    // them here means resetOps clears bench experiments at deployment start and
+    // configVerification covers them — critically op32 (hi-res) and op33 (MD
+    // global-motion max): a bench-set op32=1 conflicts with the NN model a
+    // deployment loads (hi-res requires op14 = 0), and a bench-set op33 would
+    // silently change field MD behaviour.
+    [OP_PARAMETER.CAM_AE_ENABLE]: 1,
+    [OP_PARAMETER.CAM_AE_TARGET]: 110,
+    [OP_PARAMETER.CAM_WB_MODE]: 1,
+    [OP_PARAMETER.CAM_RESOLUTION]: 0,
+    [OP_PARAMETER.MD_BLOCK_NUM_MAX]: 0,
 }
 
 
 
 /**
  * Device settings interface
- * Only includes user-configurable parameters (5-13)
+ * Only includes user-configurable parameters (5-13, 21-24, 27-28)
  */
+/**
+ * Tracking counters the factory reset always preserves - single source of
+ * truth for executeResetToDefaults and DeviceResetScreen's display table.
+ * (SEQUENCE_NUMBER is handled separately: preserved only once non-zero.)
+ * Lives here rather than resetToDefaults.ts because useDeviceSettings and
+ * that workflow import each other - a module-level Set there evaluates
+ * before the cycle resolves and OP_PARAMETER is still undefined.
+ */
+export const RESET_PRESERVED_OPS: ReadonlySet<number> = new Set<number>([
+    OP_PARAMETER.NUM_NN_ANALYSES,
+    OP_PARAMETER.NUM_POSITIVE_NN_ANALYSES,
+    OP_PARAMETER.NUM_COLD_BOOTS,
+    OP_PARAMETER.NUM_WARM_BOOTS,
+    OP_PARAMETER.NUM_PICTURES,
+    OP_PARAMETER.IMAGES_COUNT,
+    OP_PARAMETER.IMAGES_FILE_INDEX,
+])
+
 export interface DeviceSettings {
-    numPictures?: number              // Index 5 - Images per trigger (default: 3)
-    pictureInterval?: number           // Index 6 - Interval between images in ms (default: 1500)
-    timelapseInterval?: number         // Index 7 - Timelapse interval in seconds, 0=disabled (default: 60)
+    numPictures?: number              // Index 5 - Images per trigger (default: 1)
+    pictureInterval?: number           // Index 6 - Interval between images in ms (default: 500)
+    timelapseInterval?: number         // Index 7 - Timelapse interval in seconds, 0=disabled (default: 0)
     intervalBeforeDpd?: number         // Index 8 - Inactivity timeout in ms (default: 1000)
-    ledBrightness?: number             // Index 9 - LED brightness 0-100%, 0=off (default: 5)
-    cameraEnabled?: boolean            // Index 10 - 0=disabled, 1=enabled (default: 1)
-    motionDetectInterval?: number      // Index 11 - Motion detection interval in ms, 0=disabled (default: 1000)
+    ledBrightness?: number             // Index 9 - LED brightness 0-100%, 0=dim (default: 5)
+    // Note: OP_PARAMETER.CAMERA_ENABLED (Index 10) is removed. The firmware permanently defaults it to 1.
+    motionDetectInterval?: number      // Index 11 - Motion detection interval in ms, 0=disabled (default: 0)
     flashDuration?: number             // Index 12 - Flash duration in ms (default: 100)
     flashLed?: number                  // Index 13 - LED mask: 0=off, 1=visible, 2=IR (default: 0)
+    mdFlashLed?: number                // Index 21 - MD illumination LED while asleep: 0=none, 1=visible, 2=IR (default: 2)
+    mdFlashBrightness?: number         // Index 22 - MD illumination brightness in percent (default: 5)
+    aeDarkThreshold?: number           // Index 23 - AE mean (0-255) below which the scene is dark (default: 65)
+    aeCheckInterval?: number           // Index 24 - Minutes between periodic AE light checks, 0=off (default: 15)
+    wbRedGain?: number                 // Index 27 - Software WB red gain, Q8.8 (256=1.0x, 0=off). RP3 only (default: 286)
+    wbBlueGain?: number                // Index 28 - Software WB blue gain, Q8.8 (256=1.0x, 0=off). RP3 only (default: 326)
 }
 
 export interface UseDeviceSettingsOptions {
@@ -113,7 +197,7 @@ export interface UseDeviceSettingsReturn {
  * })
  * 
  * // Update individual settings
- * await updateSettings({ cameraEnabled: false, motionDetectInterval: 2000 })
+ * await updateSettings({ motionDetectInterval: 2000 })
  * 
  * // Apply a preset configuration
  * await applyPreset('motion-detect')
@@ -171,11 +255,26 @@ export const useDeviceSettings = (options?: { onSettingsUpdated?: () => void, on
             if (settings.flashLed !== undefined) {
                 updates.push({ index: OP_PARAMETER.FLASH_LED, value: settings.flashLed })
             }
-
-            // ALWAYS set Camera Enabled LAST to ensure it picks up the intervals set above
-            if (settings.cameraEnabled !== undefined) {
-                updates.push({ index: OP_PARAMETER.CAMERA_ENABLED, value: settings.cameraEnabled ? 1 : 0 })
+            if (settings.mdFlashLed !== undefined) {
+                updates.push({ index: OP_PARAMETER.MD_FLASH_LED, value: settings.mdFlashLed })
             }
+            if (settings.mdFlashBrightness !== undefined) {
+                updates.push({ index: OP_PARAMETER.MD_FLASH_BRIGHTNESS_PERCENT, value: settings.mdFlashBrightness })
+            }
+            if (settings.aeDarkThreshold !== undefined) {
+                updates.push({ index: OP_PARAMETER.AE_DARK_THRESHOLD, value: settings.aeDarkThreshold })
+            }
+            if (settings.aeCheckInterval !== undefined) {
+                updates.push({ index: OP_PARAMETER.AE_CHECK_INTERVAL, value: settings.aeCheckInterval })
+            }
+            if (settings.wbRedGain !== undefined) {
+                updates.push({ index: OP_PARAMETER.WB_RED_GAIN, value: settings.wbRedGain })
+            }
+            if (settings.wbBlueGain !== undefined) {
+                updates.push({ index: OP_PARAMETER.WB_BLUE_GAIN, value: settings.wbBlueGain })
+            }
+
+            // Camera is always enabled by firmware.
 
             const session = createBleSession(device)
             let currentOps: string[] | null = null
@@ -231,7 +330,7 @@ export const useDeviceSettings = (options?: { onSettingsUpdated?: () => void, on
             pictureInterval: 1500,
             timelapseInterval: 60,
             ledBrightness: 5,
-            cameraEnabled: true,
+            // Camera enabled is assumed to always be true by firmware defaults
             motionDetectInterval: 1000,
             flashDuration: 100,
             flashLed: 0
@@ -344,9 +443,13 @@ export const useDeviceSettings = (options?: { onSettingsUpdated?: () => void, on
     }, [])
 
     /**
-     * Full factory reset: resets ALL 21 operational parameters to firmware defaults,
-     * erases any loaded AI model, clears the deployment ID, and zeroes GPS.
-     * 
+     * Full factory reset: reads current OPs, writes only those that differ
+     * from FACTORY_DEFAULTS, erases any loaded AI model, clears the
+     * deployment ID, and zeroes GPS.
+     *
+     * Each setop/setgps command receives a confirmation response from the
+     * firmware, so no verification pass is needed.
+     *
      * @param device The connected BLE device
      * @param onProgress Optional callback for progress updates (step description, 0-1 progress)
      */
@@ -359,92 +462,10 @@ export const useDeviceSettings = (options?: { onSettingsUpdated?: () => void, on
             setIsUpdating(true)
             const session = createBleSession(device)
 
-            // Step 1: Wake AI processor and extend DPD timeout
-            // The AI processor enters Deep Power Down after INTERVAL_BEFORE_DPD (default 1000ms).
-            // We must extend this immediately to prevent the processor from sleeping between commands,
-            // which would cause the commandQueue to transition to PAUSED_SLEEP and deadlock.
-            onProgress?.('Waking AI processor...', 0.05)
-            log('[ResetDefaults] Waking AI processor...')
-            await session.execute(() => commandRegistry.aiver())
-
-            onProgress?.('Extending DPD timeout...', 0.07)
-            log('[ResetDefaults] Extending DPD timeout to 30s to keep AI awake during reset...')
-            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: 30000 }))
-
-            // Step 2: Read current OPs to skip unnecessary writes
-            onProgress?.('Reading current parameters...', 0.1)
-            log('[ResetDefaults] Reading current operational parameters...')
-            let currentOps: string[] | null = null
-            try {
-                currentOps = await session.execute(commandRegistry.getops)
-            } catch (err) {
-                logWarn('[ResetDefaults] Could not read current OPs, will write all defaults', err)
-            }
-
-            // Step 3: Erase loaded AI model (clears OP 14/15 on the firmware side too)
-            onProgress?.('Erasing AI model...', 0.2)
-            log('[ResetDefaults] Erasing AI model...')
-            try {
-                await session.execute(() => commandRegistry.erasemodel())
-                log('[ResetDefaults] AI model erased')
-            } catch (err) {
-                logWarn('[ResetDefaults] erasemodel failed (may not have a model loaded):', err)
-            }
-
-            // Step 4: Reset all OPs to factory defaults
-            const entries = Object.entries(FACTORY_DEFAULTS)
-            const totalOps = entries.length
-            let opsWritten = 0
-
-            for (const [indexStr, defaultValue] of entries) {
-                const index = parseInt(indexStr, 10)
-
-                if (!isMounted.current || !device.connected) {
-                    throw new Error('Reset cancelled: Device disconnected or component unmounted')
-                }
-
-                // Skip if already at default
-                if (currentOps && currentOps.length > index && currentOps[index] === defaultValue.toString()) {
-                    log(`[ResetDefaults] OP ${index} already at default (${defaultValue}), skipping`)
-                    opsWritten++
-                    continue
-                }
-
-                log(`[ResetDefaults] Setting OP ${index} = ${defaultValue}`)
-                await session.execute(() => commandRegistry.setop({ index, value: defaultValue }))
-                opsWritten++
-
-                // Progress: 0.3 to 0.8 across all OP writes
-                onProgress?.(`Resetting parameter ${index}...`, 0.3 + (opsWritten / totalOps) * 0.5)
-            }
-
-            // Step 5: Clear deployment ID
-            onProgress?.('Clearing deployment ID...', 0.85)
-            log('[ResetDefaults] Clearing deployment ID...')
-            await session.execute(() => commandRegistry.setdid(null))
-
-            // Step 6: Zero GPS
-            onProgress?.('Zeroing GPS...', 0.9)
-            log('[ResetDefaults] Zeroing GPS...')
-            await session.execute(() => commandRegistry.setgps('0,0,0'))
-
-            // Step 7: Verify
-            onProgress?.('Verifying reset...', 0.95)
-            log('[ResetDefaults] Verifying reset...')
-            const verifyOps = await session.execute(commandRegistry.getops)
-            const mismatches: string[] = []
-            for (const [indexStr, defaultValue] of entries) {
-                const index = parseInt(indexStr, 10)
-                if (verifyOps && verifyOps.length > index && verifyOps[index] !== defaultValue.toString()) {
-                    mismatches.push(`OP ${index}: expected ${defaultValue}, got ${verifyOps[index]}`)
-                }
-            }
-            if (mismatches.length > 0) {
-                logWarn('[ResetDefaults] Verification mismatches:', mismatches)
-            }
-
-            onProgress?.('Reset complete', 1.0)
-            log('[ResetDefaults] Factory reset complete')
+            await executeResetToDefaults(session, {
+                onProgress,
+                isCancelled: () => !isMounted.current || !device.connected
+            })
         } catch (error) {
             logError('[ResetDefaults] Error during factory reset:', error)
             throw error

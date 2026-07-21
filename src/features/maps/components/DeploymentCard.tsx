@@ -4,6 +4,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-na
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useExtendedTheme } from '../../../theme'
 import type Deployment from '../../../database/models/Deployment'
+import { DeploymentPhotoStrip } from '../../../components/ui/DeploymentPhotoStrip'
 
 interface Props {
     deployment: Deployment | undefined | null
@@ -15,7 +16,7 @@ interface Props {
 
 
 
-export const DeploymentCardComponent: React.FC<Props> = ({ deployment, device, isVisible, onClose, onPress }) => {
+const DeploymentCardComponent: React.FC<Props> = ({ deployment, device, isVisible, onClose, onPress }) => {
     const { colors } = useExtendedTheme()
     const slideAnim = useSharedValue(300) // Start off-screen (down)
 
@@ -42,9 +43,9 @@ export const DeploymentCardComponent: React.FC<Props> = ({ deployment, device, i
     // Status helper (duplicated from MapScreen, could be shared util)
     const getStatusInfo = (statusId?: number | null) => {
         switch (statusId) {
-            case 1: return { label: 'Active', color: '#4CAF50', icon: 'check-circle' as const }
-            case 2: return { label: 'Ended', color: '#616161', icon: 'stop-circle' as const }
-            case 3: return { label: 'Failed', color: '#F44336', icon: 'alert-circle' as const }
+            case 1: return { label: 'Planned', color: '#2196F3', icon: 'clock-outline' as const }
+            case 2: return { label: 'Active', color: '#4CAF50', icon: 'check-circle' as const }
+            case 3: return { label: 'Ended', color: '#616161', icon: 'stop-circle' as const }
             default: return { label: 'Unknown', color: '#757575', icon: 'help-circle' as const }
         }
     }
@@ -90,6 +91,8 @@ export const DeploymentCardComponent: React.FC<Props> = ({ deployment, device, i
                         </Text>
                     </View>
                 )}
+
+                <DeploymentPhotoStrip deployment={deployment} />
 
                 <TouchableOpacity
                     style={[styles.button, { backgroundColor: colors.primary }]}

@@ -108,6 +108,10 @@ export const useEngineerConsoleActions = ({
             navigation.navigate('StandaloneCapturePreviewScreen', { deviceId: device?.id })
             return
         }
+        if (cmdName === CommandNames.LIGHT_SENSOR) {
+            navigation.navigate('LightSensorScreen', { deviceId: device?.id })
+            return
+        }
         if (cmdName === CommandNames.UPDATE_HIMAX_FIRMWARE) {
             navigation.navigate('FirmwareUpdateScreen', { deviceId: device?.id, target: 'himax' })
             return
@@ -138,6 +142,10 @@ export const useEngineerConsoleActions = ({
         }
         if (cmdName === CommandNames.RESET_TO_DEFAULTS) {
             navigation.navigate('DeviceResetScreen', { deviceId: device?.id })
+            return
+        }
+        if (cmdName === CommandNames.DEV_DEPLOYMENT_TEST) {
+            navigation.navigate('DevDeploymentTestScreen', { deviceId: device?.id, bleDeviceId: device?.id })
             return
         }
 

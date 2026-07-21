@@ -17,6 +17,7 @@ interface ProjectDevice {
     isActive: boolean
     activeDeploymentId?: string
     activeDeploymentLocationName?: string
+    lastDeploymentId?: string
 }
 
 export const ProjectDevicesScreen = () => {
@@ -58,23 +59,36 @@ export const ProjectDevicesScreen = () => {
             const deviceIds = new Set(deployments.map(d => d.deviceId))
 
             if (deviceIds.size > 0) {
+                // Pre-group deployments by deviceId for O(1) lookup per device
+                const deploymentsByDeviceId = new Map<string, { active?: Deployment; lastEnded?: Deployment }>()
+                for (const d of deployments) {
+                    const entry = deploymentsByDeviceId.get(d.deviceId) || {}
+                    if (!d.deploymentEnd) {
+                        entry.active = d
+                    } else if (
+                        !entry.lastEnded ||
+                        new Date(d.deploymentEnd).getTime() > new Date(entry.lastEnded.deploymentEnd!).getTime()
+                    ) {
+                        entry.lastEnded = d
+                    }
+                    deploymentsByDeviceId.set(d.deviceId, entry)
+                }
+
                 const uniqueDevices = await database.get<Device>('devices')
                     .query(Q.where('id', Q.oneOf(Array.from(deviceIds))))
                     .fetch()
 
                 const listItems: ProjectDevice[] = uniqueDevices.map((device) => {
-                    // Find active deployment for this device (no end date)
-                    const activeDeployment = deployments.find(
-                        (d: Deployment) => d.deviceId === device.id && !d.deploymentEnd
-                    )
+                    const grouped = deploymentsByDeviceId.get(device.id)
 
                     return {
                         id: device.id,
                         bluetoothId: device.bluetoothId,
                         name: device.name || 'Unknown Device',
-                        isActive: !!activeDeployment,
-                        activeDeploymentId: activeDeployment?.id,
-                        activeDeploymentLocationName: activeDeployment?.locationName || 'Unknown Location',
+                        isActive: !!grouped?.active,
+                        activeDeploymentId: grouped?.active?.id,
+                        activeDeploymentLocationName: grouped?.active?.locationName || 'Unknown Location',
+                        lastDeploymentId: grouped?.lastEnded?.id,
                     }
                 })
 
@@ -102,43 +116,71 @@ export const ProjectDevicesScreen = () => {
         loadDevices()
     }, [loadDevices])
 
+    const handleDevicePress = useCallback((item: ProjectDevice) => {
+        navigation.navigate('DeviceMonitoringSummary', { deviceId: item.id })
+    }, [navigation])
+
+    const handleCameraIconPress = useCallback((item: ProjectDevice) => {
+        if (item.isActive && item.activeDeploymentId) {
+            navigation.navigate('DeviceMonitoringSummary', { deploymentId: item.activeDeploymentId })
+        } else if (item.lastDeploymentId) {
+            navigation.navigate('DeviceMonitoringSummary', { deploymentId: item.lastDeploymentId })
+        } else {
+            navigation.navigate('DeviceMonitoringSummary', { deviceId: item.id })
+        }
+    }, [navigation])
+
     const renderDeviceItem = useCallback(({ item }: { item: ProjectDevice }) => (
         <Card mode="outlined" style={styles.card}>
             <Card.Content style={styles.cardContent}>
                 <View style={styles.deviceRow}>
-                    {/* Status Icon */}
-                    <WWIcon
-                        source="camera"
-                        size={22}
-                        color={item.isActive ? '#4CAF50' : theme.colors.onSurfaceVariant}
-                    />
+                    {/* Status Icon: navigates to deployment */}
+                    <TouchableRipple
+                        onPress={() => handleCameraIconPress(item)}
+                        borderless
+                        style={styles.iconTouchable}
+                    >
+                        <View>
+                            <WWIcon
+                                source="camera"
+                                size={22}
+                                color={item.isActive ? '#4CAF50' : theme.colors.onSurfaceVariant}
+                            />
+                        </View>
+                    </TouchableRipple>
 
-                    {/* Device Name */}
-                    <View style={styles.deviceInfo}>
-                        <Text
-                            variant="titleMedium"
-                            style={[styles.deviceName, dynamicStyles.deviceName]}
-                            numberOfLines={1}
-                        >
-                            {item.name && item.name !== 'Unknown Device' ? item.name : item.bluetoothId}
-                        </Text>
-                        {item.isActive && item.activeDeploymentLocationName && (
+                    {/* Device Info: navigates to device summary */}
+                    <TouchableRipple
+                        onPress={() => handleDevicePress(item)}
+                        borderless
+                        style={styles.deviceInfoTouchable}
+                    >
+                        <View style={styles.deviceInfo}>
                             <Text
-                                variant="bodySmall"
-                                style={dynamicStyles.activeText}
+                                variant="titleMedium"
+                                style={[styles.deviceName, dynamicStyles.deviceName]}
+                                numberOfLines={1}
                             >
-                                Deployed at {item.activeDeploymentLocationName}
+                                {item.name && item.name !== 'Unknown Device' ? item.name : item.bluetoothId}
                             </Text>
-                        )}
-                        {!item.isActive && (
-                            <Text
-                                variant="bodySmall"
-                                style={dynamicStyles.inactiveText}
-                            >
-                                not deployed
-                            </Text>
-                        )}
-                    </View>
+                            {item.isActive && item.activeDeploymentLocationName && (
+                                <Text
+                                    variant="bodySmall"
+                                    style={dynamicStyles.activeText}
+                                >
+                                    Deployed at {item.activeDeploymentLocationName}
+                                </Text>
+                            )}
+                            {!item.isActive && (
+                                <Text
+                                    variant="bodySmall"
+                                    style={dynamicStyles.inactiveText}
+                                >
+                                    not deployed
+                                </Text>
+                            )}
+                        </View>
+                    </TouchableRipple>
 
                     {/* View on Map action (active only) */}
                     {item.isActive && (
@@ -155,10 +197,13 @@ export const ProjectDevicesScreen = () => {
                             </View>
                         </TouchableRipple>
                     )}
+
+                    {/* Chevron */}
+                    <WWIcon source="chevron-right" size={20} color={theme.colors.onSurfaceVariant} />
                 </View>
             </Card.Content>
         </Card>
-    ), [theme, navigation, dynamicStyles])
+    ), [theme, navigation, dynamicStyles, handleDevicePress, handleCameraIconPress])
 
     // Loading
     if (loading) {
@@ -166,7 +211,7 @@ export const ProjectDevicesScreen = () => {
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" />
                 <Text variant="bodyMedium" style={[styles.loadingText, dynamicStyles.loadingText]}>
-                    Loading devices...
+                    Loading devices…
                 </Text>
             </View>
         )
@@ -242,8 +287,16 @@ const styles = StyleSheet.create({
     deviceInfo: {
         flex: 1,
     },
+    deviceInfoTouchable: {
+        flex: 1,
+        borderRadius: 8,
+    },
     deviceName: {
         fontWeight: '600',
+    },
+    iconTouchable: {
+        borderRadius: 16,
+        padding: 4,
     },
     mapButton: {
         borderRadius: 8,

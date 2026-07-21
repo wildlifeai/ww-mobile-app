@@ -1,6 +1,6 @@
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { View, ScrollView, StyleSheet } from "react-native"
-import { Modal, Portal, IconButton, Divider, Button, Chip, Text } from "react-native-paper"
+import { Modal, Portal, IconButton, Divider, Button, Chip, Text, TouchableRipple, Icon } from "react-native-paper"
 import { WWText } from "./ui/WWText"
 import { useExtendedTheme } from "../theme"
 import { CommandNames, COMMANDS } from "../ble/types"
@@ -11,19 +11,180 @@ type Props = {
     onRunCommand: (command: CommandNames) => void
 }
 
+interface CommandGroup {
+    title: string
+    icon: string
+    commands: { name: CommandNames; description: string }[]
+}
+
+interface CommandSection {
+    title: string
+    subtitle: string
+    icon: string
+    groups: CommandGroup[]
+}
+
+/**
+ * Groups commands by processor target (BLE vs AI) and logical category.
+ * Only includes commands with type: 'command' (or no type).
+ */
+const getCommandSections = (): CommandSection[] => {
+    const allCommands = Object.values(COMMANDS).filter(
+        cmd => cmd.type === 'command' || !cmd.type
+    )
+
+    const pick = (names: CommandNames[]) =>
+        allCommands
+            .filter(cmd => names.includes(cmd.name))
+            .map(cmd => ({ name: cmd.name, description: cmd.description || '' }))
+
+    return [
+        {
+            title: 'BLE Processor',
+            subtitle: 'Direct commands to the BLE chip — no AI prefix',
+            icon: 'bluetooth',
+            groups: [
+                {
+                    title: 'System & Identity',
+                    icon: 'information-outline',
+                    commands: pick([
+                        CommandNames.id,
+                        CommandNames.ver,
+                        CommandNames.device,
+                        CommandNames.status,
+                        CommandNames.state,
+                        CommandNames.battery,
+                        CommandNames.temp,
+                        CommandNames.selftest,
+                        CommandNames.heartbeat,
+                    ]),
+                },
+                {
+                    title: 'Clock & Location',
+                    icon: 'clock-outline',
+                    commands: pick([
+                        CommandNames.setutc,
+                        CommandNames.getutc,
+                        CommandNames.getgps,
+                    ]),
+                },
+                {
+                    title: 'Device Control',
+                    icon: 'power',
+                    commands: pick([
+                        CommandNames.dis,
+                        CommandNames.reset,
+                        CommandNames.erase,
+                        CommandNames.dfu,
+                        CommandNames.wake,
+                    ]),
+                },
+                {
+                    title: 'LoRaWAN',
+                    icon: 'antenna',
+                    commands: pick([
+                        CommandNames.deveui,
+                        CommandNames.appeui,
+                        CommandNames.appkey,
+                        CommandNames.join,
+                        CommandNames.ping,
+                        CommandNames.network,
+                    ]),
+                },
+                {
+                    title: 'LED Diagnostics',
+                    icon: 'led-on',
+                    commands: pick([
+                        CommandNames.flashr,
+                        CommandNames.flashg,
+                        CommandNames.flashb,
+                    ]),
+                },
+            ],
+        },
+        {
+            title: 'AI Processor',
+            subtitle: 'Commands prefixed with "AI" — routed via BLE to the Himax chip',
+            icon: 'brain',
+            groups: [
+                {
+                    title: 'AI System',
+                    icon: 'chip',
+                    commands: pick([
+                        CommandNames.ai_ver,
+                        CommandNames.aiinfo,
+                        CommandNames.camera_type,
+                        CommandNames.inithm0360,
+                        CommandNames.ai_firmware,
+                    ]),
+                },
+                {
+                    title: 'SD Card & Files',
+                    icon: 'folder-outline',
+                    commands: pick([
+                        CommandNames.dir,
+                        CommandNames.format,
+                    ]),
+                },
+                {
+                    title: 'Operational Parameters',
+                    icon: 'tune-vertical',
+                    commands: pick([
+                        CommandNames.getop_all,
+                        CommandNames.getop,
+                        CommandNames.setop,
+                        CommandNames.setdid,
+                        CommandNames.getdid,
+                        CommandNames.setgps,
+                    ]),
+                },
+                {
+                    title: 'Capture & Motion Detection',
+                    icon: 'camera',
+                    commands: pick([
+                        CommandNames.md,
+                    ]),
+                },
+                {
+                    title: 'Model Management',
+                    icon: 'brain',
+                    commands: pick([
+                        CommandNames.erasemodel,
+                        CommandNames.loadmodel,
+                    ]),
+                },
+                {
+                    title: 'OP Shortcuts',
+                    icon: 'lightning-bolt',
+                    commands: pick([
+                        CommandNames.SET_NUM_PICTURES,
+                        CommandNames.SET_PICTURE_INTERVAL,
+                        CommandNames.SET_TIMELAPSE_INTERVAL,
+                        CommandNames.SET_MOTION_DETECT_INTERVAL,
+                        CommandNames.DISABLE_MOTION_DETECT,
+                        CommandNames.DISABLE_TIMELAPSE,
+                    ]),
+                },
+            ],
+        },
+    ]
+}
+
 export const CommandReferenceModal = ({ visible, onDismiss, onRunCommand }: Props) => {
     const { colors, spacing } = useExtendedTheme()
+    const sections = useMemo(() => getCommandSections(), [])
 
-    // Flatten commands for display - filtering out process/workflow commands to keep the console pure
-    const commandList = Object.values(COMMANDS)
-        .filter(cmd => cmd.type === 'command' || !cmd.type)
-        .map((cmd) => ({
-        name: cmd.name,
-        read: cmd.readCommand || "-",
-        write: cmd.writeCommand ? "Yes" : "-",
-        description: cmd.description,
-        type: cmd.type,
-    }))
+    const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+        'BLE Processor': false,
+        'AI Processor': false,
+    })
+
+    const toggleSection = (title: string) => {
+        setExpandedSections(prev => ({
+            ...prev,
+            [title]: !prev[title],
+        }))
+    }
 
     const dynamicStyles = useMemo(() => ({
         modal: {
@@ -33,11 +194,17 @@ export const CommandReferenceModal = ({ visible, onDismiss, onRunCommand }: Prop
             marginBottom: spacing,
             marginTop: spacing
         },
+        sectionHeader: {
+            backgroundColor: colors.elevation?.level2 || colors.surface,
+        },
+        sectionSubtitle: {
+            color: colors.onSurfaceVariant,
+        },
+        groupHeader: {
+            backgroundColor: colors.surfaceVariant,
+        },
         rowBorder: {
             borderBottomColor: colors.outlineVariant
-        },
-        chip: {
-            backgroundColor: colors.surfaceVariant
         },
         descriptionText: {
             color: colors.onSurfaceVariant
@@ -56,35 +223,67 @@ export const CommandReferenceModal = ({ visible, onDismiss, onRunCommand }: Prop
 
                 <ScrollView style={styles.content}>
                     <WWText style={dynamicStyles.instructionText}>
-                        <Text>List of available firmware commands. Click Run to send.</Text>
+                        <Text>Firmware commands by target processor. Click Run to send.</Text>
                     </WWText>
 
-                    {commandList.map((cmd) => (
-                        <View key={cmd.name} style={[styles.row, dynamicStyles.rowBorder]}>
-                            <View style={styles.rowInfo}>
-                                <View style={styles.nameContainer}>
-                                    <WWText style={styles.boldText}><Text>{cmd.name}</Text></WWText>
-                                    {cmd.type && (
-                                        <Chip
-                                            compact
-                                            style={[styles.chip, dynamicStyles.chip]}
-                                            textStyle={styles.chipText}
-                                        >
-                                            <Text>{cmd.type === 'process' ? 'Process' : cmd.type === 'local' ? 'Local' : 'Cmd'}</Text>
-                                        </Chip>
-                                    )}
+                    {sections.map((section) => (
+                        <View key={section.title}>
+                            <TouchableRipple
+                                onPress={() => toggleSection(section.title)}
+                                style={[styles.sectionHeaderRow, dynamicStyles.sectionHeader]}
+                                rippleColor="rgba(0, 0, 0, .05)"
+                            >
+                                <View style={styles.sectionHeaderContent}>
+                                    <View style={styles.sectionIcon}>
+                                        <Icon source={section.icon} size={28} color={colors.primary} />
+                                    </View>
+                                    <View style={styles.sectionHeaderLeft}>
+                                        <WWText variant="titleMedium" style={styles.sectionTitle}>
+                                            <Text>{section.title}</Text>
+                                        </WWText>
+                                        <WWText variant="bodySmall" style={dynamicStyles.sectionSubtitle}>
+                                            <Text>{section.subtitle}</Text>
+                                        </WWText>
+                                    </View>
+                                    <IconButton
+                                        icon={expandedSections[section.title] ? 'chevron-up' : 'chevron-down'}
+                                        size={24}
+                                        style={styles.sectionChevron}
+                                    />
                                 </View>
-                                {cmd.description && (
-                                    <WWText variant="bodySmall" style={dynamicStyles.descriptionText}>
-                                        <Text>{cmd.description}</Text>
-                                    </WWText>
-                                )}
-                            </View>
-                            <View style={styles.rowAction}>
-                                <Button mode="contained" compact onPress={() => onRunCommand(cmd.name)}>
-                                    <Text>Run</Text>
-                                </Button>
-                            </View>
+                            </TouchableRipple>
+
+                            {expandedSections[section.title] ? (
+                                section.groups
+                                    .filter(g => g.commands.length > 0)
+                                    .map((group) => (
+                                    <View key={group.title}>
+                                        <View style={[styles.groupHeaderRow, dynamicStyles.groupHeader]}>
+                                            <Chip icon={group.icon} compact style={styles.groupChip}>
+                                                <Text>{group.title}</Text>
+                                            </Chip>
+                                        </View>
+
+                                        {group.commands.map((cmd) => (
+                                            <View key={cmd.name} style={[styles.row, dynamicStyles.rowBorder]}>
+                                                <View style={styles.rowInfo}>
+                                                    <WWText style={styles.boldText}><Text>{cmd.name}</Text></WWText>
+                                                    {cmd.description ? (
+                                                        <WWText variant="bodySmall" style={dynamicStyles.descriptionText}>
+                                                            <Text>{cmd.description}</Text>
+                                                        </WWText>
+                                                    ) : null}
+                                                </View>
+                                                <View style={styles.rowAction}>
+                                                    <Button mode="contained" compact onPress={() => onRunCommand(cmd.name)}>
+                                                        <Text>Run</Text>
+                                                    </Button>
+                                                </View>
+                                            </View>
+                                        ))}
+                                    </View>
+                                ))
+                            ) : null}
                         </View>
                     ))}
                 </ScrollView>
@@ -109,29 +308,56 @@ const styles = StyleSheet.create({
     content: {
         flex: 1
     },
+    sectionHeaderRow: {
+        borderRadius: 8,
+        marginTop: 16,
+        marginBottom: 4,
+        overflow: 'hidden',
+    },
+    sectionHeaderContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+    },
+    sectionIcon: {
+        marginRight: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    sectionHeaderLeft: {
+        flex: 1,
+    },
+    sectionChevron: {
+        margin: 0,
+        marginRight: -8,
+    },
+    sectionTitle: {
+        fontWeight: 'bold',
+    },
+    groupHeaderRow: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 6,
+        marginTop: 8,
+        marginBottom: 4,
+    },
+    groupChip: {
+        alignSelf: 'flex-start'
+    },
     row: {
         flexDirection: 'row',
         paddingVertical: 12,
+        paddingHorizontal: 4,
         borderBottomWidth: 1,
         alignItems: 'center'
     },
     rowInfo: {
         flex: 2
     },
-    nameContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8
-    },
     boldText: {
         fontWeight: 'bold'
-    },
-    chip: {
-        height: 20
-    },
-    chipText: {
-        fontSize: 10,
-        marginVertical: 0
     },
     rowAction: {
         flex: 1,

@@ -45,7 +45,7 @@ export const EditProjectScreen = () => {
 		isMotionDetection,
 		isTimeLapse,
 		handleSave,
-	} = useProjectDetails(projectId)
+	} = useProjectDetails(projectId, true)
 
 	const {
 		isLoading: isLoadingModels,
@@ -82,14 +82,14 @@ export const EditProjectScreen = () => {
 			)
 		})
 
-		return unsubscribe
+		return () => unsubscribe()
 	}, [navigation, isDirty])
 
 	// Save and go back
 	const onSave = useCallback(async (data: any) => {
 		try {
 			await handleSave(data)
-			// Bypass the beforeRemove guard — save succeeded, safe to leave
+			// Bypass the beforeRemove guard: save succeeded, safe to leave
 			isSavingRef.current = true
 			if (navigation.canGoBack()) {
 				navigation.goBack()
@@ -110,7 +110,7 @@ export const EditProjectScreen = () => {
 						variant="bodyMedium"
 						style={[styles.loadingText, dynamicStyles.loadingLabel]}
 					>
-						Loading project...
+						Loading project…
 					</Text>
 				</View>
 			</WWScreenView>

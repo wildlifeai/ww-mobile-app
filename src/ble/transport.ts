@@ -1,4 +1,5 @@
 import BleManager from "react-native-ble-manager"
+import { Platform } from "react-native"
 import { Buffer } from "buffer"
 import dayjs from "dayjs"
 import { log } from "../utils/logger"
@@ -33,17 +34,27 @@ export const writeToDevice: WriteFunction = async (peripheral, data) => {
 			// log('DEBUG: byteArray content:', byteArray)
 			log(`TX Hex: ${logHex}`)
 
+			// iOS: write-WITH-response, same rationale as the file-transfer path
+			// (#213): CoreBluetooth silently discards .withoutResponse writes when
+			// its queue is full - once iOS relaxes the connection interval (~30s
+			// in), commands and session keepalives vanish with no error, the
+			// device sees silence, and its idle policy drops the link ("RX:
+			// Disconnecting" mid-console-session). ATT write-with-response makes
+			// drops impossible by protocol; for CLI-sized packets the throughput
+			// cost is irrelevant. Android keeps the without-response fast path.
+			const iosWithResponse = Platform.OS === "ios"
+			const serviceUuid = peripheral.services?.serviceCharacteristic || BLE_SERVICE_UUID
+			const writeUuid = peripheral.services?.writeCharacteristic || BLE_CHARACTERISTIC_WRITE_UUID
+			// iOS write-with-response can stall >5 s during connection parameter
+			// renegotiation (see writeBinaryToDevice docs) - budget 12 s there,
+			// matching the file-transfer pipeline's write timeout.
+			const timeoutMs = iosWithResponse ? 12000 : 5000
 			await invokeWithTimeout(
-				() => BleManager.writeWithoutResponse(
-					peripheral.id,
-					peripheral.services?.serviceCharacteristic || BLE_SERVICE_UUID,
-					peripheral.services?.writeCharacteristic ||
-					BLE_CHARACTERISTIC_WRITE_UUID,
-					byteArray,
-					512 // Explicitly allow larger packets
-				),
-				"BleManager.writeWithoutResponse",
-				5000 // 5s timeout
+				() => iosWithResponse
+					? BleManager.write(peripheral.id, serviceUuid, writeUuid, byteArray, 512)
+					: BleManager.writeWithoutResponse(peripheral.id, serviceUuid, writeUuid, byteArray, 512),
+				iosWithResponse ? "BleManager.write" : "BleManager.writeWithoutResponse",
+				timeoutMs
 			)
 
 			log(
@@ -75,11 +86,18 @@ export const writeToDevice: WriteFunction = async (peripheral, data) => {
  *                      Use for FILE_START and FILE_END. If false, uses
  *                      write-without-response (fast, ACK-confirmed by protocol).
  *                      Use for FILE_DATA.
+ * @param timeoutMs     Per-write timeout. iOS CoreBluetooth can stall a
+ *                      write-with-response for well over 5 s during connection
+ *                      parameter renegotiation — callers on that path must pass
+ *                      a budget below the firmware's 15 s session-inactivity
+ *                      hold but above the observed stalls (see
+ *                      runFileTransferPipeline WRITE_TIMEOUT_MS).
  */
 export const writeBinaryToDevice = async (
 	peripheral: ExtendedPeripheral,
 	data: Uint8Array,
 	withResponse: boolean = false,
+	timeoutMs: number = 5000,
 ): Promise<void> => {
 	if (!peripheral.connected) {
 		throw new Error('Device disconnected')
@@ -95,7 +113,7 @@ export const writeBinaryToDevice = async (
 
 	const label = withResponse ? 'BleManager.write' : 'BleManager.writeWithoutResponse'
 
-	await invokeWithTimeout(writeFn, label, 5000)
+	await invokeWithTimeout(writeFn, label, timeoutMs)
 }
 
 

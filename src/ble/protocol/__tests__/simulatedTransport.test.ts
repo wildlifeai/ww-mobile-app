@@ -1,9 +1,9 @@
 import { rxRouter } from '../rxRouter';
-import { commandQueue } from '../commandQueue';
+import { bleTransport } from '../bleTransportController';
 import { runCommandPipeline } from '../runCommandPipeline';
 import { commandRegistry } from '../commandRegistry';
 import { bleEventBus } from '../eventBus';
-import { streamRegistry } from '../streamRegistry';
+import { streamRegistry } from '../../session/createBleSession';
 import * as transport from '../../transport';
 
 jest.mock('../../transport', () => ({
@@ -19,7 +19,7 @@ describe('Simulated Transport Resiliency', () => {
   beforeEach(() => {
     jest.useRealTimers();
     jest.clearAllMocks();
-    commandQueue.clearAll();
+    bleTransport.clearAll();
     rxRouter.clearBuffer(DEVICE_ID);
     bleEventBus.removeAllListeners();
     streamRegistry.terminateAll();
@@ -46,7 +46,7 @@ describe('Simulated Transport Resiliency', () => {
       return true;
     });
 
-    const resultPromise = commandQueue.enqueue(() => 
+    const resultPromise = bleTransport.enqueue(() => 
       runCommandPipeline(peripheral, commandRegistry.battery)
     );
 
@@ -64,7 +64,7 @@ describe('Simulated Transport Resiliency', () => {
       return true;
     });
 
-    const result = await commandQueue.enqueue(() => 
+    const result = await bleTransport.enqueue(() => 
       runCommandPipeline(peripheral, commandRegistry.battery)
     );
     expect(result).toBe(42);
@@ -96,7 +96,7 @@ describe('Simulated Transport Resiliency', () => {
       return true;
     });
 
-    const result = await commandQueue.enqueue(() => 
+    const result = await bleTransport.enqueue(() => 
       runCommandPipeline(peripheral, commandRegistry.battery)
     );
     
@@ -116,7 +116,7 @@ describe('Simulated Transport Resiliency', () => {
       return parent;
     };
 
-    const promise = commandQueue.enqueue(() => 
+    const promise = bleTransport.enqueue(() => 
       runCommandPipeline(peripheral, quickTimeoutBattery)
     );
 
@@ -129,7 +129,7 @@ describe('Simulated Transport Resiliency', () => {
 
     const abortController = new AbortController();
     
-    const promise = commandQueue.enqueue(
+    const promise = bleTransport.enqueue(
       () => runCommandPipeline(peripheral, commandRegistry.battery),
       { signal: abortController.signal }
     );

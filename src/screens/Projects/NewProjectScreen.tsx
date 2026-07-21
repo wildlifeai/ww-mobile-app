@@ -114,7 +114,7 @@ export const NewProjectScreen = () => {
 		}
 	}, [activitySensitivities, watch, setValue])
 
-	// AI model defaults to "" (None) — project managers can optionally select one
+	// AI model defaults to "" (None): project managers can optionally select one
 
 	// Options for Select components
 	const captureMethodOptions = useMemo(

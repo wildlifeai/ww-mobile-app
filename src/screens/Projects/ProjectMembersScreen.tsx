@@ -29,7 +29,7 @@ import { useRoute, RouteProp } from "@react-navigation/native"
 
 
 // UI Helper Functions
-export const getRoleBadgeColor = (role: ProjectRole): string => {
+const getRoleBadgeColor = (role: ProjectRole): string => {
 	switch (role) {
 		case "project_admin":
 			return "#4CAF50"
@@ -40,7 +40,7 @@ export const getRoleBadgeColor = (role: ProjectRole): string => {
 	}
 }
 
-export const getRoleDisplayName = (role: ProjectRole): string => {
+const getRoleDisplayName = (role: ProjectRole): string => {
 	switch (role) {
 		case "project_admin":
 			return "Admin"
@@ -262,7 +262,7 @@ export const ProjectMembersScreen = () => {
 		return (
 			<View style={styles.loadingContainer}>
 				<ActivityIndicator size="large" />
-				<Text style={dynamicStyles.loadingText}>Loading project members...</Text>
+				<Text style={dynamicStyles.loadingText}>Loading project members…</Text>
 			</View>
 		)
 	}

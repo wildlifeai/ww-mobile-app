@@ -21,7 +21,7 @@ import { MapType } from "../types"
 import { useAppNavigation } from "../../../hooks/useAppNavigation"
 import { useAppDrawer } from "../../../components/AppDrawer"
 import { useExtendedTheme } from "../../../theme"
-import { DeploymentService } from "../../../services/DeploymentService"
+import { DeploymentService, DEPLOYMENT_STATUS } from "../../../services/DeploymentService"
 import type Deployment from "../../../database/models/Deployment"
 import { log } from '../../../utils/logger'
 import { OfflineIndicator } from '../../../components/ui/OfflineIndicator'
@@ -73,7 +73,11 @@ const MapScreenComponent: React.FC<Props> = ({ deployments, selectedDeploymentId
 
 	// Filter deployments to only show active ones
 	const filteredDeployments = useMemo(() => {
-		return deployments.filter(d => d.deploymentStatusId === 1)
+		return deployments.filter(d =>
+			d.deploymentStatusId === DEPLOYMENT_STATUS.STARTED &&
+			d.latitude != null &&
+			d.longitude != null
+		)
 	}, [deployments])
 
 	// Get selected deployment object for the card
@@ -191,7 +195,7 @@ const MapScreenComponent: React.FC<Props> = ({ deployments, selectedDeploymentId
 	const handleViewDetails = React.useCallback(() => {
 		if (selectedDeploymentId) {
 			log('[MapScreen] Navigating to details:', selectedDeploymentId)
-			navigation.navigate('DeploymentDetails', { deploymentId: selectedDeploymentId })
+			navigation.navigate('DeviceMonitoringSummary', { deploymentId: selectedDeploymentId })
 			dispatch({ selectedDeploymentId: null })
 		}
 	}, [selectedDeploymentId, navigation])
@@ -284,7 +288,7 @@ const MapScreenComponent: React.FC<Props> = ({ deployments, selectedDeploymentId
 				<View style={styles.loadingOverlay}>
 					<View style={styles.loadingContainer}>
 						<ActivityIndicator size="large" color={colors.primary} />
-						<Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>Getting your location...</Text>
+						<Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>Getting your location…</Text>
 					</View>
 				</View>
 			)}

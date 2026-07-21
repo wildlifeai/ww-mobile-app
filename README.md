@@ -162,8 +162,9 @@ All documentation is organised under `documentation/`:
 | [01-TECHNOLOGY-STACK.md](./documentation/onboarding/01-TECHNOLOGY-STACK.md) | All dependencies, versions, patterns, and integrations |
 | [02-CODEBASE-GUIDE.md](./documentation/onboarding/02-CODEBASE-GUIDE.md) | Project structure, state management, naming conventions |
 | [03-DATA-AND-SYNC.md](./documentation/onboarding/03-DATA-AND-SYNC.md) | WatermelonDB, Supabase sync, security model |
-| [04-DEVICE-FLOWS.md](./documentation/onboarding/04-DEVICE-FLOWS.md) | Device preparation, deployment, and retrieval |
-| [05-GIT-WORKFLOW.md](./documentation/onboarding/05-GIT-WORKFLOW.md) | Git branching, Conventional Commits, and CI pipeline rules |
+| [04-ENGINEER-CONSOLE.md](./documentation/onboarding/04-ENGINEER-CONSOLE.md) | BLE commands, OP parameters, hardware testing tools |
+| [05-DEVICE-FLOWS.md](./documentation/onboarding/05-DEVICE-FLOWS.md) | Device deployment, monitoring, and retrieval flows |
+| [Git Workflow (org-level)](https://github.com/wildlifeai/.github/blob/main/agents/git-SKILL.md) | Git branching, Conventional Commits, PR review, and CI pipeline rules |
 
 ### Reference Guides
 
@@ -174,7 +175,7 @@ All documentation is organised under `documentation/`:
 | [Docker Guide](./documentation/resources/Docker-Development-Guide.md) | Containerised development environment |
 | [EAS/Expo](./documentation/resources/Expo-EAS-Guide.md) | Cloud builds and OTA updates |
 | [WSL2 Guide](./documentation/resources/WSL2-Setup-Guide.md) | Windows Subsystem for Linux setup |
-| [Google Maps](./documentation/resources/GOOGLE-MAPS-SETUP.md) | Maps API key and configuration |
+| [Maps](./documentation/resources/Maps.md) | Maps feature architecture and API configuration |
 | [Testing](./documentation/resources/Testing-Guide.md) | Jest, Maestro, and E2E testing |
 | [Auth Guide](./documentation/resources/Authentication-Implementation-Guide.md) | Authentication implementation details |
 

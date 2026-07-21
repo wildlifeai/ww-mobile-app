@@ -2,6 +2,7 @@ import { LinkingOptions } from "@react-navigation/native"
 import * as Linking from "expo-linking"
 import { getStateFromPath } from "@react-navigation/native"
 import { log } from '../utils/logger'
+import { WEBSITE_URL } from '../config/environments'
 
 
 const prefix = Linking.createURL("/")
@@ -13,13 +14,14 @@ export const linking: LinkingOptions<any> = {
 		prefix,
 		"wildlifewatcher://",
 		"com.wildlife.wildlifewatcher://",
+		`${WEBSITE_URL}/`,
 		"exp://localhost:8081/",
 		"exp://192.168.1.8:8081/", // Your local IP
 	],
 	config: {
 		screens: {
 			Login: "auth/callback",
-			ForgotPassword: "auth/reset-password",
+			ForgotPassword: "reset-password",
 			Register: "auth/confirm",
 			Home: "",
 			// Add other screens as needed
@@ -33,7 +35,7 @@ export const linking: LinkingOptions<any> = {
 		// Let useDeepLinking hook handle auth routes to avoid conflicts
 		if (
 			path &&
-			(path.includes("auth/reset-password") ||
+			(path.includes("reset-password") ||
 				path.includes("auth/callback") ||
 				path.includes("auth/confirm"))
 		) {

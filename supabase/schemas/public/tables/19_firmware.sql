@@ -4,20 +4,23 @@ CREATE TABLE firmware (
   created_at timestamptz DEFAULT (now()),
   updated_at timestamptz DEFAULT (now()),
   deleted_at timestamptz,
-  modified_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  modified_by uuid REFERENCES auth.users (id) ON DELETE SET NULL,
   name text NOT NULL,
   version text NOT NULL,
-  type text NOT NULL CHECK (type IN ('ble', 'himax', 'config')),
+  type text NOT NULL CHECK (type IN ('ble', 'himax')),
   location_path text NOT NULL,
   file_size_bytes bigint,
   release_notes text,
-  is_active boolean NOT NULL DEFAULT true
+  is_active boolean NOT NULL DEFAULT true,
+  crc_checksum text,
+  build_date text,
+  camera_variant text CHECK (camera_variant IN ('RP3', 'HM0360'))
 );
 
 -- Unique index for type/version combination (excluding soft-deleted)
 CREATE UNIQUE INDEX firmware_type_version_unique_idx
-  ON firmware (type, version)
-  WHERE deleted_at IS NULL;
+  ON firmware (type, version, COALESCE(camera_variant, ''))
+  WHERE deleted_at IS null;
 
 COMMENT ON TABLE firmware IS 'Wildlife Watcher camera firmware versions managed by Wildlife.ai';
 COMMENT ON COLUMN firmware.name IS 'Firmware name';
@@ -27,6 +30,9 @@ COMMENT ON COLUMN firmware.location_path IS 'Location path in Supabase Storage';
 COMMENT ON COLUMN firmware.file_size_bytes IS 'Size of the firmware file in bytes';
 COMMENT ON COLUMN firmware.release_notes IS 'Release notes for this version';
 COMMENT ON COLUMN firmware.is_active IS 'Whether this firmware version is currently active/recommended';
+COMMENT ON COLUMN firmware.crc_checksum IS 'CRC16-CCITT checksum of the firmware binary (4-char uppercase hex, e.g. A3F2)';
+COMMENT ON COLUMN firmware.build_date IS 'Build date/time extracted from firmware image (used for 8.3 SD card filename)';
+COMMENT ON COLUMN firmware.camera_variant IS 'Camera variant the Himax image was built for: RP3 (IMX708 day/colour) or HM0360 (night/IR). NULL for BLE firmware and legacy records.';
 COMMENT ON COLUMN firmware.modified_by IS 'User who last modified this record';
 COMMENT ON COLUMN firmware.deleted_at IS 'Soft delete timestamp - NULL means active';
 

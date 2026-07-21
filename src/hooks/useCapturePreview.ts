@@ -6,9 +6,7 @@ import { bleEventBus, BleEvent } from '../ble/protocol/eventBus'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { createBleSession } from '../ble/session/createBleSession'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
-import { DeviceSignal } from '../ble/protocol/deviceSignals'
-import { log, logError } from '../utils/logger'
-
+import { log, logError, logWarn } from '../utils/logger'
 
 
 interface UseCapturePreviewOptions {
@@ -58,12 +56,24 @@ export const useCapturePreview = ({
     const downloadTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
     // Clear timeout helper
-    const clearDownloadTimeout = () => {
+    const clearDownloadTimeout = useCallback(() => {
         if (downloadTimeoutRef.current) {
             clearTimeout(downloadTimeoutRef.current)
             downloadTimeoutRef.current = null
         }
-    }
+    }, [])
+
+    // Reset inactivity timeout tracker
+    const resetDownloadTimeout = useCallback(() => {
+        clearDownloadTimeout()
+        const DOWNLOAD_TIMEOUT = 30000 // 30s allowed between data chunks
+        downloadTimeoutRef.current = setTimeout(() => {
+            if (downloadRequested.current) {
+                logError('[useCapturePreview] Download timed out (30s inactivity). Force finalizing.')
+                imageReassemblerEmitter.emit('force_finalize')
+            }
+        }, DOWNLOAD_TIMEOUT)
+    }, [clearDownloadTimeout])
 
     // Listen for image download completion and progress
     useEffect(() => {
@@ -83,6 +93,7 @@ export const useCapturePreview = ({
         }
 
         const handleImageProgress = (progress: number) => {
+            resetDownloadTimeout()
             setCaptureStage('Downloading...')
             setCaptureProgress(progress)
         }
@@ -111,7 +122,7 @@ export const useCapturePreview = ({
             imageReassemblerEmitter.off('onImageError', handleImageError)
             clearDownloadTimeout()
         }
-    }, [onImageReceived, onError])
+    }, [onImageReceived, onError, clearDownloadTimeout, resetDownloadTimeout])
 
     // Listen for "Finished sending" message
     useEffect(() => {
@@ -140,8 +151,16 @@ export const useCapturePreview = ({
         }
     }, [device])
 
-    // Start capture process
-    const startCapture = useCallback(async (captureCount: number = 1, captureInterval: number = 1) => {
+    // Start capture process — three distinct phases separated by device sleep cycles:
+    //
+    // Phase 1 (SETUP):    Pre-flight checks (getops/setop) → device sleeps
+    // Phase 2 (CAPTURE):  Take photo (capture command) → device sleeps after Save State
+    // Phase 3 (TRANSFER): Download image (txfile command) → binary streaming
+    //
+    // Each phase lets the device fully complete its inactivity → Save State → DPD
+    // cycle before the next command wakes it. This prevents the FatFS race condition
+    // where txfile's open file handle was invalidated by a concurrent Save State.
+    const startCapture = useCallback(async (captureCount: number = 1, captureInterval: number = 500) => {
         if (!device) {
             const error = new Error('No device connected')
             logError('[useCapturePreview]', error.message)
@@ -154,7 +173,7 @@ export const useCapturePreview = ({
 
         try {
             setIsCapturing(true)
-            setCaptureStage('Initializing...')
+            setCaptureStage('Initializing…')
             setCapturedImageUri(null)
             setCaptureProgress(0)
             downloadRequested.current = false
@@ -164,57 +183,57 @@ export const useCapturePreview = ({
 
             const session = createBleSession(device);
 
-            // 1. Enable camera (OpParam 10)
-            log('[useCapturePreview] Enabling camera (Op10=1)...')
-            await session.execute(() => commandRegistry.setop({ index: 10, value: 1 }))
-            
-            // 2. Wait explicitly for device to Sleep via EventBus
+            // ── Phase 1: SETUP ──────────────────────────────────────────
+            // Read current OPs and ensure camera is enabled (OP 10) and
+            // TEST_MODE_BITS (OP 18) is 0 (no skip-file-creation from prior MD test).
+            setCaptureStage('Checking device state…')
+            log('[useCapturePreview] Phase 1: Setup — checking device state')
             try {
-                setCaptureStage('Waking camera hardware...')
-                log('[useCapturePreview] Waiting for device to sleep (applied settings)...')
-                await new Promise<void>((resolve, reject) => {
-                    const sleepListener = (ev: BleEvent & { type: 'DEVICE_SIGNAL' }) => {
-                        if (ev.deviceId === device.id && ev.signal === DeviceSignal.SLEEP) {
-                            cleanup();
-                            resolve();
-                        }
-                    };
-                    const timeout = setTimeout(() => {
-                        cleanup();
-                        reject(new Error("Sleep timeout"));
-                    }, 10000);
-                    const cleanup = () => {
-                        clearTimeout(timeout);
-                        bleEventBus.removeListener('deviceSignal', sleepListener);
-                    };
-                    bleEventBus.on('deviceSignal', sleepListener);
-                });
-                log('[useCapturePreview] Device sleeping. Waiting 1s buffer before waking...')
-                await new Promise(resolve => setTimeout(resolve, 1000))
+                const ops = await session.execute(() => commandRegistry.getops())
+                if (ops) {
+                    const cameraEnabled = parseInt(ops[10] ?? '1', 10)
+                    const testModeBits = parseInt(ops[18] ?? '0', 10)
+
+                    if (cameraEnabled !== 1) {
+                        log(`[useCapturePreview] Camera not enabled (OP 10 = ${cameraEnabled}), enabling…`)
+                        await session.execute(() => commandRegistry.setop({ index: 10, value: 1 }))
+                    }
+                    if (testModeBits !== 0) {
+                        log(`[useCapturePreview] TEST_MODE_BITS not zero (OP 18 = ${testModeBits}), clearing…`)
+                        await session.execute(() => commandRegistry.setop({ index: 18, value: 0 }))
+                    }
+                }
             } catch (e) {
-                logError('[useCapturePreview] Timeout waiting for sleep. Proceeding anyway.', e)
+                logWarn('[useCapturePreview] Pre-flight getops failed, proceeding anyway:', e)
             }
 
-            // 3. Send Capture Command
-            setCaptureStage(`Capturing ${captureCount} image(s)...`)
-            log(`[useCapturePreview] Sending capture command (AI capture ${captureCount} ${captureInterval})...`)
+            // Let the device complete Save State and enter DPD before capture
+            log('[useCapturePreview] Phase 1 complete — waiting for device to sleep')
+            setCaptureStage('Waiting for device…')
+            await session.waitForSleep(5000)
+
+            // ── Phase 2: CAPTURE ────────────────────────────────────────
+            setCaptureStage(`Capturing ${captureCount} image(s)…`)
+            log(`[useCapturePreview] Phase 2: Capture — sending AI capture ${captureCount} ${captureInterval}`)
             const captureResult = await session.execute(() => commandRegistry.capture(captureCount, captureInterval))
             const capturedFilename = typeof captureResult === 'string' ? captureResult : '.'
-            log(`[useCapturePreview] Capture result: ${captureResult}. Target filename: ${capturedFilename}`)
+            log(`[useCapturePreview] Phase 2 complete — captured: ${capturedFilename}`)
 
-            // 4. Start Download Process Tracker
+            // Wait for the device to complete its post-capture cycle:
+            // inactivity timer (1000ms) → Save State → DPD entry.
+            // This is the critical fix: the old flow sent txfile immediately,
+            // racing against Save State which corrupted the FatFS file handle.
+            setCaptureStage('Waiting for device…')
+            log('[useCapturePreview] Waiting for device to sleep after capture (Save State + DPD)')
+            await session.waitForSleep(5000)
+
+            // ── Phase 3: TRANSFER ───────────────────────────────────────
+            // Device wakes fresh from DPD — FatFS is clean, no competing operations.
             downloadRequested.current = true
-            
-            const DOWNLOAD_TIMEOUT = 30000
-            downloadTimeoutRef.current = setTimeout(() => {
-                if (downloadRequested.current) {
-                    logError('[useCapturePreview] Download timed out (30s). Force finalizing.')
-                    imageReassemblerEmitter.emit('force_finalize')
-                }
-            }, DOWNLOAD_TIMEOUT)
+            resetDownloadTimeout()
 
-            setCaptureStage('Downloading image...')
-            log(`[useCapturePreview] Requesting file download for: ${capturedFilename}...`)
+            setCaptureStage('Downloading image…')
+            log(`[useCapturePreview] Phase 3: Transfer — requesting txfile ${capturedFilename}`)
             await session.execute(() => commandRegistry.txfile(capturedFilename))
 
         } catch (error) {
@@ -229,7 +248,7 @@ export const useCapturePreview = ({
             if (onError) onError(err)
             else Alert.alert('Error', `Capture failed: ${err.message}`)
         }
-    }, [device, onCaptureStart, onError])
+    }, [device, onCaptureStart, onError, clearDownloadTimeout, resetDownloadTimeout])
 
     // Clear captured image
     const clearImage = useCallback(() => {
@@ -238,7 +257,7 @@ export const useCapturePreview = ({
         downloadRequested.current = false
         setCaptureProgress(0)
         clearDownloadTimeout()
-    }, [])
+    }, [clearDownloadTimeout])
 
     return {
         capturedImageUri,

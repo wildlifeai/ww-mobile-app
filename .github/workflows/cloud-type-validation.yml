@@ -52,7 +52,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.101.0  # pinned: unpinned CLIs broke CI when new versions shipped (2026-06-11)
 
       - name: Authenticate to Supabase
         run: |
@@ -61,19 +61,19 @@ jobs:
             echo "⚠️  Warning: SUPABASE_ACCESS_TOKEN not configured"
             exit 1
           fi
-          npx supabase login --token "${{ secrets.SUPABASE_ACCESS_TOKEN }}"
+          npx supabase@2.101.0 login --token "${{ secrets.SUPABASE_ACCESS_TOKEN }}"
 
       - name: Link to cloud-dev project
         run: |
           echo "Linking to cloud-dev Supabase instance..."
-          npx supabase link --project-ref qegeovogqxiouqbrxmnh
+          npx supabase@2.101.0 link --project-ref qegeovogqxiouqbrxmnh
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
       - name: Generate fresh types from cloud-dev
         run: |
           echo "Generating types from cloud-dev Supabase instance..."
-          npx supabase gen types typescript --project-id qegeovogqxiouqbrxmnh > /tmp/cloud-dev-types.ts
+          npx supabase@2.101.0 gen types typescript --project-id qegeovogqxiouqbrxmnh > /tmp/cloud-dev-types.ts
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
@@ -139,7 +139,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.101.0  # pinned: unpinned CLIs broke CI when new versions shipped (2026-06-11)
 
       - name: Authenticate to Supabase
         run: |
@@ -148,19 +148,19 @@ jobs:
             echo "⚠️  Warning: SUPABASE_ACCESS_TOKEN not configured"
             exit 1
           fi
-          npx supabase login --token "${{ secrets.SUPABASE_ACCESS_TOKEN }}"
+          npx supabase@2.101.0 login --token "${{ secrets.SUPABASE_ACCESS_TOKEN }}"
 
       - name: Link to cloud-prod (staging) project
         run: |
           echo "Linking to staging Supabase instance..."
-          npx supabase link --project-ref nuhwmubvygxyddkycmpa
+          npx supabase@2.101.0 link --project-ref nuhwmubvygxyddkycmpa
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
       - name: Generate fresh types from cloud-prod (staging)
         run: |
           echo "Generating types from staging Supabase instance..."
-          npx supabase gen types typescript --project-id nuhwmubvygxyddkycmpa > /tmp/cloud-prod-types.ts
+          npx supabase@2.101.0 gen types typescript --project-id nuhwmubvygxyddkycmpa > /tmp/cloud-prod-types.ts
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 

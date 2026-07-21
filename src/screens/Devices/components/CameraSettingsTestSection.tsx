@@ -6,7 +6,10 @@ import { useExtendedTheme } from '../../../theme'
 import { useCameraSettingsTest, CapturedImageInfo } from '../hooks/useCameraSettingsTest'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { ImagePreviewModal } from '../../../components/ImagePreviewModal'
-import { useState, useEffect } from 'react'
+import { WWBleDisconnectedBanner } from '../../../components/ui/WWBleDisconnectedBanner'
+import { DeviceHealthBanner } from '../../../components/DeviceHealthBanner'
+import { useDeviceSelfTest } from '../../../hooks/useDeviceSelfTest'
+import { useState } from 'react'
 
 interface Props {
     device: ExtendedPeripheral
@@ -16,10 +19,13 @@ const NumericInput = ({ label, value, onChange, min, max, disabled }: { label: s
     const { spacing } = useExtendedTheme()
     const [localValue, setLocalValue] = useState(() => value.toString())
 
-    // Sync external changes (e.g. preset or reset)
-    useEffect(() => {
+    const [prevValue, setPrevValue] = useState(value)
+
+    // Sync external changes (e.g. preset or reset) during render
+    if (value !== prevValue) {
+        setPrevValue(value)
         setLocalValue(value.toString())
-    }, [value])
+    }
 
     return (
         <View style={{ marginBottom: spacing }}>
@@ -53,12 +59,28 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
         cameraParams,
         updateCameraParam,
         applyAndCapture,
-        resetTestMode,
         isApplying,
+        applyStage,
         aeData,
         capturedImages,
         capturePreview
     } = useCameraSettingsTest({ device })
+
+    const { issues: healthIssues, isChecking: isCheckingHealth, refresh: recheckHealth } = useDeviceSelfTest({ device })
+
+    const busy = !device?.connected || isApplying || capturePreview.isCapturing
+
+    // Q8.8 white-balance presets (op27/op28): red gain, blue gain
+    const WB_PRESETS: Array<{ label: string; red: number; blue: number }> = [
+        { label: 'Off', red: 0, blue: 0 },           // correction disabled - raw hardware JPEG
+        { label: 'Unity', red: 256, blue: 256 },     // software encode, no WB (encoder A/B test)
+        { label: 'Dim', red: 286, blue: 326 },       // bench default for dim scenes
+        { label: 'Bright', red: 407, blue: 358 },    // bench-tuned for bright scenes
+    ]
+    const applyWbPreset = (red: number, blue: number) => {
+        updateCameraParam('wbRedGain', red)
+        updateCameraParam('wbBlueGain', blue)
+    }
 
     const [modalVisible, setModalVisible] = useState(false)
     const [selectedImage, setSelectedImage] = useState<CapturedImageInfo | null>(null)
@@ -71,9 +93,12 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
     return (
         <ScrollView style={styles.container} contentContainerStyle={[styles.content, { gap: spacing }]} keyboardShouldPersistTaps="handled">
             
-            <WWText variant="titleMedium" style={{ marginTop: spacing }}>Camera Parameters</WWText>
-            
-            <Surface style={[styles.card, { backgroundColor: colors.surface }]} elevation={1}>
+
+            <WWBleDisconnectedBanner connected={!!device?.connected} dfuInProgress={!!device?.dfuInProgress} />
+
+            <DeviceHealthBanner issues={healthIssues} onRecheck={recheckHealth} isChecking={isCheckingHealth} />
+
+            <Surface style={[styles.card, { backgroundColor: colors.surface, marginTop: 8 }]} elevation={1}>
                 
                 
                 <View style={styles.inputGroup}>
@@ -82,21 +107,62 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
                         value={cameraParams.flashLed.toString()}
                         onValueChange={(val) => updateCameraParam('flashLed', parseInt(val, 10))}
                         buttons={[
-                            { value: '0', label: 'Off' },
-                            { value: '1', label: 'Visible' },
-                            { value: '2', label: 'IR' },
+                            { value: '0', label: 'Off', disabled: !device?.connected },
+                            { value: '1', label: 'Visible', disabled: !device?.connected },
+                            { value: '2', label: 'IR', disabled: !device?.connected },
                         ]}
                         style={{ marginTop: 8 }}
                     />
                 </View>
 
+                {cameraParams.flashLed !== 0 && (
+                    <NumericInput
+                        label="LED Brightness (0-100%)"
+                        value={cameraParams.ledBrightness}
+                        onChange={(v: number) => updateCameraParam('ledBrightness', v)}
+                        min={0}
+                        max={100}
+                        disabled={!device?.connected || isApplying || capturePreview.isCapturing}
+                    />
+                )}
+            </Surface>
+
+            <Surface style={[styles.card, { backgroundColor: colors.surface }]} elevation={1}>
+                <WWText variant="labelLarge">White Balance (RP3 colour camera)</WWText>
+                <WWText variant="labelSmall" style={{ color: colors.onSurfaceVariant, marginTop: 2, marginBottom: 8 }}>
+                    Q8.8 gains: 256 = 1.0×, 0 = correction off (raw hardware JPEG). Applied on the next capture.
+                </WWText>
+                <View style={styles.presetRow}>
+                    {WB_PRESETS.map(p => {
+                        const active = cameraParams.wbRedGain === p.red && cameraParams.wbBlueGain === p.blue
+                        return (
+                            <Button
+                                key={p.label}
+                                compact
+                                mode={active ? 'contained' : 'outlined'}
+                                onPress={() => applyWbPreset(p.red, p.blue)}
+                                disabled={busy}
+                            >
+                                {p.label}
+                            </Button>
+                        )
+                    })}
+                </View>
                 <NumericInput
-                    label="LED Brightness (0-100%)"
-                    value={cameraParams.ledBrightness}
-                    onChange={(v: number) => updateCameraParam('ledBrightness', v)}
+                    label="Red gain (op27, 0-1024)"
+                    value={cameraParams.wbRedGain}
+                    onChange={(v: number) => updateCameraParam('wbRedGain', v)}
                     min={0}
-                    max={100}
-                    disabled={isApplying || capturePreview.isCapturing}
+                    max={1024}
+                    disabled={busy}
+                />
+                <NumericInput
+                    label="Blue gain (op28, 0-1024)"
+                    value={cameraParams.wbBlueGain}
+                    onChange={(v: number) => updateCameraParam('wbBlueGain', v)}
+                    min={0}
+                    max={1024}
+                    disabled={busy}
                 />
             </Surface>
 
@@ -104,29 +170,21 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
 
             <View style={styles.actionRow}>
                 <Button 
-                    mode="outlined" 
-                    onPress={resetTestMode} 
-                    disabled={isApplying || capturePreview.isCapturing}
-                    style={{ flex: 1 }}
-                >
-                    <WWText>Reset</WWText>
-                </Button>
-                <Button 
                     mode="contained" 
                     onPress={applyAndCapture}
                     loading={isApplying || capturePreview.isCapturing}
-                    disabled={isApplying || capturePreview.isCapturing}
-                    style={{ flex: 2 }}
+                    disabled={!device?.connected || isApplying || capturePreview.isCapturing}
+                    style={{ flex: 1 }}
                 >
-                    <WWText style={{ color: 'white' }}>Capture Image</WWText>
+                    <WWText style={{ color: 'white' }}>{!device?.connected ? 'Disconnected' : 'Capture Image'}</WWText>
                 </Button>
             </View>
 
-            {capturePreview.isCapturing && (
+            {(isApplying || capturePreview.isCapturing) && (
                 <View style={styles.progressContainer}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
                         <ActivityIndicator size="small" />
-                        <WWText>{capturePreview.captureStage || 'Capturing...'}</WWText>
+                        <WWText>{applyStage || capturePreview.captureStage || 'Processing…'}</WWText>
                     </View>
                     {capturePreview.captureProgress > 0 && (
                         <View style={{ width: '100%', marginTop: 16 }}>
@@ -238,6 +296,12 @@ const styles = StyleSheet.create({
     },
     inputGroup: {
         marginBottom: 16,
+    },
+    presetRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 12,
     },
     actionRow: {
         flexDirection: 'row',

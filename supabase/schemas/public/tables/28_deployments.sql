@@ -4,7 +4,6 @@ CREATE TABLE deployments (
   updated_at timestamptz DEFAULT (now()),
   deleted_at timestamptz,
 
-
   -- Deployment lifecycle
   name text NOT NULL,
   setup_by uuid REFERENCES auth.users (id) ON DELETE SET NULL,
@@ -26,6 +25,7 @@ CREATE TABLE deployments (
   altitude double precision,
   accuracy double precision,
   location GEOGRAPHY (POINT, 4326),
+  timezone text, -- IANA tz resolved from latitude/longitude (display-only)
   -- Camera configuration
   camera_height float,
   activity_detection_sensitivity_id int REFERENCES activity_sensitivity (id),
@@ -45,12 +45,20 @@ CREATE TABLE deployments (
   ai_model_id uuid REFERENCES ai_models (id),
   ble_firmware_id uuid REFERENCES firmware (id),
   himax_firmware_id uuid REFERENCES firmware (id),
-  config_firmware_id uuid REFERENCES firmware (id),
+
   battery_level_at_start integer,
   sd_card_total_kb_at_start integer,
   sd_card_available_kb_at_start integer,
   lorawan_rssi_at_start integer,
-  lorawan_snr_at_start double precision
+  lorawan_snr_at_start double precision,
+
+  -- CamtrapDP alignment fields
+  camera_tilt float CHECK (camera_tilt IS null OR (camera_tilt >= -90 AND camera_tilt <= 90)),
+  detection_distance float CHECK (detection_distance IS null OR (detection_distance >= 0)),
+  bait_use text CHECK (bait_use IS null OR (bait_use IN ('none', 'scent', 'food', 'visual', 'acoustic', 'other'))),
+  feature_type text CHECK (feature_type IS null OR (feature_type IN ('roadTrail', 'waterSource', 'burrow', 'nestSite', 'other'))),
+  habitat text,
+  deployment_tags text []
 );
 
 -- Indexes
@@ -77,6 +85,7 @@ COMMENT ON COLUMN deployments.camera_location_image_paths IS 'Array of paths to 
 COMMENT ON COLUMN deployments.camera_height IS 'Height of the camera in meters.';
 COMMENT ON COLUMN deployments.altitude IS 'Altitude in meters from GPS.';
 COMMENT ON COLUMN deployments.accuracy IS 'GPS accuracy in meters.';
+COMMENT ON COLUMN deployments.timezone IS 'IANA time zone name (e.g. Pacific/Auckland) for this deployment location, resolved from latitude/longitude at creation/ingestion via timezonefinder. NULL falls back to UTC at display. media.timestamp stays UTC; this column is display-only and does not affect stored instants.';
 COMMENT ON COLUMN deployments.capture_method_id IS 'Mode of capture (timelapse, motion, etc).';
 COMMENT ON COLUMN deployments.project_id IS 'Project this deployment belongs to.';
 COMMENT ON COLUMN deployments.device_id IS 'Device used in this deployment.';
@@ -89,12 +98,18 @@ COMMENT ON COLUMN deployments.lorawan_last_verified_at IS 'LoRaWAN verification 
 COMMENT ON COLUMN deployments.ai_model_id IS 'AI model assigned at deployment start.';
 COMMENT ON COLUMN deployments.ble_firmware_id IS 'BLE Firmware version active at deployment start.';
 COMMENT ON COLUMN deployments.himax_firmware_id IS 'Himax Firmware version active at deployment start.';
-COMMENT ON COLUMN deployments.config_firmware_id IS 'Config Firmware version active at deployment start.';
+
 COMMENT ON COLUMN deployments.battery_level_at_start IS 'Battery level recorded at deployment start (%).';
 COMMENT ON COLUMN deployments.sd_card_total_kb_at_start IS 'Total SD card capacity recorded at deployment start (KB).';
 COMMENT ON COLUMN deployments.sd_card_available_kb_at_start IS 'Available SD card capacity recorded at deployment start (KB).';
 COMMENT ON COLUMN deployments.lorawan_rssi_at_start IS 'LoRaWAN RSSI recorded at deployment start.';
 COMMENT ON COLUMN deployments.lorawan_snr_at_start IS 'LoRaWAN SNR recorded at deployment start.';
+COMMENT ON COLUMN deployments.camera_tilt IS 'Camera tilt angle in degrees (CamtrapDP cameraTilt).';
+COMMENT ON COLUMN deployments.detection_distance IS 'Maximum detection distance in metres (CamtrapDP detectionDistance).';
+COMMENT ON COLUMN deployments.bait_use IS 'Attractant used: none, scent, food, visual, acoustic, or other (CamtrapDP baitUse).';
+COMMENT ON COLUMN deployments.feature_type IS 'Feature monitored: roadTrail, waterSource, burrow, nestSite, or other (CamtrapDP featureType).';
+COMMENT ON COLUMN deployments.habitat IS 'Free-text habitat description at the deployment location (CamtrapDP habitat).';
+COMMENT ON COLUMN deployments.deployment_tags IS 'Array of grouping tags for this deployment (CamtrapDP deploymentTags).';
 
 ALTER TABLE deployments ENABLE ROW LEVEL SECURITY;
 

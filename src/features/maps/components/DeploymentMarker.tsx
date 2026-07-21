@@ -29,11 +29,17 @@ const DeploymentMarkerComponent: React.FC<Props> = ({ deployment, onPress }) => 
     // Marker Color Logic
     const getMarkerColor = (statusId?: number | null) => {
         switch (statusId) {
-            case 1: return '#4CAF50' // Active (Green)
-            case 2: return '#616161' // Ended (Grey)
-            case 3: return '#F44336' // Failed (Red)
+            case 1: return '#2196F3' // Planned (Blue)
+            case 2: return '#4CAF50' // Active (Green)
+            case 3: return '#616161' // Ended (Grey)
             default: return '#757575'
         }
+    }
+
+    // Safety: skip rendering if coordinates are null/undefined
+    // (prevents native ReadableNativeMap.getDouble crash on Android)
+    if (deployment.latitude == null || deployment.longitude == null) {
+        return null
     }
 
     const color = getMarkerColor(deployment.deploymentStatusId)
@@ -42,8 +48,8 @@ const DeploymentMarkerComponent: React.FC<Props> = ({ deployment, onPress }) => 
         <Marker
             ref={markerRef}
             coordinate={{
-                latitude: deployment.latitude!,
-                longitude: deployment.longitude!,
+                latitude: deployment.latitude,
+                longitude: deployment.longitude,
             }}
             onPress={(e) => {
                 // Stop bubbling to prevent map press

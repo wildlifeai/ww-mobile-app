@@ -92,19 +92,14 @@ android {
         applicationId 'com.wildlife.wildlifewatcher'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 43
-        versionName "0.0.43"
+        versionCode 60
+        versionName "0.0.60"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
-
-        // Read Google Maps API key from .env file for manifest placeholder resolution
-        def properties = new Properties()
-        def envFile = new File(projectRoot, ".env")
-        if (envFile.exists()) {
-            envFile.withInputStream { properties.load(it) }
-        }
-        def mapsKey = properties.getProperty("GOOGLE_MAPS_API_KEY_ANDROID", "")
-        manifestPlaceholders = [GOOGLE_MAPS_API_KEY_ANDROID: mapsKey]
+        
+        manifestPlaceholders = [
+            GOOGLE_MAPS_API_KEY_ANDROID: System.getenv("GOOGLE_MAPS_API_KEY_ANDROID") ?: ""
+        ]
     }
     signingConfigs {
         debug {

@@ -18,10 +18,14 @@ export interface FirmwareComponentStatus {
     latestVersion: string | null
     latestFirmware: Firmware | null
     isOutdated: boolean
+    /** Himax only: latest active firmware per camera variant (dual-image devices) */
+    variants?: { RP3: Firmware | null; HM0360: Firmware | null }
 }
 
 interface UseFirmwareStatusOptions {
     device: ExtendedPeripheral | undefined
+    initialBleVersion?: string | null
+    initialHimaxVersion?: string | null
 }
 
 export interface UseFirmwareStatusReturn {
@@ -32,17 +36,41 @@ export interface UseFirmwareStatusReturn {
     errorMsg: string | null
 }
 
-export function useFirmwareStatus({ device }: UseFirmwareStatusOptions): UseFirmwareStatusReturn {
+/**
+ * Dual-image aware outdated check — the same rule as the update screen's
+ * `deviceUpToDate`. RP3 and HM0360 builds carry different version strings and
+ * the device only runs one of them, so it is up to date when its version
+ * matches EITHER variant's latest. Comparing against the single newest
+ * 'himax' row flagged "outdated" whenever the newest upload happened to be
+ * the other camera's build. An unknown current version is not outdated
+ * (unknown is not actionable — the card should not cry wolf).
+ */
+const isHimaxOutdated = (
+    current: string | null,
+    latestRp3: Firmware | null,
+    latestHm0360: Firmware | null,
+    latestGeneric: Firmware | null,
+): boolean => {
+    if (!current) return false
+    const cur = current.trim()
+    const variantVersions = [latestRp3?.version?.trim(), latestHm0360?.version?.trim()]
+        .filter((v): v is string => !!v)
+    if (variantVersions.length > 0) return !variantVersions.includes(cur)
+    return !!latestGeneric?.version && cur !== latestGeneric.version.trim()
+}
+
+export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersion }: UseFirmwareStatusOptions): UseFirmwareStatusReturn {
     const [isChecking, setIsChecking] = useState(false)
     const [lastChecked, setLastChecked] = useState<Date | null>(null)
     const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
     const [statuses, setStatuses] = useState<Record<'ble' | 'himax', FirmwareComponentStatus>>({
-        ble: { type: 'ble', currentVersion: null, latestVersion: null, latestFirmware: null, isOutdated: false },
-        himax: { type: 'himax', currentVersion: null, latestVersion: null, latestFirmware: null, isOutdated: false },
+        ble: { type: 'ble', currentVersion: initialBleVersion || null, latestVersion: null, latestFirmware: null, isOutdated: false },
+        himax: { type: 'himax', currentVersion: initialHimaxVersion || null, latestVersion: null, latestFirmware: null, isOutdated: false },
     })
 
     const isMounted = useRef(true)
+    const hasRunActiveCheck = useRef(false)
     useEffect(() => {
         isMounted.current = true
         return () => { isMounted.current = false }
@@ -53,11 +81,15 @@ export function useFirmwareStatus({ device }: UseFirmwareStatusOptions): UseFirm
 
         setIsChecking(true)
         setErrorMsg(null)
+        hasRunActiveCheck.current = true
 
         try {
             // 1. Fetch Latest Cloud Versions
             const latestBle = await ReferenceDataService.getLatestFirmware('ble')
             const latestHimax = await ReferenceDataService.getLatestFirmware('himax')
+            // Dual-image devices hold one firmware per camera variant
+            const latestRp3 = await ReferenceDataService.getLatestHimaxByVariant('RP3')
+            const latestHm0360 = await ReferenceDataService.getLatestHimaxByVariant('HM0360')
 
             let currentBleVersion: string | null = null
             let currentHimaxVersion: string | null = null
@@ -73,7 +105,14 @@ export function useFirmwareStatus({ device }: UseFirmwareStatusOptions): UseFirm
             }
 
             try {
-                // Wake up AI then ask version
+                // Wake up AI processor by querying aiinfo first (wakes from Deep Power Down)
+                try {
+                    await session.execute(() => commandRegistry.aiinfo())
+                } catch (wakeError) {
+                    logWarn('[FirmwareStatus] Failed to wake AI processor via aiinfo:', wakeError)
+                }
+
+                // Query Himax version
                 const rawHimaxVer = await session.execute(() => commandRegistry.aiver()) as string
                 // Himax sometimes returns things like "AI ver: 1.0.0" or "Firmware version: V1.2.0"
                 // Extracting just the version string cleanly.
@@ -85,9 +124,9 @@ export function useFirmwareStatus({ device }: UseFirmwareStatusOptions): UseFirm
 
             if (!isMounted.current) return
 
-            // 3. Compute Outdated Flags
+            // 3. Compute Outdated Flags (himax: variant-aware, see isHimaxOutdated)
             const bleOutdated = !!latestBle?.version && currentBleVersion !== latestBle.version
-            const himaxOutdated = !!latestHimax?.version && currentHimaxVersion !== latestHimax.version
+            const himaxOutdated = isHimaxOutdated(currentHimaxVersion, latestRp3, latestHm0360, latestHimax)
 
             setStatuses({
                 ble: {
@@ -103,6 +142,7 @@ export function useFirmwareStatus({ device }: UseFirmwareStatusOptions): UseFirm
                     latestVersion: latestHimax?.version || 'Unknown',
                     latestFirmware: latestHimax,
                     isOutdated: himaxOutdated,
+                    variants: { RP3: latestRp3, HM0360: latestHm0360 },
                 },
             })
 
@@ -123,9 +163,76 @@ export function useFirmwareStatus({ device }: UseFirmwareStatusOptions): UseFirm
     // Auto-check on mount or connection
     useEffect(() => {
         if (device?.connected) {
-            checkStatus()
+            if (hasRunActiveCheck.current) {
+                // If we've already done an active check, re-check actively on reconnect rather than silently with old cached params
+                checkStatus()
+                return
+            }
+            if (initialBleVersion && initialHimaxVersion) {
+                // Perform a silent, cloud-only version metadata check
+                const checkSilent = async () => {
+                    setIsChecking(true)
+                    setErrorMsg(null)
+                    try {
+                        const latestBle = await ReferenceDataService.getLatestFirmware('ble')
+                        const latestHimax = await ReferenceDataService.getLatestFirmware('himax')
+                        const latestRp3 = await ReferenceDataService.getLatestHimaxByVariant('RP3')
+                        const latestHm0360 = await ReferenceDataService.getLatestHimaxByVariant('HM0360')
+
+                        const currentBleVersion = convertBleToSemanticVersion(initialBleVersion)
+                        const rawHimaxVer = initialHimaxVersion
+                        const match = rawHimaxVer.match(/(?:V|v)?(\d+\.\d+\.\d+)/)
+                        const currentHimaxVersion = match ? `v${match[1]}` : rawHimaxVer
+
+                        const bleOutdated = !!latestBle?.version && currentBleVersion !== latestBle.version
+                        const himaxOutdated = isHimaxOutdated(currentHimaxVersion, latestRp3, latestHm0360, latestHimax)
+
+                        if (!isMounted.current) return
+
+                        // The initial versions are a connect-time snapshot — stale
+                        // right after a firmware update. Never declare "outdated"
+                        // from the snapshot alone: escalate to the active check
+                        // (live `version`/`AI ver` queries) and let the device
+                        // decide. Up-to-date verdicts stay silent and BLE-quiet.
+                        if (bleOutdated || himaxOutdated) {
+                            logWarn('[FirmwareStatus] Snapshot looks outdated — verifying against the live device')
+                            await checkStatus()
+                            return
+                        }
+
+                        setStatuses({
+                            ble: {
+                                type: 'ble',
+                                currentVersion: currentBleVersion || 'Unknown',
+                                latestVersion: latestBle?.version || 'Unknown',
+                                latestFirmware: latestBle,
+                                isOutdated: bleOutdated,
+                            },
+                            himax: {
+                                type: 'himax',
+                                currentVersion: currentHimaxVersion || 'Unknown',
+                                latestVersion: latestHimax?.version || 'Unknown',
+                                latestFirmware: latestHimax,
+                                isOutdated: himaxOutdated,
+                                variants: { RP3: latestRp3, HM0360: latestHm0360 },
+                            },
+                        })
+                        setLastChecked(new Date())
+                    } catch (error) {
+                        if (!isMounted.current) return
+                        logError('[FirmwareStatus] Silent check failed:', error)
+                    } finally {
+                        if (isMounted.current) {
+                            setIsChecking(false)
+                        }
+                    }
+                }
+                checkSilent()
+            } else {
+                checkStatus()
+            }
         }
-    }, [device?.connected, checkStatus])
+    }, [device?.connected, checkStatus, initialBleVersion, initialHimaxVersion])
 
     return {
         isChecking,

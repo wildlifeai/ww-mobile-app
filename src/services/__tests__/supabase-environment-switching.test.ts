@@ -334,7 +334,7 @@ describe("Supabase Client Environment Switching", () => {
 			mockGetEnvironmentConfig.mockResolvedValueOnce({
 				supabaseUrl: "https://test.supabase.co",
 				supabaseAnonKey: "test-key",
-				displayName: "Test Env",
+					displayName: "Test Env",
 				description: "Test",
 				isProduction: false,
 			})
@@ -345,7 +345,7 @@ describe("Supabase Client Environment Switching", () => {
 			expect(env).toEqual({
 				supabaseUrl: "https://test.supabase.co",
 				supabaseAnonKey: "test-key",
-				displayName: "Test Env",
+					displayName: "Test Env",
 				description: "Test",
 				isProduction: false,
 			})

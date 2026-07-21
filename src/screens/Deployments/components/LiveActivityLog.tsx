@@ -28,7 +28,7 @@ export const LiveActivityLog: React.FC<LiveActivityLogProps> = ({
             <View style={[styles.activityLogBox, { backgroundColor: theme.colors.surface }]}>
                 <View style={styles.emptyLogContainer}>
                     <MaterialCommunityIcons name="radar" size={32} color={theme.colors.onSurfaceVariant} style={styles.radarIcon} />
-                    <Text style={[styles.emptyLogText, { color: theme.colors.onSurfaceVariant }]}>Waiting for device activity...</Text>
+                    <Text style={[styles.emptyLogText, { color: theme.colors.onSurfaceVariant }]}>Waiting for device activity…</Text>
                 </View>
             </View>
         )
@@ -82,6 +82,7 @@ function getEventColor(category: string, theme: any) {
         case 'sleep':
             return theme.colors.onSurfaceVariant
         case 'selftest_warn':
+        case 'motion_rejected':
             return theme.colors.error
         case 'motion':
             return theme.colors.tertiary || '#FF9800'

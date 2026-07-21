@@ -8,14 +8,12 @@ import ProjectService from './ProjectService'
 import { log, logError, logWarn } from '../utils/logger'
 
 
-// Deployment Status IDs based on backend schema
-// 1 = deployed (Active)
-// 2 = recovery (Ended)
-// 3 = failed (Failed)
+// Deployment Status IDs based on backend deployment_statuses lookup table
+// 1 = planned, 2 = started (active), 3 = ended
 export const DEPLOYMENT_STATUS = {
-    DEPLOYED: 1,
-    RECOVERY: 2,
-    FAILED: 3
+    PLANNED: 1,
+    STARTED: 2,
+    ENDED: 3
 }
 
 export const DeploymentService = {
@@ -47,7 +45,6 @@ export const DeploymentService = {
             aiModelId?: string
             bleFirmwareId?: string
             himaxFirmwareId?: string
-            configFirmwareId?: string
             batteryLevelAtStart?: number
             sdCardTotalKbAtStart?: number
             sdCardAvailableKbAtStart?: number
@@ -77,7 +74,7 @@ export const DeploymentService = {
                     deployment.deviceId = data.deviceId
                     deployment.setupBy = data.setupBy
                     deployment.deploymentStart = new Date()
-                    deployment.deploymentStatusId = DEPLOYMENT_STATUS.DEPLOYED
+                    deployment.deploymentStatusId = DEPLOYMENT_STATUS.STARTED
 
                     // Add capture method if provided
                     if (data.captureMethodId) {
@@ -122,7 +119,6 @@ export const DeploymentService = {
                     deployment.aiModelId = data.aiModelId
                     deployment.bleFirmwareId = data.bleFirmwareId
                     deployment.himaxFirmwareId = data.himaxFirmwareId
-                    deployment.configFirmwareId = data.configFirmwareId
                     deployment.batteryLevelAtStart = data.batteryLevelAtStart
                     deployment.sdCardTotalKbAtStart = data.sdCardTotalKbAtStart
                     deployment.sdCardAvailableKbAtStart = data.sdCardAvailableKbAtStart
@@ -203,7 +199,7 @@ export const DeploymentService = {
 
             // 1. Prepare update
             const updateOp = deployment.prepareUpdate((record) => {
-                record.deploymentStatusId = DEPLOYMENT_STATUS.RECOVERY
+                record.deploymentStatusId = DEPLOYMENT_STATUS.ENDED
                 record.deploymentEnd = new Date()
                 record.endedBy = endedBy ?? undefined
                 record.endDeploymentComments = notes
@@ -257,7 +253,7 @@ export const DeploymentService = {
         const deploymentsCollection = database.get<Deployment>('deployments')
         const deployments = await deploymentsCollection.query(
             Q.where('device_id', deviceId),
-            Q.where('deployment_status_id', DEPLOYMENT_STATUS.DEPLOYED),
+            Q.where('deployment_status_id', DEPLOYMENT_STATUS.STARTED),
             Q.sortBy('deployment_start', Q.desc)
         ).fetch()
 
@@ -271,7 +267,7 @@ export const DeploymentService = {
         const deploymentsCollection = database.get<Deployment>('deployments')
         const deployments = await deploymentsCollection.query(
             Q.where('device_id', deviceId),
-            Q.where('deployment_status_id', DEPLOYMENT_STATUS.DEPLOYED),
+            Q.where('deployment_status_id', DEPLOYMENT_STATUS.STARTED),
             Q.sortBy('deployment_start', Q.desc)
         ).fetch()
 
@@ -285,7 +281,7 @@ export const DeploymentService = {
         const deploymentsCollection = database.get<Deployment>('deployments')
         const deployments = await deploymentsCollection.query(
             Q.where('device_id', deviceId),
-            Q.where('deployment_status_id', Q.notEq(DEPLOYMENT_STATUS.DEPLOYED)), // Ended or Failed
+            Q.where('deployment_status_id', DEPLOYMENT_STATUS.ENDED),
             Q.sortBy('deployment_end', Q.desc),
             Q.take(1)
         ).fetch()
@@ -384,9 +380,12 @@ export const DeploymentService = {
 }
 
 /**
- * Helper to map model to plain object for sync (snake_case)
+ * Helper to map model to plain object for sync (snake_case).
+ * Exported because sync payloads must always be complete records:
+ * push_changes overwrites every column, so partial payloads would
+ * null out the missing fields.
  */
-function mapModelToPayload(model: Deployment): any {
+export function mapModelToPayload(model: Deployment): any {
     return {
         id: model.id,
         project_id: model.projectId,
@@ -423,7 +422,6 @@ function mapModelToPayload(model: Deployment): any {
         ai_model_id: model.aiModelId || null,
         ble_firmware_id: model.bleFirmwareId || null,
         himax_firmware_id: model.himaxFirmwareId || null,
-        config_firmware_id: model.configFirmwareId || null,
         battery_level_at_start: model.batteryLevelAtStart ?? null,
         sd_card_total_kb_at_start: model.sdCardTotalKbAtStart ?? null,
         sd_card_available_kb_at_start: model.sdCardAvailableKbAtStart ?? null,

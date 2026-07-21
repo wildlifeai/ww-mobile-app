@@ -14,6 +14,7 @@ import { AppDrawer } from "../components/AppDrawer"
 import { Notifications } from "./screens/user/NotificationsScreen"
 import { Profile } from "./screens/user/ProfileScreen"
 import { Settings } from "./screens/user/SettingsScreen"
+import { TutorialScreen } from "./screens/user/TutorialScreen"
 
 // Auth screens
 import { Login } from "./screens/auth/LoginScreen"
@@ -27,22 +28,24 @@ import { ProjectDetailsScreen } from "../screens/Projects/ProjectDetailsScreen"
 import { ProjectMembersScreen } from "../screens/Projects/ProjectMembersScreen"
 import { ProjectDevicesScreen } from "../screens/Projects/ProjectDevicesScreen"
 import { EditProjectScreen } from "../screens/Projects/EditProjectScreen"
+import { ProjectVisualizationScreen } from "../screens/Projects/ProjectVisualizationScreen"
 
 // Deployment screens
 // import { Deployments as DeploymentsListScreen } from "../screens/Deployments/DeploymentsListScreen"
 
-import { DeploymentDetailsScreen } from "../screens/Deployments/DeploymentDetailsScreen"
 import { StartMonitoringDetailsStep } from "../screens/Deployments/StartMonitoringScreen"
 import { StopMonitoringDetailsStep } from "../screens/Deployments/StopMonitoringScreen"
 
 // Device screens
 // import { Devices as DevicesListScreen } from "../screens/Devices/DevicesListScreen"
 import { DeviceDiscoveryScreen } from "../screens/Devices/DeviceDiscoveryScreen"
-import { DeviceDetailsScreen } from "../screens/Devices/DeviceDetailsScreen"
+import { DeviceMonitoringSummaryScreen } from "../screens/Devices/DeviceMonitoringSummaryScreen"
 import { EngineerConsoleScreen } from "../screens/Devices/EngineerConsoleScreen"
 import { StandaloneMotionDetectionScreen } from "../screens/Devices/StandaloneMotionDetectionScreen"
 import { StandaloneCapturePreviewScreen } from "../screens/Devices/StandaloneCapturePreviewScreen"
 import { CameraSettingsTestScreen } from "../screens/Devices/CameraSettingsTestScreen"
+import { LightSensorScreen } from "../screens/Devices/LightSensorScreen"
+import { DevDeploymentTestScreen } from "../screens/Devices/DevDeploymentTestScreen"
 import { FirmwareUpdateScreen } from "../screens/Devices/FirmwareUpdateScreen"
 import { FileTransferTestScreen } from "../screens/Devices/FileTransferTestScreen"
 import { ModelValidationTestScreen } from "../screens/Devices/ModelValidationTestScreen"
@@ -74,7 +77,7 @@ export const MainNavigation = () => {
 	const { initialized, initialLoad: bleLoading } = useAppSelector(
 		(state) => state.bleLibrary,
 	)
-	const { token, initialLoad: authLoading } = useAppSelector(
+	const { token, initialLoad: authLoading, pendingTutorial } = useAppSelector(
 		(state) => state.authentication,
 	)
 
@@ -128,6 +131,12 @@ export const MainNavigation = () => {
 						<Stack.Screen name="Register" component={Register} />
 						<Stack.Screen name="ForgotPassword" component={ForgotPassword} />
 					</Stack.Group>
+				) : pendingTutorial ? (
+					<Stack.Screen
+						name="Tutorial"
+						component={TutorialScreen}
+						options={{ headerShown: false }}
+					/>
 				) : (
 					<Stack.Group
 						screenOptions={{
@@ -154,6 +163,11 @@ export const MainNavigation = () => {
 							name="Settings"
 							component={Settings}
 							options={{ title: "Settings" }}
+						/>
+						<Stack.Screen
+							name="Tutorial"
+							component={TutorialScreen}
+							options={{ headerShown: false }}
 						/>
 
 						<Stack.Screen
@@ -190,12 +204,17 @@ export const MainNavigation = () => {
 						<Stack.Screen
 							name="DeviceDiscovery"
 							component={DeviceDiscoveryScreen}
-							options={{ title: "Wildlife Watcher Scan", headerTitleAlign: 'center' }}
+							options={{ headerShown: false }}
 						/>
 						<Stack.Screen
-							name="DeviceDetails"
-							component={DeviceDetailsScreen}
-							options={{ title: "Device Details" }}
+							name="DeviceMonitoringSummary"
+							component={DeviceMonitoringSummaryScreen}
+							options={{ title: "Device Summary" }}
+						/>
+						<Stack.Screen
+							name="ProjectVisualizationScreen"
+							component={ProjectVisualizationScreen}
+							options={{ title: "Project Details" }}
 						/>
 						<Stack.Screen
 							name="EngineerConsoleScreen"
@@ -214,6 +233,11 @@ export const MainNavigation = () => {
 							name="CameraSettingsTestScreen"
 							component={CameraSettingsTestScreen}
 							options={{ title: "Camera Settings Test" }}
+						/>
+						<Stack.Screen
+							name="LightSensorScreen"
+							component={LightSensorScreen}
+							options={{ title: "Light Sensor" }}
 						/>
 						<Stack.Screen
 							name="FirmwareUpdateScreen"
@@ -268,11 +292,13 @@ export const MainNavigation = () => {
 							component={StopMonitoringDetailsStep}
 							options={{ title: "End monitoring" }}
 						/>
+
 						<Stack.Screen
-							name="DeploymentDetails"
-							component={DeploymentDetailsScreen}
-							options={{ title: "Monitoring Session" }}
+							name="DevDeploymentTestScreen"
+							component={DevDeploymentTestScreen}
+							options={{ title: "Dev Deployment Test" }}
 						/>
+
 						{__DEV__ && (
 							<>
 								<Stack.Screen

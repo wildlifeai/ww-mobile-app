@@ -46,12 +46,19 @@ const getFlowGroups = (): FlowGroup[] => {
                 .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
         },
         {
+            title: 'Light Sensor (day/night)',
+            icon: 'theme-light-dark',
+            commands: processCommands
+                .filter(cmd => [
+                    CommandNames.LIGHT_SENSOR,
+                ].includes(cmd.name))
+                .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
+        },
+        {
             title: 'Device Configuration',
             icon: 'cog-outline',
             commands: processCommands
                 .filter(cmd => [
-                    CommandNames.SET_UTC,
-                    CommandNames.SET_GPS,
                     CommandNames.RESET_TO_DEFAULTS,
                 ].includes(cmd.name))
                 .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
@@ -87,23 +94,16 @@ const getFlowGroups = (): FlowGroup[] => {
                 .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
         },
         {
-            title: 'Other',
-            icon: 'dots-horizontal-circle-outline',
+            title: 'Deployment Testing',
+            icon: 'play-circle-outline',
             commands: processCommands
                 .filter(cmd => [
-                    CommandNames.ENABLE_CAMERA,
-                    CommandNames.DISABLE_CAMERA,
-                    CommandNames.md,
-                    CommandNames.SET_MOTION_DETECT_INTERVAL,
-                    CommandNames.DISABLE_MOTION_DETECT,
-                    CommandNames.SET_TIMELAPSE_INTERVAL,
-                    CommandNames.DISABLE_TIMELAPSE,
-                    CommandNames.SET_NUM_PICTURES,
-                    CommandNames.SET_PICTURE_INTERVAL,
+                    CommandNames.DEV_DEPLOYMENT_TEST,
                 ].includes(cmd.name))
                 .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
         },
     ]
+
 
     // Only return groups that have commands
     return groups.filter(g => g.commands.length > 0)

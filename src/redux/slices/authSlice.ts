@@ -25,6 +25,7 @@ export interface User {
 	organisation_id: string | null // Default organisation
 	profile?: UserProfile
 	organisations?: UserOrganisation[]
+	created_at?: string
 }
 
 export interface AuthResponse {
@@ -57,6 +58,7 @@ type AuthState = {
 	initialLoad: boolean
 	sessionPersisted: boolean
 	profileLoading: boolean
+	pendingTutorial: boolean  // transient UI flag — true only after explicit login
 	error?: string
 }
 
@@ -136,6 +138,7 @@ const initialState: AuthState = {
 	initialLoad: true,
 	sessionPersisted: false,
 	profileLoading: false,
+	pendingTutorial: false,
 	permissions: emptyPermissions,
 }
 
@@ -193,6 +196,7 @@ export const authSlice = createSlice({
 			state.loading = false
 			state.initialLoad = false
 			state.sessionPersisted = false
+			state.pendingTutorial = false
 			state.error = undefined
 			storeDataToStorage(AUTH_STORAGE_KEY, null)
 		},
@@ -283,6 +287,12 @@ export const authSlice = createSlice({
 			state.error = action.payload
 			state.loading = false
 		},
+		completeTutorial: (state) => {
+			state.pendingTutorial = false
+		},
+		triggerTutorial: (state) => {
+			state.pendingTutorial = true
+		},
 	},
 })
 
@@ -297,6 +307,8 @@ export const {
 	setProfileLoading,
 	setOrganisationsAndRole,
 	setError,
+	completeTutorial,
+	triggerTutorial,
 } = authSlice.actions
 
 // Selectors for easy access to auth state

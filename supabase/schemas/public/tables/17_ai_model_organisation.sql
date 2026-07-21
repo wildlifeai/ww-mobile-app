@@ -2,8 +2,8 @@
 -- NOTE: Currently ai_models.organisation_id provides direct assignment
 -- This table supports future multi-org model sharing if needed
 CREATE TABLE ai_model_organisation (
-  organisation_id uuid NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
-  model_id uuid NOT NULL REFERENCES ai_models(id) ON DELETE CASCADE,
+  organisation_id uuid NOT NULL REFERENCES organisations (id) ON DELETE CASCADE,
+  model_id uuid NOT NULL REFERENCES ai_models (id) ON DELETE CASCADE,
   PRIMARY KEY (organisation_id, model_id)
 );
 

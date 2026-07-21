@@ -7,6 +7,8 @@ export type ScannerRoutingState =
   | 'no_access_active_deployment'
   | 'network_error'
   | 'loading_timeout'
+  | 'projects_syncing'              // Sync in progress — shown as connection log, not dialog
+  | 'projects_unavailable_offline'  // Never synced + offline — cannot determine project state
 
 type Props = {
     visible: boolean
@@ -26,7 +28,7 @@ export const ScannerRoutingDialog = ({
     onDismiss
 }: Props) => {
     const commonDialogProps = {
-        visible: visible && state !== 'idle',
+        visible: visible && state !== 'idle' && state !== 'projects_syncing',
         onDismiss: isProcessing ? undefined : onDismiss,
         dismissable: !isProcessing,
     }
@@ -61,6 +63,22 @@ export const ScannerRoutingDialog = ({
                         <Button onPress={commonDialogProps.onDismiss} disabled={isProcessing}><Text>Cancel</Text></Button>
                         <Button mode="contained" onPress={onCreateProject} disabled={isProcessing}>
                             <Text>Create Project</Text>
+                        </Button>
+                    </Dialog.Actions>
+                </Dialog>
+            )}
+
+            {state === 'projects_unavailable_offline' && (
+                <Dialog {...commonDialogProps}>
+                    <Dialog.Title><Text>Offline</Text></Dialog.Title>
+                    <Dialog.Content>
+                        <Text variant="bodyLarge">
+                            Your project data hasn't been downloaded yet. Connect to the internet and try again to sync your projects.
+                        </Text>
+                    </Dialog.Content>
+                    <Dialog.Actions>
+                        <Button mode="contained" onPress={commonDialogProps.onDismiss} disabled={isProcessing}>
+                            <Text>OK</Text>
                         </Button>
                     </Dialog.Actions>
                 </Dialog>

@@ -17,6 +17,7 @@ export interface DeviceWithStatus {
     device: Device
     status: DeviceStatus
     activeDeployment?: Deployment
+    lastDeployment?: Deployment
 }
 
 /**

@@ -22,7 +22,7 @@ export const FinishProgressDialog: React.FC<FinishProgressDialogProps> = ({
     logs,
     isComplete,
     onDismiss,
-    loadingTitle = 'Processing...',
+    loadingTitle = 'Processing…',
     successTitle = 'Completed Successfully',
     hideOkButton = false
 }) => {
@@ -31,70 +31,69 @@ export const FinishProgressDialog: React.FC<FinishProgressDialogProps> = ({
 
     // Auto-scroll logs to bottom
     React.useEffect(() => {
+        let timeoutId: NodeJS.Timeout
         if (logs.length > 0) {
-            setTimeout(() => {
+            timeoutId = setTimeout(() => {
                 scrollViewRef.current?.scrollToEnd({ animated: true })
             }, 100)
         }
+        return () => clearTimeout(timeoutId)
     }, [logs.length])
 
-// Using an ID generator memo to avoid index as key warning while keeping keys stable for append-only logs
-const logsWithStableIds = React.useMemo(() => {
-    return logs.map((log, i) => ({ id: `log-entry-${i}-${log.substring(0, 10)}`, text: log }))
-}, [logs])
-
-return (
-    <Portal>
-        <Modal
-            visible={visible}
-            onDismiss={isComplete ? onDismiss : undefined}
-            contentContainerStyle={styles.modalContent}
-            dismissable={isComplete}
-        >
-            <Card style={styles.card}>
-                <Card.Content style={styles.content}>
-                    <View style={styles.header}>
-                        {isComplete ? (
-                            <View style={styles.successHeader}>
-                                <IconButton
-                                    icon="check-circle"
-                                    iconColor={theme.colors.primary}
-                                    size={48}
-                                />
+    return (
+        <Portal>
+            <Modal
+                visible={visible}
+                onDismiss={isComplete ? onDismiss : undefined}
+                contentContainerStyle={styles.modalContent}
+                dismissable={isComplete}
+            >
+                <Card style={styles.card}>
+                    <Card.Content style={styles.content}>
+                        <View style={styles.header}>
+                            {isComplete ? (
+                                <View style={styles.successHeader}>
+                                    <IconButton
+                                        icon="check-circle"
+                                        iconColor={theme.colors.primary}
+                                        size={48}
+                                    />
+                                    <Text variant="headlineSmall" style={styles.title}>
+                                        {successTitle}
+                                    </Text>
+                                </View>
+                            ) : (
                                 <Text variant="headlineSmall" style={styles.title}>
-                                    {successTitle}
+                                    {loadingTitle}
                                 </Text>
-                            </View>
-                        ) : (
-                            <Text variant="headlineSmall" style={styles.title}>
-                                {loadingTitle}
-                            </Text>
+                            )}
+                        </View>
+
+                        <Text variant="bodyMedium" style={styles.stepText}>
+                            {step}
+                        </Text>
+
+                        {!isComplete && (
+                            <ProgressBar
+                                progress={progress}
+                                color={theme.colors.primary}
+                                style={styles.progressBar}
+                            />
                         )}
-                    </View>
 
-                    <Text variant="bodyMedium" style={styles.stepText}>
-                        {step}
-                    </Text>
-
-                    <ProgressBar
-                        progress={progress}
-                        color={theme.colors.primary}
-                        style={styles.progressBar}
-                    />
-
-                    <View style={styles.logsContainer}>
-                        <ScrollView
-                            ref={scrollViewRef}
-                            style={styles.logsScroll}
-                            contentContainerStyle={styles.logsContent}
-                        >
-                            {logsWithStableIds.map((item) => (
-                                <Text key={item.id} variant="bodySmall" style={styles.logLine}>
-                                    {`> ${item.text}`}
-                                </Text>
-                            ))}
-                        </ScrollView>
-                    </View>
+                        <View style={styles.logsContainer}>
+                            <ScrollView
+                                ref={scrollViewRef}
+                                style={styles.logsScroll}
+                                contentContainerStyle={styles.logsContent}
+                            >
+                                {logs.map((logEntry, i) => (
+                                    <Text key={`log-${i}-${logEntry.substring(0, 10)}`} variant="bodySmall" style={styles.logLine}>
+                                        {`> ${logEntry}`}
+                                    </Text>
+                                ))}
+                            </ScrollView>
+                        </View>
 
                         {isComplete && !hideOkButton && (
                             <Button

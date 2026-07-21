@@ -22,6 +22,7 @@ module.exports = {
 		"react-native-drawer-layout": "<rootDir>/tests/__mocks__/react-native-drawer-layout.tsx",
 		"react-native-maps": "<rootDir>/tests/__mocks__/react-native-maps.tsx",
 		"react-native-toast-message": "<rootDir>/tests/__mocks__/react-native-toast-message.tsx",
+		"@shopify/react-native-skia": "<rootDir>/tests/__mocks__/@shopify/react-native-skia.js",
 		"@react-native-community/netinfo":
 			"<rootDir>/tests/__mocks__/@react-native-community/netinfo.ts",
 		"\\.(png|jpg|jpeg|gif|svg|ttf|otf)$": "<rootDir>/tests/__mocks__/fileMock.js",

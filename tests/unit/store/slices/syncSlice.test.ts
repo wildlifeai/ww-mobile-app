@@ -23,6 +23,7 @@ describe("syncSlice", () => {
 	beforeEach(() => {
 		initialState = {
 			isGlobalSyncing: false,
+			hasCompletedInitialSync: false,
 			overall: "synced",
 			entities: {
 				projects: {},

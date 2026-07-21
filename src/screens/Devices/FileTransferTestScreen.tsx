@@ -30,16 +30,16 @@ interface TestFile {
 function generateTestFiles(): TestFile[] {
     const enc = new TextEncoder()
 
-    // 1. Tiny text — 5 bytes (single packet, well under 241)
+    // 1. Tiny text: 5 bytes (single packet, well under 241)
     const tinyContent = 'Hello'
     const tiny: TestFile = {
         name: 'Tiny Text (5 bytes)',
         filename: 'TINY.TXT',
         data: enc.encode(tinyContent),
-        description: `"${tinyContent}" — single packet, verifies basic transfer`,
+        description: `"${tinyContent}": single packet, verifies basic transfer`,
     }
 
-    // 2. Medium text — 300 bytes (crosses 241-byte packet boundary = 2 packets)
+    // 2. Medium text: 300 bytes (crosses 241-byte packet boundary = 2 packets)
     const medLines: string[] = []
     for (let i = 1; medLines.join('\n').length < 290; i++) {
         medLines.push(`Line ${i}: The quick brown fox jumps over the lazy dog.`)
@@ -49,10 +49,10 @@ function generateTestFiles(): TestFile[] {
         name: 'Medium Text (300 bytes)',
         filename: 'MED.TXT',
         data: enc.encode(medContent),
-        description: '300 bytes — crosses 241-byte packet boundary (2 packets)',
+        description: '300 bytes: crosses 241-byte packet boundary (2 packets)',
     }
 
-    // 3. Larger text — 1000 bytes (~5 packets)
+    // 3. Larger text: 1000 bytes (~5 packets)
     const bigLines: string[] = []
     for (let i = 1; bigLines.join('\n').length < 990; i++) {
         bigLines.push(`[${String(i).padStart(3, '0')}] Testing file transfer: packet ${Math.ceil(bigLines.join('\n').length / 241) + 1}`)
@@ -62,10 +62,10 @@ function generateTestFiles(): TestFile[] {
         name: 'Large Text (1000 bytes)',
         filename: 'BIG.TXT',
         data: enc.encode(bigContent),
-        description: '1000 bytes — ~5 packets, verifies multi-packet flow',
+        description: '1000 bytes: ~5 packets, verifies multi-packet flow',
     }
 
-    // 4. Binary — 500 bytes of deterministic pattern (not random, so Steve can verify)
+    // 4. Binary: 500 bytes of deterministic pattern (not random, so Steve can verify)
     const binData = new Uint8Array(500)
     for (let i = 0; i < binData.length; i++) {
         // eslint-disable-next-line no-bitwise
@@ -75,10 +75,10 @@ function generateTestFiles(): TestFile[] {
         name: 'Binary Pattern (500 bytes)',
         filename: 'BIN.DAT',
         data: binData,
-        description: '500 bytes — repeating 0x00–0xFF pattern, verifies binary integrity',
+        description: '500 bytes: repeating 0x00–0xFF pattern, verifies binary integrity',
     }
 
-    // 5. Large Binary — ~500KB
+    // 5. Large Binary: ~500KB
     const veryLargeData = new Uint8Array(500 * 1024)
     for (let i = 0; i < veryLargeData.length; i++) {
         // eslint-disable-next-line no-bitwise
@@ -88,7 +88,7 @@ function generateTestFiles(): TestFile[] {
         name: 'Large Binary (~500KB)',
         filename: 'LARGE.BIN',
         data: veryLargeData,
-        description: '500KB — verifies stability for firmware-sized transfers (firmware is ~440KB)',
+        description: '500KB: verifies stability for firmware-sized transfers (firmware is ~440KB)',
     }
 
     return [tiny, medium, big, binary, veryLarge]
@@ -129,7 +129,7 @@ const initialState: TransferState = {
     transferLog: [],
     isBenchmarking: false,
     benchmarkResults: [],
-    transferMode: 'stop-and-wait',
+    transferMode: 'sliding-window',
 }
 
 type TransferAction =
@@ -208,7 +208,7 @@ export const FileTransferTestScreen = () => {
         const fileCrc = crc16ccitt(file.data)
         const timestamp = new Date().toLocaleTimeString()
 
-        const modeLabel = state.transferMode === 'sliding-window' ? 'Sliding Window (2-pkt)' : 'Stop-and-Wait'
+        const modeLabel = state.transferMode === 'sliding-window' ? 'Sliding Window (12-pkt)' : 'Stop-and-Wait'
 
         const initialLogs = [
             { id: Math.random().toString(36).substr(2, 9), text: `[${timestamp}] Mode: ${modeLabel}` },
@@ -222,7 +222,11 @@ export const FileTransferTestScreen = () => {
         abortRef.current = new AbortController()
 
         try {
-            const transferWindowSize = state.transferMode === 'sliding-window' ? 2 : 1
+            // Phase 3: a deep window (12) streams packets ahead so the device is
+            // never idle waiting on the ~250ms app<->phone round-trip; throughput
+            // then becomes device-bound (~45ms/packet). Must stay <= the nRF's
+            // FILETX_FIFO_SLOTS (16) so the firmware FIFO never overflows.
+            const transferWindowSize = state.transferMode === 'sliding-window' ? 12 : 1
 
             const transferResult = await runFileTransferPipeline(device, {
                 filename: file.filename,
@@ -266,7 +270,7 @@ export const FileTransferTestScreen = () => {
                     result: {
                         success: false,
                         message: `Transfer failed: ${friendlyMsg}`,
-                        details: errorCode ? `Error code ${errorCode} — ${err.reason}` : err.reason || undefined,
+                        details: errorCode ? `Error code ${errorCode}: ${err.reason}` : err.reason || undefined,
                     },
                     logs: [{ id: Math.random().toString(36).substr(2, 9), text: `[${ts}] ❌ Failed: ${friendlyMsg}` }]
                 }
@@ -285,7 +289,7 @@ export const FileTransferTestScreen = () => {
     }, [addLog])
 
     // ─── FILE_LOOPBACK Latency Benchmark ─────────────────────────────
-    // Uses packet type 10 — device echoes binary packet immediately
+    // Uses packet type 10: device echoes binary packet immediately
     // without I2C or SD card involvement. Measures pure BLE round-trip.
 
     const runBenchmark = useCallback(async () => {
@@ -376,7 +380,7 @@ export const FileTransferTestScreen = () => {
                     >
                         <View style={styles.radioRow}>
                             <RadioButton.Item
-                                label="Stop-and-Wait (current)"
+                                label="Stop-and-Wait (legacy, slow)"
                                 value="stop-and-wait"
                                 disabled={isTransferring || isBenchmarking}
                                 style={styles.radioItem}
@@ -385,7 +389,7 @@ export const FileTransferTestScreen = () => {
                         </View>
                         <View style={styles.radioRow}>
                             <RadioButton.Item
-                                label="Sliding Window (2-packet)"
+                                label="Sliding Window (12-packet, recommended)"
                                 value="sliding-window"
                                 disabled={isTransferring || isBenchmarking}
                                 style={styles.radioItem}
@@ -393,9 +397,10 @@ export const FileTransferTestScreen = () => {
                             />
                         </View>
                     </RadioButton.Group>
-                    {transferMode === 'sliding-window' && (
+                    {transferMode === 'stop-and-wait' && (
                         <WWText variant="bodySmall" style={{ opacity: 0.7, marginTop: 4 }}>
-                            ⚠️ Requires firmware with 2-slot packet buffer. Falls back gracefully on older firmware.
+                            ⚠️ Legacy baseline. The firmware batches acks (every 4 packets), so a
+                            1-packet window stalls until the device times out. Use Sliding Window.
                         </WWText>
                     )}
                 </View>
@@ -448,7 +453,7 @@ export const FileTransferTestScreen = () => {
                 </WWText>
                 <WWText variant="bodySmall" style={styles.descriptionText}>
                     Sends FILE_LOOPBACK packets (type 10) at 3 payload sizes ({LOOPBACK_PAYLOAD_SIZES.join(', ')} bytes).
-                    Device echoes immediately — no I2C/SD card. Measures pure BLE round-trip.
+                    Device echoes immediately: no I2C/SD card. Measures pure BLE round-trip.
                 </WWText>
                 <Button
                     mode="contained"
@@ -458,7 +463,7 @@ export const FileTransferTestScreen = () => {
                     onPress={runBenchmark}
                     style={{ marginBottom: spacing / 2 }}
                 >
-                    {isBenchmarking ? 'Running...' : 'Run Benchmark'}
+                    {isBenchmarking ? 'Running…' : 'Run Benchmark'}
                 </Button>
 
                 {benchmarkResults.length > 0 && (
@@ -476,7 +481,7 @@ export const FileTransferTestScreen = () => {
                                 return (
                                     <View key={size}>
                                         <WWText variant="labelSmall" style={{ marginTop: 4, fontWeight: 'bold' }}>
-                                            {size}B payload — {successful.length}/{sizeResults.length} ok
+                                            {size}B payload: {successful.length}/{sizeResults.length} ok
                                         </WWText>
                                         {times.length > 0 && (
                                             <View style={styles.progressRow}>

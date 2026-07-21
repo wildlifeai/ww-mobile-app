@@ -433,7 +433,7 @@ export type OfflineOperationType =
 
 | Tool | Purpose |
 |------|---------|
-| Git & GitHub | [See 05-GIT-WORKFLOW.md](./05-GIT-WORKFLOW.md) for branching, Conventional Commits, and CI rules |
+| Git & GitHub | See the org-level [git-SKILL.md](https://github.com/wildlifeai/.github/blob/main/agents/git-SKILL.md) for branching, Conventional Commits, and CI rules |
 | EAS (Expo Application Services) | Cloud builds for iOS and Android |
 | Metro | JavaScript bundler |
 | Babel | Transpiler |
@@ -479,8 +479,9 @@ export type OfflineOperationType =
 
 ## Next Steps
 
-1. [04-DEVICE-FLOWS.md](./04-DEVICE-FLOWS.md) — Device deployment, management, and retrieval
-2. [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md) — Project structure, type architecture, and state management
-3. [BLE_Architecture.md](../resources/BLE_Architecture.md) — BLE patterns and firmware constraints
-4. [03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md) — Offline-first architecture and sync
+1. [04-ENGINEER-CONSOLE.md](./04-ENGINEER-CONSOLE.md) — BLE commands, OP parameters, hardware testing
+2. [05-DEVICE-FLOWS.md](./05-DEVICE-FLOWS.md) — Device deployment, monitoring, and retrieval
+3. [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md) — Project structure, type architecture, and state management
+4. [BLE_Architecture.md](../resources/BLE_Architecture.md) — BLE patterns and firmware constraints
+5. [03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md) — Offline-first architecture and sync
 

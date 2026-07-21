@@ -8,6 +8,9 @@ import { useExtendedTheme } from '../../theme'
 import { useAppSelector } from '../../redux'
 import { WWText } from '../../components/ui/WWText'
 import { CameraViewSection } from '../Deployments/components/CameraViewSection'
+import { CameraSelector } from './components/CameraSelector'
+import { DeviceHealthBanner } from '../../components/DeviceHealthBanner'
+import { useDeviceSelfTest } from '../../hooks/useDeviceSelfTest'
 
 export const StandaloneCapturePreviewScreen = () => {
     const route = useRoute<any>()
@@ -16,6 +19,7 @@ export const StandaloneCapturePreviewScreen = () => {
 
     const deviceId = route.params?.deviceId
     const device = useAppSelector(state => state.devices[deviceId || ''])
+    const { issues, isChecking, refresh: recheckHealth } = useDeviceSelfTest({ device })
 
     const handleBack = useCallback(() => {
         navigation.goBack()
@@ -58,6 +62,11 @@ export const StandaloneCapturePreviewScreen = () => {
     return (
         <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
             <View style={styles.content}>
+                <DeviceHealthBanner issues={issues} onRecheck={recheckHealth} isChecking={isChecking} />
+                <CameraSelector
+                    device={device}
+                    onShowHelp={handleShowHelp}
+                />
                 <CameraViewSection
                     device={device}
                     onImageCaptured={handleImageCaptured}

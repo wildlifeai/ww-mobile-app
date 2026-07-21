@@ -64,6 +64,6 @@ export const getStorageData = async <T>(key: string): Promise<T | null> => {
 }
 
 export const isOurDevice = (name: string) => {
-	return !!DEVICE_NAMES.find((deviceName) => name.includes(deviceName))
+	return !!DEVICE_NAMES.find((deviceName) => name.includes(deviceName)) || name.includes('DfuTarg')
 }
 

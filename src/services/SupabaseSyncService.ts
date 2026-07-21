@@ -15,7 +15,7 @@ import type Deployment from '../database/models/Deployment'
 import { log, logError, logWarn } from '../utils/logger'
 
 
-import { setGlobalSyncing } from '../redux/slices/syncSlice'
+import { setGlobalSyncing, markInitialSyncComplete } from '../redux/slices/syncSlice'
 
 class SupabaseSyncService {
     private realtimeChannel: RealtimeChannel | null = null
@@ -206,6 +206,30 @@ class SupabaseSyncService {
 
                 // log(`✅ Sync completed successfully in ${syncDuration}ms (total syncs: ${syncCount})`)
             })
+
+            // Retry any deployment photos still waiting to reach storage
+            // (lazy import: DeploymentPhotoService depends on this service)
+            try {
+                const { DeploymentPhotoService } = await import('./DeploymentPhotoService')
+                DeploymentPhotoService.uploadAllPending(user.id).catch((e: unknown) =>
+                    logWarn('⚠️ [SupabaseSyncService] Pending photo upload failed:', e)
+                )
+            } catch (e) {
+                logWarn('⚠️ [SupabaseSyncService] Could not start photo upload:', e)
+            }
+
+            // Mark initial sync complete — routing decisions in the scanner are now valid
+            if (this.store) {
+                try {
+                    const state = this.store.getState()
+                    if (!state.sync.hasCompletedInitialSync) {
+                        this.store.dispatch(markInitialSyncComplete())
+                        log('🎯 Initial sync complete — routing decisions are now valid')
+                    }
+                } catch (e) {
+                    logWarn('⚠️ [SupabaseSyncService] Failed to dispatch initial sync complete:', e)
+                }
+            }
 
         } catch (error) {
             logError('❌ Sync failed:', error)

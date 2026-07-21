@@ -14,7 +14,7 @@ export enum MessageType {
   INFO = 'INFO', // Successful status messages (Wake, Error bits check, etc.)
 }
 
-export type ErrorType = 'AI_NACK' | 'TIMEOUT' | 'I2C_ERROR' | 'DEVICE_SLEEP' | 'DEVICE_BUSY' | 'UNKNOWN'
+export type ErrorType = 'AI_NACK' | 'TIMEOUT' | 'I2C_ERROR' | 'DEVICE_SLEEP' | 'DEVICE_BUSY' | 'CONFIG_ERROR' | 'UNKNOWN'
 
 export interface ClassifiedMessage {
   type: MessageType
@@ -70,7 +70,7 @@ const ERROR_PATTERNS = [
   { pattern: /^AI NACK$/i, type: 'AI_NACK' as ErrorType },
   { pattern: /^I2C error: address NACK$/i, type: 'I2C_ERROR' as ErrorType },
   { pattern: /^Discarding message as there is already one pending$/i, type: 'I2C_ERROR' as ErrorType },
-  { pattern: /^Camera system not enabled$/i, type: 'DEVICE_BUSY' as ErrorType },
+  { pattern: /^Camera system not enabled$/i, type: 'CONFIG_ERROR' as ErrorType },
 ]
 
 /**
@@ -242,7 +242,7 @@ export function extractOpParamFromSleep(message: string, opIndex: number): strin
   return null
 }
 
-export type MonitorCategory = 'motion' | 'timelapse' | 'capture' | 'nn_positive' | 'nn_negative' | 'sleep' | 'wake' | 'selftest_ok' | 'selftest_warn' | 'info'
+export type MonitorCategory = 'motion' | 'motion_rejected' | 'timelapse' | 'capture' | 'nn_positive' | 'nn_negative' | 'sleep' | 'wake' | 'selftest_ok' | 'selftest_warn' | 'info'
 
 export interface MonitorEvent {
   category: MonitorCategory
@@ -258,6 +258,21 @@ export interface MonitorEvent {
  */
 export function classifyForMonitor(rawMessage: string): MonitorEvent | null {
   const content = rawMessage.replace(/\0/g, '').trim()
+
+  // --- MD GLOBAL-MOTION REJECTION (op33) ---
+  // The firmware skipped the capture: the whole scene moved (camera knock/pan
+  // or a lighting change), not an animal. Must precede the generic /^MD[\s.]/
+  // motion match below, which would otherwise mislabel this "Motion detected".
+  const mdRejected = content.match(/^MD wake rejected: motion in (\d+) blocks > max (\d+)/i)
+  if (mdRejected) {
+    return { category: 'motion_rejected', label: `Motion rejected — whole scene moved (${mdRejected[1]} blocks, max ${mdRejected[2]})`, icon: 'motion-sensor-off', details: content }
+  }
+  // Companion accept message (only emitted when op33 is armed) — a real motion
+  // wake, with the block count the rejection filter measured.
+  const mdAccepted = content.match(/^MD wake accepted: motion in (\d+) blocks/i)
+  if (mdAccepted) {
+    return { category: 'motion', label: `Motion detected (${mdAccepted[1]} blocks)`, icon: 'run', details: content }
+  }
 
   // --- WAKE & MOTION EVENTS ---
   if (/^MD[\s.]/i.test(content) || /^Wake\s*\(MD\)/i.test(content)) return { category: 'motion', label: 'Motion detected', icon: 'run', details: content }

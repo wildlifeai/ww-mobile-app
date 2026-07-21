@@ -77,7 +77,7 @@ describe("AIModelSelect", () => {
 			expect(
 				screen.getByTestId("ai-model-select-loading-placeholder"),
 			).toBeOnTheScreen()
-			expect(screen.getByText("Loading AI models...")).toBeOnTheScreen()
+			expect(screen.getByText("Loading AI models…")).toBeOnTheScreen()
 		})
 	})
 
@@ -107,7 +107,8 @@ describe("AIModelSelect", () => {
 					model_family_id: null,
 					processing_log: null,
 					status: "validated",
-					version_number: null,
+					version_number: 1,
+				label_map: null,
 				},
 				{
 					id: "223e4567-e89b-12d3-a456-426614174001",
@@ -131,7 +132,8 @@ describe("AIModelSelect", () => {
 					model_family_id: null,
 					processing_log: null,
 					status: "validated",
-					version_number: null,
+					version_number: 2,
+				label_map: null,
 				},
 			]
 
@@ -179,7 +181,8 @@ describe("AIModelSelect", () => {
 					model_family_id: null,
 					processing_log: null,
 					status: "validated",
-					version_number: null,
+					version_number: 1,
+				label_map: null,
 				},
 			]
 
@@ -343,7 +346,8 @@ describe("AIModelSelect", () => {
 					model_family_id: null,
 					processing_log: null,
 					status: "validated",
-					version_number: null,
+					version_number: 1,
+				label_map: null,
 				},
 			]
 
@@ -469,7 +473,8 @@ describe("AIModelSelect", () => {
 					model_family_id: null,
 					processing_log: null,
 					status: "validated",
-					version_number: null,
+					version_number: 1,
+				label_map: null,
 				},
 			]
 
