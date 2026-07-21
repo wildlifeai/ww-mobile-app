@@ -1,7 +1,7 @@
 import { BleSession } from '../session/createBleSession'
 import { commandRegistry } from '../protocol/commandRegistry'
 import { log, logWarn } from '../../utils/logger'
-import { FACTORY_DEFAULTS, OP_PARAMETER } from '../../hooks/useDeviceSettings'
+import { FACTORY_DEFAULTS, OP_PARAMETER, RESET_PRESERVED_OPS } from '../../hooks/useDeviceSettings'
 
 export interface ResetToDefaultsOptions {
     onProgress?: (step: string, progress: number) => void
@@ -60,6 +60,21 @@ export async function executeResetToDefaults(
             if (parseInt(currentOps[index], 10) > 0) continue
         }
 
+        // 1a) Device capability gate: never write an op the connected firmware
+        // does not report. Pre-camera-stack firmware has a 23-entry table where
+        // indices 21/22 mean FLASH_LED_START_TIME/DURATION - writing the newer
+        // MD-flash defaults there would silently program wrong behaviour
+        // (writes beyond the table merely bounce off the firmware bounds check,
+        // but 21/22 exist with different semantics).
+        if (currentOps && currentOps.length > 0) {
+            if (index >= currentOps.length) continue
+            if (currentOps.length <= 23 &&
+                (index === OP_PARAMETER.MD_FLASH_LED ||
+                 index === OP_PARAMETER.MD_FLASH_BRIGHTNESS_PERCENT)) {
+                continue
+            }
+        }
+
         // 1b) Preserve the model binding when the caller owns model state
         if (options?.preserveModel &&
             (index === OP_PARAMETER.MODEL_PROJECT || index === OP_PARAMETER.MODEL_VERSION)) {
@@ -67,15 +82,7 @@ export async function executeResetToDefaults(
         }
 
         // 2) Do not reset tracking parameters and counters
-        if (
-            index === OP_PARAMETER.NUM_NN_ANALYSES ||
-            index === OP_PARAMETER.NUM_POSITIVE_NN_ANALYSES ||
-            index === OP_PARAMETER.NUM_COLD_BOOTS ||
-            index === OP_PARAMETER.NUM_WARM_BOOTS ||
-            index === OP_PARAMETER.NUM_PICTURES ||
-            index === OP_PARAMETER.IMAGES_COUNT ||
-            index === OP_PARAMETER.IMAGES_FILE_INDEX
-        ) {
+        if (RESET_PRESERVED_OPS.has(index)) {
             continue
         }
 
