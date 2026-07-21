@@ -8,8 +8,7 @@ import { useExtendedTheme } from '../../theme'
 import { useAppSelector } from '../../redux'
 import { WWText } from '../../components/ui/WWText'
 import { CameraViewSection } from '../Deployments/components/CameraViewSection'
-import { CameraSelector } from './components/CameraSelector'
-import { ResolutionSelector } from './components/ResolutionSelector'
+import { CaptureModeSelector } from './components/CaptureModeSelector'
 import { DeviceHealthBanner } from '../../components/DeviceHealthBanner'
 import { useDeviceSelfTest } from '../../hooks/useDeviceSelfTest'
 
@@ -72,11 +71,7 @@ export const StandaloneCapturePreviewScreen = () => {
         <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
             <View style={styles.content}>
                 <DeviceHealthBanner issues={issues} onRecheck={recheckHealth} isChecking={isChecking} />
-                <CameraSelector
-                    device={device}
-                    onShowHelp={handleShowHelp}
-                />
-                <ResolutionSelector
+                <CaptureModeSelector
                     device={device}
                     onShowHelp={handleShowHelp}
                 />
