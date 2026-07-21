@@ -1,7 +1,7 @@
 import { BleSession } from '../session/createBleSession'
 import { commandRegistry } from '../protocol/commandRegistry'
 import { log, logWarn } from '../../utils/logger'
-import { FACTORY_DEFAULTS, OP_PARAMETER } from '../../hooks/useDeviceSettings'
+import { FACTORY_DEFAULTS, OP_PARAMETER, RESET_PRESERVED_OPS } from '../../hooks/useDeviceSettings'
 
 export interface ResetToDefaultsOptions {
     onProgress?: (step: string, progress: number) => void
@@ -82,15 +82,7 @@ export async function executeResetToDefaults(
         }
 
         // 2) Do not reset tracking parameters and counters
-        if (
-            index === OP_PARAMETER.NUM_NN_ANALYSES ||
-            index === OP_PARAMETER.NUM_POSITIVE_NN_ANALYSES ||
-            index === OP_PARAMETER.NUM_COLD_BOOTS ||
-            index === OP_PARAMETER.NUM_WARM_BOOTS ||
-            index === OP_PARAMETER.NUM_PICTURES ||
-            index === OP_PARAMETER.IMAGES_COUNT ||
-            index === OP_PARAMETER.IMAGES_FILE_INDEX
-        ) {
+        if (RESET_PRESERVED_OPS.has(index)) {
             continue
         }
 

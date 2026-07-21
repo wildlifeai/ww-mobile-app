@@ -5,7 +5,7 @@ import { useRoute, RouteProp } from '@react-navigation/native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { RootStackParamList } from '../../navigation/types'
 import { useAppSelector } from '../../redux'
-import { useDeviceSettings, FACTORY_DEFAULTS, OP_PARAMETER } from '../../hooks/useDeviceSettings'
+import { useDeviceSettings, FACTORY_DEFAULTS, OP_PARAMETER, RESET_PRESERVED_OPS } from '../../hooks/useDeviceSettings'
 import { WWText } from '../../components/ui/WWText'
 
 type RouteType = RouteProp<RootStackParamList, 'DeviceResetScreen'>
@@ -88,18 +88,9 @@ const OP_NAMES: Record<number, string> = {
     [OP_PARAMETER.MD_BLOCK_NUM_MAX]: 'MD Global-Motion Max',
 }
 
-// Mirror of the skip-list in executeResetToDefaults (tracking counters the
-// reset preserves) - keep the two in sync
-const RESET_SKIPPED = new Set<number>([
-    OP_PARAMETER.SEQUENCE_NUMBER,
-    OP_PARAMETER.NUM_NN_ANALYSES,
-    OP_PARAMETER.NUM_POSITIVE_NN_ANALYSES,
-    OP_PARAMETER.NUM_COLD_BOOTS,
-    OP_PARAMETER.NUM_WARM_BOOTS,
-    OP_PARAMETER.NUM_PICTURES,
-    OP_PARAMETER.IMAGES_COUNT,
-    OP_PARAMETER.IMAGES_FILE_INDEX,
-])
+// Single source of truth from the reset workflow itself; SEQUENCE_NUMBER is
+// excluded from display too (only reset while still zero - a fresh device)
+const RESET_SKIPPED = new Set<number>([...RESET_PRESERVED_OPS, OP_PARAMETER.SEQUENCE_NUMBER])
 
 const DEFAULT_VALUES_TABLE: { name: string; index: number; value: number }[] =
     Object.entries(FACTORY_DEFAULTS)

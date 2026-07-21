@@ -128,6 +128,24 @@ export const FACTORY_DEFAULTS: Record<number, number> = {
  * Device settings interface
  * Only includes user-configurable parameters (5-13, 21-24, 27-28)
  */
+/**
+ * Tracking counters the factory reset always preserves - single source of
+ * truth for executeResetToDefaults and DeviceResetScreen's display table.
+ * (SEQUENCE_NUMBER is handled separately: preserved only once non-zero.)
+ * Lives here rather than resetToDefaults.ts because useDeviceSettings and
+ * that workflow import each other - a module-level Set there evaluates
+ * before the cycle resolves and OP_PARAMETER is still undefined.
+ */
+export const RESET_PRESERVED_OPS: ReadonlySet<number> = new Set<number>([
+    OP_PARAMETER.NUM_NN_ANALYSES,
+    OP_PARAMETER.NUM_POSITIVE_NN_ANALYSES,
+    OP_PARAMETER.NUM_COLD_BOOTS,
+    OP_PARAMETER.NUM_WARM_BOOTS,
+    OP_PARAMETER.NUM_PICTURES,
+    OP_PARAMETER.IMAGES_COUNT,
+    OP_PARAMETER.IMAGES_FILE_INDEX,
+])
+
 export interface DeviceSettings {
     numPictures?: number              // Index 5 - Images per trigger (default: 1)
     pictureInterval?: number           // Index 6 - Interval between images in ms (default: 500)
