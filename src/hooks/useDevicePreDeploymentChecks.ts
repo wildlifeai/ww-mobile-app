@@ -170,6 +170,9 @@ export const useDevicePreDeploymentChecks = () => {
                 onProgress('Aligning device parameters...')
                 await executeResetToDefaults(session, {
                     skipIdentityReset: true,
+                    // Pre-deployment alignment must not wipe the model - the
+                    // deployment's syncAiModel step owns model state
+                    preserveModel: true,
                     onProgress: (step) => {
                         log(`[Pre-Deployment:Reset] ${step}`)
                     }

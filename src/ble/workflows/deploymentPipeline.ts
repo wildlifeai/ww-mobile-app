@@ -61,6 +61,9 @@ export async function resetOps(
         await executeResetToDefaults(session, {
             currentOps,
             skipIdentityReset: true,
+            // syncAiModel owns model state in the deployment pipeline - the
+            // reset must not erase the model it just loaded (op14/15 + flash)
+            preserveModel: true,
             onProgress: (step) => {
                 log(`[ResetOps] ${step}`)
             }
@@ -213,7 +216,7 @@ export async function syncAiModel(
 
         } catch (e) {
             logWarn('Failed to update AI model:', e)
-            addLog('AI model update failed, continuing...')
+            addLog('⚠️ AI model update FAILED — the deployment will record but not classify. See device log.')
         }
     } else if (eraseStaleModels) {
         // No AI model assigned — check if device has a stale model loaded
