@@ -94,6 +94,12 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     const [scanSecondsRemaining, setScanSecondsRemaining] = useState(SCAN_DURATION_SECONDS)
     const [scanSessionId, setScanSessionId] = useState(0)
 
+    // Wall-clock start of the current scan session. Auto-connect only trusts
+    // devices whose advertisement arrived AFTER this: a just-disconnected
+    // device (e.g. leaving the Engineer Console) lingers in the cache but is
+    // asleep and not advertising - connecting to it just hangs.
+    const scanSessionStartRef = useRef(0)
+
     // ── Operation token for connection cleanup ──
     // Prevents stale async completions from corrupting state after navigation
     const operationIdRef = useRef(0)
@@ -142,6 +148,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
         await flushBleCache()
 
         // 4. Reset/Increment session ID so that the countdown timer runs freshly
+        scanSessionStartRef.current = Date.now()
         setScanSessionId(prev => prev + 1)
         updateScanSessionState('active')
         setScanSecondsRemaining(SCAN_DURATION_SECONDS)
@@ -561,6 +568,8 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
         if (isFocusedForAutoConnect && !isAnyDeviceConnecting && !isEngineerConsoleActive && scanSessionStateRef.current === 'active' && devicesToDisplay.length >= 1) {
             const deviceToConnect = devicesToDisplay.find(d =>
                 !d.signalLost && !d.connected && !d.loading && !processing && autoConnect.canAutoConnect(d.id)
+                    // fresh advert in THIS session - not a stale cache entry
+                    && (d.lastSeen ?? 0) >= scanSessionStartRef.current
             )
 
             if (deviceToConnect) {

@@ -1,5 +1,7 @@
 # Device Flows — Scanner Routing, Deployment, and Retrieval
 
+> BLE connection mechanics (scanners, auto-connect trust rules, failure signatures) live in [06-BLE-CONNECTIONS.md](./06-BLE-CONNECTIONS.md).
+
 User-facing device workflows covering the full deployment lifecycle: connect → configure → monitor → retrieve. For BLE commands, OP parameters, and hardware testing tools, see [04-ENGINEER-CONSOLE.md](./04-ENGINEER-CONSOLE.md).
 
 ---

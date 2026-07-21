@@ -183,6 +183,7 @@ export const useBleListeners = () => {
 				name: peripheral.name,
 				rssi: peripheral.rssi, // Copy RSSI value for signal strength display
 				signalLost: false,
+				lastSeen: Date.now(),
 			}
 
 			/**

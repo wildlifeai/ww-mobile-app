@@ -77,13 +77,26 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
     }, [])
 
     const checkStatus = useCallback(async () => {
-        if (!device?.connected) return
+        if (!device?.connected) {
+            // Never a silent no-op: this left the screen on its spinner forever
+            // when the device slept/disconnected before the check ran
+            setErrorMsg('Device not connected - wake it, reconnect via the scanner, then pull to refresh.')
+            return
+        }
 
         setIsChecking(true)
         setErrorMsg(null)
         hasRunActiveCheck.current = true
 
+        // Overall deadline: a hung network fetch or a BLE query whose response
+        // was lost previously left the screen on a spinner indefinitely
+        let deadlineTimer: ReturnType<typeof setTimeout> | undefined
+        const deadline = new Promise<never>((_, reject) => {
+            deadlineTimer = setTimeout(() => reject(new Error(
+                'Firmware status check timed out - the device may have gone to sleep. Wake it and pull to refresh.')), 30000)
+        })
         try {
+            await Promise.race([deadline, (async () => {
             // 1. Fetch Latest Cloud Versions
             const latestBle = await ReferenceDataService.getLatestFirmware('ble')
             const latestHimax = await ReferenceDataService.getLatestFirmware('himax')
@@ -147,6 +160,7 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
             })
 
             setLastChecked(new Date())
+            })()])
 
         } catch (error) {
             if (!isMounted.current) return
@@ -154,6 +168,7 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
             logError('[FirmwareStatus] Check failed:', error)
             setErrorMsg(msg)
         } finally {
+            clearTimeout(deadlineTimer)
             if (isMounted.current) {
                 setIsChecking(false)
             }
