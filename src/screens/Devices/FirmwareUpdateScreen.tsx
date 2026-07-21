@@ -524,7 +524,7 @@ export const FirmwareUpdateScreen = () => {
                         is already beyond 'transferring' for good. The hook clears
                         the state when a transfer finishes, so presence == in flight
                         (or failed, which the card renders). */}
-                    {fileTransferProgress && (
+                    {fileTransferProgress ? (
                         <View style={styles.marginTop12}>
                             <FileTransferProgressCard
                                 title="Transferring to Device"
@@ -540,7 +540,7 @@ export const FirmwareUpdateScreen = () => {
                                 isComplete={fileTransferProgress.phase === 'complete'}
                             />
                         </View>
-                    )}
+                    ) : null}
 
                     {/* Overall Progress bar fallback for non-transfer phases */}
                     {(isUpdating || isComplete) && phase !== 'downloading' && phase !== 'transferring' && (
