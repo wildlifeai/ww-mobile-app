@@ -182,10 +182,21 @@ export async function syncAiModel(
                     if (!modelBytes) {
                         throw new Error(`Failed to read model bytes from ${localFiles.modelUri}`)
                     }
+                    // Live feedback: a model is minutes of BLE transfer, and the
+                    // old mapping moved the overall bar 4% total - invisible.
+                    // The step line carries percentage + KB (throttled to whole
+                    // percents; onProgress fires per packet).
+                    let lastPct = -1
                     await runFileTransferPipeline(device, {
                         filename: tflFilename,
                         data: modelBytes,
-                        onProgress: (p) => setProgress(0.14 + (p.percentage / 100) * 0.04)
+                        onProgress: (p) => {
+                            setProgress(0.14 + (p.percentage / 100) * 0.04)
+                            if (p.percentage !== lastPct) {
+                                lastPct = p.percentage
+                                setStep(`Transferring model… ${p.percentage}% (${Math.round(p.bytesSent / 1024)}/${Math.round(p.totalBytes / 1024)} KB)`)
+                            }
+                        }
                     })
                     addLog(`✅ ${tflFilename} transferred`)
                 }
@@ -200,7 +211,7 @@ export async function syncAiModel(
                     await runFileTransferPipeline(device, {
                         filename: labelsFilename,
                         data: labelsBytes,
-                        onProgress: () => {}
+                        onProgress: (p) => setStep(`Transferring labels… ${p.percentage}%`)
                     })
                     addLog(`✅ ${labelsFilename} transferred`)
                 }
