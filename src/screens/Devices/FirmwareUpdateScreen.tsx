@@ -516,7 +516,15 @@ export const FirmwareUpdateScreen = () => {
                         </View>
                     )}
 
-                    {phase === 'transferring' && fileTransferProgress && (
+                    {/* Keyed to the transfer's own lifecycle, NOT the update phase
+                        machine: a device 'Wake' line used to leapfrog the phase past
+                        'transferring' (forward-only ordering), hiding this card for
+                        the whole multi-minute transfer. It also reappears for the
+                        second image of a dual-camera update, where the phase machine
+                        is already beyond 'transferring' for good. The hook clears
+                        the state when a transfer finishes, so presence == in flight
+                        (or failed, which the card renders). */}
+                    {fileTransferProgress ? (
                         <View style={styles.marginTop12}>
                             <FileTransferProgressCard
                                 title="Transferring to Device"
@@ -532,7 +540,7 @@ export const FirmwareUpdateScreen = () => {
                                 isComplete={fileTransferProgress.phase === 'complete'}
                             />
                         </View>
-                    )}
+                    ) : null}
 
                     {/* Overall Progress bar fallback for non-transfer phases */}
                     {(isUpdating || isComplete) && phase !== 'downloading' && phase !== 'transferring' && (
