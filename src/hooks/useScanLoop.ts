@@ -77,10 +77,10 @@ export const useScanLoop = ({ active, scanDfu = false }: UseScanLoopOptions) => 
      * cleanup that can block Android's BLE scanner for 10-60 seconds,
      * preventing advertisement delivery.
      */
-    const flushBleCache = useCallback(async () => {
+    const flushBleCache = useCallback(async (opts?: { skipNativeRemoval?: boolean }) => {
         dispatch(clearDiscoveredDevices())
 
-        if (Platform.OS === 'android') {
+        if (Platform.OS === 'android' && !opts?.skipNativeRemoval) {
             try {
                 const cached = await BleManager.getDiscoveredPeripherals()
                 const toRemove = cached.filter(p => {
