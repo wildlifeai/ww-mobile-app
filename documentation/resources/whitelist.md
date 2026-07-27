@@ -1,7 +1,13 @@
-# Wildlife Watcher Mobile App: Whitelist & Source of Truth
+# Wildlife Watcher Mobile App: Architecture Overview
 
-> **Generated on:** May 16, 2026.
-> This document outlines the explicit boundaries of the Wildlife Watcher Mobile Application. Any code, screen, hook, or service **not** detailed in this list is formally deprecated, legacy, or dead code, and can be removed without affecting the application's runtime boundaries.
+> [!CAUTION]
+> **This is not a whitelist and absence from it is not evidence of dead code.**
+>
+> This file previously claimed that anything not listed here "can be removed without affecting the application's runtime boundaries". That was never safe and is now demonstrably wrong — a 2026-07-27 audit found ~25 live modules missing from it, including `useBleListeners`, `useStartDeployment`, `useEndDeployment`, `useFirmwareUpdate`, `SyncBarrier.ts`, and `src/ble/workflows/resetToDefaults.ts`. **Never delete code on the strength of this document.**
+>
+> Use it as a hand-written orientation map only. For the current inventory, read the tree: [02-CODEBASE-GUIDE.md](../onboarding/02-CODEBASE-GUIDE.md) is the maintained structural guide, and `src/` is authoritative.
+
+> **Last hand-verified:** May 16, 2026. Sections below have drifted since.
 
 ---
 

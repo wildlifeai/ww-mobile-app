@@ -70,7 +70,7 @@ Google Play requires apps targeting Android 15+ to support 16 KB memory pages.
 | Dependency | Risk | Status |
 |-----------|------|--------|
 | `react-native-ble-manager` | Medium | Popular, likely compatible |
-| `react-native-nordic-dfu` | **High** | Custom fork with native C/C++ — test on 16 KB emulator |
+| `@getquip/expo-nordic-dfu` | **High** | Wraps Nordic's native DFU libraries — test on 16 KB emulator |
 | `react-native-maps` | Low | Google-maintained |
 | Expo modules | Low | Expo team maintains |
 

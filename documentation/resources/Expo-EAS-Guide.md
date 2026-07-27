@@ -55,11 +55,16 @@ JS/TS changes, UI updates, Redux, and navigation changes work with hot reload â€
 
 Configured in `eas.json`:
 
-| Profile | Output | Supabase | Purpose |
-|---------|--------|----------|---------|
-| `development` | APK/IPA (internal) | Dev (`qegeovogqxiouqbrxmnh`) | Dev client for testing |
-| `preview` | APK/IPA (internal) | Stag (`nuhwmubvygxyddkycmpa`) | Internal team testing |
-| `production` | AAB/IPA (stores) | Stag (`nuhwmubvygxyddkycmpa`) | Store submission |
+| Profile | Output | `EXPO_PUBLIC_SUPABASE_ENV` | Purpose |
+|---------|--------|---------------------------|---------|
+| `ci` | APK / iOS simulator | *(unset)* | CI smoke builds |
+| `development` | APK/IPA (internal) | *(unset â€” falls back to the local `.env`)* | Dev client for testing |
+| `staging` | APK/IPA (internal) | `cloud-staging` | Pre-production validation |
+| `preview` | APK/IPA (internal) | `cloud-dev` | Internal team testing |
+| `production` | AAB/IPA (stores) | `cloud-staging` | Store submission |
+
+> [!NOTE]
+> `eas.json` selects the Supabase instance by **environment name**, not by project ref. The mapping from name to URL/key lives in [`src/config/environments.ts`](../../src/config/environments.ts). Regenerate this table from `eas.json` rather than editing it by hand.
 
 ### Build Commands
 

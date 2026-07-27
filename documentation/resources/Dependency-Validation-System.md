@@ -435,15 +435,17 @@ These scripts are already configured in `package.json`:
 {
   "scripts": {
     "validate:deps": "node scripts/validate-deps.js",
-    "deps": "node scripts/manage-dependency-rules.js",
-    "deps:add": "node scripts/manage-dependency-rules.js add",
-    "deps:scan": "node scripts/manage-dependency-rules.js scan",
-    "prebuild:check": "bash scripts/pre-build-check.sh",
-    "preinstall": "node scripts/validate-deps.js || true",
-    "postinstall": "node scripts/post-install-helper.js"
+    "deps": "node scripts/deps-cli.js",
+    "deps:add": "node scripts/deps-cli.js add",
+    "deps:scan": "node scripts/deps-cli.js scan",
+    "prebuild:check": "node scripts/validate-build-env.js && npm run db:sync-schema && bash scripts/pre-build-check.sh",
+    "postinstall": "npx patch-package && npm run validate:deps"
   }
 }
 ```
+
+> [!IMPORTANT]
+> Validation runs from **`postinstall`**, not `preinstall` — there is no `preinstall` hook. `postinstall` also applies `patches/` via `patch-package`, so `npm install --ignore-scripts` skips both. Never use that flag on this repo.
 
 ### CI/CD Integration
 
@@ -487,7 +489,10 @@ jobs:
 }
 ```
 
-### EAS Build Integration
+### EAS Build Integration (proposal — not currently configured)
+
+> [!NOTE]
+> The current `eas.json` does **not** set `prebuildCommand` on any profile. The snippet below is a suggestion, not a description of the repo.
 
 Add to `eas.json`:
 

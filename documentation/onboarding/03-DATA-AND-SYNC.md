@@ -51,7 +51,7 @@ The heart of Wildlife Watcher — understanding offline-first design patterns, W
 
 ## WatermelonDB Schema
 
-**Location:** `src/database/schema.ts` (auto-generated, version 185, 15 tables)
+**Location:** [`src/database/schema.ts`](../../src/database/schema.ts) — auto-generated. The `version:` field and the `tableSchema` entries in that file are authoritative; this doc deliberately does not restate them.
 
 ### Key Tables
 
@@ -109,7 +109,7 @@ tableSchema({
 })
 ```
 
-For the complete list of 15 tables, see [01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md#watermelondb).
+For the complete table list, read [`src/database/schema.ts`](../../src/database/schema.ts) directly.
 
 ---
 
@@ -199,7 +199,7 @@ if (user.role === 'admin') {
 
 ## SupabaseSyncService
 
-**Location:** `src/services/offline/SupabaseSyncService.ts` (~1325 lines)
+**Location:** `src/services/SupabaseSyncService.ts` (~1325 lines)
 
 ### Core Sync Logic
 
@@ -404,7 +404,7 @@ npm run types:cloud-dev
 npm run schema:validate:live:cloud-dev
 
 # 3. Fix mismatches in src/database/schema.ts
-# 4. Increment version number (currently 185)
+# 4. Increment the `version:` field at the top of src/database/schema.ts
 # 5. Add migration in src/database/migrations.ts (or database reset for dev)
 ```
 

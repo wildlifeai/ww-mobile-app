@@ -46,7 +46,7 @@ A global singleton mock is also available at `tests/__mocks__/@react-native-asyn
 ### Supabase
 
 ```typescript
-import { resetSupabaseMocks } from '../../test/mocks/supabase'
+import { resetSupabaseMocks } from '../../tests/__mocks__/supabase'
 
 beforeEach(() => {
   resetSupabaseMocks()
@@ -247,7 +247,7 @@ The `react-doctor.yml` GitHub Action also runs on all PRs (informational):
 - Scans for 60+ React / React Native best-practice rules
 - Outputs a 0–100 health score in the job summary
 - Can also be triggered manually from the **Actions** tab
-- Config: `react-doctor.config.json` (suppresses React Native false positives)
+- Config: `doctor.config.json` (suppresses React Native false positives)
 - See [React-Doctor-Guide.md](React-Doctor-Guide.md) for details
 
 ---
@@ -388,7 +388,7 @@ bash scripts/seed-local.sh
 
 ## Known Issues
 
-- **Legacy BLE Command Manager Tests**: `src/ble/__tests__/commandManager.test.ts` is skipped (`.skip.ts`). The legacy `BleCommandManager` has been fully replaced by the event-driven `protocol/` layer. New BLE tests are in `src/ble/protocol/__tests__/` and `src/ble/session/__tests__/`.
+- **Legacy BLE Command Manager**: `src/ble/commandManager.ts` survives only as a trap file that throws on import. Its tests have been removed. Current BLE tests live in `src/ble/__tests__/` (messageClassifier, transport), `src/ble/protocol/__tests__/` (simulatedTransport) and `src/ble/protocol/fileTransfer/__tests__/` (ackMatcher, crc16ccitt, filenameValidator, fileTransferPackets). There is no `src/ble/session/__tests__/`.
 
 ---
 

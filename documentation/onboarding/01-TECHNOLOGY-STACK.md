@@ -13,7 +13,7 @@ Wildlife Watcher is a React Native mobile app that communicates with wildlife ca
 | React Native | 0.81.5 | [package.json](../../package.json) |
 | React | 19.1.0 | |
 | TypeScript | 5.3.3 | |
-| Expo SDK | ~54.0.32 | Managed workflow with dev client |
+| Expo SDK | ~54.0.32 | Prebuild ("bare") workflow — `android/` is tracked in git |
 | Node.js | ≥20 | |
 
 **Key concepts for web developers:**
@@ -34,7 +34,7 @@ Wildlife Watcher is a React Native mobile app that communicates with wildlife ca
 
 ## Application Entry Point
 
-**File:** [App.tsx](file:///c:/dev/ww/src/App.tsx)
+**File:** [App.tsx](../../src/App.tsx)
 
 The app wraps `<MainNavigation />` in a tree of context providers. The nesting order matters — inner providers can access outer ones.
 
@@ -51,7 +51,7 @@ The app wraps `<MainNavigation />` in a tree of context providers. The nesting o
 
 **Version:** ^2.5.0
 
-**Store:** [redux/index.ts](file:///c:/dev/ww/src/redux/index.ts)
+**Store:** [redux/index.ts](../../src/redux/index.ts)
 
 | Reducer | Slice | Purpose |
 |---------|-------|---------|
@@ -71,6 +71,9 @@ The app wraps `<MainNavigation />` in a tree of context providers. The nesting o
 | `wwAdmin` | `wwAdminSlice` | Admin features |
 | `sync` | `syncSlice` | Entity sync status tracking |
 | `network` | `networkSlice` | Network connectivity state |
+| `location` | `locationSlice` | Current GPS fix used for deployment tagging |
+
+13 feature reducers + 4 RTK Query reducers.
 
 **Middleware:** Default RTK middleware + all four API middlewares. Serializable check ignores `persist/PERSIST`. Immutable check warns after 1000ms.
 
@@ -82,7 +85,7 @@ export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector
 
 ### RTK Query
 
-**API Definition:** [redux/api/index.ts](file:///c:/dev/ww/src/redux/api/index.ts)
+**API Definition:** [redux/api/index.ts](../../src/redux/api/index.ts)
 
 ```typescript
 export const api = createApi({
@@ -97,7 +100,7 @@ Endpoints are injected via `enhancedApi` (auto-generated) and `projectsApi` / `a
 
 ### Auth Pattern
 
-**File:** [authSlice.ts](file:///c:/dev/ww/src/redux/slices/authSlice.ts)
+**File:** [authSlice.ts](../../src/redux/slices/authSlice.ts)
 
 Authentication uses `createSlice` with synchronous reducers — **not** async thunks. The `AuthProvider` handles Supabase session management and dispatches `setCredentials` / `setInitialState` / `logout` actions.
 
@@ -120,12 +123,12 @@ Permissions are computed from `UserRole` (`ww_admin`, `project_admin`, `project_
 
 High-performance, reactive, offline-first local database built on SQLite. This is the **primary local data store** — all entity data (projects, deployments, devices, etc.) lives here.
 
-**Schema:** [database/schema.ts](file:///c:/dev/ww/src/database/schema.ts)
+**Schema:** [database/schema.ts](../../src/database/schema.ts)
 
 > [!IMPORTANT]
-> The schema is **auto-generated** by `npm run schema:generate`. Do not edit it manually. The generator reads `src/types/database.types.ts` (Supabase types). Current version: **185**.
+> The schema is **auto-generated** by `npm run schema:generate`. Do not edit it manually. The generator reads `src/types/database.types.ts` (Supabase types). The current version and table count are the `version:` field and `tableSchema` entries in [schema.ts](../../src/database/schema.ts) — read them there rather than from this doc, which will drift.
 
-**Models:** [database/models/](file:///c:/dev/ww/src/database/models)
+**Models:** [database/models/](../../src/database/models)
 
 | Model | Table | Key Fields |
 |-------|-------|------------|
@@ -173,7 +176,7 @@ Components subscribe to WatermelonDB via `withObservables`. This replaces tradit
 
 **Package:** `@supabase/supabase-js` ^2.53.0
 
-**Client:** [services/supabase.ts](file:///c:/dev/ww/src/services/supabase.ts)
+**Client:** [services/supabase.ts](../../src/services/supabase.ts)
 
 Uses a **factory pattern** with dynamic environment switching:
 
@@ -196,7 +199,7 @@ const client = getSupabaseClient()  // Throws if not initialized
 
 ### Sync Architecture
 
-**Service:** [SupabaseSyncService.ts](file:///c:/dev/ww/src/services/SupabaseSyncService.ts) (1325 lines)
+**Service:** [SupabaseSyncService.ts](../../src/services/SupabaseSyncService.ts) (1325 lines)
 
 Bidirectional sync between WatermelonDB and Supabase. Sync is debounced (2s) and tracks per-entity status via `syncSlice` in Redux.
 
@@ -210,32 +213,23 @@ Bidirectional sync between WatermelonDB and Supabase. Sync is debounced (2s) and
 
 **Packages:** `@react-navigation/native` ^6.1.12, `@react-navigation/native-stack` ^6.9.20
 
-**File:** [navigation/index.tsx](file:///c:/dev/ww/src/navigation/index.tsx)
+**File:** [navigation/index.tsx](../../src/navigation/index.tsx)
 
 #### Route Table
 
-| Route | Component | Params |
-|-------|-----------|--------|
-| `Home` | `BottomTabs` | `{ initialTab?: string }` |
-| `Login` | `Login` | `{ confirmed?: boolean }` |
-| `Register` | `Register` | — |
-| `ForgotPassword` | `ForgotPassword` | `{ token?, refreshToken?, mode? }` |
-| `Notifications` | `Notifications` | — |
-| `Profile` | `Profile` | — |
-| `Settings` | `Settings` | — |
-| `DeviceDiscovery` | `DeviceDiscoveryScreen` | `{ mode: 'prepare' \| 'engineer' \| 'deployment' \| 'auto' }` |
-| `DeviceDetails` | `DeviceDetailsScreen` | `{ deviceId }` |
-| `EngineerConsoleScreen` | `EngineerConsoleScreen` | `{ deviceId }` |
-| `DfuScreen` | `DfuScreen` | `{ deviceId }` |
-| `NewProjectScreen` | `NewProjectScreen` | — |
-| `ProjectDetailsScreen` | `ProjectDetailsScreen` | `{ projectId }` |
-| `ProjectMembersScreen` | `ProjectMembersScreen` | `{ projectId, projectName }` |
-| `AddDeployment` | `AddDeployment` | `{ selectedProject? }` |
-| `StartDeploymentWizard` | `DeviceDiscoveryScreen` | `{ mode: 'deployment' }` |
-| `StartMonitoringDetailsStep` | `StartMonitoringDetailsStep` | `{ deviceId, bleDeviceId }` |
-| `DeploymentDetails` | `DeploymentDetailsScreen` | `{ deploymentId }` |
-| `StopMonitoringWizard` | `DeviceDiscoveryScreen` | `{ mode: 'end_deployment', deploymentId? }` |
-| `EndStartMonitoringDetailsStep` | `EndStartMonitoringDetailsStep` | `{ deploymentId, deviceId, bleDeviceId }` |
+> [!IMPORTANT]
+> Route names and params are defined in [`src/navigation/index.tsx`](../../src/navigation/index.tsx) and typed in [`src/navigation/types.ts`](../../src/navigation/types.ts). Read those — a hand-maintained copy here drifts within weeks. The grouping below is orientation only.
+
+| Group | Routes |
+|-------|--------|
+| System gates | `AppLoading`, `BluetoothProblems`, `BLEProblems` |
+| Auth | `Login`, `Register`, `ForgotPassword` |
+| Onboarding | `Tutorial` |
+| Shell | `Home` (BottomTabs: Scanner, Map, Projects), `Notifications`, `Profile`, `Settings` |
+| Projects | `NewProjectScreen`, `ProjectDetailsScreen`, `EditProjectScreen`, `ProjectMembersScreen`, `ProjectDevicesScreen`, `ProjectVisualizationScreen` |
+| Deployment | `DeviceDiscovery`, `DeviceMonitoringSummary` |
+| Engineer Console | `EngineerConsoleScreen`, `StandaloneMotionDetectionScreen`, `StandaloneCapturePreviewScreen`, `CameraSettingsTestScreen`, `LightSensorScreen` |
+| Firmware & transfer | `DfuScreen`, `FirmwareUpdateScreen`, `FileTransferTestScreen`, `ModelValidationTestScreen`, `ConfigTransferScreen`, `AiModelTransferScreen` |
 
 Dev-only routes (`__DEV__`): `DevBuildInfo`, `AuthTestScreen`, `DeveloperSettings`.
 
@@ -245,15 +239,18 @@ The navigator conditionally renders screens based on system state:
 
 ```mermaid
 flowchart TD
-    A{"Bluetooth powered on?"} -- No --> B["BluetoothProblems screen"]
-    A -- Yes --> C{"Location enabled?"}
-    C -- No --> D["LocationProblems screen"]
+    A{"App loading?"} -- Yes --> B["AppLoading screen"]
+    A -- No --> C{"Bluetooth powered on?"}
+    C -- No --> D["BluetoothProblems screen"]
     C -- Yes --> E{"BLE initialized?"}
     E -- No --> F["BLEProblems screen"]
     E -- Yes --> G{"Token exists?"}
     G -- No --> H["Auth screens (Login, Register, ForgotPassword)"]
     G -- Yes --> I["Main app screens"]
 ```
+
+> [!NOTE]
+> There is no location gate. A `locationStatusSlice` tracks GPS availability for feature-level checks, but the navigator does not block on it.
 
 #### Typed Navigation
 
@@ -272,7 +269,7 @@ navigation.navigate('ProjectDetailsScreen', { projectId })
 
 ### React Native Paper 5.12.3
 
-Material Design 3 component library. Theme configured in [theme.ts](file:///c:/dev/ww/src/theme.ts).
+Material Design 3 component library. Theme configured in [theme.ts](../../src/theme.ts).
 
 **Theme construction:** Uses `adaptNavigationTheme()` + `deepmerge` to combine React Navigation and Paper themes with custom color palettes. The app ships in **dark mode by default** — `CombinedDefaultTheme` uses `MD3DarkTheme` with custom green/amber colors.
 
@@ -307,17 +304,20 @@ The app has a custom component library in `src/components/ui/`. **Always check h
 
 **Provider:** Google Maps (both iOS and Android)
 
-**Location:** [features/maps/](file:///c:/dev/ww/src/features/maps)
+**Location:** [features/maps/](../../src/features/maps)
 
-| File | Purpose |
+| Path | Purpose |
 |------|---------|
-| `BasicMapView.tsx` | Reusable map component with markers |
-| `DeploymentCard.tsx` | Map overlay for deployment details |
-| `DeploymentMarker.tsx` | Custom marker for deployments |
-| `MapControls.tsx` | Zoom/location controls |
-| `MapScreen.tsx` | Full-screen map view |
-| `useLocation.ts` | GPS access hook |
-| `useMapRegion.ts` | Map viewport management |
+| `components/BasicMapView.tsx` | Reusable map component with markers |
+| `components/DeploymentCard.tsx` | Map overlay for deployment details |
+| `components/DeploymentMarker.tsx` | Custom marker for deployments |
+| `components/MapControls.tsx` | Zoom/location controls |
+| `components/LocationPermissionPrompt.tsx` | Permission request UI |
+| `screens/MapScreen.tsx` | Full-screen map view |
+| `hooks/useLocation.ts` | GPS access hook |
+| `hooks/useMapRegion.ts` | Map viewport management |
+
+See [Maps.md](../resources/Maps.md) for the full module layout and API key setup.
 
 ---
 
@@ -329,14 +329,14 @@ The app has a custom component library in `src/components/ui/`. **Always check h
 
 Communication with Wildlife Watcher cameras. Uses an event-driven architecture with typed command registry and session-based execution.
 
-**Command definitions:** [ble/protocol/commandRegistry.ts](file:///c:/dev/ww/src/ble/protocol/commandRegistry.ts) — single source of truth for all BLE commands and response parsers
+**Command definitions:** [ble/protocol/commandRegistry.ts](../../src/ble/protocol/commandRegistry.ts) — single source of truth for all BLE commands and response parsers
 
 | Layer | File | Purpose |
 |-------|------|---------|
-| Protocol | `src/ble/protocol/eventBus.ts` | Central event dispatcher (6 frozen event types) |
+| Protocol | `src/ble/protocol/eventBus.ts` | Central event dispatcher (7 frozen event types + `any` wildcard) |
 | Protocol | `src/ble/protocol/rxRouter.ts` | Binary/text classification from raw bytes |
 | Protocol | `src/ble/protocol/commandRegistry.ts` | Typed command factories with success/failure matchers |
-| Protocol | `src/ble/protocol/commandQueue.ts` | Serialized command execution queue |
+| Protocol | `src/ble/protocol/bleTransportController.ts` | Serialized command queue + exclusive transport lock |
 | Session | `src/ble/session/createBleSession.ts` | Deterministic workflow execution API |
 | Hook | `src/hooks/useBle.ts` | Connect, writeRaw, disconnect |
 | Hook | `src/hooks/useBleSession.ts` | React hook wrapping session factory |
@@ -360,7 +360,7 @@ Over-the-air firmware updates using Nordic Semiconductor's DFU protocol. Handles
 
 **Current limitations:**
 - **ZIP format required** — Must use Nordic DFU-compatible ZIP packages for BLE (nRF) firmware
-- **Himax AI processor** — Supported via `AI firmware` + `reset` commands (binary upload over BLE characteristic)
+- **Himax AI processor** — Separate flow: the `.IMG` is first staged on the SD card via the BLE file-transfer pipeline, then flashed with `AI firmware <file> [crc]` + `reset`. See [Himax-Firmware-Update.md](../resources/Himax-Firmware-Update.md)
 - **No SD card config** — Cannot write to `CONFIG.TXT` on the SD card (planned)
 
 ---

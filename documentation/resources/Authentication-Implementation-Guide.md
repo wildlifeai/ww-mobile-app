@@ -26,8 +26,7 @@ Navigation reads Redux state.authentication.token
 // Simplified from src/navigation/index.tsx
 if (appLoading)          → AppLoading screen
 if (bluetooth !== on)    → BluetoothProblems screen
-if (!locationEnabled)    → LocationProblems screen
-if (!bleInitialized)     → BleProblems screen
+if (!bleInitialized)     → BLEProblems screen
 if (!token)              → Auth screens (Login, Register, ForgotPassword)
 else                     → Main app (Home, Devices, Projects, etc.)
 ```
@@ -285,7 +284,7 @@ All screens use `WWScreenView`, React Hook Form (`useForm`), and `Field`/`WWText
 
 ### Deep links not working
 - Must use **Development Client** (not Expo Go) — Expo Go doesn't support custom URL schemes
-- Verify URL scheme in `app.config.js` matches `wildlifewatcher://`
+- Verify the `scheme` field in `app.config.ts` matches `wildlifewatcher://`
 - Test: `adb shell am start -W -a android.intent.action.VIEW -d "wildlifewatcher://auth/reset-password?token_hash=test&type=recovery" com.wildlife.wildlifewatcher`
 
 ### Session not persisting

@@ -51,6 +51,12 @@ jobs:
       - name: Linting
         run: npm run lint
 
+      - name: Version consistency (package.json vs app.config.ts vs android/)
+        run: npm run version:check
+
+      - name: Documentation references resolve
+        run: npm run docs:validate
+
       - name: Run tests with coverage
         run: npm test -- --coverage --ci
 

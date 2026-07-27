@@ -6,11 +6,15 @@
 
 The app uses **EAS (Expo Application Services)** for building and submitting to both stores. Configuration lives in `eas.json`.
 
-| EAS Profile | Purpose | Supabase | Trigger |
-|-------------|---------|----------|---------|
-| `development` | Dev client builds | Dev (`qegeovogqxiouqbrxmnh`) | Manual: `eas build` |
-| `preview` | Internal testing / staging | Stag (`nuhwmubvygxyddkycmpa`) | Push to `main` (via GitHub Action) |
-| `production` | Store submission | Stag (`nuhwmubvygxyddkycmpa`) | Git tag `v*` (via GitHub Action) |
+| EAS Profile | Purpose | `EXPO_PUBLIC_SUPABASE_ENV` | Trigger |
+|-------------|---------|---------------------------|---------|
+| `ci` | CI smoke builds | *(unset)* | CI workflows |
+| `development` | Dev client builds | *(unset — local `.env`)* | Manual: `eas build` |
+| `staging` | Pre-production validation | `cloud-staging` | Manual: `eas build` |
+| `preview` | Internal testing | `cloud-dev` | Push to `main` (via GitHub Action) |
+| `production` | Store submission | `cloud-staging` | Git tag `v*` (via GitHub Action) |
+
+> Authoritative source: [`eas.json`](../../eas.json). See [Expo-EAS-Guide.md](Expo-EAS-Guide.md#eas-build-profiles) for how the env name resolves to a Supabase instance.
 
 ## Prerequisites
 
@@ -64,13 +68,22 @@ The `eas-build.yml` workflow handles this:
 ### Release Process
 
 1. **Merge `dev` → `main`** (via PR)
-2. **Bump the application version** in the following locations:
-   - **`package.json`**: Update the `"version"` field (e.g. `"0.0.53"` -> `"0.0.54"`).
-   - **`app.config.ts`**:
-     - Increment the Android `versionCode` integer (e.g. `53` -> `54`).
-     - Increment the iOS `buildNumber` string value (e.g. `"53"` -> `"54"`).
-   
-   *Tip: You can use `npm version patch` to update `package.json`, but remember to also manually increment the `versionCode` and `buildNumber` in `app.config.ts`.*
+2. **Bump the application version.** Four files must agree, or EAS and OTA updates disagree about what is installed:
+
+   | File | Field | Example (0.0.61 → 0.0.62) |
+   |------|-------|---------------------------|
+   | `package.json` | `version` | `"0.0.62"` |
+   | `app.config.ts` | `android.versionCode` | `62` |
+   | `app.config.ts` | `ios.buildNumber` | `"62"` |
+   | `android/app/build.gradle` | `versionCode` / `versionName` | `62` / `"0.0.62"` |
+   | `android/app/src/main/res/values/strings.xml` | `expo_runtime_version` | `0.0.62` |
+
+   `app.config.ts` derives `version` and `runtimeVersion` from `package.json`, so those two follow automatically. The Android native values do **not** — see step 3.
+
+   Verify before committing:
+   ```bash
+   npm run version:check
+   ```
 
 3. **Synchronize Android Native Directory**:
    > [!IMPORTANT]
