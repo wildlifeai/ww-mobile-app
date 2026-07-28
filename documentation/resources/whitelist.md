@@ -1,122 +1,33 @@
-# Wildlife Watcher Mobile App: Architecture Overview
+# Wildlife Watcher Mobile App: Key User Flows
 
 > [!CAUTION]
-> **This is not a whitelist and absence from it is not evidence of dead code.**
+> **This file used to be called a "whitelist" and is not one.**
 >
-> This file previously claimed that anything not listed here "can be removed without affecting the application's runtime boundaries". That was never safe and is now demonstrably wrong — a 2026-07-27 audit found ~25 live modules missing from it, including `useBleListeners`, `useStartDeployment`, `useEndDeployment`, `useFirmwareUpdate`, `SyncBarrier.ts`, and `src/ble/workflows/resetToDefaults.ts`. **Never delete code on the strength of this document.**
->
-> Use it as a hand-written orientation map only. For the current inventory, read the tree: [02-CODEBASE-GUIDE.md](../onboarding/02-CODEBASE-GUIDE.md) is the maintained structural guide, and `src/` is authoritative.
+> It previously claimed that anything not listed here "can be removed without affecting the application's runtime boundaries". That was never safe and was demonstrably wrong — a 2026-07-27 audit found ~25 live modules missing from it, including `useBleListeners`, `useStartDeployment`, `useEndDeployment`, `useFirmwareUpdate`, `SyncBarrier.ts`, and `src/ble/workflows/resetToDefaults.ts`. **Never delete code on the strength of any document.** `src/` is the only authority on what exists.
 
-> **Last hand-verified:** May 16, 2026. Sections below have drifted since.
+The screen, service, hook and BLE-module inventories that used to live here have been removed rather than maintained in parallel. They now have a single home each:
 
----
+| Looking for | Go to |
+|---|---|
+| Folder structure, services, hooks, screens, naming conventions | [02-CODEBASE-GUIDE.md](../onboarding/02-CODEBASE-GUIDE.md) |
+| Routes and navigation | [`src/navigation/index.tsx`](../../src/navigation/index.tsx), grouped in [01-TECHNOLOGY-STACK.md](../onboarding/01-TECHNOLOGY-STACK.md#route-table) |
+| BLE protocol/session/workflow modules | [BLE_Architecture.md](BLE_Architecture.md#file-structure) |
+| Data and sync layer | [03-DATA-AND-SYNC.md](../onboarding/03-DATA-AND-SYNC.md) |
 
-## 1. Current Screens & Navigation Map
-
-**Primary Root Context (`MainNavigation`)**
-*   **System Wrappers**: `AppLoading`, `BluetoothProblems`, `BleProblems` (Rendered depending on low-level global state).
-*   **Authentication**: `Login`, `Register`, `ForgotPassword`.
-
-**Bottom Tabs (Secured User Realm, `BottomTabs`)**
-The main interface revolves around 3 horizontal tabs:
-1.  **Scanner (`DeviceDiscoveryScreen`)**: Default tab. Scans for BLE devices.
-2.  **Map (`MapScreen`)**: Google Maps with deployment markers (via `src/features/maps/`).
-3.  **Projects (`ProjectsListScreen`)**: Lists projects across the authenticated user's organisations.
-
-**Deep Realm Flows (Stack Navigation)**
-*   **User/Profile**: `Notifications`, `Profile`, `Settings`.
-*   **Project Context**: `NewProjectScreen`, `ProjectDetailsScreen`, `EditProjectScreen`, `ProjectMembersScreen`, `ProjectDevicesScreen`, `ProjectVisualizationScreen`.
-*   **Deployment Lifecycle**:
-    *   **Start**: `StartMonitoringScreen` → deployment wizard.
-    *   **Monitoring**: `DeploymentMonitorView` (shared by standard and dev deployments).
-    *   **End**: `StopMonitoringScreen` → end deployment flow.
-    *   **Summary**: `DeviceMonitoringSummaryScreen` — post-deployment review.
-*   **Hardware / Connectivity**:
-    *   `EngineerConsoleScreen`: Terminal — raw serial access to BLE module via `writeRaw()`.
-    *   `DfuScreen`: Firmware flashing / OTA updates.
-    *   `StandaloneMotionDetectionScreen`: Motion detection stream for hardware debugging.
-    *   `StandaloneCapturePreviewScreen`: Camera capture preview.
-*   **Engineer Console Flows** (accessible from Flows menu):
-    *   `DevDeploymentTestScreen`: Developer deployment with full parameter control.
-    *   `FirmwareUpdateScreen` / `FirmwareStatusScreen`: Himax firmware management.
-    *   `AiModelTransferScreen`: AI model upload to device SD card.
-    *   `ConfigTransferScreen`: CONFIG.TXT transfer.
-    *   `FileTransferTestScreen`: Generic file transfer testing.
-    *   `ModelValidationTestScreen`: AI model inference validation.
-    *   `CameraSettingsTestScreen`: Camera parameter experimentation.
-    *   `DeviceResetScreen`: Factory defaults reset flow.
+What remains below is the part that was genuinely unique to this document: a narrative summary of how the main flows hang together.
 
 ---
 
-## 2. Key User Flows
+## Key User Flows
 
-*   **Initialization Gate**: Checks Android/iOS permissions → Verifies Bluetooth Adapter State → Validates Local Auth Token. If any fail, intercepts the user with an explicit remediation screen before permitting access to Bottom Tabs.
-*   **Deployment Assembly (Start)**: The user scans a device → App connects and validates battery/firmware/SD via `useBleSession` + `commandRegistry` → GPS data supplemented → App configures device via `useDeploymentConfiguration` → WatermelonDB commits the record locally via `DeploymentService` and queues upstream push to Supabase via `SyncOutbox`.
-*   **End Deployment Sequence**: The user initiates wrap-up → App reconnects to retrieve final statistics → locally terminates deployment → attempts remote sync.
-*   **Dev Deployment**: Developer uses Engineer Console → Flows → "Dev Deployment Test". Full control over capture method, flash LED, BMP diagnostics, and AI model. See [Dev-Deployment-Guide.md](Dev-Deployment-Guide.md).
-*   **Engineering Console**: Specialized users use `EngineerConsoleScreen` to send raw text commands via `writeRaw()` and observe responses through `bleEventBus`. Supports Flows (multi-step workflows) and Commands (atomic BLE operations). See [04-ENGINEER-CONSOLE.md](../onboarding/04-ENGINEER-CONSOLE.md).
+**Initialization Gate** — Checks Android/iOS permissions → verifies the Bluetooth adapter state → validates the local auth token. If any fail, the user is intercepted with an explicit remediation screen before reaching the Bottom Tabs. (There is no location gate; GPS availability is tracked but does not block navigation.)
 
----
+**Deployment Assembly (Start)** — The user scans a device → the app connects and validates battery/firmware/SD via `useBleSession` + `commandRegistry` → GPS data is supplemented → the app configures the device via `useDeploymentConfiguration` → WatermelonDB commits the record locally via `DeploymentService` and queues an upstream push to Supabase via the sync outbox. Detail: [05-DEVICE-FLOWS.md](../onboarding/05-DEVICE-FLOWS.md).
 
-## 3. Active Services (Backend & Data Layer)
+**End Deployment Sequence** — The user initiates wrap-up → the app reconnects to retrieve final statistics → terminates the deployment locally → attempts a remote sync.
 
-*   **Synchronization Core**:
-    *   `SupabaseSyncService.ts`: Bidirectional sync between local SQLite (WatermelonDB) and Supabase Cloud.
-    *   `OutboxService.ts`: Local-first mutation queue (stores inserts/updates when offline).
-    *   `SyncStateService.ts` / `SyncTriggerService.ts`: Sync coordination and edge resolution.
-*   **Data Models (WatermelonDB Services)**:
-    *   `DeploymentService.ts`, `ProjectService.ts`, `DeviceService.ts`, `UserRoleService.ts`, `InvitationService.ts`: Standard CRUD APIs writing to local WatermelonDB models.
-    *   `ReferenceDataService.ts`: Static taxonomies (capabilities, firmware registries).
-    *   `AiModelService.ts`: AI model metadata and registration.
-*   **Hardware Services**:
-    *   `FirmwareService.ts` / `DfuService.ts`: Firmware blob management and OTA distribution.
-    *   `MockLoRaWANService.ts`: Simulator layer for LoRaWAN registrations.
-*   **Global Singletons**:
-    *   `supabase.ts`: Main client for edge requests that bypass sync (Auth/Storage).
-    *   `auth.ts`: Session lifecycle management.
+**Dev Deployment** — Engineer Console → Flows → "Dev Deployment Test". Full control over capture method, flash LED, BMP diagnostics and AI model. Detail: [Dev-Deployment-Guide.md](Dev-Deployment-Guide.md).
 
----
+**Engineer Console** — Two surfaces: a raw terminal line that sends bytes via `writeRaw()` and never enqueues commands, and a Flows modal that runs multi-step workflows behind a session. Detail: [04-ENGINEER-CONSOLE.md](../onboarding/04-ENGINEER-CONSOLE.md).
 
-## 4. Public APIs / Hooks
-
-### BLE Stack (3 layers)
-
-**Protocol Layer** (`src/ble/protocol/`):
-*   `eventBus.ts` — Central `bleEventBus` dispatcher (frozen event types).
-*   `rxRouter.ts` — Binary/text classification from raw bytes.
-*   `commandRegistry.ts` — Typed command factories with frozen schema.
-*   `runCommandPipeline.ts` — Multi-command executor.
-*   `bleTransportController.ts` — Low-level BLE transport management.
-*   `deviceSignals.ts` — Device state signal management.
-*   `textStreamScope.ts` — Text stream scoping for command responses.
-*   `protocolConstants.ts` — Protocol-level constants (MTU, timeouts).
-
-**File Transfer** (`src/ble/protocol/fileTransfer/`):
-*   `runFileTransferPipeline.ts` — Chunked file transfer orchestration.
-*   `fileTransferPackets.ts` — Packet framing and serialization.
-*   `ackMatcher.ts` — Acknowledgment matching for reliable delivery.
-*   `crc16ccitt.ts` — CRC-16 checksum for data integrity.
-*   `filenameValidator.ts` — SD card filename validation.
-
-**Session Layer** (`src/ble/session/`):
-*   `createBleSession.ts` — Deterministic command execution for deployment workflows.
-
-**Workflows** (`src/ble/workflows/`):
-*   `deploymentPipeline.ts` — Shared deployment pipeline (syncTime, syncAiModel, configureDevice).
-*   `checkSdCard.ts` — SD card health validation.
-
-### Application Hooks (`src/hooks/`)
-
-*   **BLE Core**: `useBle.ts` (scan, connect, writeRaw), `useBleSession.ts` (React wrapper for `createBleSession`), `useBluetoothStatus.ts`, `useSetupBLELibrary.ts`.
-*   **BLE Lifecycle**: `useBleHeartbeat.ts` (inactivity keep-alive), `useBleInitialization.ts` (selftest + UTC sync), `useEngineerConnect.ts` (console connection management), `useScanLoop.ts` (continuous BLE scanning).
-*   **BLE Features**: `useCapturePreview.ts` (camera capture flow), `useDeviceSettings.ts` (CONFIG.TXT / OP parameter management), `useMonitoringActions.ts` (deployment monitoring commands).
-*   **Deployment**: `useDeploymentConfiguration.ts` (capture method → OP mapping), `useDevicePreDeploymentChecks.ts` (battery/firmware/SD validation), `useDeploymentProgress.ts` (deployment progress tracking).
-*   **Auth**: `useSupabaseAuth.ts`, `useSupabaseClient.ts`.
-*   **Location**: `useGPSLocation.ts` (deployment GPS tagging), `useAndroidPermissions.ts`.
-*   **Sync**: `useOfflineSync.ts` (background connectivity monitoring), `useOptimisticUpdate.ts` (UI responses before outbox confirms).
-*   **Navigation**: `useDeepLinking.ts` (deep link handling).
-*   **Misc**: `useTimer.ts`, `useUserOrganisations.ts`.
-
----
-
-*Last Updated: May 16, 2026*
+**Firmware Updates** — BLE (nRF52) via Nordic DFU; Himax (HX6538) via a two-image camera-variant pair staged on the SD card. Detail: [Himax-Firmware-Update.md](Himax-Firmware-Update.md).

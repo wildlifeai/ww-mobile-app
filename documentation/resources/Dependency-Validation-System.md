@@ -20,7 +20,7 @@ The **Package Version Dependency Validation System** is a custom-built solution 
 1. **Critical dependencies** maintain exact versions required for compatibility
 2. **Optional dependencies** meet minimum version requirements
 3. **Package overrides** are correctly configured
-4. **Blocked packages** (incompatible with Expo managed workflow) are not installed
+4. **Blocked packages** (incompatible with this Expo prebuild setup) are not installed
 5. **Known version deviations** are documented and tracked
 
 Think of it as a **quality gate** that prevents dependency-related build failures before they happen.
@@ -74,7 +74,7 @@ This system exists to **protect the dependency chain** by:
 
 ❌ Run `npm update` and accidentally break the SDK compatibility chain
 ❌ Install Expo packages from a different SDK version → **Build fails**
-❌ Re-add bare React Native packages during troubleshooting → **Incompatible with Expo managed workflow**
+❌ Re-add bare React Native packages during troubleshooting → **Incompatible with this Expo prebuild setup**
 ❌ Update transitive dependencies → **Cascade breaks compatibility**
 
 **With this validation system:**
@@ -93,9 +93,9 @@ This system exists to **protect the dependency chain** by:
 
 ```
 scripts/
-├── validate-deps.js              # Core validation engine (~380 lines)
-├── manage-dependency-rules.js    # Interactive CLI for rule management (~474 lines)
-├── dependency-rules.json         # Validation configuration (~150 lines)
+├── validate-deps.js              # Core validation engine
+├── manage-dependency-rules.js    # Interactive CLI for rule management
+├── dependency-rules.json         # Validation configuration
 ├── deps-cli.js                   # CLI wrapper script
 └── post-install-helper.js        # Optional: Run validation after npm install
 ```
@@ -700,13 +700,13 @@ npm run validate:deps
 
 **When migrating to new versions**:
 
-1. **Create migration rules** before updating:
+1. **Create migration rules** before updating (example uses a hypothetical next SDK):
    ```json
    {
      "expo": {
-       "required": "~52.0.0",
+       "required": "~55.0.0",
        "severity": "warning",
-       "reason": "SDK 52 migration in progress"
+       "reason": "SDK 55 migration in progress"
      }
    }
    ```
@@ -742,7 +742,7 @@ npm run validate:deps
 {
   "blockedPackages": {
     "react-native-fs": {
-      "reason": "Migrated to expo-file-system for Expo managed workflow",
+      "reason": "Migrated to expo-file-system for the Expo module ecosystem",
       "alternative": "expo-file-system",
       "severity": "error"
     }
@@ -762,8 +762,8 @@ npm run validate:deps
 ```json
 {
   "overrideRequirements": {
-    "react-native": "0.74.5",
-    "react-native-reanimated": "~3.10.1"
+    "react-native": "0.81.5",
+    "react-native-reanimated": "~4.1.1"
   }
 }
 ```
@@ -773,136 +773,13 @@ npm run validate:deps
 ```json
 {
   "overrides": {
-    "react-native": "0.74.5",
-    "react-native-reanimated": "~3.10.1"
+    "react-native": "0.81.5",
+    "react-native-reanimated": "~4.1.1"
   }
 }
 ```
 
 **Why**: Ensures transitive dependencies also use correct versions.
-
----
-
-## Advanced Usage
-
-### Custom Validation Logic
-
-Extend `validate-deps.js` for project-specific checks:
-
-```javascript
-// Add to ConfigurableDependencyValidator class
-
-validateCustomRules() {
-  console.log('🔧 Running custom validation...\n');
-
-  // Example: Check for peer dependency conflicts
-  const peerDeps = this.config.peerDependencies || {};
-
-  Object.entries(peerDeps).forEach(([pkg, required]) => {
-    const installed = this.getInstalledVersion(pkg);
-
-    if (!this.versionSatisfies(installed, required)) {
-      this.addMessage('error',
-        `Peer dependency ${pkg}@${installed} incompatible with ${required}`,
-        `Install compatible version: npm install ${pkg}@${required}`
-      );
-    }
-  });
-}
-
-// Call in run() method
-run() {
-  // ... existing validation
-  this.validateCustomRules();
-  // ... report generation
-}
-```
-
-### Automated Rule Generation
-
-You can generate rules from existing dependencies using a simple script:
-
-```javascript
-// Example: generate rules from current package.json
-const fs = require('fs');
-const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
-const rules = {};
-Object.entries(packageJson.dependencies || {}).forEach(([pkg, version]) => {
-  rules[pkg] = { required: version, severity: 'warning', reason: 'Auto-generated' };
-});
-console.log(JSON.stringify(rules, null, 2));
-```
-
-### Integration with Renovate/Dependabot
-
-Configure automated dependency updates to respect validation rules:
-
-```json
-{
-  "packageRules": [
-    {
-      "matchPackageNames": ["react-native", "expo"],
-      "enabled": false,
-      "description": "Manual updates only - see dependency-rules.json"
-    },
-    {
-      "matchPackageNames": ["react-native-reanimated"],
-      "allowedVersions": "~4.1.0",
-      "description": "Constrained by Expo SDK 54 - see dependency-rules.json"
-    }
-  ]
-}
-```
-
----
-
-## Migration History
-
-### Why This System Was Created
-
-**Timeline**:
-
-1. **Initial Problem** (Early Expo Migration):
-   - Manual dependency management was error-prone
-   - Build failures discovered late (after 10-15 minute builds)
-   - Unclear which versions were compatible
-
-2. **First Attempt** (Manual Tracking):
-   - Created spreadsheet of compatible versions
-   - Manual validation before each install
-   - Still prone to human error
-
-3. **Second Attempt** (Shell Scripts):
-   - Basic bash script to check versions
-   - Hard-coded requirements
-   - Difficult to maintain and update
-
-4. **Current Solution** (Configurable System):
-   - JSON-based configuration (easy to update)
-   - Automated validation (fast feedback)
-   - Interactive CLI (easy rule management)
-   - CI/CD integration (automated enforcement)
-
-### Lessons Learned
-
-1. **Configuration over Code**: JSON rules easier to maintain than hard-coded checks
-2. **Clear Error Messages**: Actionable fixes reduce debugging time
-3. **Document Deviations**: Tracking "why" prevents confusion later
-4. **Severity Levels**: Not all mismatches are critical
-5. **Interactive Tools**: CLI reduces friction for rule management
-
----
-
-## Future Enhancements
-
-Potential improvements to consider:
-
-1. **Auto-fix Mode**: Automatically update package.json to match rules
-2. **Rule Templates**: Pre-configured rule sets for common scenarios
-3. **Version Compatibility Matrix**: Visual dependency graph
-4. **Historical Tracking**: Log validation results over time
-5. **Team Collaboration**: Shared rule repositories
-6. **IDE Integration**: VS Code extension for inline validation
 
 ---
 
@@ -926,8 +803,8 @@ All other dependencies
 - `npm run prebuild:check` — Pre-build validation
 
 ### Key Files
-- `scripts/validate-deps.js` — Validation engine (~380 lines)
-- `scripts/manage-dependency-rules.js` — Rule management CLI (~474 lines)
+- `scripts/validate-deps.js` — Validation engine
+- `scripts/manage-dependency-rules.js` — Rule management CLI
 - `scripts/dependency-rules.json` — **The critical configuration**
 
 ---

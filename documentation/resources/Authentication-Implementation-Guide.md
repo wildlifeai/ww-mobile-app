@@ -55,7 +55,7 @@ else                     → Main app (Home, Devices, Projects, etc.)
 
 ## AuthProvider
 
-**File**: `src/providers/AuthProvider.tsx` (~50 lines)
+**File**: `src/providers/AuthProvider.tsx`
 
 The provider is minimal — no Context, no `useAuth()` hook. It:
 1. Calls `getCurrentSession()` from `auth.ts` on mount
@@ -98,7 +98,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
 
 ## Auth Service Layer
 
-**File**: `src/services/auth.ts` (~559 lines)
+**File**: `src/services/auth.ts`
 
 Standalone exported functions (not a class):
 
@@ -131,7 +131,7 @@ Screens use these hooks for loading/error state management, then dispatch `setCr
 
 ## Redux Auth State
 
-**File**: `src/redux/slices/authSlice.ts` (~283 lines)
+**File**: `src/redux/slices/authSlice.ts`
 
 ### Types
 
@@ -204,7 +204,7 @@ type AuthState = {
 
 ## Supabase Client
 
-**File**: `src/services/supabase.ts` (~387 lines)
+**File**: `src/services/supabase.ts`
 
 Uses a **factory pattern** with dynamic environment switching:
 

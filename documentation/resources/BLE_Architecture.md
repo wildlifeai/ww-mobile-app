@@ -862,21 +862,11 @@ src/
 │   │   ├── configVerification.ts   # Post-update CONFIG.TXT handshake
 │   │   └── checkSdCard.ts          # SD card health validation
 │   └── __tests__/                  # messageClassifier, transport
-├── hooks/
-│   ├── useBle.ts                   # Core: scan, connect, writeRaw
-│   ├── useBleListeners.tsx         # Native event handlers → rxRouter (+ signalLost guard)
-│   ├── useBleSession.ts            # React hook wrapping createBleSession
-│   ├── useBleInitialization.ts     # Post-connect: selftest + time sync
-│   ├── useBleHeartbeat.ts          # 58s inactivity keep-alive
-│   ├── useCapturePreview.ts        # Image capture flow
-│   ├── useDeviceSettings.ts        # CONFIG.TXT parameter management
-│   ├── useDeploymentConfiguration.ts # Deployment config (bulk getop + conditional writes)
-│   ├── useEngineerConnect.ts       # Engineer Console scan + auto-connect dialog
-│   ├── useScanLoop.ts              # Shared 3s burst scan loop + BLE cache flush
-│   └── useSetupBLELibrary.ts       # BleManager.start() lifecycle
+├── hooks/                          # BLE hooks — full inventory in 02-CODEBASE-GUIDE.md
 ├── screens/Devices/hooks/
 │   ├── useDeviceDiscovery.ts       # Main scanner: session timer + auto-connect routing
 │   ├── useAutoConnectStateMachine.ts # Per-device auto-connect eligibility
+│   ├── useFirmwareUpdate.ts        # BLE DFU + Himax variant-pair update orchestration
 │   └── useMotionDetectionStream.ts # MD test lifecycle: direct md write + frame history
 ├── providers/
 │   ├── BleEngineProvider.tsx        # React Context for useBle

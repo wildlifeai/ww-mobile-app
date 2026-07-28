@@ -199,7 +199,7 @@ if (user.role === 'admin') {
 
 ## SupabaseSyncService
 
-**Location:** `src/services/SupabaseSyncService.ts` (~1325 lines)
+**Location:** `src/services/SupabaseSyncService.ts`
 
 ### Core Sync Logic
 

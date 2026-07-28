@@ -199,7 +199,7 @@ const client = getSupabaseClient()  // Throws if not initialized
 
 ### Sync Architecture
 
-**Service:** [SupabaseSyncService.ts](../../src/services/SupabaseSyncService.ts) (1325 lines)
+**Service:** [SupabaseSyncService.ts](../../src/services/SupabaseSyncService.ts)
 
 Bidirectional sync between WatermelonDB and Supabase. Sync is debounced (2s) and tracks per-entity status via `syncSlice` in Redux.
 
@@ -331,21 +331,17 @@ Communication with Wildlife Watcher cameras. Uses an event-driven architecture w
 
 **Command definitions:** [ble/protocol/commandRegistry.ts](../../src/ble/protocol/commandRegistry.ts) — single source of truth for all BLE commands and response parsers
 
-| Layer | File | Purpose |
-|-------|------|---------|
+| Layer | Entry point | Purpose |
+|-------|-------------|---------|
 | Protocol | `src/ble/protocol/eventBus.ts` | Central event dispatcher (7 frozen event types + `any` wildcard) |
 | Protocol | `src/ble/protocol/rxRouter.ts` | Binary/text classification from raw bytes |
 | Protocol | `src/ble/protocol/commandRegistry.ts` | Typed command factories with success/failure matchers |
 | Protocol | `src/ble/protocol/bleTransportController.ts` | Serialized command queue + exclusive transport lock |
 | Session | `src/ble/session/createBleSession.ts` | Deterministic workflow execution API |
-| Hook | `src/hooks/useBle.ts` | Connect, writeRaw, disconnect |
-| Hook | `src/hooks/useBleSession.ts` | React hook wrapping session factory |
-| Hook | `src/hooks/useBleListeners.tsx` | Native event routing to rxRouter |
-| Hook | `src/hooks/useDeploymentConfiguration.ts` | Atomic deployment configuration |
-| Hook | `src/hooks/useCapturePreview.ts` | Image capture flow |
-| Hook | `src/hooks/useBleInitialization.ts` | Shared self-test + UTC sync |
-| Hook | `src/hooks/useDeviceSettings.ts` | Quiesce device, configure intervals |
+| Workflows | `src/ble/workflows/` | Shared deployment pipeline, OP reset, config verification |
 | UI-only | `src/ble/messageClassifier.ts` | Log categorization for monitoring display |
+
+For the full BLE module tree see [BLE_Architecture.md](../resources/BLE_Architecture.md#file-structure); for the hook inventory see [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md#srchooks--custom-hooks).
 
 > [!IMPORTANT]
 > **Critical timing constraint:** The device enters Deep Power Down (DPD) after 1000ms of inactivity. The `commandQueue` handles serialization automatically. The device has a single-slot command buffer — the queue ensures only one command is in-flight.

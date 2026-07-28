@@ -4,7 +4,11 @@
 **Scope:** all 27 files under `documentation/` (onboarding/, resources/, development reports/), cross-checked against the code at `3d26702` (v0.0.61).
 **Method:** full read of every document, then verification of concrete claims (file paths, versions, constants, schemas, scripts, routes) against `src/`, `package.json`, `eas.json`, `.github/workflows/`.
 
-> **Remediation status (branch `chore/docs-audit-remediation-v0.0.62`):** all "Immediately" items (1–5) and all "Next" items (6–12) from Part 5 are applied, plus §2.9 (dependency script table), §2.10–2.12, §1.13 (EAS profiles) and the §1.4 console-scope contradiction. `npm run docs:validate` and `npm run version:check` now guard against recurrence in CI. Remaining open: the consolidation work (Part 5 items 13–19) and the Part 3 gaps.
+> **Remediation status (branch `chore/docs-audit-remediation-v0.0.62`):** **Part 5 items 1–19 are all applied**, along with §1.4–§1.17 and §2.1–§2.14. `npm run docs:validate` and `npm run version:check` guard against recurrence in CI (both verified passing; the validator caught the §2.14 cross-repo link on its first real run).
+>
+> Two audit findings were **wrong** and are corrected in place: the file-transfer retry-policy sub-point (§1.16) and the `reset` vs `AI reset` direction (§1.7) — in both cases the resource doc was right and the report I cited was the divergent one. One suspected bug was **cleared**: the unpadded model filename is fine, because `%4d` in the firmware's parser is a maximum field width, not a zero-pad requirement.
+>
+> Remaining open: the Part 3 gaps other than §3.1 (Himax, now closed) — chiefly the undocumented feature areas in §3.3 and the absent iOS setup path in §3.5.
 
 **Headline:** the documentation set is unusually rich and well written, but it has drifted badly in three specific areas — **the database layer, the BLE file-transfer protocol, and the service/hook file map**. Roughly 40 verifiable claims are now wrong. Two documents (`whitelist.md`, `File-Transfer-Protocol.md`) are actively dangerous to trust as written.
 

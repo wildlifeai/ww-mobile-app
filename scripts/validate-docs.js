@@ -42,18 +42,20 @@ for (const file of walk(DOCS)) {
 	const body = fs.readFileSync(file, 'utf8');
 	const lineOf = (index) => body.slice(0, index).split('\n').length;
 
-	for (const [, target] of body.matchAll(CODE_PATH)) {
+	for (const m of body.matchAll(CODE_PATH)) {
+		const target = m[1];
 		if (target.includes('*') || target.endsWith('/') || EXPECTED_ABSENT.has(target)) continue;
 		if (!fs.existsSync(path.join(ROOT, target))) {
-			problems.push([rel, lineOf(body.indexOf(`\`${target}\``)), `missing path: ${target}`]);
+			problems.push([rel, lineOf(m.index), `missing path: ${target}`]);
 		}
 	}
 
-	for (const [, target] of body.matchAll(MD_LINK)) {
+	for (const m of body.matchAll(MD_LINK)) {
+		const target = m[1];
 		if (/^(https?:|mailto:)/.test(target)) continue;
 		const resolved = path.resolve(path.dirname(file), decode(target));
 		if (!fs.existsSync(resolved)) {
-			problems.push([rel, lineOf(body.indexOf(`(${target})`)), `broken link: ${target}`]);
+			problems.push([rel, lineOf(m.index), `broken link: ${target}`]);
 		}
 	}
 }

@@ -199,6 +199,8 @@ export class ProjectService {
 
 ### `src/hooks/` — Custom Hooks
 
+> This is the maintained inventory. Other documents link here rather than keeping their own copies.
+
 ```
 hooks/
 ├── useBle.ts                  # Low-level BLE connect/writeRaw/disconnect
@@ -209,13 +211,19 @@ hooks/
 ├── useSetupBLELibrary.ts      # BLE library initialization
 ├── useBluetoothStatus.ts      # Bluetooth adapter state
 ├── useEngineerConnect.ts      # Console connection management
-├── useScanLoop.ts             # Continuous BLE scanning
+├── useScanLoop.ts             # Shared 3s burst scan loop + cache flush
+├── useDeviceSelfTest.ts       # selftest bitmask parsing
+├── useReconnectDevice.tsx     # Reconnection helper
+├── useSelectDevice.tsx        # Device selection helper
 ├── useDeploymentConfiguration.ts # Capture method → OP mapping
 ├── useDeploymentProgress.ts   # Deployment progress tracking
 ├── useDevicePreDeploymentChecks.ts # Battery/firmware/SD validation
 ├── useMonitoringActions.ts    # Deployment monitoring commands
 ├── useCapturePreview.ts       # Image capture flow
-├── useDeviceSettings.ts       # CONFIG.TXT / OP parameter management
+├── useDeviceSettings.ts       # OP_PARAMETER enum, FACTORY_DEFAULTS, quiesce
+├── useCameraSwitch.ts         # Camera variant switching
+├── useResolutionSwitch.ts     # Capture resolution selection
+├── useLightSensor.ts          # AE-based ambient light readings
 ├── useOfflineSync.ts          # Offline sync triggers
 ├── useOptimisticUpdate.ts     # UI responses before outbox confirms
 ├── useSupabaseAuth.ts         # Supabase auth hook
@@ -225,8 +233,11 @@ hooks/
 ├── useAndroidPermissions.ts   # Android runtime permissions
 ├── useDeepLinking.ts          # Deep link handling
 ├── useAppNavigation.tsx       # Typed navigation hook
+├── useInterval.tsx            # Interval utility
 └── useTimer.ts                # Timer utility
 ```
+
+Screen-scoped hooks live beside their screens — see `src/screens/Devices/hooks/` (scanner, firmware update, console) and `src/screens/Deployments/hooks/` (start/end/monitor).
 
 ### `src/ble/` — BLE Protocol Engine
 

@@ -144,7 +144,11 @@ When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeplo
 
 ### OP Factory Reset (`pipeline.resetOps` / `executeResetToDefaults`)
 
-Before applying deployment-specific configuration, the pipeline resets the device using the shared `RESET_TO_DEFAULTS` workflow (`executeResetToDefaults`). This is the exact same logic used by the Engineer Console's manual reset:
+Before applying deployment-specific configuration, the pipeline resets the device via `executeResetToDefaults` — the same shared workflow the Engineer Console's `RESET_TO_DEFAULTS` flow uses, but **not** with the same options.
+
+`pipeline.resetOps()` passes `{ skipIdentityReset: true }`, so it leaves the deployment ID and GPS alone (the very next step, `configureDevice`, sets them). The Engineer Console's manual reset omits that flag and therefore also clears identity — it is the more aggressive of the two.
+
+The shared steps: 
 
 1. `AI getop -1` — [bulk fetch](./04-ENGINEER-CONSOLE.md#op-bulk-fetch-optimization-ai-getop--1) current OPs (also wakes device from DPD)
 2. **Skips Tracking Counters** — ignores OPs like `NUM_PICTURES`, `NUM_NN_ANALYSES`, etc., so device lifetime history is preserved
