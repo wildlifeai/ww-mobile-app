@@ -100,6 +100,7 @@ android {
 | "Unsupported class file major version" | Use JDK 17, not 21+ |
 | "SDK location not found" | Create `android/local.properties`: `sdk.dir=C:\\Users\\YOU\\AppData\\Local\\Android\\Sdk` |
 | "compileSdkVersion not specified" | Add `subprojects { afterEvaluate { ... compileSdkVersion } }` to `android/build.gradle` |
+| `npm install` fails at `maestro` → `'.' is not recognized` (Windows) | Maestro's postinstall runs a `.sh` script `cmd.exe` can't run. Use `npm install --ignore-scripts` then `npx patch-package` — same end state, minus the broken script. |
 | Build exits non-zero | `cd android && ./gradlew clean && cd ..` then `npx expo prebuild --clean` |
 | Users can't install from Play (device *is* supported) | Play Integrity filter — see [publishing_guide.md](publishing_guide.md#️-store-listing-device-checks-play-integrity--the-invisible-install-filter) |
 | "Missing Supabase configuration" | Env vars must be in `eas.json`, not just `.env.local`. Rebuild after updating. |

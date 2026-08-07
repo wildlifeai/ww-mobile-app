@@ -9,17 +9,18 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execFileSync } = require('child_process');
+const { execSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const ENV_FILES = ['.env.development', '.env.local', '.env'];
 
-const sh = (cmd, args) => {
+// `2>&1` because the tools disagree about which stream to use: `java -version`
+// writes to stderr, `adb devices` to stdout. Merge them and read whatever comes.
+const sh = (cmd) => {
 	try {
-		return execFileSync(cmd, args, {
+		return execSync(`${cmd} 2>&1`, {
 			encoding: 'utf8',
 			stdio: ['ignore', 'pipe', 'pipe'],
-			shell: process.platform === 'win32',
 		}).trim();
 	} catch {
 		return null;
@@ -39,9 +40,11 @@ const checks = {
 			: ['node_modules missing', 'npm install   (not --ignore-scripts: that skips patch-package)'],
 
 	'JDK 17': () => {
-		const out = sh('java', ['-version']);
-		if (!out) return ['java not on PATH', 'Install Azul Zulu JDK 17, set JAVA_HOME'];
-		const major = Number((out.match(/(\d+)/) || [])[1]);
+		const out = sh('java -version');
+		if (!out) return ['java not on PATH', 'Install a JDK 17 (Temurin/Zulu) and set JAVA_HOME'];
+		// e.g. openjdk version "17.0.20" 2026-07-21
+		const major = Number((out.match(/version "(\d+)/) || [])[1]);
+		if (!major) return ['could not parse the java version', `got: ${out.split('\n')[0]}`];
 		return major === 17
 			? null
 			: [`JDK ${major} found`, 'Android requires JDK 17 — 21+ gives "Unsupported class file major version"'];
@@ -55,7 +58,7 @@ const checks = {
 	},
 
 	'USB device': () => {
-		const out = sh('adb', ['devices']);
+		const out = sh('adb devices');
 		if (out === null) return ['adb not on PATH', 'Add <SDK>/platform-tools to PATH'];
 		const lines = out.split('\n').slice(1).map((l) => l.trim()).filter(Boolean);
 		if (lines.some((l) => /\bdevice$/.test(l))) return null;

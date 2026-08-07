@@ -26,6 +26,8 @@ const found = {
 		'android/app/src/main/res/values/strings.xml',
 		/name="expo_runtime_version">([^<]+)</,
 	),
+	// Only refreshed by `npm install`; it silently sat 3 versions behind until Aug 2026.
+	'package-lock.json → version': grab('package-lock.json', /"version":\s*"([^"]+)"/),
 };
 
 const expected = {
@@ -34,6 +36,7 @@ const expected = {
 	'android/app/build.gradle → versionCode': code,
 	'android/app/build.gradle → versionName': version,
 	'strings.xml → expo_runtime_version': version,
+	'package-lock.json → version': version,
 };
 
 console.log(`\n📦 package.json version: ${version}  (expected versionCode: ${code})\n`);

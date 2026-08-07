@@ -77,6 +77,7 @@ The `eas-build.yml` workflow handles this:
    | `app.config.ts` | `ios.buildNumber` | `"62"` |
    | `android/app/build.gradle` | `versionCode` / `versionName` | `62` / `"0.0.62"` |
    | `android/app/src/main/res/values/strings.xml` | `expo_runtime_version` | `0.0.62` |
+   | `package-lock.json` | `version` (×2, top of file) | `"0.0.62"` — refreshed by `npm install` |
 
    `app.config.ts` derives `version` and `runtimeVersion` from `package.json`, so those two follow automatically. The Android native values do **not** — see step 3.
 

@@ -78,7 +78,9 @@ This folder contains six onboarding guides:
    ```
 
 > [!WARNING]
-> Do **not** run `npm install --ignore-scripts`. `postinstall` is where `patch-package` applies everything in `patches/` — skipping it produces native build failures that look unrelated to the install step.
+> `postinstall` is where `patch-package` applies everything in `patches/` — skipping it produces native build failures that look unrelated to the install step. So don't reach for `--ignore-scripts` casually.
+>
+> **On Windows you have to, though:** the `maestro` devDependency's postinstall runs `./bin/welcome-message.sh`, which `cmd.exe` cannot execute, and npm aborts the whole install. Use `npm install --ignore-scripts` followed by `npx patch-package` — that reaches the same state without the broken script.
 
 ### 💻 Option B: Native Setup
 1. **Install Node.js 20** (LTS or higher):
