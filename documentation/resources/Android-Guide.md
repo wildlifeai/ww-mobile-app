@@ -101,6 +101,7 @@ android {
 | "SDK location not found" | Create `android/local.properties`: `sdk.dir=C:\\Users\\YOU\\AppData\\Local\\Android\\Sdk` |
 | "compileSdkVersion not specified" | Add `subprojects { afterEvaluate { ... compileSdkVersion } }` to `android/build.gradle` |
 | Build exits non-zero | `cd android && ./gradlew clean && cd ..` then `npx expo prebuild --clean` |
+| Users can't install from Play (device *is* supported) | Play Integrity filter — see [publishing_guide.md](publishing_guide.md#️-store-listing-device-checks-play-integrity--the-invisible-install-filter) |
 | "Missing Supabase configuration" | Env vars must be in `eas.json`, not just `.env.local`. Rebuild after updating. |
 | EAS build queued too long | Use `--local` flag |
 

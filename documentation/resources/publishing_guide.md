@@ -119,6 +119,24 @@ Promotion path: **Internal testing** → **Closed testing** → **Open testing**
 
 Promote releases via Google Play Console (manual for now).
 
+#### ⚠️ Store listing device checks (Play Integrity) — the invisible install filter
+
+**Play Console → Protected with Play → Store listing device checks.** This setting decides which devices can *see and install* the app from Play at all. It is the first thing to check when users report "I can't install it" while the build is healthy.
+
+| Level | Who can install |
+|-------|-----------------|
+| No integrity checks | Everyone |
+| **Basic integrity checks** ← **current setting** | Blocks emulators and clearly tampered environments. Custom ROMs (GrapheneOS, CalyxOS, LineageOS) pass. |
+| Device integrity checks ("recommended" by Google) | Blocks custom ROMs, rooted phones, unlocked bootloaders, uncertified devices, emulators |
+| Strong integrity checks | Above, plus hardware-backed attestation requirements |
+
+> [!CAUTION]
+> **This filter is invisible in every other Console view.** Devices excluded by a Play Integrity verdict are explicitly **not** shown in Device catalog → *devices currently excluded* — the page says so in fine print. So a device can appear fully **Supported** in the Device catalog, have no exclusion rule against it, and still be unable to install the app. Do not conclude "the Console is clean" from those pages alone; open this screen.
+
+**History — 6 Aug 2026:** changed from *Device integrity* to *Basic integrity*. Symptom was Pixel 10 users unable to install while others could; all five Pixel 10 models showed **Supported** in the Device catalog and no device exclusion rules existed. Cause was this setting silently filtering devices that fail `MEETS_DEVICE_INTEGRITY` — on Pixels that disproportionately means GrapheneOS/CalyxOS users, so only *some* owners of the same phone were affected. Basic was chosen because the app's real authorisation is enforced server-side by Supabase RLS at the sync boundary (see [03-DATA-AND-SYNC.md](../onboarding/03-DATA-AND-SYNC.md#security--data-integrity)) — the client is untrusted by design and the app makes no Play Integrity API calls of its own, so the stricter levels bought no security while excluding legitimate conservation users.
+
+**Diagnosing a suspected integrity block:** ask the affected user for Play Store → Settings → About → **Play Protect certification**. "Device is not certified" confirms it.
+
 ### iOS (App Store Connect)
 
 EAS submits to App Store Connect. Review takes 1-3 days.
@@ -130,6 +148,7 @@ EAS submits to App Store Connect. Review takes 1-3 days.
 
 | Problem | Solution |
 |---------|----------|
+| **Some users can't install from Play; device shows as Supported** | Check **Protected with Play → Store listing device checks** — integrity-filtered devices are invisible in the Device catalog tables. See [above](#️-store-listing-device-checks-play-integrity--the-invisible-install-filter). |
 | "Google Play API not enabled" | Enable "Google Play Android Developer API" in Cloud Console |
 | "Forbidden / Permission Denied" | Add service account to Play Console Users & Permissions |
 | EAS build fails | Check `eas build:list` for logs; verify `EXPO_TOKEN` secret |
