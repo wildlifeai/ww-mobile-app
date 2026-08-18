@@ -19,7 +19,7 @@ CREATE TABLE firmware (
 
 -- Unique index for type/version combination (excluding soft-deleted)
 CREATE UNIQUE INDEX firmware_type_version_unique_idx
-  ON firmware (type, version, COALESCE(camera_variant, ''))
+  ON firmware (type, version, coalesce(camera_variant, ''))
   WHERE deleted_at IS null;
 
 COMMENT ON TABLE firmware IS 'Wildlife Watcher camera firmware versions managed by Wildlife.ai';
@@ -37,4 +37,3 @@ COMMENT ON COLUMN firmware.modified_by IS 'User who last modified this record';
 COMMENT ON COLUMN firmware.deleted_at IS 'Soft delete timestamp - NULL means active';
 
 ALTER TABLE firmware ENABLE ROW LEVEL SECURITY;
-

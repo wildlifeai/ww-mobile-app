@@ -19,14 +19,14 @@ CREATE POLICY "projects_select_policy"
   USING (
     (SELECT auth.uid()) IS NOT NULL AND (
       -- WW Admins can see all projects
-      has_system_role((SELECT auth.uid()), 'ww_admin') OR
+      has_system_role((SELECT auth.uid()), 'ww_admin')
       -- Users can see projects they have project-level roles for
-      EXISTS (
-        SELECT 1 FROM user_roles ur
+      OR EXISTS (
+        SELECT 1 FROM user_roles AS ur
         WHERE ur.scope_type = 'project'
           AND ur.scope_id::uuid = projects.id
           AND ur.user_id = (SELECT auth.uid())
-          AND ur.is_active = true
+          AND ur.is_active = TRUE
           AND ur.deleted_at IS NULL
       )
     )
@@ -49,14 +49,14 @@ CREATE POLICY "projects_update_policy"
   TO authenticated
   USING (
     (SELECT auth.uid()) IS NOT NULL AND (
-      has_system_role((SELECT auth.uid()), 'ww_admin') OR
-      has_project_role((SELECT auth.uid()), projects.id, 'project_admin')
+      has_system_role((SELECT auth.uid()), 'ww_admin')
+      OR has_project_role((SELECT auth.uid()), projects.id, 'project_admin')
     )
   )
   WITH CHECK (
     (SELECT auth.uid()) IS NOT NULL AND (
-      has_system_role((SELECT auth.uid()), 'ww_admin') OR
-      has_project_role((SELECT auth.uid()), projects.id, 'project_admin')
+      has_system_role((SELECT auth.uid()), 'ww_admin')
+      OR has_project_role((SELECT auth.uid()), projects.id, 'project_admin')
     )
   );
 
@@ -70,8 +70,8 @@ CREATE POLICY "projects_delete_policy"
     AND deleted_at IS NULL -- Can only soft delete active projects
     -- Must have appropriate role
     AND (
-      has_system_role((SELECT auth.uid()), 'ww_admin') OR
-      has_project_role((SELECT auth.uid()), projects.id, 'project_admin')
+      has_system_role((SELECT auth.uid()), 'ww_admin')
+      OR has_project_role((SELECT auth.uid()), projects.id, 'project_admin')
     )
   )
   WITH CHECK (

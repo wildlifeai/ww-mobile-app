@@ -12,10 +12,22 @@ const { execSync } = require('child_process');
 
 // Configuration
 const MOBILE_SUPABASE_PATH = path.resolve(__dirname, '../supabase');
+// Mirrors the backend's own directory names. The aaa_/xxx_/yyy_/zzz_ prefixes encode
+// apply order there, so copying them verbatim keeps a local `supabase db reset` correct.
+//
+// These names are a cross-repo contract: when the backend renamed `policies` ->
+// `yyy_policies` this list was not updated, and because a missing source directory was
+// only a warning, RLS quietly stopped syncing. The app sat on 21 stale policy files
+// while the backend had 38. Missing directories are now fatal — see below.
 const SCHEMA_MAP = [
     'schemas/public/tables',
     'schemas/public/functions',
-    'schemas/public/policies',
+    'schemas/public/triggers',
+    'schemas/public/views',
+    'schemas/public/xxx_rls',        // ENABLE ROW LEVEL SECURITY — policies do nothing without it
+    'schemas/public/yyy_policies',   // was 'schemas/public/policies'
+    'schemas/public/zzz_indexes',
+    'schemas/public/aaa_default_privileges',
 ];
 
 // Files that should NEVER be deleted even if they don't exist in the backend
@@ -79,12 +91,21 @@ if (!effectiveBackendPath) {
 }
 
 // 2. Sync Schema Files
+const missingDirs = [];
+
 SCHEMA_MAP.forEach(schemaPath => {
     const srcDir = path.join(effectiveBackendPath, 'supabase', schemaPath);
     const destDir = path.join(MOBILE_SUPABASE_PATH, schemaPath);
 
     if (!fs.existsSync(srcDir)) {
-        console.warn(`⚠️ Warning: Source directory ${srcDir} does not exist. Skipping.`);
+        // Fatal, not a warning. This used to skip silently, which is how the app ended
+        // up 17 policy files behind the backend without anyone noticing for months.
+        console.error(`\n❌ Backend schema directory missing: ${srcDir}`);
+        console.error('   The backend layout changed, or your ww-backend checkout is stale.');
+        console.error('   Fix: pull ww-backend, then update SCHEMA_MAP in this script to match.');
+        console.error(`   Backend currently has: ${fs.readdirSync(path.join(effectiveBackendPath, 'supabase', 'schemas', 'public')).join(', ')}\n`);
+        process.exitCode = 1;
+        missingDirs.push(schemaPath);
         return;
     }
 
@@ -120,7 +141,11 @@ SCHEMA_MAP.forEach(schemaPath => {
     });
 });
 
-console.log('✅ Schema sync complete!');
+if (missingDirs.length > 0) {
+    console.error(`❌ Schema sync incomplete — ${missingDirs.length} director(ies) missing: ${missingDirs.join(', ')}`);
+} else {
+    console.log('✅ Schema sync complete!');
+}
 
 if (isTemporary && fs.existsSync(TEMP_DIR)) {
     console.log('🧹 Cleaning up temporary files...');

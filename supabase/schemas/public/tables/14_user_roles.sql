@@ -45,8 +45,8 @@ ALTER TABLE user_roles ADD CONSTRAINT user_roles_role_scope_validation CHECK (
   OR (role = 'project_viewer' AND scope_type IN ('organisation', 'project'))
 );
 
-COMMENT ON TABLE user_roles IS 'Stores user role assignments with hierarchical scope (system > organisation > project). Implements the 4-tier role system for Wildlife Watcher.';
-COMMENT ON COLUMN user_roles.role IS 'The role type: ww_admin (system), organisation_manager (organisation management), project_admin (project management), project_member (basic access).';
+COMMENT ON TABLE user_roles IS 'Stores user role assignments with hierarchical scope (system > organisation > project). Implements the 6-tier role system for Wildlife Watcher.';
+COMMENT ON COLUMN user_roles.role IS 'The role type: ww_admin (system), organisation_manager (organisation management), organisation_member (org-wide read access), project_admin (project management), project_member (basic access), project_viewer (read-only).';
 COMMENT ON COLUMN user_roles.scope_type IS 'The scope of the role: system (global), organisation (org-wide), project (project-specific).';
 COMMENT ON COLUMN user_roles.scope_id IS 'ID of the scope entity (organisation_id or project_id). NULL for system roles.';
 COMMENT ON COLUMN user_roles.granted_by IS 'User ID who granted this role (audit trail).';

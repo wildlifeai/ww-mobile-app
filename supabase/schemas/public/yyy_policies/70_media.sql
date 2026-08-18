@@ -12,7 +12,7 @@ CREATE POLICY "Project members can view active media"
       FROM deployments AS d
       WHERE d.id = media.deployment_id
         AND d.deleted_at IS NULL
-        AND has_project_role(auth.uid(), d.project_id, 'project_member')
+        AND has_project_role((SELECT auth.uid()), d.project_id, 'project_viewer')
     )
   );
 

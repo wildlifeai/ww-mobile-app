@@ -13,20 +13,20 @@ CREATE POLICY "lorawan_messages_select_policy"
   TO authenticated
   USING (
     -- WW Admins can see all messages
-    has_system_role((SELECT auth.uid()), 'ww_admin') OR
+    has_system_role((SELECT auth.uid()), 'ww_admin')
     -- Users can see messages from devices in their organisation
-    EXISTS (
-      SELECT 1 FROM devices d
+    OR EXISTS (
+      SELECT 1 FROM devices AS d
       WHERE d.id = lorawan_messages.device_id
         AND d.deleted_at IS NULL
         AND has_organisation_role((SELECT auth.uid()), d.organisation_id, 'organisation_member')
-    ) OR
+    )
     -- Users can see messages from deployments in projects they're members of
-    EXISTS (
-      SELECT 1 FROM deployments dep
+    OR EXISTS (
+      SELECT 1 FROM deployments AS dep
       WHERE dep.id = lorawan_messages.deployment_id
         AND dep.deleted_at IS NULL
-        AND has_project_role((SELECT auth.uid()), dep.project_id, 'project_member')
+        AND has_project_role((SELECT auth.uid()), dep.project_id, 'project_viewer')
     )
   );
 

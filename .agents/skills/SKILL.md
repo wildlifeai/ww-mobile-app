@@ -37,6 +37,7 @@ changing one side silently breaks the other:
 | **BLE command strings** | `src/ble/protocol/commandRegistry.ts` | Seeed `CLI-commands.c` / `CLI-FATFS-commands.c`; relay in ww-hardware |
 | **`ftx` file-transfer wire format** | `src/ble/protocol/fileTransfer/` | ww-hardware `fileTx.c` ↔ Seeed `fileRx.c` |
 | **Database schema** | `src/database/schema.ts` (generated) | **owned by** `wildlife-watcher-backend` — schema changes start there |
+| **Backend schema directory names** | `SCHEMA_MAP` in `scripts/sync-db-schema.js` | `ww-backend/supabase/schemas/public/*` — the `aaa_`/`xxx_`/`yyy_`/`zzz_` prefixes encode apply order |
 | **AI model / firmware filenames** | `deploymentPipeline.ts`, `useFirmwareUpdate.ts` | Seeed `xip_manager.c` parser |
 
 **The `AI ` prefix rule.** Commands prefixed `AI ` are forwarded by the nRF52 to the
@@ -113,25 +114,29 @@ people: `reset` reboots the nRF *after disconnect*; `AI reset` reboots only the 
   query — fetch it from the cloud and degrade gracefully offline.
 - Writes go to WatermelonDB first; the outbox syncs them. Never block the UI on network.
 
-### The schema version is a build counter, not a schema identity
+### Schema version — only moves on a real change
 
-`scripts/generate-watermelon-schema.js` increments `version:` **unconditionally on every
-run** — it reads the old number and adds one, without comparing the generated tables to
-what was there. `schema:generate` is step 4 of `npm run android`, so *every dev build*
-bumps it, whether or not anything changed.
+`scripts/generate-watermelon-schema.js` compares the generated table definitions against
+the existing file (line endings normalised, version line ignored) and **only increments
+`version:` when the tables actually differ**. An unchanged schema is not even rewritten,
+so `npm run android` leaves no diff.
 
-Consequences to keep in mind:
+It did not always work that way. Until Aug 2026 it incremented on *every* run, and since
+`schema:generate` is step 4 of `npm run android`, the number was a build counter: it
+reached 402 without 402 schema changes, forced a WatermelonDB migration on every dev
+build, and produced a spurious one-line diff each time. That is why the docs point at
+`schema.ts` instead of quoting a number, and why any version below ~402 in an old
+document means nothing.
 
-- The number reflects how many times someone ran a build, not how many times the schema
-  changed. Version 402 was not 402 migrations. Two checkouts with byte-identical schemas
-  will disagree.
-- Expect a one-line `schema.ts` diff after any build. That is noise, not a schema change —
-  check the *tables*, not the version, before concluding something moved.
+Still true regardless:
+
 - **Never hand-edit the version downwards.** WatermelonDB migrates on version increase; a
-  number lower than the on-device database is how you trigger a reset. If a build bumped
-  it and you want to discard the change, make sure no device has already run that build.
-- This is why docs must point at `schema.ts` rather than quote a number — a hardcoded
-  version cannot stay accurate against a counter that moves on every build.
+  number lower than the on-device database triggers a reset. If you want to discard a
+  bump, make sure no device has already run that build.
+- When the version *does* increase, add the matching migration in
+  `src/database/migrations.ts` — the generator prints a reminder.
+- Line endings matter here: git restores `schema.ts` as CRLF on Windows while the
+  generator emits LF, so any comparison against it must normalise first.
 
 ## 6. Writing tooling in `scripts/`
 

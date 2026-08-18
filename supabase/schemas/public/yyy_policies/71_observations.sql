@@ -12,7 +12,7 @@ CREATE POLICY "Project members can view active observations"
       FROM deployments AS d
       WHERE d.id = observations.deployment_id
         AND d.deleted_at IS NULL
-        AND has_project_role(auth.uid(), d.project_id, 'project_member')
+        AND has_project_role((SELECT auth.uid()), d.project_id, 'project_viewer')
     )
   );
 
@@ -32,8 +32,11 @@ CREATE POLICY "Project members can create observations"
     )
   );
 
--- UPDATE: Project admins can update any observation in their project
-CREATE POLICY "Project admins can update observations"
+-- UPDATE: Project members can update observations in their project
+-- (confirm/correct/blank/redraw AI labels). has_project_role is hierarchical,
+-- so project_admin satisfies the project_member check too. Tighten to
+-- 'project_admin' if admin-only editing is required.
+CREATE POLICY "Project members can update observations"
   ON observations
   FOR UPDATE
   TO authenticated
@@ -43,7 +46,7 @@ CREATE POLICY "Project admins can update observations"
       FROM deployments AS d
       WHERE d.id = observations.deployment_id
         AND d.deleted_at IS NULL
-        AND has_project_role((SELECT auth.uid()), d.project_id, 'project_admin')
+        AND has_project_role((SELECT auth.uid()), d.project_id, 'project_member')
     )
   )
   WITH CHECK (
@@ -52,6 +55,6 @@ CREATE POLICY "Project admins can update observations"
       FROM deployments AS d
       WHERE d.id = observations.deployment_id
         AND d.deleted_at IS NULL
-        AND has_project_role((SELECT auth.uid()), d.project_id, 'project_admin')
+        AND has_project_role((SELECT auth.uid()), d.project_id, 'project_member')
     )
   );
