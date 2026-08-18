@@ -70,17 +70,34 @@ if (!projectIdMatch) {
 const projectId = projectIdMatch[1];
 console.log(`✅ Extracted Project ID: ${projectId} from ${source}`);
 
+const TARGET = path.join(ROOT, 'src/types/database.types.ts');
+const TMP = path.join(ROOT, 'src/types/.database.types.ts.tmp');
+
+// Generate to a temp file, not straight to TARGET. A shell `>` redirect truncates
+// its target *before* the command runs, so a failed sync used to leave the committed
+// types destroyed — and then "proceeding with existing types" silently proceeded with
+// a 200-byte error blob, which only surfaced later as a confusing schema:generate crash.
 try {
-    const cmd = `npx -y supabase gen types typescript --project-id ${projectId} --schema public > src/types/database.types.ts`;
+    const cmd = `npx -y supabase gen types typescript --project-id ${projectId} --schema public > "${TMP}"`;
     console.log(`Executing: npx supabase gen types typescript --project-id ${projectId} ...`);
 
     execSync(cmd, { stdio: 'inherit', cwd: ROOT });
 
+    // The CLI exits 0 while writing a JSON error blob to stdout, so check the content.
+    const generated = fs.readFileSync(TMP, 'utf8');
+    if (!/export (type|interface) Database\b/.test(generated) || !generated.includes('Tables:')) {
+        const hint = generated.trim().slice(0, 200);
+        throw new Error(`output does not look like Supabase types: ${hint}`);
+    }
+
+    fs.renameSync(TMP, TARGET);
     console.log('✅ Successfully generated database types!');
 } catch (error) {
-    console.error('❌ Failed to generate database types.');
-    console.log('⚠️  If your project is paused due to inactivity, wake it up via the Supabase Dashboard.');
+    if (fs.existsSync(TMP)) fs.unlinkSync(TMP);
+    console.error(`❌ Failed to generate database types: ${error.message}`);
+    console.log('⚠️  Paused project? Wake it in the Supabase Dashboard.');
+    console.log('⚠️  Not authenticated? `npx supabase login` or set SUPABASE_ACCESS_TOKEN.');
     if (STRICT) process.exit(1);
-    // Do not fail a local build just because the database is asleep
-    console.warn('⚠️  Proceeding with existing types...');
+    // Do not fail a local build for this — the committed types are intact and usable.
+    console.warn('⚠️  Proceeding with the committed src/types/database.types.ts (unchanged).');
 }

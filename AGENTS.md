@@ -44,7 +44,11 @@ npm run docs:validate    # every path/link in documentation/ resolves
 - **OP parameter indices mirror the firmware** (`OP_PARAMETER` here ↔ `OP_PARAMETERS_E`
   in the Seeed repo). A cross-repo contract — never renumber unilaterally.
 - **The schema is generated, not written.** `src/database/schema.ts` comes from
-  `npm run schema:generate`; schema changes originate in `wildlife-watcher-backend`.
+  `npm run schema:generate`; schema changes originate in `wildlife-watcher-backend`. Its
+  `version:` auto-increments on **every** build, so a one-line version diff after
+  `npm run android` is noise — and never edit it downwards.
+- **Don't export `CI` locally.** It puts the type sync into strict mode and `npm run
+  android` dies at step 2.
 - **Security lives at the sync boundary, not on the client.** Role checks in the app are
   UX; Supabase RLS is the enforcement. Never treat a local query as authoritative for
   data belonging to other users.

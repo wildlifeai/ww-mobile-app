@@ -91,6 +91,18 @@ people: `reset` reboots the nRF *after disconnect*; `AI reset` reboots only the 
   `npm run version:check` catches all six.
 - **`eas.json` has five profiles, not three**, and `production` in the GitHub workflow
   also **submits to the stores**. Check before dispatching a build.
+- **`CI=1` in your shell changes behaviour.** `sync-types-cloud.js` treats
+  `process.env.CI` as strict mode: a failed type sync becomes fatal instead of a warning,
+  so `npm run android` dies at step 2. Don't export `CI` locally.
+- **`supabase gen types` needs auth and lies about failing.** It requires
+  `npx supabase login` or `SUPABASE_ACCESS_TOKEN`, and on failure it **exits 0** while
+  printing a JSON error blob to stdout. Any `cmd > file` capture therefore writes the
+  error into the file. The script now generates to a temp file, checks the content looks
+  like types, and only then renames — keep that shape if you touch it.
+- **Never `>` straight onto a tracked file.** The shell truncates the target *before* the
+  command runs, so a failure destroys the committed version. This wiped
+  `src/types/database.types.ts` (169 KB → a 217-byte error blob) and only surfaced two
+  steps later as a confusing `schema:generate` crash.
 
 ## 5. Data and sync
 
@@ -101,7 +113,46 @@ people: `reset` reboots the nRF *after disconnect*; `AI reset` reboots only the 
   query — fetch it from the cloud and degrade gracefully offline.
 - Writes go to WatermelonDB first; the outbox syncs them. Never block the UI on network.
 
-## 6. Documentation
+### The schema version is a build counter, not a schema identity
+
+`scripts/generate-watermelon-schema.js` increments `version:` **unconditionally on every
+run** — it reads the old number and adds one, without comparing the generated tables to
+what was there. `schema:generate` is step 4 of `npm run android`, so *every dev build*
+bumps it, whether or not anything changed.
+
+Consequences to keep in mind:
+
+- The number reflects how many times someone ran a build, not how many times the schema
+  changed. Version 402 was not 402 migrations. Two checkouts with byte-identical schemas
+  will disagree.
+- Expect a one-line `schema.ts` diff after any build. That is noise, not a schema change —
+  check the *tables*, not the version, before concluding something moved.
+- **Never hand-edit the version downwards.** WatermelonDB migrates on version increase; a
+  number lower than the on-device database is how you trigger a reset. If a build bumped
+  it and you want to discard the change, make sure no device has already run that build.
+- This is why docs must point at `schema.ts` rather than quote a number — a hardcoded
+  version cannot stay accurate against a counter that moves on every build.
+
+## 6. Writing tooling in `scripts/`
+
+These run on Windows, macOS and CI. Every bug found in them so far has been at the
+shell boundary, and none of them reproduced in a Linux container:
+
+- **Merge stderr.** `java -version` writes to **stderr**; `adb devices` to stdout. A
+  helper that captures only stdout reports "java not on PATH" for a perfectly good JDK.
+  Use `cmd 2>&1`.
+- **Always time out external commands.** The first `adb devices` after a reboot starts a
+  daemon that inherits your stdout pipe and never closes it — an untimed `execSync` hangs
+  forever even though `adb devices` itself exited. Warm it with `adb start-server` first.
+- **Exit codes lie.** Check output content, not just the exit status (see the Supabase CLI
+  in §4).
+- **Absence of a tool is not proof your check works.** The JDK bug survived a container
+  test because with no JDK present the wrong code path produced the right answer. If a
+  check can only pass or fail for the same reason, it hasn't been tested.
+- Prefer `npm run <guard>` over ad-hoc verification: `version:check` and `docs:validate`
+  exist so drift fails loudly in CI.
+
+## 7. Documentation
 
 - `documentation/onboarding/` = the guided path (six numbered guides).
   `documentation/resources/` = deep dives. `documentation/development reports/` = how
