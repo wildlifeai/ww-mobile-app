@@ -16,14 +16,20 @@ const ENV_FILES = ['.env.development', '.env.local', '.env'];
 
 // `2>&1` because the tools disagree about which stream to use: `java -version`
 // writes to stderr, `adb devices` to stdout. Merge them and read whatever comes.
-const sh = (cmd) => {
+// The timeout matters: the first `adb devices` after a reboot starts a daemon that
+// inherits our stdout pipe and never closes it, so an untimed execSync hangs forever
+// even though `adb devices` itself already exited.
+const sh = (cmd, timeout = 20_000) => {
 	try {
 		return execSync(`${cmd} 2>&1`, {
 			encoding: 'utf8',
 			stdio: ['ignore', 'pipe', 'pipe'],
+			timeout,
 		}).trim();
-	} catch {
-		return null;
+	} catch (e) {
+		// A timeout still captures whatever the command printed before we gave up.
+		const partial = (e && e.stdout ? String(e.stdout) : '').trim();
+		return partial || null;
 	}
 };
 
@@ -58,6 +64,8 @@ const checks = {
 	},
 
 	'USB device': () => {
+		// Warm the daemon separately so the query below is a fast, clean read.
+		sh('adb start-server', 25_000);
 		const out = sh('adb devices');
 		if (out === null) return ['adb not on PATH', 'Add <SDK>/platform-tools to PATH'];
 		const lines = out.split('\n').slice(1).map((l) => l.trim()).filter(Boolean);
