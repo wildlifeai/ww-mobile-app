@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { View, StyleSheet, ScrollView } from 'react-native'
-import { Surface, Divider, Button, ActivityIndicator, Switch } from 'react-native-paper'
+import { useState, useRef, useEffect } from 'react'
+import { View, StyleSheet, ScrollView, Image } from 'react-native'
+import { Button, Divider, ProgressBar } from 'react-native-paper'
 import { useRoute } from '@react-navigation/native'
 
 import { useAppSelector } from '../../redux'
@@ -8,45 +8,55 @@ import { useExtendedTheme } from '../../theme'
 import { WWText } from '../../components/ui/WWText'
 import { WWTextInput } from '../../components/ui/WWTextInput'
 import { WWBleDisconnectedBanner } from '../../components/ui/WWBleDisconnectedBanner'
-import { DeviceHealthBanner } from '../../components/DeviceHealthBanner'
-import { useDeviceSelfTest } from '../../hooks/useDeviceSelfTest'
 import { useLightSensor } from '../../hooks/useLightSensor'
+import { useCapturePreview } from '../../hooks/useCapturePreview'
+import { useLightSensorLog } from '../../hooks/useLightSensorLog'
 
-const NumericInput = ({ label, value, onChange, min, max, disabled }: {
-    label: string; value: number; onChange: (v: number) => void; min: number; max: number; disabled?: boolean
-}) => {
-    const { spacing } = useExtendedTheme()
-    const [localValue, setLocalValue] = useState(() => value.toString())
-    const [prevValue, setPrevValue] = useState(value)
-    if (value !== prevValue) {
-        setPrevValue(value)
-        setLocalValue(value.toString())
-    }
-    return (
-        <View style={{ marginBottom: spacing }}>
-            <WWTextInput
-                label={label}
-                value={localValue}
-                keyboardType="numeric"
-                disabled={disabled}
-                onChange={(t: string) => setLocalValue(t)}
-                onBlur={() => {
-                    let v = parseInt(localValue.replace(/[^0-9]/g, ''), 10)
-                    if (isNaN(v)) v = min
-                    if (v < min) v = min
-                    if (v > max) v = max
-                    setLocalValue(v.toString())
-                    onChange(v)
-                }}
-            />
-        </View>
-    )
+const formatDuration = (ms: number): string => {
+    const s = Math.max(0, Math.round(ms / 1000))
+    if (s < 60) return `${s}s`
+    return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`
 }
 
 /**
- * Day/night light sensor flow: shows the firmware's current flash decision
- * (op25), the live AE register readings behind it, and lets the engineer tune
- * the dark threshold (op23) and periodic check interval (op24).
+ * Time remaining for the image download, estimated from how fast progress is
+ * actually moving rather than an assumed rate — throughput varies several-fold
+ * with the BLE connection interval, so a fixed KB/s figure would mislead.
+ *
+ * Held back until the transfer is 3% in and 2s old: the first few chunks arrive
+ * in a burst and would otherwise predict an absurdly short time.
+ */
+const useTransferEta = (isCapturing: boolean, progress: number): string | null => {
+    const [eta, setEta] = useState<string | null>(null)
+    const startRef = useRef<number | null>(null)
+
+    useEffect(() => {
+        if (!isCapturing || progress <= 0) {
+            startRef.current = null
+            setEta(null)
+            return
+        }
+        if (startRef.current === null) startRef.current = Date.now()
+
+        const elapsed = Date.now() - startRef.current
+        if (progress < 0.03 || elapsed < 2000) return
+
+        setEta(formatDuration((elapsed * (1 - progress)) / progress))
+    }, [isCapturing, progress])
+
+    return eta
+}
+
+/**
+ * Deliberately minimal: capture a frame, show it next to its light level, log the
+ * pair for later analysis. The tuning controls, auto camera switch and AE explainer
+ * were stripped on 2026-08-21 — add them back one at a time as bench testing shows
+ * they are needed.
+ *
+ * The light level is the AE mean sampled during the capture this screen triggers,
+ * NOT the device's stored decision (op25). op25 only updates when the firmware has
+ * a consumer for it (flash on, or auto camera switch), so it reads stale — which is
+ * why this screen never shows it.
  */
 export const LightSensorScreen = () => {
     const route = useRoute<any>()
@@ -55,166 +65,120 @@ export const LightSensorScreen = () => {
     const deviceId = route.params?.deviceId
     const device = useAppSelector(state => state.devices[deviceId || ''])
 
-    const { state, aeData, isBusy, stage, refresh, setParam, measureNow, enableAeFlash, setAutoSwitch } = useLightSensor({ device })
-    const { issues, isChecking, refresh: recheckHealth } = useDeviceSelfTest({ device })
+    const { state, aeData } = useLightSensor({ device })
+    const { readings, addReading, annotateLast, clear, exportCsv, copyCsv } = useLightSensorLog()
+    const { capturedImageUri, isCapturing, captureStage, captureProgress, startCapture } = useCapturePreview({ device })
 
+    const eta = useTransferEta(isCapturing, captureProgress)
+
+    const [note, setNote] = useState('')
     const connected = !!device?.connected
-    const aeMeanNum = aeData ? parseInt(aeData.aeMean, 10) : NaN
-    // The firmware only runs the AE decision when something consumes it: the
-    // AE-driven flash (op13 != 0) or auto camera switching (op26 = 1). With
-    // both off the displayed op25 is stale - the #1 "why does it say BRIGHT
-    // in a dark box?" trap.
-    const aeDecisionDisabled = state.flashLed === 0 && state.autoSwitch !== 1
+    const aeMean = aeData ? parseInt(aeData.aeMean, 10) : NaN
+    const hasReading = !isNaN(aeMean)
+
+    // Log one row per completed capture. Keyed on the image URI so a re-render
+    // never double-logs, and so the row always carries the frame it belongs to.
+    const loggedUriRef = useRef<string | null>(null)
+    useEffect(() => {
+        if (!capturedImageUri || isCapturing) return
+        if (loggedUriRef.current === capturedImageUri) return
+        if (!aeData || isNaN(parseInt(aeData.aeMean, 10))) return
+
+        loggedUriRef.current = capturedImageUri
+        addReading({
+            timestamp: new Date().toISOString(),
+            aeMean: parseInt(aeData.aeMean, 10),
+            integration: aeData.integration,
+            analogGain: aeData.analogGain,
+            digitalGain: aeData.digitalGain,
+            aeConverged: aeData.aeConverged,
+            darkThreshold: state.darkThreshold,
+            deviceName: device?.name ?? deviceId ?? 'unknown',
+            imageUri: capturedImageUri,
+            note: note.trim() || undefined,
+        })
+    }, [capturedImageUri, isCapturing, aeData, state.darkThreshold, device?.name, deviceId, note, addReading])
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={[styles.content, { padding: spacing, gap: spacing }]} keyboardShouldPersistTaps="handled">
-
+        <ScrollView
+            style={styles.container}
+            contentContainerStyle={[styles.content, { padding: spacing, gap: spacing }]}
+            keyboardShouldPersistTaps="handled"
+        >
             <WWBleDisconnectedBanner connected={connected} dfuInProgress={!!device?.dfuInProgress} />
 
-            <DeviceHealthBanner issues={issues} onRecheck={recheckHealth} isChecking={isChecking} />
-
-            <WWText variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
-                The camera reads its light sensor (the night camera's auto-exposure) around every capture
-                and periodically while deployed. In the dark it turns on the IR illumination for motion
-                detection and flash for captures.
-            </WWText>
-
-            {/* ── AE mode gate warning ── */}
-            {aeDecisionDisabled && (
-                <Surface style={[styles.card, styles.warnCard]} elevation={1}>
-                    <WWText style={styles.warnText}>
-                        ⚠️ The flash is OFF (op13 = 0) and auto camera switch is off (op26 = 0),
-                        so the device never runs its light check — the decision below is stale
-                        and will not change, even in the dark.
-                    </WWText>
-                    <Button
-                        mode="contained"
-                        buttonColor="#FFB74D"
-                        textColor="#3E2723"
-                        style={{ marginTop: 8 }}
-                        onPress={enableAeFlash}
-                        disabled={!connected || isBusy}
-                    >
-                        Enable light-driven flash (IR)
-                    </Button>
-                </Surface>
-            )}
-
-            {/* ── Current decision ── */}
-            <Surface style={[styles.card, { backgroundColor: colors.surface }]} elevation={1}>
-                <View style={styles.row}>
-                    <WWText variant="titleSmall">Light decision</WWText>
-                    <Button compact mode="text" onPress={refresh} disabled={!connected || isBusy}>
-                        Refresh
-                    </Button>
-                </View>
-                <WWText variant="headlineSmall" style={{ marginVertical: 4 }}>
-                    {state.flashState === null
-                        ? '— not read yet'
-                        : state.flashState === 1
-                            ? '🌙 DARK — flash will fire'
-                            : '☀️ BRIGHT — no flash'}
-                </WWText>
-                <Button
-                    mode="contained"
-                    onPress={measureNow}
-                    loading={isBusy}
-                    disabled={!connected || isBusy}
-                    style={{ marginTop: 8 }}
-                >
-                    <WWText style={{ color: 'white' }}>{isBusy ? (stage || 'Measuring…') : 'Measure light now'}</WWText>
-                </Button>
-                <WWText variant="labelSmall" style={{ color: colors.onSurfaceVariant, marginTop: 6 }}>
-                    Triggers a capture so the device samples the light and updates its decision (~10 s).
-                </WWText>
-            </Surface>
-
-            {/* ── Live AE readings ── */}
-            {aeData && (
-                <Surface style={[styles.card, { backgroundColor: colors.surface }]} elevation={1}>
-                    <WWText variant="titleSmall" style={{ marginBottom: 8 }}>Sensor readings (last capture)</WWText>
-                    <View style={styles.row}>
-                        <WWText variant="labelMedium">AE Mean (0–255):</WWText>
-                        <WWText>{aeData.aeMean}{!isNaN(aeMeanNum) ? (aeMeanNum < state.darkThreshold ? '  (below threshold → dark)' : '  (above threshold → bright)') : ''}</WWText>
+            <View style={[styles.preview, { backgroundColor: colors.surfaceVariant }]}>
+                {capturedImageUri && !isCapturing ? (
+                    <Image source={{ uri: capturedImageUri }} style={styles.image} resizeMode="contain" />
+                ) : (
+                    <View style={styles.previewBusy}>
+                        <WWText variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
+                            {isCapturing ? (captureStage || 'Capturing…') : 'No image yet'}
+                        </WWText>
+                        {isCapturing && (
+                            <>
+                                {/* Indeterminate until bytes start arriving — the capture and
+                                    sleep phases before the download have no measurable progress. */}
+                                <ProgressBar
+                                    indeterminate={captureProgress <= 0}
+                                    progress={captureProgress}
+                                    style={styles.progressBar}
+                                />
+                                {captureProgress > 0 && (
+                                    <WWText variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
+                                        {Math.round(captureProgress * 100)}%
+                                        {eta ? ` · about ${eta} left` : ''}
+                                    </WWText>
+                                )}
+                            </>
+                        )}
                     </View>
-                    {!isNaN(aeMeanNum) && (
-                        <View style={[styles.meanBarTrack, { backgroundColor: colors.surfaceVariant }]}>
-                            {/* threshold marker + level */}
-                            <View style={[styles.meanBarFill, { width: `${(aeMeanNum / 255) * 100}%`, backgroundColor: colors.primary }]} />
-                            <View style={[styles.thresholdMark, { left: `${(state.darkThreshold / 255) * 100}%`, backgroundColor: colors.error }]} />
-                        </View>
-                    )}
-                    <Divider style={styles.divider} />
-                    <View style={styles.row}>
-                        <WWText variant="labelMedium">Integration:</WWText>
-                        <WWText>{aeData.integration} lines</WWText>
-                    </View>
-                    <View style={styles.row}>
-                        <WWText variant="labelMedium">Analog / digital gain:</WWText>
-                        <WWText>{aeData.analogGain} / {aeData.digitalGain}</WWText>
-                    </View>
-                    <View style={styles.row}>
-                        <WWText variant="labelMedium">AE converged:</WWText>
-                        <WWText>{aeData.aeConverged.toUpperCase() === 'Y' ? '✅ Yes' : '⏳ No'}</WWText>
-                    </View>
-                </Surface>
-            )}
-
-            {/* ── Auto camera switch (op26) ── */}
-            <Surface style={[styles.card, { backgroundColor: colors.surface }]} elevation={1}>
-                <View style={styles.row}>
-                    <WWText variant="titleSmall">Auto camera switch</WWText>
-                    <Switch
-                        value={state.autoSwitch === 1}
-                        onValueChange={setAutoSwitch}
-                        disabled={!connected || isBusy || state.autoSwitch === null}
-                    />
-                </View>
-                <WWText variant="labelSmall" style={{ color: colors.onSurfaceVariant, marginTop: 4 }}>
-                    When on, the light sensor also picks the camera: in the dark the device reboots
-                    into the 🌙 night (HM0360) image, and in daylight back into the 🎨 colour (RP3)
-                    image. The switch happens at the next sleep after a light check, and both camera
-                    images must be installed (use “Update both cameras” in Firmware Update).
-                </WWText>
-                {state.autoSwitch === null && (
-                    <WWText variant="labelSmall" style={{ color: colors.onSurfaceVariant, marginTop: 6, fontStyle: 'italic' }}>
-                        Not supported by this device's firmware (op26 not reported).
-                    </WWText>
                 )}
-            </Surface>
+            </View>
 
-            {/* ── Tuning ── */}
-            <Surface style={[styles.card, { backgroundColor: colors.surface }]} elevation={1}>
-                <WWText variant="titleSmall" style={{ marginBottom: 4 }}>Tuning</WWText>
-                <WWText variant="labelSmall" style={{ color: colors.onSurfaceVariant, marginBottom: 12 }}>
-                    Changes write to the device immediately and persist across sleep.
+            <View style={styles.result}>
+                <WWText variant="headlineMedium">
+                    {hasReading ? `Light level ${aeMean} of 255` : 'Light level — of 255'}
                 </WWText>
-                <NumericInput
-                    label="Dark threshold (op23, AE mean 0-255)"
-                    value={state.darkThreshold}
-                    onChange={(v: number) => { setParam('darkThreshold', v) }}
-                    min={0}
-                    max={255}
-                    disabled={!connected || isBusy}
-                />
-                <NumericInput
-                    label="Check interval (op24, minutes, 0 = off)"
-                    value={state.checkInterval}
-                    onChange={(v: number) => { setParam('checkInterval', v) }}
-                    min={0}
-                    max={1440}
-                    disabled={!connected || isBusy}
-                />
-            </Surface>
+            </View>
 
-            {isBusy && (
-                <View style={styles.busyRow}>
-                    <ActivityIndicator size="small" />
-                    <WWText variant="labelSmall" style={{ opacity: 0.7 }}>{stage || 'Working…'}</WWText>
-                </View>
-            )}
+            <Button
+                mode="contained"
+                onPress={() => startCapture(1, 500)}
+                loading={isCapturing}
+                disabled={!connected || isCapturing}
+            >
+                <WWText style={styles.buttonLabel}>
+                    {isCapturing ? (captureStage || 'Measuring…') : 'Measure light now'}
+                </WWText>
+            </Button>
 
-            <View style={{ height: 32 }} />
+            <WWTextInput
+                label="Note for the next reading (optional)"
+                value={note}
+                onChange={(t: string) => setNote(t)}
+                onBlur={() => { if (note.trim() && readings.length > 0) annotateLast(note.trim()) }}
+            />
+
+            <Divider />
+
+            <View style={styles.row}>
+                <WWText variant="titleSmall">Logged readings: {readings.length}</WWText>
+                {readings.length > 0 && (
+                    <Button compact mode="text" onPress={clear} textColor={colors.error}>Clear</Button>
+                )}
+            </View>
+
+            <View style={styles.exportRow}>
+                <Button mode="outlined" onPress={exportCsv} disabled={readings.length === 0} style={styles.exportButton}>
+                    Export CSV
+                </Button>
+                <Button mode="outlined" onPress={copyCsv} disabled={readings.length === 0} style={styles.exportButton}>
+                    Copy CSV
+                </Button>
+            </View>
+
+            <View style={styles.spacer} />
         </ScrollView>
     )
 }
@@ -226,45 +190,47 @@ const styles = StyleSheet.create({
     content: {
         flexGrow: 1,
     },
-    card: {
-        padding: 16,
+    preview: {
+        height: 260,
         borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+    },
+    image: {
+        width: '100%',
+        height: '100%',
+    },
+    previewBusy: {
+        alignItems: 'center',
+        alignSelf: 'stretch',
+        paddingHorizontal: 24,
+        gap: 10,
+    },
+    progressBar: {
+        alignSelf: 'stretch',
+        height: 6,
+        borderRadius: 3,
+    },
+    result: {
+        alignItems: 'center',
     },
     row: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 4,
     },
-    divider: {
-        marginVertical: 8,
-    },
-    meanBarTrack: {
-        height: 10,
-        borderRadius: 5,
-        marginTop: 6,
-        marginBottom: 2,
-        overflow: 'hidden',
-    },
-    meanBarFill: {
-        height: '100%',
-        borderRadius: 5,
-    },
-    thresholdMark: {
-        position: 'absolute',
-        top: 0,
-        width: 2,
-        height: '100%',
-    },
-    busyRow: {
+    exportRow: {
         flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
+        gap: 12,
     },
-    warnCard: {
-        backgroundColor: '#4E342E',
+    exportButton: {
+        flex: 1,
     },
-    warnText: {
-        color: '#FFE0B2',
+    buttonLabel: {
+        color: 'white',
+    },
+    spacer: {
+        height: 32,
     },
 })

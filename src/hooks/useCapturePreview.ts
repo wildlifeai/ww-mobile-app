@@ -94,7 +94,10 @@ export const useCapturePreview = ({
 
         const handleImageProgress = (progress: number) => {
             resetDownloadTimeout()
-            setCaptureStage('Downloading...')
+            // "Transferring", not "Downloading": the image comes over BLE from the
+            // camera in the operator's hand, not from the network. Users read
+            // "downloading" as "needs internet" and go looking for signal.
+            setCaptureStage('Transferring image over Bluetooth…')
             setCaptureProgress(progress)
         }
 
@@ -232,7 +235,7 @@ export const useCapturePreview = ({
             downloadRequested.current = true
             resetDownloadTimeout()
 
-            setCaptureStage('Downloading image…')
+            setCaptureStage('Transferring image over Bluetooth…')
             log(`[useCapturePreview] Phase 3: Transfer — requesting txfile ${capturedFilename}`)
             await session.execute(() => commandRegistry.txfile(capturedFilename))
 
