@@ -11,7 +11,12 @@ The WW500 device contains two processors with independent firmware:
 | **nRF52840** | BLE radio, relay, power management | Nordic DFU (separate flow via `DfuScreen`) |
 | **HX6538** (Himax) | AI inference, camera, SD card | This flow — flash from SD card over BLE |
 
-This document covers the **HX6538 firmware update** — flashing a firmware image (`<filename>.IMG` derived dynamically in 8.3 format or defaulting to `OUTPUT.IMG`) from the device's SD card to the Himax processor's XIP flash. Typical duration: 20–60 seconds for a ~442 KB image.
+This document covers the **HX6538 firmware update** — flashing a firmware image (`<filename>.IMG` derived dynamically in 8.3 format or defaulting to `OUTPUT.IMG`) from the device's SD card to the Himax processor's XIP flash.
+
+> [!IMPORTANT]
+> **The normal update flashes two images, not one.** The two A/B slots hold the two **camera-variant** builds (RP3 and HM0360), and the device must end up running the variant matching its physical camera. The app orchestrates both passes automatically — see [Dual-Image Update](#dual-image-update-camera-variant-pair). A single-image update happens only when just one variant is available, or when an explicit SD filename is given.
+>
+> Budget **~8–9 minutes** for a full pair from the cloud (transfer dominates), or 20–60 seconds per image when it is already staged on the SD card.
 
 ---
 
@@ -64,8 +69,9 @@ Mobile App                     nRF52840                         HX6538
     |                             |<-- "Sleep 42 41 1 2 ..." -----|
     |<-- "Sleep" (stats) ---------|                                |
     |   (wait for Sleep or 5s)    |                                |
-    |-- "reset" ----------------->|                                |
-    |<-- "Device will reset..." --|    (Reboots into new slot)     |
+    |-- "AI reset" -------------->|                                |
+    |<-- "Forcing reset" ---------|    (HX reboots into new slot;  |
+    |                             |     BLE link to nRF survives)  |
 ```
 
 ---
@@ -130,11 +136,68 @@ aifirmware: createSingleLineCommand<boolean>(
 
 ### Post-Update Reboot
 
-After `"Firmware update OK..."`, the app:
-1. Waits for the `"Sleep"` stats line (5-second fallback timeout)
-2. Sends the `reset` command → `"Device will reset after disconnecting."`
-3. BLE connection drops (expected)
-4. Navigates to Home screen
+After `"Firmware update OK..."` the app advances to the `rebooting` phase and sends **`AI reset`** (`commandRegistry.aireset`, matches `/Forcing reset/i`, 8 s timeout, no retries) to boot the newly-written slot and reload parameters.
+
+> [!NOTE]
+> This is `AI reset`, **not** the bare `reset` command. `reset` reboots the nRF52 after disconnect; `AI reset` reboots only the Himax, leaving the BLE link to the nRF intact. A timeout or error here is tolerated and logged — the reset frequently tears down the AI session before a reply arrives.
+
+---
+
+## Dual-Image Update (Camera-Variant Pair)
+
+**Source:** [`useFirmwareUpdate.runHimaxUpdate()`](../../src/screens/Devices/hooks/useFirmwareUpdate.ts)
+
+Slot A and Slot B each hold one **camera-variant** build. `xip_update_firmware_from_sd()` always writes the *inactive* slot and flips the selector, so each flash leaves the device running the image just written. Updating both variants therefore requires two full passes, and **the order determines which camera the device ends on**.
+
+### Pair resolution
+
+1. If the chosen firmware record carries a `cameraVariant`, the app fetches the latest build of the *other* variant via `ReferenceDataService.getLatestHimaxByVariant()`.
+2. If no variant is set, it tries to build the pair from the latest RP3 + latest HM0360.
+3. If only one is available → single-image update (logged as such).
+4. An explicit SD-card filename (a bare string) always takes the legacy single-pass path — the variant cannot be inferred from a filename.
+
+### Ordering rule
+
+```
+AI slots  →  "Active slot 1 running 'RP3'. Slot A: 'HM0360', Slot B: 'RP3'"
+```
+
+The app queries `AI slots` to learn the running variant, then flashes **the other variant first and the device's current variant last**, so the device finishes on the (now updated) camera it started with.
+
+> [!NOTE]
+> On firmware without the `slots` command the query fails, the default order is used, and a warning is logged. Correctness is unaffected — only which camera ends up active.
+
+### Per-pass sequence
+
+| Stage | Phase | Detail |
+|-------|-------|--------|
+| Download | `downloading` | Cloud source only. Skipped when flashing from the SD card. |
+| Transfer | `transferring` | `runFileTransferPipeline` stages the `.IMG` into `/MANIFEST/`. The pipeline's whole-file CRC16 is reused as the `AI firmware` CRC argument. |
+| Flash | `sending` → `flashing` | `AI firmware <file> <0xCRC>`. The phase advances to `flashing` on an 8-second timer because the HX goes silent during erase/write. |
+| Reboot | `rebooting` | `AI reset` |
+| Boundary | — | Between passes: `waitForAiReady(25000)` — waits for the device to answer again rather than racing the reboot. |
+
+A pass that fails with a transient error (`Session Reset`, `DEVICE_DISCONNECTED`, or a timeout — the `AI reset` routinely drops the session) is **retried once** after contact is re-established.
+
+### Verification (`verifyAndComplete`)
+
+Runs once, after the final pass:
+
+1. `AI ver` → new version string for the success banner
+2. `AI slots` → confirms which camera image the device finished on
+3. `verifyConfigDefaults()` ([`configVerification.ts`](../../src/ble/workflows/configVerification.ts)) → the empty-SD handshake
+
+All three are **non-fatal**. The flash is already verified on-device; these populate the success screen and surface configuration drift for an engineer to judge.
+
+### CONFIG.TXT handshake
+
+On an empty SD card the firmware boots with defaults and regenerates `/MANIFEST/CONFIG.TXT` from its in-RAM OPs at the next sleep. Rather than read the file over BLE, the app compares the live OP vector against `FACTORY_DEFAULTS`:
+
+- match → `Configuration verified (N parameters at defaults)`
+- drift → `Configuration differs from defaults: op18=2 (default 0), ...`
+
+> [!NOTE]
+> The app has **no rollback button**. `switchslot` exists as an HX6538 CLI command and can be driven manually from the Engineer Console, but no UI wires it to a failed verify.
 
 ---
 
@@ -255,13 +318,20 @@ The parser ([`useFirmwareUpdate.ts`](../../src/screens/Devices/hooks/useFirmware
 
 | Parameter | Value |
 |-----------|-------|
-| BLE command timeout | 120 seconds |
+| `AI firmware` command timeout | 120 seconds |
 | Typical erase time | ~2 seconds |
 | Typical write time | 15–40 seconds |
 | Typical verify time | 5–10 seconds |
-| Total typical duration | 20–60 seconds (for ~442 KB image) |
-| Post-update reboot delay | Event-driven (5s fallback) |
+| **Flash only** (image already on SD) | 20–60 seconds per image |
+| **BLE transfer** of one image | ~4 minutes (~472 KB at the measured profile) |
+| **Full pair from cloud** | ~8–9 minutes |
+| `flashing` phase timer | 8 seconds after `sending` (HX goes silent during flash) |
+| Inter-pass wait | `waitForAiReady(25000)` |
+| `AI reset` timeout | 8 seconds, no retries |
 | Max image size | 1 MB (flash slot size) |
+
+> [!NOTE]
+> Transfer dominates a cloud update. See [File-Transfer-Protocol.md](File-Transfer-Protocol.md#measured-performance) — throughput is ~8 KB/s for the first ~24 s, then ~1.3 KB/s once Android decays the connection interval. Build ETAs from that two-phase profile, not a flat rate.
 
 ---
 
@@ -278,10 +348,19 @@ The parser ([`useFirmwareUpdate.ts`](../../src/screens/Devices/hooks/useFirmware
 - [ ] Intermediate messages (`Wake`, `Error bits = 0x0000`) ignored
 - [ ] Update completes within 120 seconds
 
+### Dual-image pair
+- [ ] `AI slots` reports the running variant before the first pass
+- [ ] The device's **current** variant is flashed **last** (check the pass order in the log)
+- [ ] Inter-pass `waitForAiReady` completes without a manual reconnect
+- [ ] A link drop during a pass retries once and then succeeds
+- [ ] Single-variant fallback logs "Only one camera variant available"
+
 ### Post-Update
-- [ ] App shows success → sends `reset` command
-- [ ] Device reboots into new firmware slot
-- [ ] BLE connection drops (expected)
+- [ ] App shows success → sends `AI reset`
+- [ ] Device reboots into the new firmware slot (BLE link to the nRF stays up)
+- [ ] `AI ver` reports the new version
+- [ ] `AI slots` reports the expected running camera variant
+- [ ] Config handshake reports either "verified" or an explicit mismatch list
 
 ### Failure Cases
 - [ ] Missing target image file → error -1 → app shows failure

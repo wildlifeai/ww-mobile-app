@@ -200,3 +200,15 @@ IS 'All authenticated users can read activity sensitivity levels';
 
 COMMENT ON POLICY "sampling_designs_select_policy" ON sampling_designs
 IS 'All authenticated users can read sampling designs';
+
+
+-- Anonymous users: lookup tables are declared public in
+-- 99_anon_access_grants.sql (context for models/projects).
+-- Pattern: anon_read_firmware.
+CREATE POLICY "anon_read_activity_sensitivity"
+  ON activity_sensitivity FOR SELECT TO anon
+  USING (true);
+
+CREATE POLICY "anon_read_sampling_designs"
+  ON sampling_designs FOR SELECT TO anon
+  USING (true);

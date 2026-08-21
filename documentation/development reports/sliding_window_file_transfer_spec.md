@@ -1,6 +1,11 @@
 # BLE File Transfer: 2-Packet Sliding Window Protocol Spec
 
-**Status:** Draft — for review by nRF52 + HX6538 engineering teams  
+> [!CAUTION]
+> **Superseded — never implemented as specified.** The HX6538 needed no change: the nRF-side packet FIFO keeps the I2C leg stop-and-wait while the app overlaps the BLE leg. The shipped transport is credit-based streaming with cumulative ACKs (`windowSize ?? 12`), not this 2-packet window. Its `FILE_START` field order is also reversed relative to the wire format — see [File-Transfer-Protocol.md](../resources/File-Transfer-Protocol.md), which is authoritative.
+>
+> Kept for historical context only. Do not implement from this document.
+
+**Status:** Superseded (was: Draft — for review by nRF52 + HX6538 engineering teams)  
 **Author:** Wildlife Watcher Mobile Team  
 **Date:** 2026-04-28  
 

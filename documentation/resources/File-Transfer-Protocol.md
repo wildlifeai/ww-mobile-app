@@ -4,9 +4,20 @@
 
 ## Overview
 
-The mobile app implements a **stop-and-wait** binary file transfer protocol over BLE NUS. Files are sent as chunked packets through the nRF52, which relays them via I2C to the HX6538 for SD card storage.
+The mobile app sends files over BLE NUS as chunked binary packets through the nRF52, which relays them via I2C to the HX6538 for SD card storage.
 
-**Protocol version:** v1 (no version byte in packets).
+The default transport is **credit-based streaming with cumulative ACKs** — the app keeps up to `windowSize` packets in flight and the device acknowledges in order, cumulatively. Stop-and-wait (`windowSize: 1`) is retained as a fallback for pre-FIFO firmware.
+
+| | Value | Source |
+|---|---|---|
+| Default window | **12** | [`runFileTransferPipeline.ts`](../../src/ble/protocol/fileTransfer/runFileTransferPipeline.ts) — `requestedWindowSize ?? 12` |
+| ACK mode | cumulative, in order | same file, DATA phase |
+| Fallback | stop-and-wait when `windowSize <= 1` | same file |
+
+**Protocol version:** v1 (no version byte in packets). Wire format is unchanged between window sizes — only the app's send pacing differs, so a windowed app against stop-and-wait firmware still completes (slowly) via ACK-timeout retries.
+
+> [!IMPORTANT]
+> Do **not** call `requestConnectionPriority(HIGH)` mid-transfer. It desyncs the nRF↔HX I2C link (measured, 2026-07-10). The priority request belongs at connect time only.
 
 ---
 
@@ -34,15 +45,16 @@ App                          nRF52                        HX6538
 
 ## Transport Guarantees
 
-The protocol is **strict stop-and-wait**:
-
 | Rule | Description |
 |------|-------------|
-| **One packet at a time** | App sends exactly one FILE_DATA packet, then waits for ACK |
-| **No pipelining** | Next packet is not sent until `ftx ack <N>` is received |
-| **Ordered ACKs** | ACKs must match the last sent packet number exactly |
-| **Duplicate tolerance** | BLE may retry at the link layer — duplicate ACKs are tolerated |
-| **Retry on timeout** | App retries the *same* packet up to 3 times before aborting |
+| **Bounded window** | At most `windowSize` (default 12) FILE_DATA packets are unacknowledged at any time |
+| **Ordered writes** | The HX6538 writes and ACKs strictly in order — packet order is preserved end to end |
+| **Cumulative ACKs** | `ftx ack <N>` acknowledges every packet up to and including N, not just N |
+| **Duplicate tolerance** | BLE may retry at the link layer — duplicate and stale ACKs are ignored |
+| **Silence watchdog** | No `ftx`-prefixed activity for `SILENCE_TIMEOUT_MS` aborts the session |
+| **Abort on repeat timeout** | 3 consecutive ACK timeouts abort the transfer |
+
+Setting `windowSize: 1` restores strict stop-and-wait: one packet, then wait for its ACK. That path still exists for firmware without the nRF packet FIFO.
 
 ---
 
@@ -55,6 +67,7 @@ The protocol is **strict stop-and-wait**:
 | `0x07` | FILE_START | `0x00` | payload len | `[size_u32_LE][filename\0]` |
 | `0x08` | FILE_DATA | pkt num (1–255, wraps) | payload len | `[file_data]` (≤241 bytes) |
 | `0x09` | FILE_END | `0x00` | `0x02` | `[crc16_LE]` |
+| `0x0A` | FILE_LOOPBACK | seq num | payload len | arbitrary payload — echoed back as a `0x06`-framed binary notification, no I2C or SD involvement. Diagnostic only (pure BLE round-trip benchmark). |
 
 ### Responses (nRF52 → BLE, as strings)
 
@@ -128,8 +141,8 @@ Augment:    2 bytes of 0x00 appended after data
 4. **Pauses heartbeat** for the entire transfer session
 5. **Acquires exclusive transport lock** — rejects all other BLE commands
 6. **Sends FILE_START** with `write()` (with BLE response confirmation)
-7. **Sends FILE_DATA chunks** with `writeWithoutResponse()` — strict stop-and-wait
-8. **Retries same packet** up to 3 times on ACK timeout
+7. **Streams FILE_DATA chunks** with `writeWithoutResponse()`, keeping ≤ `windowSize` packets unacknowledged
+8. **Retries** on ACK timeout, aborting after 3 consecutive timeouts
 9. **Sends FILE_END** with `write()` (with BLE response confirmation)
 10. **Waits for `ftx done`** before declaring success
 11. **Releases lock, resumes heartbeat** in `finally` block
@@ -140,8 +153,10 @@ Augment:    2 bytes of 0x00 appended after data
 | Packet | Write Mode | Retry Policy |
 |--------|-----------|--------------|
 | FILE_START | `write()` (with BLE response) | BLE-level confirmation; no app retries |
-| FILE_DATA | `writeWithoutResponse()` | Retries same packet up to 3× on ACK timeout |
+| FILE_DATA | `writeWithoutResponse()` | Session aborts after 3 consecutive ACK timeouts |
 | FILE_END | `write()` (with BLE response) | BLE-level confirmation; no app retries |
+
+**Session-level retry:** on `ftx err 7` (SD write fail) the device closes the file, so the app restarts the whole session from `FILE_START` — up to `MAX_SESSION_RETRIES` (2) additional attempts. The per-error policies in the table below are the source of truth and live in [`fileTransferTypes.ts`](../../src/ble/protocol/fileTransfer/fileTransferTypes.ts) as `ERROR_RETRY_POLICY`.
 
 ### Timeout Values
 
@@ -158,15 +173,23 @@ Augment:    2 bytes of 0x00 appended after data
 - At 241 bytes/chunk: wrap occurs every ~60KB
 - 2MB file = ~33 wrap cycles
 
-### Expected Performance
+### Measured Performance
+
+Throughput is **not flat**. Android grants a fast connection interval at connect and decays it after roughly 24 seconds, so transfers start fast and settle slower. Figures below are bench-measured on the Android test device (BLE fw 0.30.47), not estimates:
 
 | Metric | Value |
 |--------|-------|
 | Chunk size | ≤241 bytes per FILE_DATA packet |
-| Estimated throughput | ~2–4 KB/s (stop-and-wait over BLE) |
-| 2KB file | ~1–2 seconds |
-| 2MB file | ~8–16 minutes |
-| 10MB file | ~40–80 minutes |
+| Burst throughput (first ~24 s) | ~8 KB/s |
+| Sustained throughput (after decay) | ~1.3 KB/s |
+| Files ≤ ~190 KB | ride the fast window entirely |
+| 472 KB firmware image | ~4 minutes |
+| 2 MB model | ~25 minutes |
+
+> [!NOTE]
+> Show users an ETA built from this two-phase profile. A single flat rate makes the progress bar look stuck once the interval decays.
+
+Per-phone variance is expected and large; a per-handset timing table is tracked as QA item E.11 in [empty_sd_update_architecture.md](../development%20reports/empty_sd_update_architecture.md).
 
 ---
 
@@ -213,12 +236,12 @@ Augment:    2 bytes of 0x00 appended after data
 
 | Test | Expected Outcome |
 |------|-----------------|
-| Wrong packet number | `ftx err 9`, transfer aborted |
-| Wrong CRC | `ftx err 6`, file deleted |
+| Wrong packet number | `ftx err 8` (sequence mismatch), transfer aborted |
+| Wrong CRC | `ftx err 9` (CRC mismatch), file deleted |
 | Disconnect mid-transfer | Partial `.tmp` file deleted on next boot |
 | Duplicate FILE_DATA | No duplicate data written, `ftx ack <N>` re-sent |
-| SD card removed | `ftx err 5` |
-| SD card full | `ftx err 7` |
+| No/faulty SD card | `ftx err 6` (file open failed) |
+| SD card full | `ftx err 7` (SD write failed) |
 
 ---
 

@@ -3,7 +3,8 @@
 > **Related**: [File-Transfer-Protocol.md](File-Transfer-Protocol.md) (BLE file transfer), [04-ENGINEER-CONSOLE.md](../onboarding/04-ENGINEER-CONSOLE.md) (OP parameters, `loadmodel` command).
 >
 > **Where this fits:** the mobile app owns **deployment** (stage 5) of the end-to-end
-> [Embedded Model Lifecycle](../../../ww-website/documentation/resources/embedded-model-lifecycle.md)
+> Embedded Model Lifecycle (`documentation/resources/embedded-model-lifecycle.md` in the
+> [ww-website](https://github.com/wildlifeai/ww-website) repo)
 > — models are uploaded, converted, and label-mapped on the website, then this app transfers a
 > `validated` model to the device over BLE (or the user copies the SD-card manifest). On-device
 > inference and the resulting EXIF predictions are downstream.
@@ -27,7 +28,17 @@ The device loads models using two integers from `CONFIG.TXT`:
 | OP 14 (`project_id`) | `ai_model_families.firmware_model_id` | `42` |
 | OP 15 (`deploy_version`) | `ai_models.version_number` | `2` |
 
-These produce the SD card filename: `42V2.TFL` (8.3 format under `/MANIFEST/`)
+These produce the SD card filename: `42V2.TFL` (8.3 format under `/MANIFEST/`).
+
+**Exact construction** ([`deploymentPipeline.ts`](../../src/ble/workflows/deploymentPipeline.ts)):
+
+```typescript
+`${firmwareModelId}V${versionNumber}.${ext}`.toUpperCase()
+```
+
+- **Not zero-padded** — id 1, version 1 gives `1V1.TFL`, not `0001V1.TFL`. The firmware parses with `%4dV%d`, where `4` is a *maximum* field width, so short names are fine.
+- **Uppercased**, extension included. A lowercase extension (`1V1.tfl`) fails the app's own 8.3 validator *before* any transfer, so the model silently never reaches the SD card (bench-confirmed 21 Jul 2026). FAT is case-insensitive, so `loadmodel` finds either.
+- Extensions are derived from the storage paths (`modelPath` → default `tflite`, `labelsPath` → default `txt`), not hard-coded.
 
 ### Storage Path Convention
 
@@ -137,12 +148,21 @@ const labelsUri = model.labelsPath
 ```
 
 The labels file is then transferred to the SD card `/MANIFEST/` next to the `.TFL`
-(same BLE file-transfer pipeline), so the firmware can load `labels.txt` and write named
-NN scores into each photo's EXIF. The label **order must match** the model's output
-tensor — the website writes `labels.txt` in the model's class order to guarantee this.
+(same BLE file-transfer pipeline), so the firmware can write named NN scores into each
+photo's EXIF.
 
-> The full label lifecycle (origin → website mapping → device → EXIF) is in the
-> [Embedded Model Lifecycle](../../../ww-website/documentation/resources/embedded-model-lifecycle.md).
+> [!IMPORTANT]
+> On the SD card the labels file shares the model's **basename**, differing only in
+> extension — `42V2.TFL` pairs with `42V2.TXT`. It is *not* called `labels.txt`; the
+> firmware derives the name from the model's. (`labels_<cacheKey>.txt` is only the
+> phone-side download cache name.)
+
+The label **order must match** the model's output tensor — the website writes the labels
+file in the model's class order to guarantee this.
+
+> The full label lifecycle (origin → website mapping → device → EXIF) is in
+> `documentation/resources/embedded-model-lifecycle.md` in the
+> [ww-website](https://github.com/wildlifeai/ww-website) repo.
 
 ---
 

@@ -13,10 +13,10 @@ CREATE POLICY "lorawan_parsed_messages_select_policy"
   TO authenticated
   USING (
     -- WW Admins can see all parsed messages
-    has_system_role((SELECT auth.uid()), 'ww_admin') OR
+    has_system_role((SELECT auth.uid()), 'ww_admin')
     -- Users can see parsed messages from devices in their organisation
-    EXISTS (
-      SELECT 1 FROM devices d
+    OR EXISTS (
+      SELECT 1 FROM devices AS d
       WHERE d.id = lorawan_parsed_messages.device_id
         AND d.deleted_at IS NULL
         AND has_organisation_role((SELECT auth.uid()), d.organisation_id, 'organisation_member')

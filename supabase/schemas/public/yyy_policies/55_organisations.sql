@@ -12,10 +12,10 @@ CREATE POLICY "organisations_select_policy"
   USING (
     (SELECT auth.uid()) IS NOT NULL AND (
       -- WW Admins can see all organisations
-      has_system_role((SELECT auth.uid()), 'ww_admin') OR
+      has_system_role((SELECT auth.uid()), 'ww_admin')
       -- Organisation members can see their organisation
       -- Only those with explicit roles in the organisation can see it
-      has_organisation_role((SELECT auth.uid()), organisations.id, 'project_member')
+      OR has_organisation_role((SELECT auth.uid()), organisations.id, 'project_member')
     )
   );
 
@@ -36,12 +36,12 @@ CREATE POLICY "organisations_update_policy"
   FOR UPDATE
   TO authenticated
   USING (
-    (SELECT auth.uid()) IS NOT NULL AND 
-    has_system_role((SELECT auth.uid()), 'ww_admin')
+    (SELECT auth.uid()) IS NOT NULL
+    AND has_system_role((SELECT auth.uid()), 'ww_admin')
   )
   WITH CHECK (
-    (SELECT auth.uid()) IS NOT NULL AND 
-    has_system_role((SELECT auth.uid()), 'ww_admin')
+    (SELECT auth.uid()) IS NOT NULL
+    AND has_system_role((SELECT auth.uid()), 'ww_admin')
   );
 
 -- DELETE: Only WW Admins can delete organisations

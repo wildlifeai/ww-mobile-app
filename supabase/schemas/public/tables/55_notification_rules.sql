@@ -19,8 +19,9 @@ CREATE TABLE notification_rules (
 
   -- Delivery channels (subset of web/email/push). push is recorded but delivered by the
   -- mobile app, not this backend.
-  channels text[] NOT NULL DEFAULT ARRAY['web']::text[]
-    CHECK (channels <@ ARRAY['web', 'email', 'push']::text[]),
+  -- sqlfluff misreads array-type brackets as spacing errors; suppressed on both lines
+  channels text[] NOT NULL DEFAULT ARRAY['web']::text[] -- noqa: LT01
+    CHECK (channels <@ ARRAY['web', 'email', 'push']::text[]), -- noqa: LT01
 
   digest text NOT NULL DEFAULT 'immediate' CHECK (digest IN ('immediate', 'daily')),
   is_active boolean NOT NULL DEFAULT true,

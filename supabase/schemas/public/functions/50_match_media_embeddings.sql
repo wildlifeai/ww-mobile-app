@@ -14,7 +14,8 @@ create or replace function public.match_media_embeddings(
   query_embedding extensions.vector,
   p_model text,
   match_count int default 20,
-  p_deployment_ids uuid[] default null,
+  -- sqlfluff misreads array-type brackets as spacing errors; suppress on the next line
+  p_deployment_ids uuid[] default null, -- noqa: LT01
   p_exclude_media_id uuid default null
 )
 returns table (media_id uuid, deployment_id uuid, cluster_id int, distance real)

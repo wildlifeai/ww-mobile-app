@@ -26,8 +26,7 @@ Navigation reads Redux state.authentication.token
 // Simplified from src/navigation/index.tsx
 if (appLoading)          → AppLoading screen
 if (bluetooth !== on)    → BluetoothProblems screen
-if (!locationEnabled)    → LocationProblems screen
-if (!bleInitialized)     → BleProblems screen
+if (!bleInitialized)     → BLEProblems screen
 if (!token)              → Auth screens (Login, Register, ForgotPassword)
 else                     → Main app (Home, Devices, Projects, etc.)
 ```
@@ -56,7 +55,7 @@ else                     → Main app (Home, Devices, Projects, etc.)
 
 ## AuthProvider
 
-**File**: `src/providers/AuthProvider.tsx` (~50 lines)
+**File**: `src/providers/AuthProvider.tsx`
 
 The provider is minimal — no Context, no `useAuth()` hook. It:
 1. Calls `getCurrentSession()` from `auth.ts` on mount
@@ -99,7 +98,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
 
 ## Auth Service Layer
 
-**File**: `src/services/auth.ts` (~559 lines)
+**File**: `src/services/auth.ts`
 
 Standalone exported functions (not a class):
 
@@ -132,7 +131,7 @@ Screens use these hooks for loading/error state management, then dispatch `setCr
 
 ## Redux Auth State
 
-**File**: `src/redux/slices/authSlice.ts` (~283 lines)
+**File**: `src/redux/slices/authSlice.ts`
 
 ### Types
 
@@ -205,7 +204,7 @@ type AuthState = {
 
 ## Supabase Client
 
-**File**: `src/services/supabase.ts` (~387 lines)
+**File**: `src/services/supabase.ts`
 
 Uses a **factory pattern** with dynamic environment switching:
 
@@ -285,7 +284,7 @@ All screens use `WWScreenView`, React Hook Form (`useForm`), and `Field`/`WWText
 
 ### Deep links not working
 - Must use **Development Client** (not Expo Go) — Expo Go doesn't support custom URL schemes
-- Verify URL scheme in `app.config.js` matches `wildlifewatcher://`
+- Verify the `scheme` field in `app.config.ts` matches `wildlifewatcher://`
 - Test: `adb shell am start -W -a android.intent.action.VIEW -d "wildlifewatcher://auth/reset-password?token_hash=test&type=recovery" com.wildlife.wildlifewatcher`
 
 ### Session not persisting

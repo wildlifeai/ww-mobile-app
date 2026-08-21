@@ -20,7 +20,7 @@ This guide is your single entry point to understanding the project, setting up y
 
 ## 📚 Documentation Roadmap
 
-This folder contains five onboarding guides:
+This folder contains six onboarding guides:
 
 | # | Guide | What It Covers |
 |---|-------|----------------|
@@ -29,6 +29,7 @@ This folder contains five onboarding guides:
 | 3 | [03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md) | WatermelonDB, Supabase sync, security model, offline patterns |
 | 4 | [04-ENGINEER-CONSOLE.md](./04-ENGINEER-CONSOLE.md) | BLE commands, OP parameters, hardware testing tools |
 | 5 | [05-DEVICE-FLOWS.md](./05-DEVICE-FLOWS.md) | Device deployment, monitoring, and retrieval flows |
+| 6 | [06-BLE-CONNECTIONS.md](./06-BLE-CONNECTIONS.md) | Connection lifecycle, the two scanners, bench-verified failure signatures |
 
 **Git Workflow:** See the organisation-level [git-SKILL.md](https://github.com/wildlifeai/.github/blob/main/agents/git-SKILL.md) for branching strategy, Conventional Commits, PR review workflow, and CI pipeline rules.
 
@@ -72,9 +73,14 @@ This folder contains five onboarding guides:
    docker-compose -f docker-compose.dev.yml up -d
    docker-compose -f docker-compose.dev.yml exec wildlife-watcher-dev bash
    # Inside container:
-   npm install --ignore-scripts
+   npm install
    npx expo start
    ```
+
+> [!WARNING]
+> `postinstall` is where `patch-package` applies everything in `patches/` — skipping it produces native build failures that look unrelated to the install step. So don't reach for `--ignore-scripts` casually.
+>
+> **On Windows you have to, though:** the `maestro` devDependency's postinstall runs `./bin/welcome-message.sh`, which `cmd.exe` cannot execute, and npm aborts the whole install. Use `npm install --ignore-scripts` followed by `npx patch-package` — that reaches the same state without the broken script.
 
 ### 💻 Option B: Native Setup
 1. **Install Node.js 20** (LTS or higher):
@@ -92,9 +98,19 @@ This folder contains five onboarding guides:
 5. **Clone and Install**:
    ```bash
    git clone [REPO_URL] && cd wildlife-watcher-mobile-app
-   npm install --ignore-scripts
+   npm install
    npm run db:sync-schema
-   npx expo start
+   ```
+6. **Configure Supabase** — the app cannot reach the backend without this:
+   ```bash
+   cp .env.example .env.development
+   # then paste the Dev anon key into EXPO_PUBLIC_SUPABASE_ANON_KEY
+   ```
+   `.env.development`, `.env.local` and `.env` are all gitignored. Ask the team for the Dev anon key.
+7. **Verify and run**:
+   ```bash
+   npm run android:doctor   # checks JDK 17, SDK, adb device, env file
+   npm run android          # full pipeline: types → schema → build → launch
    ```
 
 ---
@@ -198,15 +214,17 @@ src/
 ## 🛠️ Daily Development Commands
 
 ```bash
-npm run android       # Full pipeline: types → schema sync → build → launch
-npm run ios           # Full pipeline: types → schema sync → build → launch (Mac)
-npx expo start        # Start dev server (skip schema sync)
-npm run lint          # Run linter
-npm run type-check    # Run TypeScript check
-npm test              # Run Jest tests
+npm run android         # Full pipeline: preflight → types → schema sync → build → launch
+npm run android:local   # Preflight → build → launch. Skips the cloud round-trips (fast loop)
+npm run android:doctor  # Preflight only: JDK 17, Android SDK, adb device, Supabase env
+npm run ios             # Full pipeline: types → schema sync → build → launch (Mac)
+npx expo start          # Start dev server only (no build, no schema sync)
+npm run lint            # Run linter
+npm run type-check      # Run TypeScript check
+npm test                # Run Jest tests
 ```
 
-> **Note:** `npm run android` automatically syncs the latest database schema from the backend repo before building. Use `npx expo start` if you just want to start the dev server without re-syncing.
+> **Note:** `npm run android` syncs Supabase types and the backend database schema before building. Once you have a build on the device, `npm run android:local` is the faster iteration loop — it skips both network steps. If the type sync cannot reach Supabase it warns and continues with the committed types rather than failing the build (CI still fails hard).
 
 ### Troubleshooting Quick Fixes
 - **Clear Cache**: `npx expo start --clear`
@@ -218,7 +236,7 @@ npm test              # Run Jest tests
 ## 💡 Key Tips for Success
 
 1. **Think Offline**: Always consider what happens if the user has no signal.
-2. **BLE Architecture**: Commands are serialized through `commandQueue` and matched via typed `commandRegistry` parsers. Use `bleSession.execute()` for deployment workflows and `writeRaw()` only for the Engineer Console.
+2. **BLE Architecture**: Commands are serialized through `bleTransportController` and matched via typed `commandRegistry` parsers. Use `bleSession.execute()` for deployment workflows and `writeRaw()` only for the Engineer Console's raw input.
 3. **Type Safety**: TypeScript is mandatory. Use existing types from `src/types/`.
 4. **Custom Components**: Always check `src/components/ui/` before building a custom element (Buttons, Text, Icons).
 

@@ -19,7 +19,7 @@ CREATE POLICY "ww_admin_all_ai_models"
         AND role = 'ww_admin'
         AND scope_type = 'system'
         AND is_active = true
-        AND deleted_at IS NULL
+        AND deleted_at IS null
     )
   );
 
@@ -29,32 +29,37 @@ CREATE POLICY "org_manager_manage_ai_models"
   USING (
     EXISTS (
       SELECT 1 FROM user_roles
-      WHERE user_id = (SELECT auth.uid())
-        AND role = 'organisation_manager'
+      WHERE user_roles.user_id = (SELECT auth.uid())
+        AND user_roles.role = 'organisation_manager'
         AND (
-          scope_type = 'system'  -- System-wide org managers
-          OR (scope_type = 'organisation' AND scope_id = ai_models.organisation_id)
+          user_roles.scope_type = 'system'  -- System-wide org managers
+          OR (user_roles.scope_type = 'organisation' AND user_roles.scope_id = ai_models.organisation_id)
         )
-        AND is_active = true
-        AND deleted_at IS NULL
+        AND user_roles.is_active = true
+        AND user_roles.deleted_at IS null
     )
   );
 
--- project_admin and project_member: Can view models available to their organisation
-CREATE POLICY "project_access_view_org_ai_models"
+-- Organisation members: Can view models in their organisation
+-- Covers both direct org membership and project-level access
+CREATE POLICY "org_member_view_ai_models"
   ON ai_models FOR SELECT
   USING (
-    ai_models.organisation_id IN (
-      SELECT DISTINCT p.organisation_id
-      FROM projects p
-      JOIN user_roles ur ON (
-        (ur.scope_type = 'project' AND ur.scope_id = p.id)
-        OR (ur.scope_type = 'organisation' AND ur.scope_id = p.organisation_id)
-      )
-      WHERE ur.user_id = (SELECT auth.uid())
+    EXISTS (
+      SELECT 1 FROM user_roles AS ur
+      WHERE ur.user_id = auth.uid()
         AND ur.is_active = true
-        AND ur.deleted_at IS NULL
-        -- Removed p.deleted_at IS NULL to allow sync of deleted projects' models if needed
+        AND ur.deleted_at IS null
+        AND (
+          -- Direct org membership (any role)
+          (ur.scope_type = 'organisation' AND ur.scope_id = ai_models.organisation_id)
+          -- Or project membership under the org
+          OR (ur.scope_type = 'project' AND EXISTS (
+            SELECT 1 FROM projects AS p
+            WHERE p.id = ur.scope_id
+              AND p.organisation_id = ai_models.organisation_id
+          ))
+        )
     )
   );
 
@@ -73,7 +78,7 @@ CREATE POLICY "ww_admin_all_ai_model_org"
         AND role = 'ww_admin'
         AND scope_type = 'system'
         AND is_active = true
-        AND deleted_at IS NULL
+        AND deleted_at IS null
     )
   );
 
@@ -83,14 +88,14 @@ CREATE POLICY "org_manager_assign_models"
   USING (
     EXISTS (
       SELECT 1 FROM user_roles
-      WHERE user_id = (SELECT auth.uid())
-        AND role = 'organisation_manager'
+      WHERE user_roles.user_id = (SELECT auth.uid())
+        AND user_roles.role = 'organisation_manager'
         AND (
-          scope_type = 'system'
-          OR (scope_type = 'organisation' AND scope_id = ai_model_organisation.organisation_id)
+          user_roles.scope_type = 'system'
+          OR (user_roles.scope_type = 'organisation' AND user_roles.scope_id = ai_model_organisation.organisation_id)
         )
-        AND is_active = true
-        AND deleted_at IS NULL
+        AND user_roles.is_active = true
+        AND user_roles.deleted_at IS null
     )
   );
 
@@ -100,13 +105,23 @@ CREATE POLICY "users_view_org_model_assignments"
   USING (
     ai_model_organisation.organisation_id IN (
       SELECT ur.scope_id
-      FROM user_roles ur
+      FROM user_roles AS ur
       WHERE ur.user_id = (SELECT auth.uid())
         AND ur.scope_type = 'organisation'
         AND ur.is_active = true
-        AND ur.deleted_at IS NULL
+        AND ur.deleted_at IS null
     )
   );
 
-COMMENT ON TABLE ai_models IS 
+COMMENT ON TABLE ai_models IS
   'AI model management: organisation_manager can upload, project_admin can select for projects';
+
+
+-- Anonymous users: can view all AI models (declared public in
+-- 99_anon_access_grants.sql - model downloads and manifest generation).
+-- Same pattern as anon_read_firmware; restores the USING (true) read
+-- policy that 99_ references but which was lost in later policy rework
+-- (anon reads 42501'd against the user_roles subqueries until 2026-07).
+CREATE POLICY "anon_read_ai_models"
+  ON ai_models FOR SELECT TO anon
+  USING (true);
