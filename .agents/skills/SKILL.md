@@ -25,6 +25,14 @@ cost someone a day.
 - **Verify against the code, not the docs.** `documentation/DOCUMENTATION-AUDIT.md`
   records a period where ~40 documented facts had drifted from reality. Much is fixed;
   treat any undated claim as a hypothesis.
+- **PRs are squash-merged, and the branch is auto-deleted.** Two consequences:
+  1. Squashing rewrites the commit SHAs, so a branch built on the pre-merge commits
+     shows every already-merged commit again as "new". After a PR merges, `git fetch`
+     and branch fresh from `dev` — cherry-pick your unmerged work across rather than
+     opening a PR from the old branch.
+  2. Pushing to the deleted branch **silently recreates it** instead of failing. If a
+     push reports `[new branch]` for a branch you know existed, it was merged and
+     deleted underneath you — stop and rebuild before opening anything.
 
 ## 2. Cross-repo contracts — never change unilaterally
 
@@ -58,14 +66,44 @@ people: `reset` reboots the nRF *after disconnect*; `AI reset` reboots only the 
 - **The device sleeps aggressively.** Deep Power Down after ~1000 ms of inactivity; the
   BLE link drops after ~60 s (hence the 58 s heartbeat). After *any* disconnect assume
   the device is asleep and not advertising until woken by button, motion or timer.
+- **Stored op values can be stale — check what keeps them updated.** The clearest case
+  is the light decision (op25): the firmware only runs its AE check when something
+  consumes the result, i.e. the flash is on (op13 ≠ 0) or auto camera switch is on
+  (op26 = 1). With both off, op25 keeps whatever it last held, so the device happily
+  reports BRIGHT inside a dark box and no amount of waiting changes it. Read the AE mean
+  streamed during a capture *you* triggered rather than the stored decision. Before
+  surfacing any op as "current", establish what writes it and when.
 - **A stale scan entry will hang you.** Auto-connect only trusts a device seen in the
   current scan session (`lastSeen` gate) — a just-disconnected device lingers in cache
   and connecting to it hangs until timeout.
 - **`commandQueue` does not exist.** The queue is `bleTransportController.ts`. Old docs
   and comments still name the former.
+- **Defining a command does not make it visible.** `CommandReferenceModal` builds its
+  list from a hand-maintained allowlist (`pick([...])` per group), so a command can be
+  fully defined in `COMMANDS`, work when typed, and never appear in the UI — `slots` and
+  `switchslot` were unreachable that way until Aug 2026. A coverage test now fails CI if
+  a `type: 'command'` entry belongs to no group. **`FlowsReferenceModal` has the same
+  shape and no equivalent guard**, so `type: 'process'` entries can still go missing
+  silently: when you add one, open the modal and confirm it renders.
+- **`useCapturePreview` is the capture path — don't hand-roll one.** It carries the
+  op10/op18 pre-flight that re-enables a camera left disabled by a stopped deployment,
+  the Save State/DPD waits that stop `txfile` racing FatFS and corrupting the file
+  handle, and the reassembly that turns binary packets into an image URI (with
+  byte-level progress). `useLightSensor.measureNow` predates it and is less robust.
 
 ## 4. Traps that have already cost time
 
+- **A local dev build destroys the production app's data.** `app.config.ts` derives an
+  `.expo`-suffixed bundle ID from `APP_VARIANT`, but the tracked
+  `android/app/build.gradle` hardcodes `applicationId 'com.wildlife.wildlifewatcher'` —
+  and because `android/` is committed, prebuild never regenerates it, so the variant
+  logic is dead on Android. A debug build therefore collides with the Play Store build
+  on package name while carrying a different signature: the install fails with
+  `INSTALL_FAILED_UPDATE_INCOMPATIBLE`, and the only way through is uninstalling the
+  store app — taking its WatermelonDB, anything unsynced in the outbox, and the login
+  session with it. **Warn the operator before they uninstall; there may be unsynced
+  field data.** The proper fix (`applicationIdSuffix` on the debug buildType, so both
+  coexist) is not applied yet — see PR #239.
 - **`npm install --ignore-scripts` breaks the build.** It skips `postinstall`, so
   `patch-package` never applies `patches/`, and the native build then fails somewhere
   unrelated-looking.
