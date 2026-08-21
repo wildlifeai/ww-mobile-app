@@ -103,7 +103,14 @@ SCHEMA_MAP.forEach(schemaPath => {
         console.error(`\n❌ Backend schema directory missing: ${srcDir}`);
         console.error('   The backend layout changed, or your ww-backend checkout is stale.');
         console.error('   Fix: pull ww-backend, then update SCHEMA_MAP in this script to match.');
-        console.error(`   Backend currently has: ${fs.readdirSync(path.join(effectiveBackendPath, 'supabase', 'schemas', 'public')).join(', ')}\n`);
+        // Best-effort hint. The parent may be missing too (wrong or incomplete checkout),
+        // and an error handler must never be the thing that crashes.
+        const parent = path.join(effectiveBackendPath, 'supabase', 'schemas', 'public');
+        try {
+            console.error(`   Backend currently has: ${fs.readdirSync(parent).join(', ')}\n`);
+        } catch {
+            console.error(`   Could not list ${parent} — is this a complete ww-backend checkout?\n`);
+        }
         process.exitCode = 1;
         missingDirs.push(schemaPath);
         return;
@@ -152,4 +159,8 @@ if (isTemporary && fs.existsSync(TEMP_DIR)) {
     fs.rmSync(TEMP_DIR, { recursive: true, force: true });
 }
 
-console.log('💡 Run "npx supabase db reset" to apply changes locally.');
+// Only suggest applying the schema when it is actually complete — a reset against a
+// partial sync would build a local database missing tables, policies or RLS.
+if (missingDirs.length === 0) {
+    console.log('💡 Run "npx supabase db reset" to apply changes locally.');
+}
