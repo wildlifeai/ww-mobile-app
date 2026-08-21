@@ -66,16 +66,42 @@ jobs:
         run: npm run validate:deps
 
       - name: EAS Build
+        id: build
         run: |
+          # --json so the build IDs can be handed to the submit step below.
+          # It also silences the progress spinner, so the EAS build page is the
+          # place to watch a run in flight.
           eas build \
             --profile ${{ steps.config.outputs.profile }} \
             --platform ${{ steps.config.outputs.platform }} \
-            --non-interactive
+            --non-interactive \
+            --json > eas-build-result.json
+
+          ids=$(node -e "
+            const b = require('./eas-build-result.json');
+            const list = Array.isArray(b) ? b : [b];
+            if (!list.length) { console.error('no builds returned'); process.exit(1); }
+            console.log(list.map(x => x.id).join(' '));
+          ")
+          echo "Built: $ids"
+          echo "ids=$ids" >> "$GITHUB_OUTPUT"
 
       - name: Submit to stores
         if: steps.config.outputs.submit == 'true'
         run: |
-          eas submit \
-            --profile production \
-            --platform ${{ steps.config.outputs.platform }} \
-            --non-interactive
+          # Submit the exact artifacts this run produced.
+          #
+          # `eas submit --non-interactive` fails outright without an archive
+          # source ("You need to specify the archive source when running in
+          # non-interactive mode") — which is why every automated submission
+          # silently failed until Aug 2026 and releases were made by hand.
+          #
+          # --id rather than --latest deliberately: this workflow has no
+          # concurrency guard, and pushing a release fires both the `main` push
+          # (preview) and the `v*` tag (production). With --latest an overlapping
+          # preview build could be submitted to the stores — a cloud-dev
+          # configured binary shipped to users.
+          for id in ${{ steps.build.outputs.ids }}; do
+            echo "Submitting build $id"
+            eas submit --profile production --id "$id" --non-interactive
+          done
