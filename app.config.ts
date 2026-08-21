@@ -26,7 +26,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ios: {
         supportsTablet: true,
         bundleIdentifier: BUNDLE_ID,
-        buildNumber: "62",
+        buildNumber: "63",
         config: {
             googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY_IOS,
         },
@@ -45,7 +45,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     android: {
         package: BUNDLE_ID,
-        versionCode: 62,
+        versionCode: 63,
         adaptiveIcon: {
             foregroundImage: "./assets/adaptive-icon.png",
             backgroundColor: "#ffffff"
@@ -101,8 +101,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
             "expo-build-properties",
             {
                 "android": {
-                    "compileSdkVersion": 35,
-                    "targetSdkVersion": 35,
+                    "compileSdkVersion": 36,
+                    "targetSdkVersion": 36,
                     "newArchEnabled": true,
                     "enableProguardInReleaseBuilds": true,
                     "enableShrinkResourcesInReleaseBuilds": true
