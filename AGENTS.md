@@ -26,6 +26,12 @@ On Windows plain `npm install` aborts on the `maestro` package's shell postinsta
 Needs a `.env.development` (copy `.env.example`, paste the Dev anon key) — the app cannot
 reach Supabase without it. iOS builds require macOS; there is no tracked `ios/` directory.
 
+> [!WARNING]
+> A local debug build shares the package name `com.wildlife.wildlifewatcher` with the Play
+> Store build but is signed differently, so installing it means **uninstalling the store
+> app first — destroying its local database and anything unsynced**. Check with the device
+> owner before doing that on a phone carrying field data.
+
 ## Check it
 
 ```bash
