@@ -27,24 +27,27 @@ const formatDuration = (ms: number): string => {
  * in a burst and would otherwise predict an absurdly short time.
  */
 const useTransferEta = (isCapturing: boolean, progress: number): string | null => {
-    const [eta, setEta] = useState<string | null>(null)
-    const startRef = useRef<number | null>(null)
+    const active = isCapturing && progress > 0
 
-    useEffect(() => {
-        if (!isCapturing || progress <= 0) {
-            startRef.current = null
-            setEta(null)
-            return
-        }
-        if (startRef.current === null) startRef.current = Date.now()
+    // Only the transfer's start time is state; the ETA itself is derived during
+    // render. Computing it in an effect instead would commit one render showing
+    // the previous estimate before the new one lands.
+    const [startedAt, setStartedAt] = useState<number | null>(null)
+    const [wasActive, setWasActive] = useState(false)
 
-        const elapsed = Date.now() - startRef.current
-        if (progress < 0.03 || elapsed < 2000) return
+    // React's "adjust state during render" pattern: it re-runs the component
+    // immediately without committing, so no stale frame reaches the screen.
+    if (active !== wasActive) {
+        setWasActive(active)
+        setStartedAt(active ? Date.now() : null)
+    }
 
-        setEta(formatDuration((elapsed * (1 - progress)) / progress))
-    }, [isCapturing, progress])
+    if (!active || startedAt === null) return null
 
-    return eta
+    const elapsed = Date.now() - startedAt
+    if (progress < 0.03 || elapsed < 2000) return null
+
+    return formatDuration((elapsed * (1 - progress)) / progress)
 }
 
 /**
@@ -65,7 +68,7 @@ export const LightSensorScreen = () => {
     const deviceId = route.params?.deviceId
     const device = useAppSelector(state => state.devices[deviceId || ''])
 
-    const { state, aeData } = useLightSensor({ device })
+    const { state, aeData, resetAeData } = useLightSensor({ device })
     const { readings, addReading, annotateLast, clear, exportCsv, copyCsv } = useLightSensorLog()
     const { capturedImageUri, isCapturing, captureStage, captureProgress, startCapture } = useCapturePreview({ device })
 
@@ -78,6 +81,12 @@ export const LightSensorScreen = () => {
 
     // Log one row per completed capture. Keyed on the image URI so a re-render
     // never double-logs, and so the row always carries the frame it belongs to.
+    //
+    // `aeData` is cleared when the capture starts (resetAeData below), so a
+    // non-null value here can only have arrived during *this* capture. Without
+    // that reset the previous measurement's readings would satisfy this guard and
+    // be logged against the new image — a wrong row that looks entirely correct.
+    // If the AE lines never arrive, nothing is logged, which is the honest outcome.
     const loggedUriRef = useRef<string | null>(null)
     useEffect(() => {
         if (!capturedImageUri || isCapturing) return
@@ -144,7 +153,7 @@ export const LightSensorScreen = () => {
 
             <Button
                 mode="contained"
-                onPress={() => startCapture(1, 500)}
+                onPress={() => { resetAeData(); startCapture(1, 500) }}
                 loading={isCapturing}
                 disabled={!connected || isCapturing}
             >

@@ -76,6 +76,16 @@ export const useLightSensor = ({ device }: { device: ExtendedPeripheral | undefi
         return () => { bleEventBus.removeListener('textLine', listener) }
     }, [device])
 
+    /**
+     * Drop the AE registers from the previous measurement.
+     *
+     * Call this before triggering a capture. The readings stream in as the device
+     * samples them, so without clearing first there is a window where a completed
+     * capture is paired with the *previous* capture's light level — indistinguishable
+     * from a correct reading, and permanent once logged.
+     */
+    const resetAeData = useCallback(() => setAeData(null), [])
+
     /** Read op23/24/25 from the device. */
     const refresh = useCallback(async () => {
         if (!device?.connected) return
@@ -212,5 +222,5 @@ export const useLightSensor = ({ device }: { device: ExtendedPeripheral | undefi
         }
     }, [device, isBusy, refresh])
 
-    return { state, aeData, isBusy, stage, refresh, setParam, measureNow, enableAeFlash, setAutoSwitch }
+    return { state, aeData, isBusy, stage, refresh, setParam, measureNow, enableAeFlash, setAutoSwitch, resetAeData }
 }
