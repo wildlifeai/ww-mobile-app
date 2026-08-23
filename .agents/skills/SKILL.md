@@ -47,6 +47,8 @@ changing one side silently breaks the other:
 | **Database schema** | `src/database/schema.ts` (generated) | **owned by** `wildlife-watcher-backend` — schema changes start there |
 | **Backend schema directory names** | `SCHEMA_MAP` in `scripts/sync-db-schema.js` | `ww-backend/supabase/schemas/public/*` — the `aaa_`/`xxx_`/`yyy_`/`zzz_` prefixes encode apply order |
 | **AI model / firmware filenames** | `deploymentPipeline.ts`, `useFirmwareUpdate.ts` | Seeed `xip_manager.c` parser |
+| **Apple team ID** | `eas.json` → `submit.production.ios.appleTeamId` | ww-website `frontend/public/.well-known/apple-app-site-association` — the `appID` there is `<TeamID>.<BundleID>`, and iOS silently refuses to associate the domain if it does not match the installed app |
+| **Store identifiers** | `eas.json` → `ascAppId` | EAS credential records, **not** a value to type from memory — see §4 |
 
 **The `AI ` prefix rule.** Commands prefixed `AI ` are forwarded by the nRF52 to the
 Himax; unprefixed ones are handled by the nRF itself. Consequences that have caught
@@ -102,8 +104,8 @@ people: `reset` reboots the nRF *after disconnect*; `AI reset` reboots only the 
   `INSTALL_FAILED_UPDATE_INCOMPATIBLE`, and the only way through is uninstalling the
   store app — taking its WatermelonDB, anything unsynced in the outbox, and the login
   session with it. **Warn the operator before they uninstall; there may be unsynced
-  field data.** The proper fix (`applicationIdSuffix` on the debug buildType, so both
-  coexist) is not applied yet — see PR #239.
+  field data.** The proper fix — `applicationIdSuffix ".expo"` on the debug buildType so
+  both coexist — is **still not applied**.
 - **`npm install --ignore-scripts` breaks the build.** It skips `postinstall`, so
   `patch-package` never applies `patches/`, and the native build then fails somewhere
   unrelated-looking.
@@ -130,6 +132,17 @@ people: `reset` reboots the nRF *after disconnect*; `AI reset` reboots only the 
   `npm run version:check` catches all six.
 - **`eas.json` has five profiles, not three**, and `production` in the GitHub workflow
   also **submits to the stores**. Check before dispatching a build.
+- **A failed submission tells you nothing through the web console.** It shows a bare
+  `ERRORED` with `error: null`, `logFiles: []` and `completedAt: null` — because it failed
+  before uploading, so there is nothing to log. **Re-run the same submission from the CLI**
+  (`eas submit --platform ios --profile production --id <buildId>`): it prints the actual
+  Apple response. That is how a month-old mystery turned out to be one wrong number.
+- **Store identifiers must match EAS's credential records, not memory.** A stale
+  `ascAppId` in `eas.json` made every iOS submission fail instantly
+  (`There is no resource of type 'apps' with id '…'`). Query what the stored App Store
+  Connect key can actually see rather than guessing — `remoteAppStoreConnectApps` on the
+  EAS GraphQL API lists it. Note the **web console ignores `eas.json` entirely** and uses
+  stored credentials, so a value being wrong there can hide until CI submits.
 - **`CI=1` in your shell changes behaviour.** `sync-types-cloud.js` treats
   `process.env.CI` as strict mode: a failed type sync becomes fatal instead of a warning,
   so `npm run android` dies at step 2. Don't export `CI` locally.
@@ -156,17 +169,12 @@ people: `reset` reboots the nRF *after disconnect*; `AI reset` reboots only the 
 
 `scripts/generate-watermelon-schema.js` compares the generated table definitions against
 the existing file (line endings normalised, version line ignored) and **only increments
-`version:` when the tables actually differ**. An unchanged schema is not even rewritten,
-so `npm run android` leaves no diff.
+`version:` when the tables actually differ**. An unchanged schema is not rewritten, so
+`npm run android` leaves no diff.
 
-It did not always work that way. Until Aug 2026 it incremented on *every* run, and since
-`schema:generate` is step 4 of `npm run android`, the number was a build counter: it
-reached 402 without 402 schema changes, forced a WatermelonDB migration on every dev
-build, and produced a spurious one-line diff each time. That is why the docs point at
-`schema.ts` instead of quoting a number, and why any version below ~402 in an old
-document means nothing.
-
-Still true regardless:
+Until Aug 2026 it incremented on *every* run, making the number a build counter — it
+reached 402 without 402 schema changes. Hence: docs point at `schema.ts` rather than
+quoting a number, and any version below ~402 in an older document means nothing.
 
 - **Never hand-edit the version downwards.** WatermelonDB migrates on version increase; a
   number lower than the on-device database triggers a reset. If you want to discard a
