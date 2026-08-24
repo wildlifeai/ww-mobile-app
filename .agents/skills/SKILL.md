@@ -210,5 +210,15 @@ shell boundary, and none of them reproduced in a Linux container:
   decisions were reached.
 - Point at code for anything that drifts (schema version, table counts, route lists).
   `npm run docs:validate` fails CI on a dead path or link.
-- Substantive discussion belongs in a dated thread under `development reports/`; anything
-  still open when the thread pauses becomes a GitHub issue.
+- **Development reports follow the firmware repo's convention** — see
+  [`development reports/README.md`](../../documentation/development%20reports/README.md).
+  The three rules that matter when you write one:
+  1. Docs are the record, GitHub issues are the tracker. A document is never the only
+     place an open task lives.
+  2. A thread is a folder `YYYY-MM-DD_short-description/` whose README carries **Status,
+     Outcome and Open items**. Append as it evolves; don't rewrite it.
+  3. **A report records how the work happened, not how the code works.** Anything a future
+     developer needs about current behaviour belongs in `onboarding/` or `resources/` —
+     nobody should have to read a thread to find out how something behaves now.
+- Head every new markdown file with `#### File:`, `#### Author:` and the date, so a reader
+  can place it without digging through git history.

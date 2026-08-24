@@ -60,8 +60,11 @@ npm run docs:validate    # every path/link in documentation/ resolves
 - **Version bumps touch six files.** `npm run version:check` is the gate — EAS reads the
   native Android values, not `app.config.ts`.
 - Docs are the record, GitHub issues are the tracker: substantive findings go in
-  `documentation/development reports/`, open items become issues (they auto-add to the
-  [project board](https://github.com/orgs/wildlifeai/projects/3)).
+  `documentation/development reports/` as a dated thread folder, open items become issues
+  (they auto-add to the [project board](https://github.com/orgs/wildlifeai/projects/3)).
+  A report records **how the work happened**; how the code behaves belongs in
+  `onboarding/` or `resources/`. Convention and checklist:
+  [development reports/README.md](documentation/development%20reports/README.md).
 
 ## Where things are
 

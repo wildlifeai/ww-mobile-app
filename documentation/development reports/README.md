@@ -1,29 +1,59 @@
 # Development reports
 
 Working records of how the app got here: review threads, proposals, bench evidence, and
-the discussion between developers. Same convention as the `development reports/` folders
-in Seeed_Grove_Vision_AI_Module_V2, ww-website, ww-backend and ww-hardware.
+the discussion between developers. Same convention as `_Documentation/development reports/`
+in [Seeed_Grove_Vision_AI_Module_V2](https://github.com/wildlifeai/Seeed_Grove_Vision_AI_Module_V2),
+which is the reference implementation, and the matching folders in ww-website, ww-backend
+and ww-hardware.
 
-Two rules keep this simple:
+We follow three rules:
 
-1. **Docs are the record; GitHub issues are the tracker.** Anything still *open* when a
-   discussion pauses — a bug found, a decision not yet made, a follow-up — is filed as a
-   GitHub issue (they land on the
+1. **Docs are the record; GitHub issues are the tracker.** Outstanding tasks should be
+   filed and tracked as GitHub issues (they land on the
    [project board](https://github.com/orgs/wildlifeai/projects/3) automatically). A
-   document is never the only place an open item lives.
-2. **Every thread README starts with Status / Outcome / Open items.** The Outcome section
-   is the short summary a future developer reads instead of the thread — what was agreed
-   and why. Open items are issue links, nothing else.
+   document is never the only place a task lives. File one in 30 seconds with the
+   [review-finding template](../../.github/ISSUE_TEMPLATE/review-finding.md).
+2. **Every thread README has at least Status, Outcome and Open items.** The Status can be
+   open or closed. The Outcome summarises what was agreed and why. Open items are links to
+   GitHub issues.
+3. **This folder records how the work happened, not how the code works.** Threads are the
+   audit trail — what we tried, what we found, what we decided and why. How the app
+   behaves belongs in [`../onboarding/`](../onboarding/) and
+   [`../resources/`](../resources/). Nobody should have to read a thread to find out how
+   something behaves now.
 
-Starting a thread: make a dated folder `YYYY-MM_short-topic/`, add a README with the
-three headers, drop the working files beside it. Append as it evolves — these are the
-audit trail, don't rewrite them.
+**Starting a thread:** make a folder named `YYYY-MM-DD_short-description/`, dated the day
+the work began, add a README with the three headers, drop the working files beside it.
+Append as it evolves, don't rewrite them.
 
-Closing a thread (the only ritual — checklist also sits in each README):
+**When creating new documents:** add these lines towards the top of each markdown file so
+a reader can place it without digging through git history:
 
-- [ ] Outcome written (short; the "why" for future developers)
-- [ ] every remaining open item filed as an issue and linked under Open items
-- [ ] affected topic docs updated (`documentation/resources/*.md`, `documentation/onboarding/*.md`)
+1. Filename (the name of the markdown file)
+2. Author (e.g. a person or AI)
+3. Date (preferably day as well as month and year)
+
+Example:
+
+```
+# Sliding window file transfer — firmware engineering guide
+
+#### File: sliding_window_file_transfer.md
+#### Author: Claude (Opus 5), reviewed by Victor Anton
+#### April 2026
+```
+
+**To close a thread ensure:**
+
+- [ ] **Outcome is written.** It should summarise for future developers what the result of
+      this thread was.
+- [ ] **Linked documentation.** Every conversation and relevant file is linked and easy to
+      find.
+- [ ] **Open items.** Every follow-up or remaining work is captured and linked as a GitHub
+      issue.
+- [ ] **Durable docs updated.** Anything a future developer needs to know about how the
+      code works now lives in `documentation/onboarding/` or `documentation/resources/`,
+      not only here.
 
 > [!NOTE]
 > The reports below predate this convention: they are single files rather than dated
