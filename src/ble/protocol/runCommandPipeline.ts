@@ -140,6 +140,13 @@ function isRetryable(error: Error): boolean {
     return false;
   }
 
+  // The firmware does not have this command, so a second attempt cannot succeed.
+  // Matters for capability probes, where the app tries a newer command and falls
+  // back when the device is on older firmware: retrying only delays the fallback.
+  if (msg.includes('UNRECOGNISED')) {
+    return false;
+  }
+
   // Allowed to retry
   if (msg.includes('TIMEOUT') || msg.includes('DEVICE_SLEEP') || msg.includes('DEVICE_BUSY')) {
     return true;

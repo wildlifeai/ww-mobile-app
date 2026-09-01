@@ -232,4 +232,67 @@ describe('Simulated Transport Resiliency', () => {
     ]);
     rxRouter.handleIncomingBytes(DEVICE_ID, buf);
   });
+
+  // `AI light` is two-phase: the reply is an acknowledgement and the reading
+  // follows later as unsolicited telemetry. A blocking firmware version of this
+  // deadlocked over BLE, so the app must never wait on the command for the answer.
+  test('AI light resolves on the acknowledgement, not on the reading', async () => {
+    const mockWrite = transport.writeToDevice as jest.Mock;
+
+    mockWrite.mockImplementation(async (_periph, payload) => {
+      expect(payload).toBe('AI light');
+      rxRouter.handleIncomingBytes(DEVICE_ID, Buffer.from('Checking light level...\n'));
+      // The reading arrives well after the command has resolved. If the pipeline
+      // were waiting for it, this test would time out rather than pass.
+      setTimeout(() => {
+        rxRouter.handleIncomingBytes(DEVICE_ID, Buffer.from(
+          'AE light check: mean AE = 71 (min 71, max 71) over 16 frames, threshold = 65, ' +
+          'analog gain = 4, converged = no, gain railed = yes -> DARK (flash wanted)\n',
+        ));
+      }, 2000);
+      return true;
+    });
+
+    const result = await bleTransport.enqueue(() =>
+      runCommandPipeline(peripheral, commandRegistry.light)
+    );
+    expect(result).toBe(true);
+  });
+
+  // A retry would fire a second real capture on the device, and would push the
+  // command's worst case past the caller's own budget for the whole measurement.
+  // Seen on hardware: the retry arrived 8s late, by which time the device state
+  // had changed and the wait had already expired.
+  test('AI light is not retried when the acknowledgement never arrives', async () => {
+    const mockWrite = transport.writeToDevice as jest.Mock;
+    mockWrite.mockImplementation(async () => true);   // device stays silent
+
+    await expect(
+      bleTransport.enqueue(() => runCommandPipeline(peripheral, commandRegistry.light))
+    ).rejects.toThrow(/timeout/i);
+
+    // Counted by payload rather than by total calls: earlier tests in this file
+    // can leave a straggler queued that dispatches during this one, and a bare
+    // call count would fail on their leakage rather than on a retry here.
+    const lightWrites = mockWrite.mock.calls.filter((c: any[]) => c[1] === 'AI light');
+    expect(lightWrites).toHaveLength(1);
+  }, 20000);
+
+  // The capability probe: firmware without the command answers "Unrecognised",
+  // and the caller falls back to taking a real capture. Retrying that could never
+  // succeed, so it must reject on the first attempt.
+  test('an unrecognised command fails immediately without retrying', async () => {
+    const mockWrite = transport.writeToDevice as jest.Mock;
+
+    mockWrite.mockImplementation(async (_periph, _payload) => {
+      rxRouter.handleIncomingBytes(DEVICE_ID, Buffer.from('Unrecognised\n'));
+      return true;
+    });
+
+    await expect(
+      bleTransport.enqueue(() => runCommandPipeline(peripheral, commandRegistry.light))
+    ).rejects.toThrow(/unrecognised/i);
+
+    expect(mockWrite).toHaveBeenCalledTimes(1);
+  });
 });

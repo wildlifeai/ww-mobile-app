@@ -378,6 +378,37 @@ export const commandRegistry = {
     { timeoutMs: 30000, retryPolicy: { maxRetries: 0 } }
   ),
 
+  /**
+   * Request a light reading without capturing an image.
+   *
+   * Two-phase, and deliberately so: this resolves on the immediate
+   * acknowledgement only. The reading itself arrives afterwards as unsolicited
+   * telemetry (the "HM0360 AE regs" block and the "AE light check" decision
+   * line), so a caller wanting the answer must listen for it — see
+   * lightCheck.ts. An earlier firmware version that blocked until the reading
+   * was ready deadlocked over BLE, so do not ask for a synchronous variant.
+   *
+   * The "Unrecognised" failure is the capability probe: firmware older than the
+   * light-sensor work has no `light` command, and callers fall back to taking a
+   * real capture instead.
+   */
+  light: createSingleLineCommand<boolean>(
+    'light',
+    () => 'AI light',
+    /^Checking light level/i,
+    () => true,
+    // 8s to match the other AI commands: the processor may need a DPD wake first.
+    //
+    // Never retried, for two reasons. A retry fires a second real capture on the
+    // device, and the caller is listening for the reading on the event bus rather
+    // than on this reply, so a lost acknowledgement costs nothing as long as the
+    // telemetry still arrives. Worse, a retry doubles the command's worst case to
+    // 16s, which is longer than the caller's own 15s budget for the whole
+    // measurement: observed on hardware, where the retry landed 8s late and the
+    // wait expired before the second attempt could answer.
+    { timeoutMs: 8000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Unrecognised|^Failed to queue light check/i },
+  ),
+
   txfile: createSingleLineCommand<boolean>(
     'txfile',
     (filename: string = '.') => `AI txfile ${filename}`,

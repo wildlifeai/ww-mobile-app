@@ -45,6 +45,7 @@ export enum CommandNames {
 	slots = "slots",
 	switchslot = "switchslot",
 	md = "md",
+	light = "light",
 	setdid = "setdid",
 	getdid = "getdid",
 	ai_firmware = "ai_firmware",
@@ -477,6 +478,15 @@ export const COMMANDS: {
 		writeCommand: (level?: string) => `AI md ${level || '0'}`,
 		expectedPattern: false,
 		description: "Set motion detection sensitivity (0-3)",
+		type: 'command',
+	},
+	[CommandNames.light]: {
+		name: CommandNames.light,
+		readCommand: 'AI light',
+		// The reply is only an acknowledgement ("Checking light level..."); the
+		// reading follows a couple of seconds later as its own telemetry line.
+		expectedPattern: /^Checking light level/i,
+		description: "Measure light without taking a photo (reading follows separately)",
 		type: 'command',
 	},
 	[CommandNames.setdid]: {
