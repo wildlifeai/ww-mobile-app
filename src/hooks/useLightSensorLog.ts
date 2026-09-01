@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Alert, Share } from 'react-native'
 import * as FileSystem from 'expo-file-system/legacy'
-import * as Clipboard from 'expo-clipboard'
 
 import { log, logError } from '../utils/logger'
 
@@ -23,6 +22,17 @@ export interface LightReading {
     /** op23 at the time of the reading, so an exported row can be re-scored later */
     darkThreshold: number
     deviceName: string
+    /**
+     * The firmware's own verdict, when it sent one. Absent on a plain capture
+     * with the flash and auto-switch both off, because no light check runs.
+     */
+    dark?: boolean
+    /**
+     * Both gains at their ceiling. Worth its own column: it forces DARK whatever
+     * the mean says, so a row where it is true cannot be re-scored on the mean
+     * alone.
+     */
+    gainRailed?: boolean
     /** Local file path of the frame this reading came from, when one was captured */
     imageUri?: string
     /** Free-text label the operator can attach to a run (e.g. "dusk, 30cm, indoor") */
@@ -30,7 +40,7 @@ export interface LightReading {
 }
 
 const CSV_COLUMNS: (keyof LightReading)[] = [
-    'timestamp', 'aeMean', 'darkThreshold', 'integration',
+    'timestamp', 'aeMean', 'darkThreshold', 'dark', 'gainRailed', 'integration',
     'analogGain', 'digitalGain', 'aeConverged', 'deviceName', 'note', 'imageUri',
 ]
 
@@ -142,14 +152,5 @@ export const useLightSensorLog = () => {
         }
     }, [readings])
 
-    const copyCsv = useCallback(async () => {
-        if (readings.length === 0) {
-            Alert.alert('Nothing to copy', 'Take at least one measurement first.')
-            return
-        }
-        await Clipboard.setStringAsync(toCsv(readings))
-        Alert.alert('Copied', `${readings.length} reading(s) copied as CSV.`)
-    }, [readings])
-
-    return { readings, addReading, annotateLast, clear, exportCsv, copyCsv, csvPath: CSV_FILE }
+    return { readings, addReading, annotateLast, clear, exportCsv, csvPath: CSV_FILE }
 }
