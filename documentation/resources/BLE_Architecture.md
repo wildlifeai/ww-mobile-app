@@ -26,6 +26,15 @@ Developers **must** use the correct write path for each use case. Misuse causes 
 | Motion detection `md` sensitivity | direct `writeToDevice()` | Must bypass the transport controller to avoid blocking `setop`/`capture`. |
 | Motion detection `setop`/`capture` | `bleSession.execute()` | Queued commands that follow the md sensitivity write. |
 | Motion detection grid events | passive `textLine` subscription | Async text lines parsed via `useMotionDetectionStream`. |
+| Light sensor decision (`AE light check`) | passive `textLine` subscription | Sent after every light check, including ones the app did not request. Parsed by `lightCheck.ts`, surfaced through `useLightSensor`. See [Light-Sensor.md](./Light-Sensor.md). |
+| Self-test result (`Error bits = 0x…`) | passive `textLine` subscription | The device announces this after **every wake**, unprompted. `useCameraReadiness` listens rather than polling `selftest`. |
+
+> [!TIP]
+> Before adding a command that polls for device state, check whether the device already
+> announces it. Two of the three rows above are messages that arrive whether or not anyone
+> asked: a bench run in Sep 2026 counted 25 `Error bits` lines received against 6 `selftest`
+> commands sent. Polling for a value you are already being pushed costs a DPD wake, and it
+> can show a stale answer while a fresher one sits unread on the bus.
 
 > [!WARNING]
 > **Never** call `writeRaw()` from a deployment workflow. Never call `bleSession.execute()` from the Engineer Console. These boundaries exist to prevent determinism violations.

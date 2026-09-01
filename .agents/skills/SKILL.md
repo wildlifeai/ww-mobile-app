@@ -47,6 +47,8 @@ changing one side silently breaks the other:
 | **Database schema** | `src/database/schema.ts` (generated) | **owned by** `wildlife-watcher-backend` — schema changes start there |
 | **Backend schema directory names** | `SCHEMA_MAP` in `scripts/sync-db-schema.js` | `ww-backend/supabase/schemas/public/*` — the `aaa_`/`xxx_`/`yyy_`/`zzz_` prefixes encode apply order |
 | **AI model / firmware filenames** | `deploymentPipeline.ts`, `useFirmwareUpdate.ts` | Seeed `xip_manager.c` parser |
+| **`AE light check` line format** | `src/ble/protocol/lightCheck.ts` | Seeed `ww500_md/lightSensor.c` `decideDarkBright()`. Still gaining fields, so parse **by field name**, never by comma position |
+| **Self-test bit numbers** | `SelfTestBit` in `src/utils/deviceSelfTest.ts` | Seeed `ww500_md/selfTest.h`. Bits 0-7 nRF, 8-15 Himax |
 | **Apple team ID** | `eas.json` → `submit.production.ios.appleTeamId` | ww-website `frontend/public/.well-known/apple-app-site-association` — the `appID` there is `<TeamID>.<BundleID>`, and iOS silently refuses to associate the domain if it does not match the installed app |
 | **Store identifiers** | `eas.json` → `ascAppId` | EAS credential records, **not** a value to type from memory — see §4 |
 
@@ -91,10 +93,39 @@ people: `reset` reboots the nRF *after disconnect*; `AI reset` reboots only the 
   op10/op18 pre-flight that re-enables a camera left disabled by a stopped deployment,
   the Save State/DPD waits that stop `txfile` racing FatFS and corrupting the file
   handle, and the reassembly that turns binary packets into an image URI (with
-  byte-level progress). `useLightSensor.measureNow` predates it and is less robust.
+  byte-level progress). Use it whenever you need an image.
+- **To measure light, don't take a photo.** `useLightSensor.measureNow` uses `AI light`:
+  about 2 s, no JPEG, no transfer, against 13–50 s for a capture. It is **two-phase** —
+  the command's reply is only an acknowledgement and the reading arrives afterwards as
+  unsolicited telemetry, so it subscribes before sending. A blocking version of this
+  deadlocked the firmware over BLE; don't ask for a synchronous one.
+  See [Light-Sensor.md](../../documentation/resources/Light-Sensor.md).
+- **Ask what the device already tells you before adding a poll.** Self-test bits arrive
+  unprompted after *every* wake, and the light decision after every light check. A Sep
+  2026 bench run counted 25 `Error bits` lines received against 6 `selftest` commands
+  sent. Polling costs a DPD wake and, worse, can display a stale answer while a fresher
+  one goes unread — that exact bug made a healthy camera look broken until the device was
+  power-cycled. Passive subscriptions are listed in
+  [BLE_Architecture.md](../../documentation/resources/BLE_Architecture.md).
+- **Order the commands so the wake works for you.** The device announces its self-test
+  when it wakes, so a command that wakes it (`getop -1`) answers the next question for
+  free. Sending `selftest` first instead means it goes out ~200 ms *before* the broadcast
+  that would have made it unnecessary. That ordering bug survived a code review and was
+  only visible in a merged app/nRF/Himax log.
 
 ## 4. Traps that have already cost time
 
+- **Self-test bits are meaningless until the Himax is awake.** The nRF pre-sets *every*
+  AI-processor bit (8–15) at boot and clears them only when the Himax reports for itself,
+  so a `selftest` run before `AI info` returns `0xFF00`-ish garbage in that range.
+  `useBleInitialization` masks bits 8–15 for exactly this reason and runs a **second**
+  `selftest` after waking the AI processor — the two are not duplicates, and neither is
+  removable. Anything reading bits 8 or 9 (main camera, HM0360) must reject the
+  all-bits-set pattern or it will report five hardware failures on a healthy device.
+- **`setop 10 0` does not stop a running camera.** `cameraSystemEnabled` is loaded from
+  op10 only when the image task starts, so the write lands at the next wake. `AI enable` /
+  `AI disable` change both. To turn the camera on *now*, write op10 **and** send
+  `AI enable`. The inverse of this trap is documented on the firmware side.
 - **A local dev build destroys the production app's data.** `app.config.ts` derives an
   `.expo`-suffixed bundle ID from `APP_VARIANT`, but the tracked
   `android/app/build.gradle` hardcodes `applicationId 'com.wildlife.wildlifewatcher'` —
