@@ -48,7 +48,12 @@ npm run docs:validate    # every path/link in documentation/ resolves
 - **`commandRegistry.ts` is the only place BLE commands are defined.** Never match device
   responses anywhere else; `messageClassifier.ts` is UI presentation only.
 - **OP parameter indices mirror the firmware** (`OP_PARAMETER` here ↔ `OP_PARAMETERS_E`
-  in the Seeed repo). A cross-repo contract — never renumber unilaterally.
+  in the Seeed repo). A cross-repo contract — never renumber unilaterally. So are the
+  self-test bit numbers and the `AE light check` line's fields.
+- **The device tells you things you didn't ask for.** Self-test bits after every wake, the
+  light decision after every check, motion grids while monitoring. Check for an existing
+  broadcast before adding a command that polls — one already cost us a stale banner that
+  made a working camera look broken.
 - **The schema is generated, not written.** `src/database/schema.ts` comes from
   `npm run schema:generate`; schema changes originate in `wildlife-watcher-backend`. Its
   `version:` moves only on a real table change — and must never be edited downwards.
@@ -73,6 +78,7 @@ npm run docs:validate    # every path/link in documentation/ resolves
 | Start here as a human | `documentation/onboarding/00-GETTING-STARTED.md` (six guides, in order) |
 | Structure, hooks, services | `documentation/onboarding/02-CODEBASE-GUIDE.md` — the maintained inventory |
 | BLE engine | `src/ble/` — protocol/, session/, workflows/; deep dive in `documentation/resources/BLE_Architecture.md` |
+| Day/night light sensor | `documentation/resources/Light-Sensor.md` — op23/24/25/26, `AI light`, and why op25 reads stale |
 | Device flows | `documentation/onboarding/05-DEVICE-FLOWS.md`, `06-BLE-CONNECTIONS.md` |
 | Offline/sync | `documentation/onboarding/03-DATA-AND-SYNC.md` |
 | How the code got this way | `documentation/development reports/` |

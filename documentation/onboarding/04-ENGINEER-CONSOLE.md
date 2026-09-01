@@ -324,7 +324,9 @@ HM0360 AE regs:
 
 These values are captured by the Camera Settings Test Screen and displayed in the AE Data panel with a visual AE Mean bar (0–255).
 
-**Potential as a light sensor proxy:** The AE registers (especially `AE Mean` and `Integration time`) may provide enough ambient light information to automatically determine whether flash illumination is needed. This has not yet been implemented — further investigation is needed to determine which registers correlate most reliably with ambient brightness across day/night transitions.
+**Used as the light sensor.** The AE registers *are* the day/night sensor: the firmware averages them over several frames and turns them into one dark/bright decision that drives the flash (OP 13) and automatic camera switching (OP 26). The Light Sensor flow exposes this, and `AI light` measures on demand without taking a photo. See [Light-Sensor.md](../resources/Light-Sensor.md).
+
+Which registers correlate best has been measured rather than guessed. Scoring 303 time-lapse frames against their capture times, so the label owes nothing to the registers being scored: analog gain 100%, digital gain 100%, AE Mean 98.8%, integration time 96.5%. The gain registers are the stronger discriminators; AE Mean is used because it is the tunable one. The threshold itself (OP 23) is still under review.
 
 ### Firmware Compile Flags for Experiments
 

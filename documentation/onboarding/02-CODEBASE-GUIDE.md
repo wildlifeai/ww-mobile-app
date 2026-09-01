@@ -223,7 +223,8 @@ hooks/
 ├── useDeviceSettings.ts       # OP_PARAMETER enum, FACTORY_DEFAULTS, quiesce
 ├── useCameraSwitch.ts         # Camera variant switching
 ├── useResolutionSwitch.ts     # Capture resolution selection
-├── useLightSensor.ts          # AE-based ambient light readings
+├── useLightSensor.ts          # Day/night decision: AI light, AE regs, op23/24/25
+├── useCameraReadiness.ts      # Is the camera usable: self-test bits + op10
 ├── useOfflineSync.ts          # Offline sync triggers
 ├── useOptimisticUpdate.ts     # UI responses before outbox confirms
 ├── useSupabaseAuth.ts         # Supabase auth hook

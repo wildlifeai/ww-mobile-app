@@ -148,6 +148,7 @@ export const getCommandSections = (): CommandSection[] => {
                     icon: 'camera',
                     commands: pick([
                         CommandNames.md,
+                        CommandNames.light,
                     ]),
                 },
                 {
