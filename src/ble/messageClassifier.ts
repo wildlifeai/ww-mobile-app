@@ -7,6 +7,8 @@
  * - ERROR: Error messages (AI NACK, I2C errors, timeouts)
  */
 
+import { parseLightCheck } from './protocol/lightCheck'
+
 export enum MessageType {
   RESPONSE = 'RESPONSE',
   UNSOLICITED = 'UNSOLICITED',
@@ -310,6 +312,20 @@ export function classifyForMonitor(rawMessage: string): MonitorEvent | null {
 
   // --- SELF-TEST EVENTS ---
   if (/^Error bits = 0x/i.test(content) && !/^Error bits = 0x0000/i.test(content)) return { category: 'selftest_warn', label: 'Self-test warning', icon: 'alert', details: content }
+
+  // --- LIGHT SENSOR DECISION ---
+  // The day/night verdict, sent after every light check. Surfaced with its margin
+  // rather than hidden as noise: it is the one line that explains why the device
+  // decided to switch camera or arm the flash. Raw AE registers stay filtered below.
+  const lightCheck = parseLightCheck(content)
+  if (lightCheck) {
+    return {
+      category: 'info',
+      label: `Light check: ${lightCheck.dark ? 'DARK' : 'BRIGHT'} — AE ${lightCheck.meanAE} vs threshold ${lightCheck.threshold}${lightCheck.changed ? ', changed' : ''}`,
+      icon: lightCheck.dark ? 'weather-night' : 'white-balance-sunny',
+      details: content,
+    }
+  }
 
   // --- FILTER OUT KNOWN NOISE ---
   const ignoredPatterns = [
