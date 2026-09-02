@@ -172,7 +172,7 @@ file in the model's class order to guarantee this.
 |------|---------|
 | `src/database/models/AiModel.ts` | WatermelonDB model with firmware ID fields |
 | `src/services/AiModelService.ts` | AI model metadata, label + binary download, registration |
-| `src/screens/Devices/AiModelTransferScreen.tsx` | Model upload UI |
+| `src/ble/workflows/deploymentPipeline.ts` | `syncAiModel` owns model state during a deployment: the app's only model transfer path since the standalone `AiModelTransferScreen` was deleted in Sep 2026, unreachable and superseded by it |
 | `src/ble/protocol/fileTransfer/` | File transfer pipeline |
 | `src/ble/protocol/commandRegistry.ts` | `loadmodel`, `erasemodel`, `getop` commands |
 

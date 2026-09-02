@@ -13,6 +13,22 @@ import { log, logError, logWarn } from '../utils/logger'
  */
 export type CameraVariant = 'RP3' | 'HM0360' | 'unknown'
 
+/**
+ * What each camera is called in the UI, named by the picture it produces rather
+ * than by its part number: an operator picking a camera is choosing between a
+ * colour image and a black and white one.
+ *
+ * Centralised because four screens had written their own version of this and all
+ * four disagreed ("Colour" / "Colour (day)" / "RP3 · day" / "Colour (RP3)").
+ * Screens that are genuinely choosing a *firmware image* rather than a picture,
+ * such as the firmware updater, legitimately want the part number and should say
+ * so explicitly rather than reusing these.
+ */
+export const CAMERA_VARIANT_LABELS: Record<Exclude<CameraVariant, 'unknown'>, string> = {
+    RP3: 'Colour',
+    HM0360: 'Black & White',
+}
+
 interface UseCameraSwitchOptions {
     device: ExtendedPeripheral | undefined
     onError?: (error: Error) => void
@@ -116,7 +132,7 @@ export const useCameraSwitch = ({ device, onError }: UseCameraSwitchOptions): Us
         // UI can warn that a manual selection may be reverted. Non-fatal.
         try {
             if (device) {
-                const ops = await createBleSession(device).execute(() => commandRegistry.getops())
+                const ops = await createBleSession(device).getOps()
                 if (!unmountedRef.current && ops && ops.length > OP_PARAMETER.SLOT_SWITCH) {
                     setAutoSwitchOn(parseInt(ops[OP_PARAMETER.SLOT_SWITCH], 10) === 1)
                 }

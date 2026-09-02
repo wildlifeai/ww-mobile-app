@@ -192,7 +192,7 @@ export const useCapturePreview = ({
             setCaptureStage('Checking device state…')
             log('[useCapturePreview] Phase 1: Setup — checking device state')
             try {
-                const ops = await session.execute(() => commandRegistry.getops())
+                const ops = await session.getOps()
                 if (ops) {
                     const cameraEnabled = parseInt(ops[10] ?? '1', 10)
                     const testModeBits = parseInt(ops[18] ?? '0', 10)

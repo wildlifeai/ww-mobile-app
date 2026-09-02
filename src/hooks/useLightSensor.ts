@@ -8,7 +8,7 @@ import { createBleSession } from '../ble/session/createBleSession'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
 import { parseLightCheck, type LightCheck } from '../ble/protocol/lightCheck'
 import { log, logError } from '../utils/logger'
-import type { AEData } from '../screens/Devices/hooks/useCameraSettingsTest'
+import type { AEData } from '../screens/Devices/hooks/useCapturePicture'
 
 export interface LightSensorState {
     darkThreshold: number      // op23 - AE mean below this = dark
@@ -169,7 +169,7 @@ export const useLightSensor = ({ device }: { device: ExtendedPeripheral | undefi
         if (!device?.connected) return
         try {
             const session = createBleSession(device)
-            const ops = await session.execute(() => commandRegistry.getops())
+            const ops = await session.getOps()
             if (unmountedRef.current) return
             setState(prev => ({
                 darkThreshold: opInt(ops, OP_PARAMETER.AE_DARK_THRESHOLD, prev.darkThreshold),

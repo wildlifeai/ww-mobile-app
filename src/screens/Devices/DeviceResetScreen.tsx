@@ -155,6 +155,17 @@ export const DeviceResetScreen = () => {
                         <WWText variant="bodyMedium" style={{ color: colors.onSurfaceVariant, marginBottom: 12 }}>
                             This will reset the following parameters to their default values, clear deployment ID and zero the GPS coordinates.
                         </WWText>
+                        {/* The erase was happening all along and was the one
+                            destructive step the warning did not mention.
+                            executeResetToDefaults runs `erasemodel` whenever a
+                            model is loaded, and this screen passes no
+                            preserveModel, so it always applies here. */}
+                        <View style={[styles.banner, { backgroundColor: colors.errorContainer, marginBottom: 12 }]}>
+                            <WWText style={{ color: colors.onErrorContainer }}>
+                                It also erases the AI model from the device. Putting one back is a
+                                slow Bluetooth transfer, and a deployment re-sends it automatically.
+                            </WWText>
+                        </View>
                         {!isConnected && (
                             <View style={[styles.banner, { backgroundColor: colors.errorContainer }]}>
                                 <WWText style={{ color: colors.onErrorContainer }}>

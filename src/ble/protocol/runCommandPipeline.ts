@@ -5,6 +5,7 @@ import { BLE_PROTOCOL_RETRIES, BLE_PROTOCOL_TIMINGS } from './protocolConstants'
 import { bleTransport } from './bleTransportController';
 import { writeToDevice } from '../transport';
 import { DeviceSignal } from './deviceSignals';
+import { opCache } from './opCache';
 
 /**
  * Execute a single BLE command: subscribe → send → resolve/reject.
@@ -147,6 +148,14 @@ function isRetryable(error: Error): boolean {
     return false;
   }
 
+  // Same reasoning one level down: the command exists but the operational
+  // parameter index does not on this firmware. The app runs ahead of the
+  // device on op indices by design, so this is a capability answer, not a
+  // transient fault, and it reads identically on every attempt.
+  if (msg.includes('MUST BE BETWEEN')) {
+    return false;
+  }
+
   // Allowed to retry
   if (msg.includes('TIMEOUT') || msg.includes('DEVICE_SLEEP') || msg.includes('DEVICE_BUSY')) {
     return true;
@@ -185,7 +194,15 @@ export async function runCommandPipeline<T>(
 
     while (true) {
       try {
-        return await runCommand(peripheral, commandConstructor);
+        const result = await runCommand(peripheral, commandConstructor);
+        // One choke point for the op cache, so every caller benefits and no
+        // writer can forget to invalidate: `getops` fills it, `setop` empties it.
+        if (context.name === 'getops') {
+          opCache.set(peripheral.id, result as unknown as string[]);
+        } else if (context.name === 'setop') {
+          opCache.invalidate(peripheral.id);
+        }
+        return result;
       } catch (error: any) {
         if (attempt >= maxRetries || !isRetryable(error)) {
           throw error;

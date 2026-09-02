@@ -24,7 +24,7 @@ import { useBleActions } from '../../../providers/BleEngineProvider'
 import { useDeploymentConfiguration } from '../../../hooks/useDeploymentConfiguration'
 import { useBle } from '../../../hooks/useBle'
 import { useGPSLocation } from '../../../hooks/useGPSLocation'
-import { useDeviceSettings, OP_PARAMETER } from '../../../hooks/useDeviceSettings'
+import { useDeviceSettings, OP_PARAMETER, FLASH_LED_LABELS } from '../../../hooks/useDeviceSettings'
 import { useDeploymentProgress } from '../../../hooks/useDeploymentProgress'
 import { useMonitoringActions } from '../../../hooks/useMonitoringActions'
 import * as pipeline from '../../../ble/workflows/deploymentPipeline'
@@ -34,7 +34,7 @@ import { selectCurrentOrganisation } from '../../../redux/slices/authSlice'
 import { ProjectWithDetails } from '../../../types/project'
 
 export interface FlashParams {
-    flashLed: number      // 0=Off, 1=Visible, 2=IR
+    flashLed: number      // op13, see FLASH_LED_LABELS: 0=Off, 1=White, 2=IR
     ledBrightness: number // 0-100%
 }
 
@@ -364,7 +364,7 @@ export const useDevDeployment = ({
             const session = bleSession
             await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.LED_BRIGHTNESS, value: flashParams.ledBrightness }))
             await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_LED, value: flashParams.flashLed }))
-            progress.addLog(`Flash: ${['Off', 'Visible', 'IR'][flashParams.flashLed]} @ ${flashParams.ledBrightness}%`)
+            progress.addLog(`Flash: ${FLASH_LED_LABELS[flashParams.flashLed]} @ ${flashParams.ledBrightness}%`)
 
             // 7b. Dev diagnostic: Enable JPG+BMP capture mode
             progress.addLog('Setting capture diagnostics...')

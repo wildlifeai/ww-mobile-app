@@ -38,18 +38,34 @@ export const useResolutionSwitch = ({ device, onError }: Options) => {
     const [resolution, setResolution] = useState<CaptureResolution>('unknown')
     const [isBusy, setIsBusy] = useState(false)
     const [stage, setStage] = useState('')
+    /** null until the first read; false when this firmware has no op32. */
+    const [supported, setSupported] = useState<boolean | null>(null)
 
     const refresh = useCallback(async () => {
         if (!device?.connected) return
         try {
             const session = createBleSession(device)
-            // getop's parser returns just the value ('1'), not the full
-            // 'OpParam 32 = 1' line
-            const raw = await session.execute(() => commandRegistry.getop(OP_PARAMETER.CAM_RESOLUTION)) as string
-            const v = parseInt(String(raw).trim(), 10)
+            // Read the whole array rather than op32 on its own. It costs the
+            // same single command, and the array's length answers a question a
+            // targeted read cannot: whether this firmware has op32 at all.
+            //
+            // It does not, today. op32 is coming in a later build, so asking
+            // for it directly gets `Error: index (32) must be between -1 and
+            // 31`, which stalled this screen for 16s on the bench and blocked
+            // the capture queued behind it. Same capability-guard pattern
+            // useCapturePicture already applies to the WB gains.
+            const ops = await session.getOps()
+            if (!ops || ops.length <= OP_PARAMETER.CAM_RESOLUTION) {
+                log(`[Resolution] firmware exposes ${ops?.length ?? 0} ops, no op32: hi-res unavailable`)
+                setSupported(false)
+                setResolution('unknown')
+                return
+            }
+            setSupported(true)
+            const v = parseInt(ops[OP_PARAMETER.CAM_RESOLUTION], 10)
             setResolution(Number.isNaN(v) ? 'unknown' : v === 1 ? 'hires' : 'standard')
         } catch (e) {
-            logWarn('[Resolution] op32 read failed:', e)
+            logWarn('[Resolution] op read failed:', e)
             setResolution('unknown')
         }
     }, [device])
@@ -105,5 +121,5 @@ export const useResolutionSwitch = ({ device, onError }: Options) => {
         }
     }, [device, isBusy, refresh, onError])
 
-    return { resolution, isBusy, stage, refresh, switchTo }
+    return { resolution, isBusy, stage, supported, refresh, switchTo }
 }
