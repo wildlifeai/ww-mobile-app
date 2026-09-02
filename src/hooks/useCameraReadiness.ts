@@ -156,7 +156,7 @@ export const useCameraReadiness = ({
             // one for free. Doing it the other way round, as this did until the
             // bench run on 2 September, sent `selftest` roughly 200ms before the
             // broadcast arrived and so never once managed to skip it.
-            const ops = await session.execute(() => commandRegistry.getops())
+            const ops = await session.getOps()
             const on = ops && ops.length > OP_PARAMETER.CAMERA_ENABLED
                 ? parseInt(ops[OP_PARAMETER.CAMERA_ENABLED], 10) === 1
                 : true   // older firmware without the parameter always has it on

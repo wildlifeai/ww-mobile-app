@@ -18,6 +18,10 @@ const broadcast = (line: string, deviceId = device.id) =>
 /**
  * Stub one BLE session. `selftest` resolves to the raw error-bits string and
  * `getops` to the op array, matching what the real commands return.
+ *
+ * `getOps` is the session's cache-aware reader. It is stubbed to go straight to
+ * `execute` so these tests keep asserting the commands that reach the wire; the
+ * cache has its own tests in ble/protocol/__tests__/opCache.test.ts.
  */
 const mockSession = (selftest: string, ops: string[]) => {
     const execute = jest.fn(async (build: () => any) => {
@@ -26,7 +30,8 @@ const mockSession = (selftest: string, ops: string[]) => {
         if (name === 'getops') return ops
         return true
     })
-    ;(createBleSession as jest.Mock).mockReturnValue({ execute })
+    const getOps = jest.fn(async () => execute(() => ({ name: 'getops' })))
+    ;(createBleSession as jest.Mock).mockReturnValue({ execute, getOps })
     return execute
 }
 
@@ -226,7 +231,8 @@ describe('useCameraReadiness, self-test broadcasts', () => {
             if (name === 'selftest') return 'Error bits = 0x0000'
             return true
         })
-        ;(createBleSession as jest.Mock).mockReturnValue({ execute })
+        const getOps = jest.fn(async () => execute(() => ({ name: 'getops' })))
+        ;(createBleSession as jest.Mock).mockReturnValue({ execute, getOps })
 
         const { result } = renderHook(() => useCameraReadiness({ device, enabled: true }))
 

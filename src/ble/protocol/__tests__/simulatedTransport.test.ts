@@ -278,6 +278,36 @@ describe('Simulated Transport Resiliency', () => {
     expect(lightWrites).toHaveLength(1);
   }, 20000);
 
+  // The app runs ahead of the firmware on op indices: op32 (CAM_RESOLUTION)
+  // exists here before it ships on the device. Asking for one the running build
+  // does not have used to match neither success nor failure, so the command sat
+  // for its full 8s timeout and then retried for another 8. On the bench that
+  // put 16s of dead time on entering Capture Preview and blocked the capture
+  // queued behind it, so the flow looked like it had done nothing at all.
+  test('an op index the firmware lacks fails fast, without waiting out the timeout', async () => {
+    const mockWrite = transport.writeToDevice as jest.Mock;
+
+    mockWrite.mockImplementation(async (_periph, payload) => {
+      expect(payload).toBe('AI getop 32');
+      rxRouter.handleIncomingBytes(DEVICE_ID, Buffer.from(
+        'Error: index (32) must be between -1 and 31.\n',
+      ));
+      return true;
+    });
+
+    const started = Date.now();
+    await expect(
+      bleTransport.enqueue(() => runCommandPipeline(peripheral, () => commandRegistry.getop(32)))
+    ).rejects.toThrow(/must be between/i);
+
+    // Asserted as a bound rather than an exact value: the point is that it did
+    // not wait out getop's 8000ms timeout, not how fast the mock resolved.
+    expect(Date.now() - started).toBeLessThan(2000);
+
+    const getopWrites = mockWrite.mock.calls.filter((c: any[]) => c[1] === 'AI getop 32');
+    expect(getopWrites).toHaveLength(1);
+  });
+
   // The capability probe: firmware without the command answers "Unrecognised",
   // and the caller falls back to taking a real capture. Retrying that could never
   // succeed, so it must reject on the first attempt.

@@ -4,6 +4,9 @@ import { bleEventBus, BleEvent } from '../protocol/eventBus';
 import { DeviceSignal } from '../protocol/deviceSignals';
 import BleManager from 'react-native-ble-manager';
 import { rxRouter } from '../protocol/rxRouter';
+import { opCache } from '../protocol/opCache';
+import { sleepState } from '../protocol/sleepState';
+import { commandRegistry } from '../protocol/commandRegistry';
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice';
 import { log, logWarn } from '../../utils/logger';
 
@@ -66,10 +69,29 @@ export function createBleSession(peripheral: ExtendedPeripheral) {
     );
   };
 
+  /**
+   * The device's operational parameters, from cache when this wake window has
+   * already fetched them.
+   *
+   * Prefer this to `execute(() => commandRegistry.getops())` anywhere the exact
+   * freshness does not matter to the caller. A miss costs the same command it
+   * always did; a hit costs nothing and, more importantly, does not wake a
+   * sleeping device that the caller would then have to wait to fall asleep
+   * again. See opCache.ts for what invalidates it.
+   */
+  const getOps = async (options?: { force?: boolean }): Promise<string[]> => {
+    if (!options?.force) {
+      const cached = opCache.get(peripheral.id);
+      if (cached) return cached;
+    }
+    return execute(() => commandRegistry.getops());
+  };
+
   const reset = () => {
     bleTransport.clearAll();
     streamRegistry.terminateAll();
     rxRouter.clearBuffer(peripheral.id);
+    opCache.invalidate(peripheral.id);
   };
 
   const disconnect = async () => {
@@ -89,6 +111,13 @@ export function createBleSession(peripheral: ExtendedPeripheral) {
    * the command and drop into DPD while the command is running).
    */
   const waitForSleep = (timeoutMs = 3000): Promise<void> => {
+    // Already there. Waiting for a Sleep signal that has already been sent is
+    // how this call used to burn its whole timeout once the op cache stopped
+    // the capture path from waking the device in the first place.
+    if (sleepState.isAsleep(peripheral.id)) {
+      log('[BleSession] Device already asleep — proceeding immediately.');
+      return Promise.resolve();
+    }
     return new Promise((resolve) => {
       const timeoutId = setTimeout(() => {
         cleanup();
@@ -116,6 +145,7 @@ export function createBleSession(peripheral: ExtendedPeripheral) {
 
   return {
     execute,
+    getOps,
     reset,
     disconnect,
     waitForSleep,

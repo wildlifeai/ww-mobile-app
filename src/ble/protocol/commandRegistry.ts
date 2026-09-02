@@ -367,7 +367,17 @@ export const commandRegistry = {
     /^Op(?:Param)?(?:\s+|\[)\d+\]?\s*=\s*(.*)$/i,
     (match) => match[1].trim(),
     // 8s: AI processor may need DPD wake cycle (3-5s)
-    { timeoutMs: 8000 }
+    //
+    // failureRegex: the app is deliberately ahead of the firmware on op
+    // indices (op32/CAM_RESOLUTION exists here before it ships on the
+    // device), so asking for one the running build does not have is an
+    // expected outcome, not a fault. Without this the rejection matches
+    // neither success nor failure and the command sits for the full 8s,
+    // then retries for another 8. Measured on the bench, 2 September:
+    // 16s of dead time and two DPD wakes on entering Capture Preview,
+    // which blocked the capture behind it for long enough that the flow
+    // looked like it had simply done nothing.
+    { timeoutMs: 8000, failureRegex: /^Error:\s*index\s*\(-?\d+\)\s*must be between/i }
   ),
 
   capture: createSingleLineCommand<string | boolean>(
