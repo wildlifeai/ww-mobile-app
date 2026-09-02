@@ -47,7 +47,7 @@ changing one side silently breaks the other:
 | **Database schema** | `src/database/schema.ts` (generated) | **owned by** `wildlife-watcher-backend` — schema changes start there |
 | **Backend schema directory names** | `SCHEMA_MAP` in `scripts/sync-db-schema.js` | `ww-backend/supabase/schemas/public/*` — the `aaa_`/`xxx_`/`yyy_`/`zzz_` prefixes encode apply order |
 | **AI model / firmware filenames** | `deploymentPipeline.ts`, `useFirmwareUpdate.ts` | Seeed `xip_manager.c` parser |
-| **`AE light check` line format** | `src/ble/protocol/lightCheck.ts` | Seeed `ww500_md/lightSensor.c` `decideDarkBright()`. Still gaining fields, so parse **by field name**, never by comma position |
+| **`AE light check` line format** | `src/ble/protocol/lightCheck.ts` | Seeed `ww500_md/lightSensor.c`, two wordings selected by `AE_DECISION_GAIN_BASED` at compile time. Only the `-> DARK\|BRIGHT` verdict is required; every other field is optional and each label is matched in both its spelled-out and abbreviated form. The app's measurement is built from the `HM0360 AE regs` block, never from this line |
 | **Self-test bit numbers** | `SelfTestBit` in `src/utils/deviceSelfTest.ts` | Seeed `ww500_md/selfTest.h`. Bits 0-7 nRF, 8-15 Himax |
 | **Apple team ID** | `eas.json` → `submit.production.ios.appleTeamId` | ww-website `frontend/public/.well-known/apple-app-site-association` — the `appID` there is `<TeamID>.<BundleID>`, and iOS silently refuses to associate the domain if it does not match the installed app |
 | **Store identifiers** | `eas.json` → `ascAppId` | EAS credential records, **not** a value to type from memory — see §4 |
