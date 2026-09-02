@@ -206,6 +206,13 @@ export const LightSensorScreen = () => {
             setMeasurementId(id => id + 1)
             const result = await measureRef.current()
 
+            // Stop pressed, or the screen left, while this tick was in flight:
+            // nothing below should run. Without this a tick that timed out as
+            // the third miss would re-run the health check and show "Stream
+            // stopped" after the operator had already stopped it. Raised by
+            // PR-Agent on #263.
+            if (!streamRef.current) break
+
             if (result === 'unsupported') {
                 Alert.alert(
                     'Cannot stream on this firmware',
