@@ -90,10 +90,25 @@ export async function executeResetToDefaults(
         opsToWrite.push({ index, value: defaultValue })
     }
 
-    // Check if model needs erasing
-    const hasModel = !currentOps ||
-        (currentOps.length > OP_PARAMETER.MODEL_PROJECT && currentOps[OP_PARAMETER.MODEL_PROJECT] !== '0') ||
-        (currentOps.length > OP_PARAMETER.MODEL_VERSION && currentOps[OP_PARAMETER.MODEL_VERSION] !== '0')
+    // Check if model needs erasing.
+    //
+    // A failed read is NOT taken as "a model is loaded". This used to read
+    // `!currentOps || ...`, so a flaky getops erased the on-device neural
+    // network: the most destructive thing this workflow does, triggered by the
+    // least reliable input to it. Everything else here degrades safely when the
+    // read fails (it writes all defaults, which is recoverable), and erasing a
+    // model is not, since getting it back is a slow BLE transfer.
+    //
+    // The cost of the safer default is a stale model surviving a reset when the
+    // read failed. That is visible in the op table afterwards and the operator
+    // can run it again; an erase cannot be undone from this screen.
+    const hasModel = !!currentOps &&
+        ((currentOps.length > OP_PARAMETER.MODEL_PROJECT && currentOps[OP_PARAMETER.MODEL_PROJECT] !== '0') ||
+         (currentOps.length > OP_PARAMETER.MODEL_VERSION && currentOps[OP_PARAMETER.MODEL_VERSION] !== '0'))
+
+    if (!currentOps) {
+        logWarn('[ResetDefaults] Parameters unreadable, so the AI model is left alone. Re-run once the device responds if it needs erasing.')
+    }
 
     log(`[ResetDefaults] ${opsToWrite.length} OPs need writing, model loaded: ${hasModel}`)
 
