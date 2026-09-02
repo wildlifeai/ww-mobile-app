@@ -61,12 +61,10 @@ export enum CommandNames {
 	SET_MOTION_DETECT_INTERVAL = "SET_MOTION_DETECT_INTERVAL",
 	DISABLE_MOTION_DETECT = "DISABLE_MOTION_DETECT",
 	DISABLE_TIMELAPSE = "DISABLE_TIMELAPSE",
-	TX_FILE = "TX_FILE",
-	CAPTURE_PREVIEW = "CAPTURE_PREVIEW",
 	UPDATE_BLE_FIRMWARE = "UPDATE_BLE_FIRMWARE",
 	UPDATE_HIMAX_FIRMWARE = "UPDATE_HIMAX_FIRMWARE",
 	MOTION_DETECTION_PREVIEW = "MOTION_DETECTION_PREVIEW",
-	CAMERA_SETTINGS_TEST = "CAMERA_SETTINGS_TEST",
+	CAPTURE_PICTURE = "CAPTURE_PICTURE",
 	LIGHT_SENSOR = "LIGHT_SENSOR",
 	FILE_TRANSFER_TEST = "FILE_TRANSFER_TEST",
 	MODEL_VALIDATION_TEST = "MODEL_VALIDATION_TEST",
@@ -77,7 +75,6 @@ export enum CommandNames {
 	DEV_DEPLOYMENT_TEST = "DEV_DEPLOYMENT_TEST",
 
 	// Local commands (UPPERCASE - app-only actions)
-	CLEAR_CONSOLE = "CLEAR_CONSOLE",
 }
 
 /**
@@ -596,21 +593,6 @@ export const COMMANDS: {
 		description: "Returns state machine state",
 		type: 'command',
 	},
-	[CommandNames.TX_FILE]: {
-		name: CommandNames.TX_FILE,
-		// "AI txfile ." requests the last captured file
-		writeCommand: () => "AI txfile .",
-		readRegex: /(sending\s+\d+\s+bytes|no\s+file)/i,
-		description: "Request last captured file from AI module",
-		type: 'process',
-	},
-	[CommandNames.CAPTURE_PREVIEW]: {
-		name: CommandNames.CAPTURE_PREVIEW,
-		writeCommand: () => "AI capture 1 500",
-		readRegex: /Captured/i,
-		description: "Capture image for preview",
-		type: 'process',
-	},
 	[CommandNames.UPDATE_BLE_FIRMWARE]: {
 		name: CommandNames.UPDATE_BLE_FIRMWARE,
 		description: "Update BLE Firmware (DFU)",
@@ -626,9 +608,9 @@ export const COMMANDS: {
 		description: "Open standalone motion detection preview page",
 		type: 'process',
 	},
-	[CommandNames.CAMERA_SETTINGS_TEST]: {
-		name: CommandNames.CAMERA_SETTINGS_TEST,
-		description: "Open Camera Settings Test page",
+	[CommandNames.CAPTURE_PICTURE]: {
+		name: CommandNames.CAPTURE_PICTURE,
+		description: "Take a picture: camera mode, flash, preview and gallery",
 		type: 'process',
 	},
 	[CommandNames.LIGHT_SENSOR]: {
@@ -670,11 +652,6 @@ export const COMMANDS: {
 		name: CommandNames.DEV_DEPLOYMENT_TEST,
 		description: "Start monitoring with full parameter control (developer testing)",
 		type: 'process',
-	},
-	[CommandNames.CLEAR_CONSOLE]: {
-		name: CommandNames.CLEAR_CONSOLE,
-		description: "Clear Console Output",
-		type: 'local',
 	},
 }
 

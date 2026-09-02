@@ -31,8 +31,7 @@ const getFlowGroups = (): FlowGroup[] => {
             icon: 'camera',
             commands: processCommands
                 .filter(cmd => [
-                    CommandNames.CAPTURE_PREVIEW,
-                    CommandNames.CAMERA_SETTINGS_TEST,
+                    CommandNames.CAPTURE_PICTURE,
                 ].includes(cmd.name))
                 .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
         },
@@ -78,21 +77,14 @@ const getFlowGroups = (): FlowGroup[] => {
             icon: 'file-send',
             commands: processCommands
                 .filter(cmd => [
-                    CommandNames.TX_FILE,
                     CommandNames.FILE_TRANSFER_TEST,
                     CommandNames.MODEL_VALIDATION_TEST,
                 ].includes(cmd.name))
                 .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
         },
-        {
-            title: 'Console',
-            icon: 'console',
-            commands: processCommands
-                .filter(cmd => [
-                    CommandNames.CLEAR_CONSOLE,
-                ].includes(cmd.name))
-                .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
-        },
+        // The Console group held only CLEAR_CONSOLE, which sent nothing to the
+        // device. Clearing the output is now a button on the console header,
+        // beside Commands and Flows, where a console action belongs.
         {
             title: 'Deployment Testing',
             icon: 'play-circle-outline',

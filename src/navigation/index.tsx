@@ -42,8 +42,7 @@ import { DeviceDiscoveryScreen } from "../screens/Devices/DeviceDiscoveryScreen"
 import { DeviceMonitoringSummaryScreen } from "../screens/Devices/DeviceMonitoringSummaryScreen"
 import { EngineerConsoleScreen } from "../screens/Devices/EngineerConsoleScreen"
 import { StandaloneMotionDetectionScreen } from "../screens/Devices/StandaloneMotionDetectionScreen"
-import { StandaloneCapturePreviewScreen } from "../screens/Devices/StandaloneCapturePreviewScreen"
-import { CameraSettingsTestScreen } from "../screens/Devices/CameraSettingsTestScreen"
+import { CapturePictureScreen } from "../screens/Devices/CapturePictureScreen"
 import { LightSensorScreen } from "../screens/Devices/LightSensorScreen"
 import { DevDeploymentTestScreen } from "../screens/Devices/DevDeploymentTestScreen"
 import { FirmwareUpdateScreen } from "../screens/Devices/FirmwareUpdateScreen"
@@ -226,13 +225,9 @@ export const MainNavigation = () => {
 							component={StandaloneMotionDetectionScreen}
 						/>
 						<Stack.Screen
-							name="StandaloneCapturePreviewScreen"
-							component={StandaloneCapturePreviewScreen}
-						/>
-						<Stack.Screen
-							name="CameraSettingsTestScreen"
-							component={CameraSettingsTestScreen}
-							options={{ title: "Camera Settings Test" }}
+							name="CapturePictureScreen"
+							component={CapturePictureScreen}
+							options={{ title: "Capture Picture" }}
 						/>
 						<Stack.Screen
 							name="LightSensorScreen"

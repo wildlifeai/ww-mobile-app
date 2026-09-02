@@ -11,7 +11,7 @@ import { WWBleDisconnectedBanner } from '../../components/ui/WWBleDisconnectedBa
 import { DeviceHealthBanner } from '../../components/DeviceHealthBanner'
 import { useLightSensor } from '../../hooks/useLightSensor'
 import { useCameraReadiness } from '../../hooks/useCameraReadiness'
-import { useCameraSwitch, type CameraVariant } from '../../hooks/useCameraSwitch'
+import { useCameraSwitch, CAMERA_VARIANT_LABELS, type CameraVariant } from '../../hooks/useCameraSwitch'
 import { useCapturePreview } from '../../hooks/useCapturePreview'
 import { useLightSensorLog } from '../../hooks/useLightSensorLog'
 import { lightMargin, type LightCheck } from '../../ble/protocol/lightCheck'
@@ -185,7 +185,7 @@ export const LightSensorScreen = () => {
         const target = value as CameraVariant
         if (target === activeCamera || cameraBusy) return
         Alert.alert(
-            `Switch to ${target}?`,
+            `Switch to ${CAMERA_VARIANT_LABELS[target as 'RP3' | 'HM0360']}?`,
             'The device reboots into the other camera image. It will be unavailable for about 20 seconds.',
             [
                 { text: 'Cancel', style: 'cancel' },
@@ -376,8 +376,8 @@ export const LightSensorScreen = () => {
                             value={activeCamera === 'unknown' ? '' : activeCamera}
                             onValueChange={onPickCamera}
                             buttons={[
-                                { value: 'RP3', label: 'RP3 · day', disabled: cameraBusy || busy },
-                                { value: 'HM0360', label: 'HM0360 · night', disabled: cameraBusy || busy },
+                                { value: 'RP3', label: CAMERA_VARIANT_LABELS.RP3, disabled: cameraBusy || busy },
+                                { value: 'HM0360', label: CAMERA_VARIANT_LABELS.HM0360, disabled: cameraBusy || busy },
                             ]}
                         />
                         {autoSwitchOn && (

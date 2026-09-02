@@ -62,6 +62,15 @@ export const OP_PARAMETER = {
 } as const
 
 /**
+ * op13 FLASH_LED, by index: `FLASH_LED_LABELS[value]` names one.
+ *
+ * Lives beside OP_PARAMETER because it describes an op value rather than any
+ * one screen. Four hand-written copies of this array had drifted apart before
+ * it was centralised, disagreeing on whether index 1 was "Visible" or "White".
+ */
+export const FLASH_LED_LABELS = ['Off', 'White', 'IR'] as const
+
+/**
  * Test mode bitmask flags for OP_PARAMETER.TEST_MODE_BITS.
  * These control diagnostic capture behaviour on the Himax firmware.
  */

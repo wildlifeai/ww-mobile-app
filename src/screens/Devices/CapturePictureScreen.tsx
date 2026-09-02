@@ -3,9 +3,9 @@ import { ActivityIndicator } from 'react-native-paper'
 import { useAppSelector } from '../../redux'
 import { AppParams } from '../../navigation/types'
 import { WWText } from '../../components/ui/WWText'
-import { CameraSettingsTestSection } from './components/CameraSettingsTestSection'
+import { CapturePictureSection } from './components/CapturePictureSection'
 
-export const CameraSettingsTestScreen = ({ route }: { route: AppParams<'CameraSettingsTestScreen'> }) => {
+export const CapturePictureScreen = ({ route }: { route: AppParams<'CapturePictureScreen'> }) => {
     const { deviceId } = route.params
     const device = useAppSelector(state => state.devices[deviceId || ''])
 
@@ -20,7 +20,7 @@ export const CameraSettingsTestScreen = ({ route }: { route: AppParams<'CameraSe
 
     return (
         <View style={styles.container}>
-            <CameraSettingsTestSection device={device} />
+            <CapturePictureSection device={device} />
         </View>
     )
 }

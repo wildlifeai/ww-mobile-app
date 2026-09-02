@@ -96,16 +96,12 @@ export const useEngineerConsoleActions = ({
         if (!cmd) return
 
         // Handle navigation-based flows
-        if (cmdName === CommandNames.CAMERA_SETTINGS_TEST) {
-            navigation.navigate('CameraSettingsTestScreen', { deviceId: device?.id })
+        if (cmdName === CommandNames.CAPTURE_PICTURE) {
+            navigation.navigate('CapturePictureScreen', { deviceId: device?.id })
             return
         }
         if (cmdName === CommandNames.MOTION_DETECTION_PREVIEW) {
             navigation.navigate('StandaloneMotionDetectionScreen', { deviceId: device?.id })
-            return
-        }
-        if (cmdName === CommandNames.CAPTURE_PREVIEW) {
-            navigation.navigate('StandaloneCapturePreviewScreen', { deviceId: device?.id })
             return
         }
         if (cmdName === CommandNames.LIGHT_SENSOR) {
@@ -149,11 +145,6 @@ export const useEngineerConsoleActions = ({
             return
         }
 
-        // Handle local commands
-        if (cmdName === CommandNames.CLEAR_CONSOLE) {
-            dispatch({ type: 'CLEAR_HISTORY' })
-            return
-        }
 
         // Execute BLE commands normally
         if (cmd.writeCommand) {
