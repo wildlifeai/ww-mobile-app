@@ -126,17 +126,21 @@ people: `reset` reboots the nRF *after disconnect*; `AI reset` reboots only the 
   op10 only when the image task starts, so the write lands at the next wake. `AI enable` /
   `AI disable` change both. To turn the camera on *now*, write op10 **and** send
   `AI enable`. The inverse of this trap is documented on the firmware side.
-- **A local dev build destroys the production app's data.** `app.config.ts` derives an
-  `.expo`-suffixed bundle ID from `APP_VARIANT`, but the tracked
-  `android/app/build.gradle` hardcodes `applicationId 'com.wildlife.wildlifewatcher'` —
-  and because `android/` is committed, prebuild never regenerates it, so the variant
-  logic is dead on Android. A debug build therefore collides with the Play Store build
-  on package name while carrying a different signature: the install fails with
-  `INSTALL_FAILED_UPDATE_INCOMPATIBLE`, and the only way through is uninstalling the
-  store app — taking its WatermelonDB, anything unsynced in the outbox, and the login
-  session with it. **Warn the operator before they uninstall; there may be unsynced
-  field data.** The proper fix — `applicationIdSuffix ".expo"` on the debug buildType so
-  both coexist — is **still not applied**.
+- **Debug and store builds now coexist, but only on Android and only for debug.**
+  `android/app/build.gradle` sets `applicationIdSuffix '.expo'` on the debug buildType, so
+  a local build installs as `com.wildlife.wildlifewatcher.expo` alongside the Play Store
+  app instead of colliding with it. `src/debug/res/values/strings.xml` renames it
+  "Wildlife Watcher (Dev)" so the two are distinguishable in the launcher.
+  **This is a gradle-level fix, not the `APP_VARIANT` logic in `app.config.ts`.** That
+  logic is still dead on Android, because `android/` is committed and prebuild never
+  regenerates it. The two now agree on `.expo` by hand; change one and you must change
+  the other.
+  Two things it does **not** cover. **EAS `preview` and `staging` builds are release-type,
+  so they keep the production applicationId and still collide with the store app.** The
+  uninstall-and-lose-the-database problem is unchanged for anything handed to a tester. Separating those needs the EAS keystore's SHA-1 registered against `.expo` in
+  the Google Maps key, or maps break in those builds. And `.expo` is not in the website's
+  `assetlinks.json`, so App Links to `wildlifewatcher.ai/reset-password` will not open a
+  debug build.
 - **`npm install --ignore-scripts` breaks the build.** It skips `postinstall`, so
   `patch-package` never applies `patches/`, and the native build then fails somewhere
   unrelated-looking.

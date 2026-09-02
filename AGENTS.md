@@ -26,11 +26,15 @@ On Windows plain `npm install` aborts on the `maestro` package's shell postinsta
 Needs a `.env.development` (copy `.env.example`, paste the Dev anon key) — the app cannot
 reach Supabase without it. iOS builds require macOS; there is no tracked `ios/` directory.
 
-> [!WARNING]
-> A local debug build shares the package name `com.wildlife.wildlifewatcher` with the Play
-> Store build but is signed differently, so installing it means **uninstalling the store
-> app first — destroying its local database and anything unsynced**. Check with the device
-> owner before doing that on a phone carrying field data.
+> [!NOTE]
+> A local debug build installs as `com.wildlife.wildlifewatcher.expo` and shows up as
+> "Wildlife Watcher (Dev)", so it sits alongside the Play Store app instead of replacing
+> it. Nothing to uninstall, and no field data at risk.
+>
+> **EAS `preview` and `staging` builds are a different matter.** They are release-type, so
+> they still carry the production package name and a different signature: installing one
+> means **uninstalling the store app, destroying its local database and anything
+> unsynced**. Check with the device owner before doing that on a phone carrying field data.
 
 ## Check it
 
