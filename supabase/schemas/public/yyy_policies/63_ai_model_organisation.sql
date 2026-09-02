@@ -13,9 +13,9 @@ CREATE POLICY "ai_model_organisation_select_policy"
   TO authenticated
   USING (
     -- WW Admins can see all model assignments
-    has_system_role((SELECT auth.uid()), 'ww_admin') OR
+    has_system_role((SELECT auth.uid()), 'ww_admin')
     -- Organisation members can see their organisation's model assignments
-    has_organisation_role((SELECT auth.uid()), ai_model_organisation.organisation_id, 'organisation_member')
+    OR has_organisation_role((SELECT auth.uid()), ai_model_organisation.organisation_id, 'organisation_member')
   );
 
 -- INSERT: Only organisation_managers and ww_admins can assign models to organisations
@@ -26,9 +26,9 @@ CREATE POLICY "ai_model_organisation_insert_policy"
   WITH CHECK (
     (SELECT auth.uid()) IS NOT NULL AND (
       -- WW Admins can assign any model to any organisation
-      has_system_role((SELECT auth.uid()), 'ww_admin') OR
+      has_system_role((SELECT auth.uid()), 'ww_admin')
       -- Organisation managers can assign models to their organisation
-      has_organisation_role((SELECT auth.uid()), ai_model_organisation.organisation_id, 'organisation_manager')
+      OR has_organisation_role((SELECT auth.uid()), ai_model_organisation.organisation_id, 'organisation_manager')
     )
   );
 
@@ -40,9 +40,9 @@ CREATE POLICY "ai_model_organisation_delete_policy"
   USING (
     (SELECT auth.uid()) IS NOT NULL AND (
       -- WW Admins can remove any model assignment
-      has_system_role((SELECT auth.uid()), 'ww_admin') OR
+      has_system_role((SELECT auth.uid()), 'ww_admin')
       -- Organisation managers can remove models from their organisation
-      has_organisation_role((SELECT auth.uid()), ai_model_organisation.organisation_id, 'organisation_manager')
+      OR has_organisation_role((SELECT auth.uid()), ai_model_organisation.organisation_id, 'organisation_manager')
     )
   );
 
@@ -54,3 +54,11 @@ IS 'Only organisation_managers and ww_admins can assign AI models to organisatio
 
 COMMENT ON POLICY "ai_model_organisation_delete_policy" ON ai_model_organisation
 IS 'Only organisation_managers and ww_admins can remove AI model assignments';
+
+
+-- Anonymous users: can view model-organisation assignments (declared
+-- public in 99_anon_access_grants.sql; needed alongside ai_models for
+-- manifest generation). Pattern: anon_read_firmware.
+CREATE POLICY "anon_read_ai_model_organisation"
+  ON ai_model_organisation FOR SELECT TO anon
+  USING (TRUE);

@@ -1,0 +1,12 @@
+<resources>
+  <!-- Debug builds now install alongside the store build (applicationIdSuffix
+       ".expo" in build.gradle), so the launcher would otherwise show two icons
+       both called "Wildlife Watcher". This mirrors the name app.config.ts
+       already derives from APP_VARIANT.
+
+       Declared in the debug source set rather than as a resValue in
+       build.gradle: app_name is also declared in src/main/res, and a resValue
+       would collide with it at merge time. Source-set overriding is the
+       supported way to vary a resource per build type. -->
+  <string name="app_name">Wildlife Watcher (Dev)</string>
+</resources>

@@ -70,7 +70,7 @@ Google Play requires apps targeting Android 15+ to support 16 KB memory pages.
 | Dependency | Risk | Status |
 |-----------|------|--------|
 | `react-native-ble-manager` | Medium | Popular, likely compatible |
-| `react-native-nordic-dfu` | **High** | Custom fork with native C/C++ — test on 16 KB emulator |
+| `@getquip/expo-nordic-dfu` | **High** | Wraps Nordic's native DFU libraries — test on 16 KB emulator |
 | `react-native-maps` | Low | Google-maintained |
 | Expo modules | Low | Expo team maintains |
 
@@ -100,7 +100,9 @@ android {
 | "Unsupported class file major version" | Use JDK 17, not 21+ |
 | "SDK location not found" | Create `android/local.properties`: `sdk.dir=C:\\Users\\YOU\\AppData\\Local\\Android\\Sdk` |
 | "compileSdkVersion not specified" | Add `subprojects { afterEvaluate { ... compileSdkVersion } }` to `android/build.gradle` |
+| `npm install` fails at `maestro` → `'.' is not recognized` (Windows) | Maestro's postinstall runs a `.sh` script `cmd.exe` can't run. Use `npm install --ignore-scripts` then `npx patch-package` — same end state, minus the broken script. |
 | Build exits non-zero | `cd android && ./gradlew clean && cd ..` then `npx expo prebuild --clean` |
+| Users can't install from Play (device *is* supported) | Play Integrity filter — see [publishing_guide.md](publishing_guide.md#️-store-listing-device-checks-play-integrity--the-invisible-install-filter) |
 | "Missing Supabase configuration" | Env vars must be in `eas.json`, not just `.env.local`. Rebuild after updating. |
 | EAS build queued too long | Use `--local` flag |
 

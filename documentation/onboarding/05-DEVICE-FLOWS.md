@@ -1,5 +1,7 @@
 # Device Flows — Scanner Routing, Deployment, and Retrieval
 
+> BLE connection mechanics (scanners, auto-connect trust rules, failure signatures) live in [06-BLE-CONNECTIONS.md](./06-BLE-CONNECTIONS.md).
+
 User-facing device workflows covering the full deployment lifecycle: connect → configure → monitor → retrieve. For BLE commands, OP parameters, and hardware testing tools, see [04-ENGINEER-CONSOLE.md](./04-ENGINEER-CONSOLE.md).
 
 ---
@@ -69,7 +71,29 @@ flowchart TD
 
 ### BLE Initialization
 
-BLE initialization (selftest, UTC time sync, battery/SD card checks) happens **upstream** in the Scanner connection flow (`useBleInitialization` in `ScannerRoutingDialog`). The results are passed to this screen via the `initPayload` navigation parameter.
+BLE initialization happens **upstream** in the Scanner connection flow, and the results reach this screen via the `initPayload` navigation parameter. Measured on hardware, Sep 2026, connecting sends 16 commands:
+
+| Step | Commands | Notes |
+|---|---|---|
+| `useBleInitialization` | `selftest`, `setutc`, `battery` | There is **no SD card command**: SD status is bit 11 of the self-test bitmask, and battery level is bit 0 plus the `battery` command |
+| AI wake | `AI info` | Up to 3 attempts; the Himax is asleep until something addresses it |
+| Post-wake health | `selftest` **again** | See the warning below. Not a duplicate |
+| Silent OP reset | `AI getop -1`, then one `setop` per drifted parameter | Runs here, during connect, not on this screen's mount. Typically 5 writes |
+| Version checks | `ver`, `AI ver`, `AI info` | Currently issued twice each, which is redundant |
+
+> [!WARNING]
+> **The two `selftest` calls answer different questions and neither is removable.** The
+> first runs before the Himax is awake, and at that point the BLE processor still has every
+> AI-processor bit (8-15) preset to 1; `useBleInitialization` masks the whole range as
+> stale. Only the second, after `AI info` wakes the Himax, can see real camera or SD card
+> faults. Anything reading self-test bits must know which of the two it is looking at.
+
+> [!NOTE]
+> **A deployed device never reaches any of this.** `useDeviceDiscovery` checks
+> `getActiveDeploymentForDeviceId` first and routes an active deployment straight to Stop
+> Monitoring, so the OP reset cannot disturb a camera that is out working.
+
+The reset writes `FACTORY_DEFAULTS`, which includes `SLOT_SWITCH` (OP 26) = 1, so **connecting enables automatic day/night camera switching** on any device where it was off. See [Light-Sensor.md](../resources/Light-Sensor.md).
 
 On this screen:
 - `isInitializing` is hardcoded to `false` (initialization is already complete)
@@ -142,7 +166,11 @@ When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeplo
 
 ### OP Factory Reset (`pipeline.resetOps` / `executeResetToDefaults`)
 
-Before applying deployment-specific configuration, the pipeline resets the device using the shared `RESET_TO_DEFAULTS` workflow (`executeResetToDefaults`). This is the exact same logic used by the Engineer Console's manual reset:
+Before applying deployment-specific configuration, the pipeline resets the device via `executeResetToDefaults` — the same shared workflow the Engineer Console's `RESET_TO_DEFAULTS` flow uses, but **not** with the same options.
+
+`pipeline.resetOps()` passes `{ skipIdentityReset: true }`, so it leaves the deployment ID and GPS alone (the very next step, `configureDevice`, sets them). The Engineer Console's manual reset omits that flag and therefore also clears identity — it is the more aggressive of the two.
+
+The shared steps: 
 
 1. `AI getop -1` — [bulk fetch](./04-ENGINEER-CONSOLE.md#op-bulk-fetch-optimization-ai-getop--1) current OPs (also wakes device from DPD)
 2. **Skips Tracking Counters** — ignores OPs like `NUM_PICTURES`, `NUM_NN_ANALYSES`, etc., so device lifetime history is preserved

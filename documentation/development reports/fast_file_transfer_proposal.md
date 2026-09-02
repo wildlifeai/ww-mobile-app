@@ -4,6 +4,14 @@
 **Scope:** app ↔ WW500 transfers in both directions — firmware images (~430–490 KB), embedded AI models (~0.5–5 MB), image previews (~16–36 KB JPEG)
 **Supersedes / builds on:** `sliding_window_file_transfer.md`, `sliding_window_file_transfer_spec.md` (2026-04-28/29), `hx6538_dfu_proposal.md` (2026-04-19), `app_developer_spec (1).md` (2026-04-20)
 
+> [!CAUTION]
+> **Partly superseded by [`empty_sd_update_architecture.md`](empty_sd_update_architecture.md) (2026-07-10).** Two corrections that matter:
+>
+> 1. **Phase 1's per-transfer `requestConnectionPriority` was reverted.** Re-requesting `CONNECTION_PRIORITY_HIGH` mid-transfer desyncs the nRF↔HX I2C link (measured 2026-07-10, documented in `runFileTransferPipeline.ts`). The priority request happens **at connect only**. Ignore the Phase 1 app-side bullet below.
+> 2. **Phase 3 shipped.** Credit-based streaming with cumulative ACKs is the default (`windowSize ?? 12`), not future work. The "FUTURE" label on Phase 3 and the window=2 framing of Phase 2 are both stale.
+>
+> The bottleneck analysis (§1, §2) and the phase reasoning remain the best written record of *why* the design is what it is — that is why this document is kept.
+
 ## Implementation status (updated 2026-07-09)
 
 Phases 0–2 are implemented on matching feature branches:

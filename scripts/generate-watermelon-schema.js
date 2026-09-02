@@ -279,23 +279,18 @@ function generateSchema() {
         });
     }
 
-    // 4. Generate Output (with auto-incrementing version)
-    let currentVersion = 1;
-    if (fs.existsSync(OUTPUT_SCHEMA_PATH)) {
-        const existingContent = fs.readFileSync(OUTPUT_SCHEMA_PATH, 'utf8');
-        const versionMatch = existingContent.match(/version:\s*(\d+)/);
-        if (versionMatch && versionMatch[1]) {
-            currentVersion = parseInt(versionMatch[1], 10) + 1;
-            console.log(`ℹ️  Incrementing schema version to: ${currentVersion}`);
-        } else {
-            console.log('⚠️  Could not parse existing schema version, resetting to 1');
-        }
-    } else {
-        console.log('ℹ️  No existing schema found, starting at version 1');
-    }
-
-    let output = SCHEMA_HEADER.replace('version: 1, // INCREMENT_VERSION_HERE', `version: ${currentVersion},`)
-        .replace(/version:\s*\d+/, `version: ${currentVersion}`);
+    // 4. Generate Output
+    //
+    // The version is only incremented when the table definitions actually change.
+    // It used to increment on every run, and because this script is step 4 of
+    // `npm run android`, that made the number a build counter rather than a schema
+    // identity: it reached 402 without 402 schema changes, forced a WatermelonDB
+    // migration on every dev build, and produced a spurious diff each time.
+    // A placeholder goes in first so the body can be compared version-independently.
+    const VERSION_PLACEHOLDER = '__SCHEMA_VERSION__';
+    let output = SCHEMA_HEADER
+        .replace('version: 1, // INCREMENT_VERSION_HERE', `version: ${VERSION_PLACEHOLDER},`)
+        .replace(/version:\s*\d+/, `version: ${VERSION_PLACEHOLDER}`);
 
     Object.keys(tables).sort().forEach(tableName => {
         output += `        tableSchema({\n`;
@@ -332,7 +327,36 @@ function generateSchema() {
 
     output += SCHEMA_FOOTER;
 
-    fs.writeFileSync(OUTPUT_SCHEMA_PATH, output);
+    // Decide the version by comparing bodies, ignoring the version line itself.
+    // Line endings must be normalised: git restores this file as CRLF on Windows
+    // (.gitattributes) while the generator emits LF, so a raw comparison reports a
+    // change on every fresh checkout and the version creeps up for no reason.
+    const normalise = (s) => s.replace(/\r\n/g, '\n');
+    const stripVersion = (s) =>
+        normalise(s).replace(/version:\s*(?:\d+|__SCHEMA_VERSION__)\s*,/, 'version: X,');
+    let version = 1;
+
+    if (fs.existsSync(OUTPUT_SCHEMA_PATH)) {
+        const existing = fs.readFileSync(OUTPUT_SCHEMA_PATH, 'utf8');
+        const existingVersion = parseInt((existing.match(/version:\s*(\d+)/) || [])[1], 10);
+
+        if (!Number.isFinite(existingVersion)) {
+            console.log('⚠️  Could not parse the existing schema version — resetting to 1');
+        } else if (stripVersion(existing) === stripVersion(output)) {
+            version = existingVersion;
+            console.log(`✅ Schema unchanged — keeping version ${version}`);
+            // Nothing to write: avoids a no-op diff and a pointless on-device migration.
+            return;
+        } else {
+            version = existingVersion + 1;
+            console.log(`ℹ️  Schema changed — incrementing version to ${version}`);
+            console.log('   Add a matching migration in src/database/migrations.ts.');
+        }
+    } else {
+        console.log('ℹ️  No existing schema found — starting at version 1');
+    }
+
+    fs.writeFileSync(OUTPUT_SCHEMA_PATH, output.replace(VERSION_PLACEHOLDER, String(version)));
     console.log(`✅ Schema generated at: ${OUTPUT_SCHEMA_PATH}`);
 }
 

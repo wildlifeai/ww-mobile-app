@@ -101,30 +101,37 @@ components/
 Screens live in two locations:
 
 ```
-screens/                       navigation/screens/
-├── Deployments/               ├── Login.tsx
-│   ├── StartMonitoringScreen  ├── Register.tsx
-│   ├── StopMonitoringScreen    ├── Profile.tsx
-│   └── ...                    ├── Settings.tsx
-├── Devices/                   └── ForgotPassword.tsx
-│   ├── DeviceDiscoveryScreen
-│   ├── EngineerConsoleScreen
-│   ├── DevDeploymentTestScreen
-│   ├── DfuScreen
-│   ├── FirmwareUpdateScreen / FirmwareStatusScreen
+screens/                                  navigation/screens/
+├── Deployments/                          ├── auth/
+│   ├── StartMonitoringScreen.tsx         │   ├── LoginScreen.tsx
+│   ├── StopMonitoringScreen.tsx          │   ├── RegisterScreen.tsx
+│   ├── components/                       │   └── ForgotPasswordScreen.tsx
+│   │   └── DeploymentMonitorView.tsx     ├── user/
+│   └── hooks/                            ├── system/
+│       ├── useStartDeployment.ts         ├── developer/       # __DEV__ only
+│       ├── useEndDeployment.ts           └── MapsScreen.tsx
+│       └── useDeploymentMonitor.ts
+├── Devices/
+│   ├── DeviceDiscoveryScreen / EngineerConsoleScreen
+│   ├── DevDeploymentTestScreen / DeviceResetScreen
+│   ├── DfuScreen / FirmwareUpdateScreen / FirmwareStatusScreen
 │   ├── AiModelTransferScreen / ConfigTransferScreen
-│   ├── FileTransferTestScreen
-│   ├── ModelValidationTestScreen / CameraSettingsTestScreen
+│   ├── FileTransferTestScreen / ModelValidationTestScreen
+│   ├── CameraSettingsTestScreen / LightSensorScreen
 │   ├── StandaloneCapturePreviewScreen / StandaloneMotionDetectionScreen
-│   ├── DeviceResetScreen / DeviceMonitoringSummaryScreen
+│   ├── DeviceMonitoringSummaryScreen
 │   ├── components/
-│   │   └── ScannerRoutingDialog.tsx  # Post-scan routing
+│   │   └── ScannerRoutingDialog.tsx      # Post-scan routing
 │   └── hooks/
-│       └── useDeviceDiscovery.ts     # Scanner auto-connect + routing logic
+│       ├── useDeviceDiscovery.ts         # Scanner auto-connect + routing
+│       ├── useAutoConnectStateMachine.ts
+│       ├── useFirmwareUpdate.ts          # Himax update orchestration
+│       └── useMotionDetectionStream.ts
 ├── Projects/
-│   ├── ProjectDetailsScreen / ProjectVisualizationScreen
-│   └── ...
 ```
+
+> [!NOTE]
+> Auth screens live in `navigation/screens/auth/` with a `Screen` suffix — not flat in `navigation/screens/`.
 
 > [!NOTE]
 > The old `PrepareAndTestScreen` has been removed. Device configuration and metrics snapshots are captured directly during Deployment.
@@ -160,12 +167,18 @@ services/
 ├── FirmwareService.ts         # Firmware blob management
 ├── DfuService.ts              # Firmware updates (Nordic DFU)
 ├── MockLoRaWANService.ts      # LoRaWAN mocking
-└── offline/                   # Offline-first core
-    ├── SupabaseSyncService.ts # Bidirectional WatermelonDB ↔ Supabase sync
-    ├── OutboxService.ts       # Queues offline operations for sync
-    ├── SyncStateService.ts    # Sync state tracking
-    └── SyncTriggerService.ts  # Sync coordination
+├── DeploymentPhotoService.ts  # Deployment photo capture + upload
+├── SupabaseSyncService.ts     # Bidirectional WatermelonDB ↔ Supabase sync
+├── OutboxService.ts           # Queues offline operations for sync
+├── SyncStateService.ts        # Sync state tracking
+├── SyncTriggerService.ts      # Sync coordination
+├── SyncBarrier.ts             # Event-driven initial-sync readiness barrier
+└── offline/
+    └── OfflineService.ts      # Connectivity monitoring
 ```
+
+> [!NOTE]
+> The sync services live at the top level of `src/services/`, **not** under `offline/`. `offline/` holds only `OfflineService.ts`.
 
 **Service Pattern** — all data services write to WatermelonDB first:
 ```typescript
@@ -186,6 +199,8 @@ export class ProjectService {
 
 ### `src/hooks/` — Custom Hooks
 
+> This is the maintained inventory. Other documents link here rather than keeping their own copies.
+
 ```
 hooks/
 ├── useBle.ts                  # Low-level BLE connect/writeRaw/disconnect
@@ -196,13 +211,20 @@ hooks/
 ├── useSetupBLELibrary.ts      # BLE library initialization
 ├── useBluetoothStatus.ts      # Bluetooth adapter state
 ├── useEngineerConnect.ts      # Console connection management
-├── useScanLoop.ts             # Continuous BLE scanning
+├── useScanLoop.ts             # Shared 3s burst scan loop + cache flush
+├── useDeviceSelfTest.ts       # selftest bitmask parsing
+├── useReconnectDevice.tsx     # Reconnection helper
+├── useSelectDevice.tsx        # Device selection helper
 ├── useDeploymentConfiguration.ts # Capture method → OP mapping
 ├── useDeploymentProgress.ts   # Deployment progress tracking
 ├── useDevicePreDeploymentChecks.ts # Battery/firmware/SD validation
 ├── useMonitoringActions.ts    # Deployment monitoring commands
 ├── useCapturePreview.ts       # Image capture flow
-├── useDeviceSettings.ts       # CONFIG.TXT / OP parameter management
+├── useDeviceSettings.ts       # OP_PARAMETER enum, FACTORY_DEFAULTS, quiesce
+├── useCameraSwitch.ts         # Camera variant switching
+├── useResolutionSwitch.ts     # Capture resolution selection
+├── useLightSensor.ts          # Day/night decision: AI light, AE regs, op23/24/25
+├── useCameraReadiness.ts      # Is the camera usable: self-test bits + op10
 ├── useOfflineSync.ts          # Offline sync triggers
 ├── useOptimisticUpdate.ts     # UI responses before outbox confirms
 ├── useSupabaseAuth.ts         # Supabase auth hook
@@ -212,8 +234,11 @@ hooks/
 ├── useAndroidPermissions.ts   # Android runtime permissions
 ├── useDeepLinking.ts          # Deep link handling
 ├── useAppNavigation.tsx       # Typed navigation hook
+├── useInterval.tsx            # Interval utility
 └── useTimer.ts                # Timer utility
 ```
+
+Screen-scoped hooks live beside their screens — see `src/screens/Devices/hooks/` (scanner, firmware update, console) and `src/screens/Deployments/hooks/` (start/end/monitor).
 
 ### `src/ble/` — BLE Protocol Engine
 
@@ -242,6 +267,8 @@ ble/
 │   └── createBleSession.ts     # Session factory
 └── workflows/                  # Reusable BLE workflow functions
     ├── deploymentPipeline.ts   # Shared deployment pipeline
+    ├── resetToDefaults.ts      # executeResetToDefaults — shared OP factory reset
+    ├── configVerification.ts   # Post-firmware-update CONFIG.TXT handshake
     └── checkSdCard.ts          # SD card health validation
 ```
 
@@ -262,13 +289,13 @@ providers/
 ```
 database/
 ├── index.ts               # Database instance + collection accessors
-├── schema.ts              # Auto-generated schema (version 185, 15 tables)
+├── schema.ts              # Auto-generated schema — version + table count live in the file
 ├── migrations.ts          # Schema migration definitions
 └── models/                # WatermelonDB model classes
     ├── Project.ts
     ├── Deployment.ts
     ├── Device.ts
-    └── ... (15 models total)
+    └── ... (one class per synced table)
 ```
 
 ### `src/types/` — TypeScript Definitions
@@ -409,8 +436,8 @@ const syncSlice = createSlice({
 | Redux store | `src/redux/index.ts` |
 | Auth state | `src/redux/slices/authSlice.ts` |
 | Navigation + routes | `src/navigation/index.tsx` |
-| Offline sync engine | `src/services/offline/SupabaseSyncService.ts` |
-| Outbox (queued ops) | `src/services/offline/OutboxService.ts` |
+| Offline sync engine | `src/services/SupabaseSyncService.ts` |
+| Outbox (queued ops) | `src/services/OutboxService.ts` |
 | Local database | `src/database/index.ts` |
 | WatermelonDB schema | `src/database/schema.ts` |
 | API layer | `src/redux/api/` |

@@ -7,6 +7,7 @@ import { clearAllDeviceIntervals } from "../../utils/helpers"
 export type DeviceMetadata = any
 
 export interface ExtendedPeripheral extends Peripheral {
+	lastSeen?: number   // wall-clock ms of the most recent advertisement
 	connected: boolean
 	signalLost?: boolean
 	device: DeviceMetadata

@@ -61,16 +61,20 @@ BEGIN
   -- =============================================================================
   -- VALIDATION 4: Same-Organisation Membership
   -- =============================================================================
-  -- Verify user belongs to the same organisation as the project. An EXISTS
-  -- check on the target organisation directly covers both failure modes
-  -- (user in a different org, or user in no org at all) with one predictable
-  -- error, without relying on STRICT + exception-handler coupling.
+  -- Verify user has an ACTIVE membership in the same organisation as the
+  -- project. An EXISTS check on the target organisation directly covers all
+  -- failure modes (user in a different org, in no org, or with an inactive
+  -- membership) with one predictable error, without relying on STRICT +
+  -- exception-handler coupling. is_active matches every other role check in
+  -- the system (has_organisation_role, the duplicate check below) and lets
+  -- the planner use the partial covering index.
   IF NOT EXISTS (
     SELECT 1
     FROM public.user_roles
     WHERE user_id = p_user_id
       AND scope_type = 'organisation'
       AND scope_id = v_organisation_id
+      AND is_active = true
       AND deleted_at IS NULL
   ) THEN
     RAISE EXCEPTION 'User does not belong to the same organisation as the project (project org: %)', v_organisation_id
@@ -206,8 +210,8 @@ COMMENT ON FUNCTION add_project_member IS
 -- - INSERT operations: <5ms (2 inserts with indexes)
 --
 -- Indexes used:
--- - user_roles: user_roles_scope_idx, user_roles_active_idx
+-- - user_roles: idx_user_roles_lookup_covering (partial: is_active = true
+--   AND deleted_at IS NULL), user_roles_scope_idx
 -- - projects: Primary key
--- - user_organisations: Composite index on (user_id, organisation_id)
 --
 -- =============================================================================

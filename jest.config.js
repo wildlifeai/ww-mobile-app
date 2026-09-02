@@ -55,4 +55,14 @@ module.exports = {
 	resetMocks: false,
 	restoreMocks: true,
 	verbose: true,
+	// Jest's 5s default is too tight for the first rendering test in a suite, which
+	// absorbs the cold-start cost of module resolution, providers, navigation and
+	// theme setup. Measured on Login.bdd: 4653ms as the first test in the file on
+	// Node 20 (347ms of headroom - it intermittently tipped over and failed CI),
+	// 412ms for the identical test once warm, and 23-54ms for its siblings.
+	//
+	// Set at suite level rather than on the offending test: the cost belongs to
+	// whichever test happens to run first, so a per-test timeout would silently
+	// move the flake the next time someone reorders or adds a test.
+	testTimeout: 15000,
 }

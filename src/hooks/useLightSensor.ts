@@ -6,6 +6,7 @@ import { OP_PARAMETER } from './useDeviceSettings'
 import { bleEventBus, BleEvent } from '../ble/protocol/eventBus'
 import { createBleSession } from '../ble/session/createBleSession'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
+import { parseLightCheck, type LightCheck } from '../ble/protocol/lightCheck'
 import { log, logError } from '../utils/logger'
 import type { AEData } from '../screens/Devices/hooks/useCameraSettingsTest'
 
@@ -32,16 +33,77 @@ const opInt = (ops: string[], index: number, fallback: number): number => {
     return isNaN(v) ? fallback : v
 }
 
+/** Outcome of a photo-free measurement, so the caller can choose what to do next. */
+export type MeasureResult =
+    /** The decision line arrived and the reading is on screen. */
+    | 'ok'
+    /** Firmware predates `AI light`; the caller should fall back to a capture. */
+    | 'unsupported'
+    /** Acknowledged, but no reading followed. See the note on measureNow. */
+    | 'timeout'
+
+/**
+ * Wait for the next `AE light check` decision line from this device. Resolves
+ * null on timeout, or when cancelled.
+ *
+ * Subscribed before the command is sent, deliberately. `AI light` is
+ * acknowledged immediately and the reading follows about two seconds later, but
+ * nothing guarantees that ordering under a slow render or a busy queue, and a
+ * listener attached after the send could miss the line entirely.
+ *
+ * `cancel` matters on the paths that abandon the wait, such as firmware that
+ * does not know the command: without it the listener would sit on a shared event
+ * bus until the timeout, ready to consume a line meant for someone else.
+ */
+const waitForLightCheck = (deviceId: string, timeoutMs: number) => {
+    let settle!: (result: LightCheck | null) => void
+    const promise = new Promise<LightCheck | null>(resolve => { settle = resolve })
+
+    const done = (result: LightCheck | null) => {
+        clearTimeout(timer)
+        bleEventBus.removeListener('textLine', listener)
+        settle(result)
+    }
+    const listener = (event: BleEvent & { type: 'TEXT_LINE' }) => {
+        if (event.deviceId !== deviceId) return
+        const decision = parseLightCheck(event.line)
+        if (decision) done(decision)
+    }
+    const timer = setTimeout(() => done(null), timeoutMs)
+    bleEventBus.on('textLine', listener)
+
+    return { promise, cancel: () => done(null) }
+}
+
+/**
+ * Ceiling for the whole measurement: the command's own 8s allowance (the AI
+ * processor may need a DPD wake first) plus roughly two seconds of AE sampling,
+ * with headroom. Only reached when something is actually wrong, since the op10
+ * preflight in measureNow removes the common cause of silence.
+ */
+const LIGHT_CHECK_TIMEOUT_MS = 15_000
+
 /**
  * The WW500's day/night light sensor: the HM0360's auto-exposure registers,
  * averaged over several frames by the firmware, drive the flash decision
  * (op25). This hook reads that state, lets the engineer tune the dark
- * threshold (op23) and check interval (op24), and can trigger a capture to
- * force a fresh measurement.
+ * threshold (op23) and check interval (op24), and can trigger a fresh
+ * measurement with `AI light` — no capture and no file transfer.
+ *
+ * Two readings arrive from the device, and both are exposed because neither is
+ * always present:
+ *
+ * - `lightCheck`, the firmware's own decision line, carrying the verdict and
+ *   every input to it. Always sent after `AI light`, but sent after an ordinary
+ *   capture only when something consumes the decision (AE flash, or auto camera
+ *   switch op26), so it can be absent on the photo path.
+ * - `aeData`, the raw AE registers, sent after every capture and every light
+ *   check. Less informative, but the only source on older firmware.
  */
 export const useLightSensor = ({ device }: { device: ExtendedPeripheral | undefined }) => {
     const [state, setState] = useState<LightSensorState>(DEFAULTS)
     const [aeData, setAeData] = useState<AEData | null>(null)
+    const [lightCheck, setLightCheck] = useState<LightCheck | null>(null)
     const [isBusy, setIsBusy] = useState(false)
     const [stage, setStage] = useState<string>('')
 
@@ -51,12 +113,25 @@ export const useLightSensor = ({ device }: { device: ExtendedPeripheral | undefi
         return () => { unmountedRef.current = true }
     }, [])
 
-    // Live AE register lines arrive over BLE after each capture / AE check.
-    // Format: "HM0360 AE regs: / Integration time = ... / AE Mean = ... / AEConverged?: Y"
+    // Live AE lines arrive over BLE after each capture / AE check, in two forms:
+    // the raw register block ("HM0360 AE regs: / Integration time = ... / AE Mean
+    // = ... / AEConverged?: Y") and the firmware's own decision line, which
+    // carries the verdict and every input to it.
     useEffect(() => {
         const listener = (event: BleEvent & { type: 'TEXT_LINE' }) => {
             if (!device || event.deviceId !== device.id) return
             const msg = event.line
+
+            // Handled first and exclusively: the decision line also contains
+            // "analog gain = 4", which the case-insensitive register matcher
+            // below would otherwise lift into a half-built AEData carrying no
+            // AE mean at all.
+            const decision = parseLightCheck(msg)
+            if (decision) {
+                setLightCheck(decision)
+                return
+            }
+
             setAeData(prev => {
                 const next = { ...(prev || { integration: '', analogGain: '', digitalGain: '', aeMean: '', aeConverged: '' }) }
                 let updated = false
@@ -75,6 +150,19 @@ export const useLightSensor = ({ device }: { device: ExtendedPeripheral | undefi
         bleEventBus.on('textLine', listener)
         return () => { bleEventBus.removeListener('textLine', listener) }
     }, [device])
+
+    /**
+     * Drop both readings from the previous measurement.
+     *
+     * Call this before triggering a measurement. The readings stream in as the
+     * device samples them, so without clearing first there is a window where a
+     * completed measurement is paired with the *previous* one's light level —
+     * indistinguishable from a correct reading, and permanent once logged.
+     */
+    const resetReadings = useCallback(() => {
+        setAeData(null)
+        setLightCheck(null)
+    }, [])
 
     /** Read op23/24/25 from the device. */
     const refresh = useCallback(async () => {
@@ -171,46 +259,71 @@ export const useLightSensor = ({ device }: { device: ExtendedPeripheral | undefi
     }, [device])
 
     /**
-     * Force a fresh light measurement: trigger a single capture (the firmware
-     * samples the AE registers around each capture and updates op25), wait for
-     * the device to process it, then re-read the decision.
+     * Measure the light level without capturing an image, using `AI light`.
+     *
+     * About two seconds of AE sampling, no JPEG, no file transfer, so it is both
+     * far quicker than forcing a capture and usable on a device whose photo
+     * download does not work.
+     *
+     * Two things make this less straightforward than it looks:
+     *
+     * 1. The command is an acknowledgement only. It replies "Checking light
+     *    level..." immediately and the reading arrives afterwards as telemetry,
+     *    so the answer is awaited on the event bus, not on the command.
+     *
+     * 2. **It can fail silently.** Confirmed on hardware: the ack is sent, then
+     *    nothing at all, no reading and no error. Hence the timeout below, which
+     *    is the only way the app learns anything went wrong.
+     *
+     * There is deliberately no camera check here. Whether the camera is usable is
+     * settled once on entry by `useCameraReadiness`, and nothing reachable from
+     * this screen can change op10, so re-reading it every measurement would cost
+     * a DPD wake to learn what we already know (see ww-mobile-app#253).
+     *
+     * The camera *can* still stop working mid-flow, but not in a way op10 would
+     * reveal: a bench run on 2 September saw a wake where the sensor failed to
+     * initialise while op10 still read 1. The firmware reports that as self-test
+     * bit 8, so the honest response to a timeout is to re-run the readiness
+     * check, which is what the screen does.
+     *
+     * Firmware issue for the dropped request: Seeed_Grove_Vision_AI_Module_V2#202.
      */
-    const measureNow = useCallback(async () => {
-        if (!device?.connected || isBusy) return
+    const measureNow = useCallback(async (): Promise<MeasureResult> => {
+        if (!device?.connected || isBusy) return 'timeout'
         setIsBusy(true)
+        setLightCheck(null)
+        setAeData(null)
         try {
-            setStage('Requesting capture…')
             const session = createBleSession(device)
-            await session.waitForSleep(3000)
+
+            setStage('Measuring light…')
+            const pending = waitForLightCheck(device.id, LIGHT_CHECK_TIMEOUT_MS)
             try {
-                await session.execute(() => commandRegistry.capture(1, 500))
+                await session.execute(() => commandRegistry.light())
             } catch (e: any) {
-                // A stopped deployment can leave the camera system disabled -
-                // recover automatically instead of failing the measurement.
-                // op10 must be set persistently: the enabled flag is reloaded
-                // from it on EVERY wake, so a runtime 'enable' alone evaporates
-                // the moment the device sleeps (~1 s of inactivity).
-                if (!/not enabled/i.test(String(e?.message ?? e))) throw e
-                setStage('Camera was disabled — re-enabling (op10)…')
-                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.CAMERA_ENABLED, value: 1 }))
-                await session.execute(() => commandRegistry.enableCamera())
-                setStage('Requesting capture…')
-                await session.execute(() => commandRegistry.capture(1, 500))
+                pending.cancel()
+                if (/unrecognised/i.test(String(e?.message ?? e))) {
+                    log('[LightSensor] device has no `AI light`; caller should fall back to a capture')
+                    return 'unsupported'
+                }
+                throw e
             }
-            setStage('Measuring light (AE sampling)…')
-            // The multi-frame AE average + capture takes a few seconds; the AE
-            // lines stream in via the listener above as they happen.
-            await new Promise(r => setTimeout(r, 6000))
-            setStage('Reading decision…')
-            await refresh()
-            log('[LightSensor] measurement complete')
+
+            const decision = await pending.promise
+            if (!decision) {
+                logError('[LightSensor] no decision line within timeout')
+                return 'timeout'
+            }
+            log(`[LightSensor] ${decision.dark ? 'DARK' : 'BRIGHT'} at AE ${decision.meanAE}/${decision.threshold}`)
+            return 'ok'
         } catch (e: any) {
             logError('[LightSensor] measure failed:', e)
             Alert.alert('Measurement failed', e?.message ?? String(e))
+            return 'timeout'
         } finally {
             if (!unmountedRef.current) { setIsBusy(false); setStage('') }
         }
-    }, [device, isBusy, refresh])
+    }, [device, isBusy])
 
-    return { state, aeData, isBusy, stage, refresh, setParam, measureNow, enableAeFlash, setAutoSwitch }
+    return { state, aeData, lightCheck, isBusy, stage, refresh, setParam, measureNow, enableAeFlash, setAutoSwitch, resetReadings }
 }

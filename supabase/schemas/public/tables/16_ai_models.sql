@@ -53,5 +53,3 @@ COMMENT ON COLUMN ai_models.detection_capabilities IS 'Array of species this mod
 COMMENT ON COLUMN ai_models.label_map IS 'Per-output-class interpretation set by the uploader: target species (with taxon mapping) vs background/negative class. Used to reflect on-device predictions as taxa and to skip negative classes.';
 COMMENT ON COLUMN ai_models.modified_by IS 'User who last modified this record';
 COMMENT ON COLUMN ai_models.deleted_at IS 'Soft delete timestamp - NULL means active';
-
-

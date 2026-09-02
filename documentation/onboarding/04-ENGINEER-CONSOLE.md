@@ -125,7 +125,7 @@ Commands prefixed with `AI` — routed via BLE to the Himax chip. These interact
 | Command | Response | Purpose |
 |---------|----------|---------|
 | `AI erasemodel` | `OK` / `erased` | Erase loaded AI model, write 0,0 to CONFIG.TXT lines 14 & 15 |
-| `AI loadmodel <id> <ver>` | `OK` / `loaded` | Load model from SD (e.g., `1V1.tflite`), update CONFIG.TXT |
+| `AI loadmodel <id> <ver>` | `OK` / `loaded` | Load model from SD (e.g. `1V1.TFL`, paired with `1V1.TXT` labels), update CONFIG.TXT |
 
 #### OP Shortcuts
 
@@ -133,22 +133,25 @@ Convenience commands that wrap `AI setop` with human-readable names and defaults
 
 | Command | Underlying | Purpose |
 |---------|------------|---------|
-| `SET_NUM_PICTURES` | `AI setop 5 <n>` | Images per trigger (default: 3) |
-| `SET_PICTURE_INTERVAL` | `AI setop 6 <ms>` | Interval between images in ms (default: 1500) |
-| `SET_TIMELAPSE_INTERVAL` | `AI setop 7 <sec>` | Timelapse interval in seconds, 0 = off (default: 900) |
-| `SET_MOTION_DETECT_INTERVAL` | `AI setop 11 <ms>` | Motion detection polling interval, 0 = off (default: 1000) |
+| `SET_NUM_PICTURES` | `AI setop 5 <n>` | Images per trigger |
+| `SET_PICTURE_INTERVAL` | `AI setop 6 <ms>` | Interval between images in ms |
+| `SET_TIMELAPSE_INTERVAL` | `AI setop 7 <sec>` | Timelapse interval in seconds, 0 = off |
+| `SET_MOTION_DETECT_INTERVAL` | `AI setop 11 <ms>` | Motion detection polling interval, 0 = off |
+
+> [!NOTE]
+> Factory defaults are **not** listed here — `FACTORY_DEFAULTS` in [`useDeviceSettings.ts`](../../src/hooks/useDeviceSettings.ts) is the single source of truth and these shortcuts do not carry their own defaults.
 | `DISABLE_MOTION_DETECT` | `AI setop 11 0` | Disable motion detection |
 | `DISABLE_TIMELAPSE` | `AI setop 7 0` | Disable timelapse capture |
 
 ### OP Parameter Index
 
-The complete index (`OP_PARAMETER` enum + `FACTORY_DEFAULTS`) is defined in [`useDeviceSettings.ts`](../../src/hooks/useDeviceSettings.ts) — that file is the **single source of truth** for all parameter indices and default values (OP 0–20).
+The complete index (`OP_PARAMETER` enum + `FACTORY_DEFAULTS`) is defined in [`useDeviceSettings.ts`](../../src/hooks/useDeviceSettings.ts) — that file is the **single source of truth** for all parameter indices and default values. The range extends well past OP 20 (MD illumination, AE thresholds, white balance, camera resolution); read the enum rather than assuming an upper bound.
 
 The following subset is directly used during deployment:
 
 | Index | Constant | Role |
 |-------|----------|------|
-| 5 | `NUM_PICTURES` | Images per trigger (default: 1; Dev Deployment sets 2) |
+| 5 | `NUM_PICTURES` | Images per trigger (factory default 1; the Dev Deployment screen defaults its own control to 2 for JPG+BMP pairs) |
 | 7 | `TIMELAPSE_INTERVAL` | 0 for activity, N seconds for timelapse/mixed |
 | 8 | `INTERVAL_BEFORE_DPD` | Always 1000ms |
 | 9 | `LED_BRIGHTNESS` | Flash brightness 0–100% |
@@ -220,14 +223,14 @@ All flows are accessible from the Engineer Console → **Flows** button. They ar
 
 | Flow | What It Does |
 |------|-------------|
-| `RESET_TO_DEFAULTS` | Full factory reset sequence: bulk-resets ALL operational parameters to `FACTORY_DEFAULTS`, erases the AI model (`erasemodel`), and clears the deployment ID (`setdid null`). More aggressive than `pipeline.resetOps()` which skips configure-managed OPs. Uses `useDeviceSettings.resetToDefaults()`. |
+| `RESET_TO_DEFAULTS` | Full factory reset: diffs all operational parameters against `FACTORY_DEFAULTS` and writes those that differ, erases the AI model (`erasemodel`), and clears the deployment ID and GPS. Calls the same `executeResetToDefaults` as the deployment pipeline, but **without** `skipIdentityReset` — so unlike `pipeline.resetOps()` it also wipes identity. |
 
 ### 📲 Firmware Updates
 
 | Flow | What It Does |
 |------|-------------|
 | `UPDATE_BLE_FIRMWARE` | Navigates to the DFU screen for Nordic nRF52 OTA update (ZIP format). |
-| `UPDATE_HIMAX_FIRMWARE` | Triggers Himax AI processor firmware update from SD card (`AI firmware` + `AI reset`). |
+| `UPDATE_HIMAX_FIRMWARE` | Triggers the Himax AI processor firmware update (`AI firmware <file> <0xCRC>` + `AI reset`). Normally flashes **both** camera-variant images — see [Himax-Firmware-Update.md](../resources/Himax-Firmware-Update.md#dual-image-update-camera-variant-pair). |
 | `FIRMWARE_STATUS` | Navigates to the Firmware Status screen — compares installed BLE + Himax versions against cloud, offers version selection, and provides updates. |
 
 ### 📁 File Transfer
@@ -321,7 +324,9 @@ HM0360 AE regs:
 
 These values are captured by the Camera Settings Test Screen and displayed in the AE Data panel with a visual AE Mean bar (0–255).
 
-**Potential as a light sensor proxy:** The AE registers (especially `AE Mean` and `Integration time`) may provide enough ambient light information to automatically determine whether flash illumination is needed. This has not yet been implemented — further investigation is needed to determine which registers correlate most reliably with ambient brightness across day/night transitions.
+**Used as the light sensor.** The AE registers *are* the day/night sensor: the firmware averages them over several frames and turns them into one dark/bright decision that drives the flash (OP 13) and automatic camera switching (OP 26). The Light Sensor flow exposes this, and `AI light` measures on demand without taking a photo. See [Light-Sensor.md](../resources/Light-Sensor.md).
+
+Which registers correlate best has been measured rather than guessed. Scoring 303 time-lapse frames against their capture times, so the label owes nothing to the registers being scored: analog gain 100%, digital gain 100%, AE Mean 98.8%, integration time 96.5%. The gain registers are the stronger discriminators; AE Mean is used because it is the tunable one. The threshold itself (OP 23) is still under review.
 
 ### Firmware Compile Flags for Experiments
 

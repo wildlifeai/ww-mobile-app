@@ -28,7 +28,12 @@ interface CommandSection {
  * Groups commands by processor target (BLE vs AI) and logical category.
  * Only includes commands with type: 'command' (or no type).
  */
-const getCommandSections = (): CommandSection[] => {
+/**
+ * Exported for the coverage test: the sections below are a hand-maintained
+ * allowlist, so a command can be fully defined in COMMANDS and still never
+ * appear here. `slots` and `switchslot` were invisible that way until Aug 2026.
+ */
+export const getCommandSections = (): CommandSection[] => {
     const allCommands = Object.values(COMMANDS).filter(
         cmd => cmd.type === 'command' || !cmd.type
     )
@@ -143,6 +148,15 @@ const getCommandSections = (): CommandSection[] => {
                     icon: 'camera',
                     commands: pick([
                         CommandNames.md,
+                        CommandNames.light,
+                    ]),
+                },
+                {
+                    title: 'Camera Switching (day / night)',
+                    icon: 'theme-light-dark',
+                    commands: pick([
+                        CommandNames.slots,
+                        CommandNames.switchslot,
                     ]),
                 },
                 {

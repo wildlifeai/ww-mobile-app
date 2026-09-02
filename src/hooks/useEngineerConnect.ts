@@ -46,12 +46,14 @@ export const useEngineerConnect = () => {
         isConnectingRef.current = false
         setConnectingDevice(null)
         dispatch(setEngineerConsoleActive(true))
-        // Flush stale BLE state BEFORE enabling the scan loop.
-        // On Android, removePeripheral() inside flushBleCache blocks the
-        // BLE scanner for 10-60s. If we set dialogState='scanning' first,
-        // the scan loop starts while the cache is still being flushed,
-        // causing the first scan burst to find nothing.
-        await flushBleCache()
+        // Flush Redux state only. The native removePeripheral() pass blocks the
+        // Android scanner for 10-60s - long enough for the WW500's push-button
+        // advertising window to EXPIRE before scanning even starts, which made
+        // discovery order-dependent (advertise-then-open-console never found
+        // the device; console-first worked). A stale native GATT cache is the
+        // lesser evil: real adverts still arrive and the disconnect handler
+        // does per-device removal.
+        await flushBleCache({ skipNativeRemoval: true })
         setDialogState('scanning')
     }, [dispatch, flushBleCache])
 
@@ -116,6 +118,13 @@ export const useEngineerConnect = () => {
             setConnectingDevice(null)
         }
     }, [connectDevice, navigation, dispatch, stopScan])
+
+    // The console-active flag gates the MAIN scanner's scan loop and
+    // auto-connect. It was only cleared on successful navigation or explicit
+    // cancel - leaving any other way (back gesture, tab switch) left it stuck
+    // true, and the Scanner tab then 'searched' forever without actually
+    // scanning. Always release it on unmount.
+    useEffect(() => () => { dispatch(setEngineerConsoleActive(false)) }, [dispatch])
 
     // Reset state when dialog is dismissed / user cancels
     const reset = useCallback(() => {

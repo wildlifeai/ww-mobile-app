@@ -92,8 +92,8 @@ android {
         applicationId 'com.wildlife.wildlifewatcher'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 60
-        versionName "0.0.60"
+        versionCode 64
+        versionName "0.0.64"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
         
@@ -112,6 +112,18 @@ android {
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
+            // Debug builds install alongside the Play Store build instead of
+            // colliding with it. Same package name plus a different signature
+            // meant INSTALL_FAILED_UPDATE_INCOMPATIBLE, and the only way through
+            // was uninstalling the store app, taking its WatermelonDB, the
+            // unsynced outbox and the login session with it.
+            //
+            // ".expo" rather than ".dev": app.config.ts already derives that
+            // suffix from APP_VARIANT, and the Google Maps key is already
+            // restricted to com.wildlife.wildlifewatcher.expo with this
+            // keystore's SHA-1. The gradle file was the only place still
+            // disagreeing. See documentation/resources/Maps.md.
+            applicationIdSuffix '.expo'
         }
         release {
             // Caution! In production, you need to generate your own keystore file.

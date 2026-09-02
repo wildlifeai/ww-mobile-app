@@ -5,6 +5,11 @@ version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
+    # Without this, Dependabot opens PRs against the repository's default branch
+    # (main), while all work merges into dev. PR #232 sat open for a month for
+    # exactly that reason while five other PRs merged past it, and went stale
+    # enough to conflict with the workflow changes in #241.
+    target-branch: dev
     schedule:
       interval: weekly
     groups:

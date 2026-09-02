@@ -88,7 +88,16 @@ plugins: [
    | Production | `com.wildlife.wildlifewatcher` | Get from release keystore |
 
    > [!NOTE]
-   > Package name switches based on `APP_VARIANT` in `app.config.ts`: development builds use `.expo` suffix, production builds don't.
+   > On **iOS** the bundle ID switches on `APP_VARIANT` in `app.config.ts`. On **Android**
+   > it does not: `android/` is committed, so prebuild never regenerates it and that logic
+   > is dead. The Android suffix comes from `applicationIdSuffix '.expo'` on the debug
+   > buildType in `android/app/build.gradle`, which is why the SHA-1 above is this repo's
+   > `android/app/debug.keystore` rather than a developer's personal one.
+   >
+   > That entry therefore covers **local debug builds only**. EAS `preview` and `staging`
+   > builds are release-type: they keep the production package name and are signed with the
+   > EAS keystore, so maps in those builds depend on the Production row, whose SHA-1 is
+   > still recorded here as "Get from release keystore".
 
 3. **Restrict API access** to Maps SDK for Android, Maps SDK for iOS, and Geolocation API only.
 

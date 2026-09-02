@@ -7,7 +7,7 @@ CREATE POLICY "Project members can view active deployments"
   FOR SELECT
   TO authenticated
   USING (
-    has_project_role(auth.uid(), deployments.project_id, 'project_member')
+    has_project_role((SELECT auth.uid()), deployments.project_id, 'project_viewer')
   );
 
 -- INSERT: Project members can create deployments

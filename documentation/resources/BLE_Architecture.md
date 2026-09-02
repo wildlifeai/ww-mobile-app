@@ -26,6 +26,15 @@ Developers **must** use the correct write path for each use case. Misuse causes 
 | Motion detection `md` sensitivity | direct `writeToDevice()` | Must bypass the transport controller to avoid blocking `setop`/`capture`. |
 | Motion detection `setop`/`capture` | `bleSession.execute()` | Queued commands that follow the md sensitivity write. |
 | Motion detection grid events | passive `textLine` subscription | Async text lines parsed via `useMotionDetectionStream`. |
+| Light sensor decision (`AE light check`) | passive `textLine` subscription | Sent after every light check, including ones the app did not request. Parsed by `lightCheck.ts`, surfaced through `useLightSensor`. See [Light-Sensor.md](./Light-Sensor.md). |
+| Self-test result (`Error bits = 0x…`) | passive `textLine` subscription | The device announces this after **every wake**, unprompted. `useCameraReadiness` listens rather than polling `selftest`. |
+
+> [!TIP]
+> Before adding a command that polls for device state, check whether the device already
+> announces it. Two of the three rows above are messages that arrive whether or not anyone
+> asked: a bench run in Sep 2026 counted 25 `Error bits` lines received against 6 `selftest`
+> commands sent. Polling for a value you are already being pushed costs a DPD wake, and it
+> can show a stale answer while a fresher one sits unread on the bus.
 
 > [!WARNING]
 > **Never** call `writeRaw()` from a deployment workflow. Never call `bleSession.execute()` from the Engineer Console. These boundaries exist to prevent determinism violations.
@@ -344,7 +353,7 @@ Used by the main **DeviceDiscoveryScreen** for deployment workflows:
 
 | Feature | Implementation |
 |---|---|
-| **Session-based** | User presses "Search" → 60-second countdown session |
+| **Session-based** | 15-second countdown session (`SCAN_DURATION_SECONDS` in `useDeviceDiscovery.ts`) |
 | **Scan loop** | `useScanLoop({ active: isActuallyFocused && isReady && scanSessionState === 'active' && !isEngineerConsoleActive })` |
 | **Cache flush on NEW start** | `flushBleCache()` + `autoConnect.resetAll()` — only on fresh session, **not** on resume |
 | **Auto-connect** | Strongest-signal device auto-connected via `useAutoConnectStateMachine` |
@@ -359,7 +368,7 @@ The scan session uses a 4-state lifecycle instead of a boolean flag. This separa
 
 ```
 idle → active → suspended → active  (navigation round-trip)
-                           → expired (60s timeout)
+                           → expired (15s timeout)
 idle → active → expired              (no device found)
 ```
 
@@ -368,12 +377,12 @@ idle → active → expired              (no device found)
 | `idle` | No session started | ❌ | ❌ | N/A |
 | `active` | Scanning with countdown | ✅ | ✅ | Only on fresh start |
 | `suspended` | Screen lost focus mid-session | ❌ | ❌ | ❌ (preserves devices) |
-| `expired` | 60s countdown reached zero | ❌ | ❌ | N/A |
+| `expired` | 15s countdown reached zero | ❌ | ❌ | N/A |
 
 **Session start sequence** (new session from `idle` or `expired`):
 1. `autoConnect.resetAll()` — all devices return to `DISCOVERED` state
 2. `flushBleCache()` — clears stale Redux devices and native BLE cache
-3. `setScanSessionState('active')` + reset countdown to 60s
+3. `setScanSessionState('active')` + reset countdown to 15s
 4. `useScanLoop` begins burst cycling
 
 **Suspend** (screen loses focus during `active`):
@@ -751,20 +760,17 @@ Prevents device disconnection due to the firmware's 60-second BLE inactivity tim
 
 ### Engineer Console
 
-The **Engineer Console** (`EngineerConsoleScreen.tsx`) is a **pure terminal** — a passive teletype that sends raw bytes via `writeRaw()` and displays responses via `bleEventBus` subscriptions.
+The **Engineer Console** (`EngineerConsoleScreen.tsx`) has two distinct surfaces. Keep them separate.
 
-**What the Engineer Console does:**
-- Type any text command and see raw hex TX/RX and text responses
-- View the Command Reference Modal (filtered to `type === 'command'` only)
-- Verify regex patterns match expected firmware output
+**1. The raw input line — a pure terminal.** Whatever you type goes out via `writeRaw()` (`useEngineerConsoleActions.ts`) and responses come back through `bleEventBus` subscriptions. This path:
+- Never enqueues a typed command through the transport controller
+- Never parses or interprets responses beyond display
+- Is for verifying that `commandRegistry` regexes match real firmware output
 
-**What the Engineer Console does NOT do:**
-- ❌ Execute workflow actions (DFU, capture, GPS, motion detection)
-- ❌ Import or use `useCapturePreview`, `useGPSLocation`, or `firmwareUpdateHelper`
-- ❌ Parse or interpret command responses beyond display
+**2. The Flows modal — a workflow launcher.** `FlowsReferenceModal` runs the `type: 'process'` and `type: 'local'` entries in `src/ble/types.ts`. These *do* use sessions and hooks (`useDeviceSettings.resetToDefaults()`, capture preview, firmware update) and *do* navigate to workflow screens. See [04-ENGINEER-CONSOLE.md](../onboarding/04-ENGINEER-CONSOLE.md#flows--processes-reference).
 
 > [!WARNING]
-> Workflow actions (DFU, capture, GPS set, motion detection test) belong in the **Deployment flow** (`useStartDeployment`, `useBleSession`), not in the console. This separation ensures the console cannot accidentally corrupt deployment state.
+> The invariant is **not** "the console never runs workflows" — it plainly does. The invariant is that the **raw input line** never enqueues commands, so typing in the terminal can never interleave with a deployment's queued sequence. When adding console functionality, decide which surface it belongs to: freeform diagnostics go on the input line, anything with multiple steps or expected responses goes in Flows behind a session.
 
 ### Common Issues
 
@@ -858,25 +864,18 @@ src/
 │   │   │   └── __tests__/                  # 62 unit tests
 │   │   └── __tests__/              # Protocol unit tests
 │   ├── session/                    # Deterministic workflow API
-│   │   ├── createBleSession.ts     # Session factory for deployment workflows
-│   │   └── __tests__/              # Session unit tests
+│   │   └── createBleSession.ts     # Session factory for deployment workflows
 │   ├── workflows/                  # Reusable BLE workflow functions
-│   └── __tests__/                  # Legacy tests (skipped)
-├── hooks/
-│   ├── useBle.ts                   # Core: scan, connect, writeRaw
-│   ├── useBleListeners.tsx         # Native event handlers → rxRouter (+ signalLost guard)
-│   ├── useBleSession.ts            # React hook wrapping createBleSession
-│   ├── useBleInitialization.ts     # Post-connect: selftest + time sync
-│   ├── useBleHeartbeat.ts          # 58s inactivity keep-alive
-│   ├── useCapturePreview.ts        # Image capture flow
-│   ├── useDeviceSettings.ts        # CONFIG.TXT parameter management
-│   ├── useDeploymentConfiguration.ts # Deployment config (bulk getop + conditional writes)
-│   ├── useEngineerConnect.ts       # Engineer Console scan + auto-connect dialog
-│   ├── useScanLoop.ts              # Shared 3s burst scan loop + BLE cache flush
-│   └── useSetupBLELibrary.ts       # BleManager.start() lifecycle
+│   │   ├── deploymentPipeline.ts   # syncTime, syncAiModel, configureDevice
+│   │   ├── resetToDefaults.ts      # executeResetToDefaults — shared OP factory reset
+│   │   ├── configVerification.ts   # Post-update CONFIG.TXT handshake
+│   │   └── checkSdCard.ts          # SD card health validation
+│   └── __tests__/                  # messageClassifier, transport
+├── hooks/                          # BLE hooks — full inventory in 02-CODEBASE-GUIDE.md
 ├── screens/Devices/hooks/
 │   ├── useDeviceDiscovery.ts       # Main scanner: session timer + auto-connect routing
 │   ├── useAutoConnectStateMachine.ts # Per-device auto-connect eligibility
+│   ├── useFirmwareUpdate.ts        # BLE DFU + Himax variant-pair update orchestration
 │   └── useMotionDetectionStream.ts # MD test lifecycle: direct md write + frame history
 ├── providers/
 │   ├── BleEngineProvider.tsx        # React Context for useBle

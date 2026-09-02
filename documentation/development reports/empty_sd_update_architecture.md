@@ -4,6 +4,14 @@
 **Scope:** Himax (HX6538) firmware update over BLE, manifest ingestion, embedded-AI deployment
 **Grounded in:** `ww500_md` firmware (feat/ble-fast-transfer @3c0baafa), BLE fw 0.30.47, wwmobile feat/ble-fast-transfer @5cdc45a, and throughput measurements from the 2026-07-09/10 fast-transfer work.
 
+> **UPDATE (2026-07-28):** the shipped Himax flow is now documented against the
+> code in [Himax-Firmware-Update.md](../resources/Himax-Firmware-Update.md) —
+> read that first. Two things below turned out differently in the implementation:
+> the pair is ordered by **camera variant** (RP3/HM0360, flashing the device's
+> current variant last) rather than by "inactive slot", and there is **no
+> rollback UI** — `switchslot` is available only as a manual CLI command.
+> §4's QA matrix and §5's firmware asks remain open and are still the reference.
+
 > **STATUS ADDENDUM (2026-07-10, feat/himax-update-pipeline):** a code audit found
 > that Flows 1, 2A, 2B and 3 are **already implemented** in the app:
 > `useFirmwareUpdate.runHimaxUpdate()` (dual-slot pair ordering via `AI slots`,
