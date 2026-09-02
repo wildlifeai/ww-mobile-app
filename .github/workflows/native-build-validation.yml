@@ -14,12 +14,24 @@ on:
       - 'babel.config.js'
       - 'metro.config.js'
       - 'tsconfig.json'
+      # The tracked prebuild output. `android/` is committed, so prebuild never
+      # regenerates it and a change here IS a native build change, not a
+      # by-product of one. Its absence meant PR #258, which edited
+      # android/app/build.gradle, got no native validation at all.
+      - 'android/**'
+      # This file, so a change to the triggers or the profile logic is exercised
+      # by the workflow it changes rather than landing unvalidated.
+      - '.github/workflows/native-build-validation.yml'
 
 jobs:
   android-build:
     name: Android EAS Local Build
     runs-on: ubuntu-latest
-    environment: development 
+    environment: development
+    # Successful runs take 20-27 min on the `ci` profile. Without this the job
+    # inherits GitHub's 6-hour default: run 33573523667 sat for 1h35m on the
+    # first PR ever to use the `staging` profile before being cancelled by hand.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -95,6 +107,9 @@ jobs:
   ios-sanity:
     name: iOS Prebuild Sanity Check
     runs-on: macos-latest
+    # Runs in about a minute. macOS runners bill at 10x, so a hung job here is
+    # the expensive one to leave unbounded.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
