@@ -228,8 +228,8 @@ Bidirectional sync between WatermelonDB and Supabase. Sync is debounced (2s) and
 | Shell | `Home` (BottomTabs: Scanner, Map, Projects), `Notifications`, `Profile`, `Settings` |
 | Projects | `NewProjectScreen`, `ProjectDetailsScreen`, `EditProjectScreen`, `ProjectMembersScreen`, `ProjectDevicesScreen`, `ProjectVisualizationScreen` |
 | Deployment | `DeviceDiscovery`, `DeviceMonitoringSummary` |
-| Engineer Console | `EngineerConsoleScreen`, `StandaloneMotionDetectionScreen`, `StandaloneCapturePreviewScreen`, `CameraSettingsTestScreen`, `LightSensorScreen` |
-| Firmware & transfer | `DfuScreen`, `FirmwareUpdateScreen`, `FileTransferTestScreen`, `ModelValidationTestScreen`, `ConfigTransferScreen`, `AiModelTransferScreen` |
+| Engineer Console | `EngineerConsoleScreen`, `CapturePictureScreen`, `StandaloneMotionDetectionScreen`, `LightSensorScreen` |
+| Firmware & transfer | `DfuScreen`, `FirmwareUpdateScreen`, `FirmwareStatusScreen`, `FileTransferTestScreen`, `ModelValidationTestScreen`, `AiModelTransferScreen` |
 
 Dev-only routes (`__DEV__`): `DevBuildInfo`, `AuthTestScreen`, `DeveloperSettings`.
 

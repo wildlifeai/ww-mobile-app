@@ -138,7 +138,7 @@ sequenceDiagram
 
     rect rgb(240, 248, 255)
     Note over UI,Dev: Phase 1: SETUP
-    UI->>Sess: execute(getops)
+    UI->>Sess: getOps() (cached per wake)
     Sess-->>UI: OpParams (check OP 10, 18)
     opt Camera not enabled or test bits set
         UI->>Sess: execute(setop 10 1)
@@ -708,8 +708,15 @@ byte[3..] = payload          // actual JPEG image data
 Orchestrates the full capture-preview flow using a **three-phase architecture** separated by device sleep cycles. Each phase lets the Himax complete its full lifecycle (inactivity timer → Save State → DPD) before the next command wakes it fresh, preventing the FatFS race condition where `txfile` and `save_configuration()` competed for the same filesystem.
 
 **Phase 1 — Setup:**
-1. `getops` to verify `CAMERA_ENABLED` (OP 10 = 1) and `TEST_MODE_BITS` (OP 18 = 0). Fixes either if needed.
-2. `waitForSleep(5000)` — device enters DPD.
+1. `session.getOps()` to verify `CAMERA_ENABLED` (OP 10 = 1) and `TEST_MODE_BITS` (OP 18 = 0). Fixes either if needed. Served from the per-wake op cache, so on a repeat capture this sends nothing.
+2. `waitForSleep(5000)` — returns immediately when the device is already down, which it usually is once the cached read stops waking it.
+
+> [!NOTE]
+> Those two changed together on 2 September 2026 and had to. Caching the read alone removed the
+> thing that *woke* the device, so `waitForSleep` then waited out its full timeout for a Sleep
+> signal that had already been sent: `startCapture` to `capture` measured 2.03s → 5.03s → **0.13s**
+> across the two changes. See [opCache.ts](../../src/ble/protocol/opCache.ts) and
+> [sleepState.ts](../../src/ble/protocol/sleepState.ts).
 
 **Phase 2 — Capture:**
 3. `AI capture 1 500` — captures a single image (500ms interval allows AE settling).
@@ -966,7 +973,7 @@ loops reported in field testing (CGP, April 2026).
 | StopMonitoringScreen        | Owner  | ✅          | ✅             |
 | EngineerConsoleScreen       | Child  | ❌          | ❌             |
 | HimaxFirmwareUpdateScreen   | Child  | ❌          | ❌             |
-| CameraSettingsTestScreen    | Child  | ❌          | ❌             |
+| CapturePictureScreen        | Child  | ❌          | ❌             |
 | StandaloneMotionDetection   | Child  | ❌          | ❌             |
 | AdvancedSettingsSection      | Child  | ❌          | ❌             |
 

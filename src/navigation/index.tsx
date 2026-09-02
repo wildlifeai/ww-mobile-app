@@ -48,7 +48,6 @@ import { DevDeploymentTestScreen } from "../screens/Devices/DevDeploymentTestScr
 import { FirmwareUpdateScreen } from "../screens/Devices/FirmwareUpdateScreen"
 import { FileTransferTestScreen } from "../screens/Devices/FileTransferTestScreen"
 import { ModelValidationTestScreen } from "../screens/Devices/ModelValidationTestScreen"
-import { ConfigTransferScreen } from "../screens/Devices/ConfigTransferScreen"
 import { AiModelTransferScreen } from "../screens/Devices/AiModelTransferScreen"
 import { FirmwareStatusScreen } from "../screens/Devices/FirmwareStatusScreen"
 import { DeviceResetScreen } from "../screens/Devices/DeviceResetScreen"
@@ -254,11 +253,6 @@ export const MainNavigation = () => {
 								title: "Model Validation Test",
 								headerBackTitle: "Back",
 							}}
-						/>
-						<Stack.Screen
-							name="ConfigTransferScreen"
-							component={ConfigTransferScreen}
-							options={{ title: "Config Transfer" }}
 						/>
 						<Stack.Screen
 							name="AiModelTransferScreen"

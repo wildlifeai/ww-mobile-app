@@ -102,7 +102,10 @@ The `DevDeploymentTestScreen` is a single scrollable page (no accordion) with th
 - **Record GPS in Images** — toggle switch
 
 ### 3. Flash Settings
-- **Flash LED Type** — segmented buttons: Off / White / IR (maps to OP 13)
+- **Flash** — segmented buttons: Off / White / IR (op13), plus brightness (op9) once a flash is
+  chosen. Shared with the Capture Picture flow via
+  [`FlashSelector`](../../src/components/device/FlashSelector.tsx); the labels come from
+  `FLASH_LED_LABELS` in `useDeviceSettings.ts`, which four screens used to spell differently.
 - **LED Brightness** — numeric input 0-100% (maps to OP 9)
 
 ### 4. Capture Diagnostics

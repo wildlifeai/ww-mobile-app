@@ -89,6 +89,32 @@ people: `reset` reboots the nRF *after disconnect*; `AI reset` reboots only the 
   a `type: 'command'` entry belongs to no group. **`FlowsReferenceModal` has the same
   shape and no equivalent guard**, so `type: 'process'` entries can still go missing
   silently: when you add one, open the modal and confirm it renders.
+- **Read ops through `session.getOps()`, not `execute(getops)`.** `AI getop -1` returns all 32
+  values and almost every hook wants one or two, so the array is cached per device for one wake
+  window (`ble/protocol/opCache.ts`). It is dropped on `setop`, on **Wake** and on disconnect,
+  because the device rewrites its own parameters while asleep: automatic day/night switching moves
+  the active slot and the AE check writes op25. A bench run counted **18 fetches for six photos**
+  before this. Verification paths (`configVerification`, `deploymentPipeline`) deliberately still
+  read fresh.
+- **`waitForSleep` returns immediately when the device is already asleep**, tracked in
+  `ble/protocol/sleepState.ts`. This is not an optimisation, it is a correctness fix: once the op
+  cache stopped the capture path from waking the device, the wait sat out its full 5000ms timeout
+  waiting for a Sleep signal that had already been sent. `startCapture` to `capture` went 2.03s →
+  5.03s → **0.13s**. Note that *unknown* is not treated as awake, so a first-ever wait still waits.
+- **The app runs ahead of the firmware on op indices, deliberately.** op32 (`CAM_RESOLUTION`) exists
+  here before it ships on the device. Guard on the array length before touching a high index, the
+  way `useCapturePicture` does for the WB gains, rather than reading it and hoping. `getop` now has
+  a `failureRegex` for the out-of-range error and it is non-retryable: without it a rejection
+  matched neither success nor failure and burned 8s, then retried, which silently broke a whole
+  flow for 16s at a time.
+- **The nRF strips the op array out of the Sleep broadcast.** The Himax sends all 32 values on every
+  sleep and the nRF logs them as `AI processor sends stats`, then forwards six bytes: the word
+  `Sleep`. The app never sees the numbers, so there is nothing to parse and the cache above is the
+  only app-side answer. Getting them forwarded is a firmware ask, and it would delete the cache.
+- **A three-way bench log is three different viewpoints, not one.** The Himax and nRF console legs
+  show what those processors did; only the `app` leg shows what reached the phone. Reading a firmware
+  console line and assuming the app got it is how a parser for that Sleep broadcast almost got
+  built. Confirm against the `app` leg before designing on it.
 - **`useCapturePreview` is the capture path — don't hand-roll one.** It carries the
   op10/op18 pre-flight that re-enables a camera left disabled by a stopped deployment,
   the Save State/DPD waits that stop `txfile` racing FatFS and corrupting the file

@@ -65,6 +65,7 @@ const getFlowGroups = (): FlowGroup[] => {
             commands: pick([
                     CommandNames.UPDATE_BLE_FIRMWARE,
                     CommandNames.UPDATE_HIMAX_FIRMWARE,
+                    CommandNames.FIRMWARE_STATUS,
                     CommandNames.MODEL_VALIDATION,
             ]),
         },

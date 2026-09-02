@@ -40,7 +40,6 @@ export interface RootStackParamList extends ParamListBase {
 	FirmwareUpdateScreen: { deviceId: string; target: 'ble' | 'himax'; restrictToLatest?: boolean }
 	FileTransferTestScreen: { deviceId: string }
 	ModelValidationTestScreen: { deviceId: string }
-	ConfigTransferScreen: { deviceId: string }
 	AiModelTransferScreen: { deviceId: string; modelId?: string }
 	FirmwareStatusScreen: { deviceId: string; restrictToLatest?: boolean }
 	DeviceResetScreen: { deviceId: string }

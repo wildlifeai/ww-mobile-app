@@ -124,10 +124,6 @@ export const useEngineerConsoleActions = ({
             navigation.navigate('ModelValidationTestScreen', { deviceId: device?.id })
             return
         }
-        if (cmdName === CommandNames.TRANSFER_CONFIG) {
-            navigation.navigate('ConfigTransferScreen', { deviceId: device?.id })
-            return
-        }
         if (cmdName === CommandNames.TRANSFER_AI_MODEL) {
             navigation.navigate('AiModelTransferScreen', { deviceId: device?.id })
             return

@@ -68,7 +68,6 @@ export enum CommandNames {
 	LIGHT_SENSOR = "LIGHT_SENSOR",
 	FILE_TRANSFER_TEST = "FILE_TRANSFER_TEST",
 	MODEL_VALIDATION = "MODEL_VALIDATION",
-	TRANSFER_CONFIG = "TRANSFER_CONFIG",
 	TRANSFER_AI_MODEL = "TRANSFER_AI_MODEL",
 	FIRMWARE_STATUS = "FIRMWARE_STATUS",
 	RESET_TO_DEFAULTS = "RESET_TO_DEFAULTS",
@@ -626,11 +625,6 @@ export const COMMANDS: {
 	[CommandNames.MODEL_VALIDATION]: {
 		name: CommandNames.MODEL_VALIDATION,
 		description: "Validate, download, and load an AI model",
-		type: 'process',
-	},
-	[CommandNames.TRANSFER_CONFIG]: {
-		name: CommandNames.TRANSFER_CONFIG,
-		description: "Download config from cloud and transfer to device SD card (CONFIG.TXT)",
 		type: 'process',
 	},
 	[CommandNames.TRANSFER_AI_MODEL]: {
