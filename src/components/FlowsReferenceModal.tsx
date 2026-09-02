@@ -18,81 +18,75 @@ interface FlowGroup {
 }
 
 /**
+ * Resolve the named flows, in the order given, dropping any that no longer
+ * exist or are not a flow.
+ *
+ * Listing them rather than filtering `COMMANDS` is deliberate. The previous
+ * version filtered, so the rendered order came from the declaration order in
+ * types.ts and the arrays here were decorative: Motion Detection appeared above
+ * Capture Picture because of where it happened to sit in that file, and
+ * reordering this list changed nothing on screen.
+ */
+const pick = (names: CommandNames[]): FlowGroup['commands'] =>
+    names
+        .map(name => COMMANDS[name])
+        .filter(cmd => cmd && (cmd.type === 'process' || cmd.type === 'local'))
+        .map(cmd => ({ name: cmd.name, description: cmd.description || '' }))
+
+/**
  * Groups process commands into logical categories for the Flows modal.
+ *
+ * Ordered by how often an operator reaches for them: the camera flows are the
+ * everyday ones, firmware next, then the two that change or restart the device.
  */
 const getFlowGroups = (): FlowGroup[] => {
-    const processCommands = Object.values(COMMANDS).filter(
-        cmd => cmd.type === 'process' || cmd.type === 'local'
-    )
-
     const groups: FlowGroup[] = [
+        // The three flows that point the camera at something and report what it
+        // saw. They were a group each, which made three one-item lists and hid
+        // how much they have in common: all three drive the camera, all three
+        // are safe to run on a bench device, and an operator reaching for one
+        // is usually deciding between them.
         {
-            title: 'Camera & Capture',
+            title: 'Camera & Sensors',
             icon: 'camera',
-            commands: processCommands
-                .filter(cmd => [
+            commands: pick([
                     CommandNames.CAPTURE_PICTURE,
-                ].includes(cmd.name))
-                .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
-        },
-        {
-            title: 'Motion Detection',
-            icon: 'motion-sensor',
-            commands: processCommands
-                .filter(cmd => [
                     CommandNames.MOTION_DETECTION_PREVIEW,
-                ].includes(cmd.name))
-                .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
-        },
-        {
-            title: 'Light Sensor (day/night)',
-            icon: 'theme-light-dark',
-            commands: processCommands
-                .filter(cmd => [
                     CommandNames.LIGHT_SENSOR,
-                ].includes(cmd.name))
-                .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
+            ]),
+        },
+        // MODEL_VALIDATION sits here rather than under File Transfer: the
+        // transfer is how it works, not what it is for. It ends by erasing the
+        // model and loading the new one, which puts it with the other flows
+        // that change what the device is running.
+        {
+            title: 'Firmware Updates',
+            icon: 'cellphone-arrow-down',
+            commands: pick([
+                    CommandNames.UPDATE_BLE_FIRMWARE,
+                    CommandNames.UPDATE_HIMAX_FIRMWARE,
+                    CommandNames.MODEL_VALIDATION,
+            ]),
         },
         {
             title: 'Device Configuration',
             icon: 'cog-outline',
-            commands: processCommands
-                .filter(cmd => [
+            commands: pick([
                     CommandNames.RESET_TO_DEFAULTS,
-                ].includes(cmd.name))
-                .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
-        },
-        {
-            title: 'Firmware Updates',
-            icon: 'cellphone-arrow-down',
-            commands: processCommands
-                .filter(cmd => [
-                    CommandNames.UPDATE_BLE_FIRMWARE,
-                    CommandNames.UPDATE_HIMAX_FIRMWARE,
-                ].includes(cmd.name))
-                .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
-        },
-        {
-            title: 'File Transfer',
-            icon: 'file-send',
-            commands: processCommands
-                .filter(cmd => [
-                    CommandNames.FILE_TRANSFER_TEST,
-                    CommandNames.MODEL_VALIDATION_TEST,
-                ].includes(cmd.name))
-                .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
+            ]),
         },
         // The Console group held only CLEAR_CONSOLE, which sent nothing to the
         // device. Clearing the output is now a button on the console header,
-        // beside Commands and Flows, where a console action belongs.
+        // beside Commands and Flows, where a console action belongs. The File
+        // Transfer group emptied when its two entries moved to where they
+        // belong by purpose rather than by mechanism.
         {
-            title: 'Deployment Testing',
+            title: 'Tests',
             icon: 'play-circle-outline',
-            commands: processCommands
-                .filter(cmd => [
+            commands: pick([
                     CommandNames.DEV_DEPLOYMENT_TEST,
-                ].includes(cmd.name))
-                .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
+                    CommandNames.FILE_TRANSFER_TEST,
+            ]),
         },
     ]
 

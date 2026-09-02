@@ -120,7 +120,7 @@ export const useEngineerConsoleActions = ({
             navigation.navigate('FileTransferTestScreen', { deviceId: device?.id })
             return
         }
-        if (cmdName === CommandNames.MODEL_VALIDATION_TEST) {
+        if (cmdName === CommandNames.MODEL_VALIDATION) {
             navigation.navigate('ModelValidationTestScreen', { deviceId: device?.id })
             return
         }

@@ -67,7 +67,7 @@ export enum CommandNames {
 	CAPTURE_PICTURE = "CAPTURE_PICTURE",
 	LIGHT_SENSOR = "LIGHT_SENSOR",
 	FILE_TRANSFER_TEST = "FILE_TRANSFER_TEST",
-	MODEL_VALIDATION_TEST = "MODEL_VALIDATION_TEST",
+	MODEL_VALIDATION = "MODEL_VALIDATION",
 	TRANSFER_CONFIG = "TRANSFER_CONFIG",
 	TRANSFER_AI_MODEL = "TRANSFER_AI_MODEL",
 	FIRMWARE_STATUS = "FIRMWARE_STATUS",
@@ -623,8 +623,8 @@ export const COMMANDS: {
 		description: "Send test files to device SD card via BLE",
 		type: 'process',
 	},
-	[CommandNames.MODEL_VALIDATION_TEST]: {
-		name: CommandNames.MODEL_VALIDATION_TEST,
+	[CommandNames.MODEL_VALIDATION]: {
+		name: CommandNames.MODEL_VALIDATION,
 		description: "Validate, download, and load an AI model",
 		type: 'process',
 	},
