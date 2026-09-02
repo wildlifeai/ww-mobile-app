@@ -39,7 +39,7 @@ const pick = (names: CommandNames[]): FlowGroup['commands'] =>
  * Ordered by how often an operator reaches for them: the camera flows are the
  * everyday ones, firmware next, then the two that change or restart the device.
  */
-const getFlowGroups = (): FlowGroup[] => {
+export const getFlowGroups = (): FlowGroup[] => {
     const groups: FlowGroup[] = [
         // The three flows that point the camera at something and report what it
         // saw. They were a group each, which made three one-item lists and hid
