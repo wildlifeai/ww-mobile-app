@@ -218,7 +218,7 @@ trying to do rather than by the mechanism underneath.
 |------|-------------|
 | `CAPTURE_PICTURE` | The single camera flow. Camera mode (Colour / Black & White, plus High-res Colour where the firmware has op32), flash type and brightness, a capture, the picture full width, and a gallery. Was `CAMERA_SETTINGS_TEST`; absorbed the old `CAPTURE_PREVIEW`, which sent one more command than this while doing less. |
 | `MOTION_DETECTION_PREVIEW` | Real-time 16×16 grid. The best-behaved multi-step flow: reads the op array once and restores op18/op8 on the way out. |
-| `LIGHT_SENSOR` | Day/night decision via `AI light`, about 2 s and no photo. See [Light-Sensor.md](../resources/Light-Sensor.md). |
+| `LIGHT_SENSOR` | The AE registers via `AI light`, about 2 s and no photo. Single shot, or streamed every few seconds from Settings. The screen shows the level and registers; every row is logged with the app's mean and gain verdicts beside the device's own, and exportable. Turns automatic camera switching (op26) off on entry. See [Light-Sensor.md](../resources/Light-Sensor.md). |
 
 ### 📲 Firmware Updates
 

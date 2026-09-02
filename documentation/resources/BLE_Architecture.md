@@ -26,7 +26,7 @@ Developers **must** use the correct write path for each use case. Misuse causes 
 | Motion detection `md` sensitivity | direct `writeToDevice()` | Must bypass the transport controller to avoid blocking `setop`/`capture`. |
 | Motion detection `setop`/`capture` | `bleSession.execute()` | Queued commands that follow the md sensitivity write. |
 | Motion detection grid events | passive `textLine` subscription | Async text lines parsed via `useMotionDetectionStream`. |
-| Light sensor decision (`AE light check`) | passive `textLine` subscription | Sent after every light check, including ones the app did not request. Parsed by `lightCheck.ts`, surfaced through `useLightSensor`. See [Light-Sensor.md](./Light-Sensor.md). |
+| Light sensor registers (`HM0360 AE regs`) and decision (`AE light check`) | passive `textLine` subscription | Both sent after every capture and every light check, including ones the app did not request. The register block is the measurement; the decision line is parsed by `lightCheck.ts` as optional metadata. Surfaced through `useLightSensor`. See [Light-Sensor.md](./Light-Sensor.md). |
 | Self-test result (`Error bits = 0x…`) | passive `textLine` subscription | The device announces this after **every wake**, unprompted. `useCameraReadiness` listens rather than polling `selftest`. |
 
 > [!TIP]

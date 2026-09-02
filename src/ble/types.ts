@@ -613,7 +613,7 @@ export const COMMANDS: {
 	},
 	[CommandNames.LIGHT_SENSOR]: {
 		name: CommandNames.LIGHT_SENSOR,
-		description: "Day/night light sensor — decision, live AE readings and threshold tuning",
+		description: "Light sensor testing and logs",
 		type: 'process',
 	},
 	[CommandNames.FILE_TRANSFER_TEST]: {
