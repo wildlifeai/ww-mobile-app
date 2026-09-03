@@ -106,6 +106,9 @@ The `DevDeploymentTestScreen` is a single scrollable page (no accordion) with th
   chosen. Shared with the Capture Picture flow via
   [`FlashSelector`](../../src/components/device/FlashSelector.tsx); the labels come from
   `FLASH_LED_LABELS` in `useDeviceSettings.ts`, which four screens used to spell differently.
+  The selection reaches the device, but the firmware fires the LED on a capture only when its
+  last light decision (op25) was DARK, so in daylight it will not flash whatever is chosen here.
+  See [Light-Sensor.md](Light-Sensor.md), "How the decision reaches the flash LED".
 - **LED Brightness** — numeric input 0-100% (maps to OP 9)
 
 ### 4. Capture Diagnostics

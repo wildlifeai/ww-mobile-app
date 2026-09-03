@@ -196,11 +196,18 @@ export async function runCommandPipeline<T>(
       try {
         const result = await runCommand(peripheral, commandConstructor);
         // One choke point for the op cache, so every caller benefits and no
-        // writer can forget to invalidate: `getops` fills it, `setop` empties it.
+        // writer can forget it: `getops` fills it, `setop` patches the value
+        // the device has just confirmed (the command only resolves on that
+        // confirmation), and anything unparseable drops the array.
         if (context.name === 'getops') {
           opCache.set(peripheral.id, result as unknown as string[]);
         } else if (context.name === 'setop') {
-          opCache.invalidate(peripheral.id);
+          const written = context.build().match(/^AI setop (\d+) (\S+)$/);
+          if (written) {
+            opCache.patch(peripheral.id, parseInt(written[1], 10), written[2]);
+          } else {
+            opCache.invalidate(peripheral.id);
+          }
         }
         return result;
       } catch (error: any) {

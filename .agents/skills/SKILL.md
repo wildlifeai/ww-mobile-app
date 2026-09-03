@@ -67,6 +67,11 @@ people: `reset` reboots the nRF *after disconnect*; `AI reset` reboots only the 
   Console's raw input line. The console *does* also run workflows from its Flows modal —
   the invariant is that the **typed input line** never enqueues, so typing can never
   interleave with a deployment's command sequence.
+- **Connecting changes nothing on the device.** The Engineer Console connects and shows a
+  terminal; every write to the device happens inside a flow the user opened, after they
+  navigated to it. Never add a write to `useBle.connectDevice`, the console screen or the
+  heartbeat path. A deferred sleep-timer restore was briefly wired into the connect path on
+  3 September 2026 and removed the same day for this reason; it now waits for the next hold.
 - **The device sleeps aggressively.** Deep Power Down after ~1000 ms of inactivity; the
   BLE link drops after ~60 s (hence the 58 s heartbeat). After *any* disconnect assume
   the device is asleep and not advertising until woken by button, motion or timer.
@@ -91,16 +96,40 @@ people: `reset` reboots the nRF *after disconnect*; `AI reset` reboots only the 
   silently: when you add one, open the modal and confirm it renders.
 - **Read ops through `session.getOps()`, not `execute(getops)`.** `AI getop -1` returns all 32
   values and almost every hook wants one or two, so the array is cached per device for one wake
-  window (`ble/protocol/opCache.ts`). It is dropped on `setop`, on **Wake** and on disconnect,
-  because the device rewrites its own parameters while asleep: automatic day/night switching moves
-  the active slot and the AE check writes op25. A bench run counted **18 fetches for six photos**
-  before this. Verification paths (`configVerification`, `deploymentPipeline`) deliberately still
-  read fresh.
+  window (`ble/protocol/opCache.ts`). A `setop` patches the one value the device confirmed; the
+  array is dropped on **Wake** and on disconnect, because the device rewrites its own parameters
+  while asleep: automatic day/night switching moves the active slot and the AE check writes op25.
+  A bench run counted **18 fetches for six photos** before this, and dropping the array on
+  `setop` cost a wake on every capture that changed a setting. Verification paths
+  (`configVerification`, `deploymentPipeline`) deliberately still read fresh. Concurrent misses
+  are not coalesced yet: screen entry still sends four `getop -1` in a second (open item).
 - **`waitForSleep` returns immediately when the device is already asleep**, tracked in
   `ble/protocol/sleepState.ts`. This is not an optimisation, it is a correctness fix: once the op
   cache stopped the capture path from waking the device, the wait sat out its full 5000ms timeout
   waiting for a Sleep signal that had already been sent. `startCapture` to `capture` went 2.03s →
   5.03s → **0.13s**. Note that *unknown* is not treated as awake, so a first-ever wait still waits.
+- **op8 (the inactivity timeout) is a field setting, not a session one.** It is written to
+  CONFIG.TXT and a device left raised stays awake that long after every motion capture in the
+  field. A screen that wants the device awake for a visit goes through `ble/session/keepAwake.ts`:
+  `acquire` raises op8 (to 3 s for Capture Picture) and records the original on disk, `release`
+  puts it back, and anything a dropped link left owed is restored the next time a flow takes a
+  hold on that device (nothing is written at connect time). Never `setop 8` from a screen
+  directly and never keep the original only in a ref; the Motion Detection
+  stream still does the latter and a drop mid-test leaves the device raised. While
+  `keepAwake.holds(deviceId)` is true the capture path sends `txfile` straight after `Captured`
+  instead of waiting for a sleep and paying a wake: 22 s to 13 s for the same picture.
+- **Most op parameters apply at wake, not on `setop`.** `setop` stores the value and saves
+  CONFIG.TXT; the flash LED and brightness (op13, op9) are selected in `setupLEDFlash()` when the
+  device wakes, the camera settings when the image task starts, and a camera switch resets the
+  device when it next sleeps. op8 itself is read at wake too: the inactivity timer of the current
+  awake window is whatever the card held when the device woke, so a `setop 8` changes the *next*
+  window, and a device that woke on a stale 20 s keeps it for that window whatever you write.
+  Anything that waits for a sleep must budget for that, and must send nothing while waiting,
+  because every command restarts the timer (`useCameraSwitch` learned this twice in one day). So a flow that changes a setting must let the device sleep before
+  the capture that should use it, and a hold on the device must stay short: a 20 s hold, tried
+  on 3 September 2026, meant a camera switch never reset while the app polled `slots` (each poll
+  restarted the timer) and a changed flash would not have reached the next capture. The
+  pre-capture `waitForSleep` is not an optimisation to remove.
 - **The app runs ahead of the firmware on op indices, deliberately.** op32 (`CAM_RESOLUTION`) exists
   here before it ships on the device. Guard on the array length before touching a high index, the
   way `useCapturePicture` does for the WB gains, rather than reading it and hoping. `getop` now has
@@ -118,8 +147,11 @@ people: `reset` reboots the nRF *after disconnect*; `AI reset` reboots only the 
 - **`useCapturePreview` is the capture path — don't hand-roll one.** It carries the
   op10/op18 pre-flight that re-enables a camera left disabled by a stopped deployment,
   the Save State/DPD waits that stop `txfile` racing FatFS and corrupting the file
-  handle, and the reassembly that turns binary packets into an image URI (with
-  byte-level progress). Use it whenever you need an image.
+  handle (the post-capture one is skipped while `keepAwake.holds(deviceId)`; the pre-capture
+  one always runs because that wake applies any changed setting), and the reassembly that
+  turns binary packets into an image URI (with byte-level progress). Use it whenever you
+  need an image. What Capture Picture does around it is in
+  [Capture-Picture.md](../../documentation/resources/Capture-Picture.md).
 - **To measure light, don't take a photo.** `useLightSensor.measureNow` uses `AI light`:
   about 2 s, no JPEG, no transfer, against 13–50 s for a capture. It is **two-phase** —
   the command's reply is only an acknowledgement and the reading arrives afterwards as
@@ -148,10 +180,49 @@ people: `reset` reboots the nRF *after disconnect*; `AI reset` reboots only the 
   `selftest` after waking the AI processor — the two are not duplicates, and neither is
   removable. Anything reading bits 8 or 9 (main camera, HM0360) must reject the
   all-bits-set pattern or it will report five hardware failures on a healthy device.
+- **The device is woken only by a command, so nothing may wait for a Wake it will not cause.**
+  The transport queue paused on Sleep and resumed only on Wake; when a Sleep landed while a
+  slow JS thread was still completing `slots` (a screen mounting eight gallery images), every
+  command behind it hung until the 60 s link timeout. The pause now lifts itself after
+  `SLEEP_SETTLE_MS`. The same rule applies to any flow: a wait for Sleep is fine, a wait for
+  Wake is only fine right after a reset the device scheduled itself.
 - **`setop 10 0` does not stop a running camera.** `cameraSystemEnabled` is loaded from
   op10 only when the image task starts, so the write lands at the next wake. `AI enable` /
   `AI disable` change both. To turn the camera on *now*, write op10 **and** send
   `AI enable`. The inverse of this trap is documented on the firmware side.
+- **A selected flash does not mean a flash.** op13 only chooses the LED; the firmware fires
+  it on a capture only when its last light decision, op25, was DARK, and the check after
+  every capture rewrites op25. In a lit room the LED never fires whatever the app selected,
+  and that is not an app bug. Before touching the app, isolate it in three console commands:
+  `AI flash 50 500` lights the white LED directly (hardware and command path), `AI getop 25`
+  shows the gate, and `AI setop 25 1` then `AI capture 1 500` proves the capture path can
+  fire it. Bench-proven 3 September 2026. Capture Picture forces it for now by writing op25 = 1
+  before a capture with a flash chosen (`TODO(flash-mode-op)` in `useCapturePicture.ts`); do
+  not copy that elsewhere, it is a stand-in for the always-on mode Charles is adding behind a
+  new op parameter (`flash_led_modes_proposal.md` on `ae_review`), proposed from index 32,
+  which this app already uses for `CAM_RESOLUTION` (and 33 for `MD_BLOCK_NUM_MAX`): agree
+  the index before either side ships, then replace the op25 write with the new parameter.
+- **Image transfer runs at about 1.1 KB/s and the app is not the reason.** `AI txfile` on
+  its own measures the same as inside the capture flow. The nRF hex-dumps every 241-byte
+  packet to its 115200 baud console and flushes the log before each BLE send, so the
+  transfer runs at the speed of the debug UART. A 12 KB image is 10 s; do not spend app
+  time on it.
+- **Nothing may be sent while an image is streaming in, and a flow must stop when its
+  screen goes.** The nRF forwards any command to the Himax at once, restarts its binary
+  packet counter, and the reply comes only when the file has finished: a `slots` sent
+  mid-stream drew `AI processor not responding`, 412 phantom sequence gaps and a reply 14 s
+  late (3 September 2026). The transport holds the queue from `N bytes in` to the
+  reassembler's finish (`bleTransport.isStreaming`); do not work around it with a direct
+  write. The stream was there because a capture chain kept running after Back:
+  `useCapturePreview` and `useCapturePicture` check a mounted ref before each command, and a
+  screen shows only the picture it asked for. Any new multi-step flow needs the same check.
+- **A device that prints `IMAGE task unhandled event 'Image Event Inactivity' in
+  'Uninitialised'` once a second is stuck awake, and only a power cycle brings it back.**
+  Firmware race on `ae_review` e8b7feb5: the inactivity timer fired while the IF task was
+  transmitting a reply (op8 at 1 s, a command about a second after the last), the image task
+  reached the shutdown barrier alone, and every later inactivity event is unhandled. No
+  console command clears it (`AI reset` is consumed on the way into DPD). Do not spend time
+  on the app side when you see it; the app's flows time out correctly against it.
 - **Debug and store builds now coexist, but only on Android and only for debug.**
   `android/app/build.gradle` sets `applicationIdSuffix '.expo'` on the debug buildType, so
   a local build installs as `com.wildlife.wildlifewatcher.expo` alongside the Play Store

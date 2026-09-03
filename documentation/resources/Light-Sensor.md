@@ -63,6 +63,39 @@ that clause is not reproduced. In practice a railed frame scores dark on the mea
 > will cheerfully report BRIGHT inside a dark box. Never read op25 to find out how bright
 > it is now. Read a measurement you triggered.
 
+### How the decision reaches the flash LED
+
+op13 only chooses the LED. On every wake the firmware restores op25 into its `flashActive`
+flag, and a capture lights the LED only when that flag is set; the check after the capture
+then rewrites op25 for the next one. So a flash selected in the app fires on the next capture
+only if the device's last decision was DARK, and in a lit room it never fires at all. There is
+no "always flash" value yet: the firmware repo's `flash_led_modes_proposal.md` (on `ae_review`,
+3 September 2026) proposes always-on and time-of-day modes behind a new op parameter, and
+wants to number it from 32, which this app already uses for `CAM_RESOLUTION`. When a flash
+does not fire, isolate it in three console commands before looking at the app:
+
+| Command | Proves |
+|---|---|
+| `AI flash 50 500` | The white LED, its driver and the command path: lights it directly at 50% for 500 ms, ignoring op13 and op25 |
+| `AI getop 25` | The gate. 0 means no capture will flash, whatever op13 says |
+| `AI setop 25 1`, wait for `Sleep`, then `AI capture 1 500` | The capture path can fire it: this capture flashes, then its check writes op25 back |
+
+Bench-proven on 3 September 2026; the record is in
+[the capture flash thread](../development%20reports/2026-09-03_capture-flash-and-keep-awake/README.md).
+The firmware side is `ledFlash.c` (`ledFlashSetFlashModeFromOpParam`, `ledFlashActivate`).
+
+It was not always so. From November 2025 op13 chose the LED and every capture fired it for op12
+milliseconds; from June 2026 op22 chose a mode (0 always on, 1 light-driven, more a time-of-day
+window) and always-on was the default; firmware `d9d9d253` on 5 July 2026 removed the other modes
+and made op13 light-driven only. The app's Off / White / IR selector was written for the earlier
+meaning.
+
+**Interim, until the flash-mode parameter ships:** Capture Picture writes op25 = 1 before a
+capture with a flash selected, so the picture is lit whatever the room; the check after the
+capture puts the real verdict back. Only that screen does it, deployments are untouched, and the
+block is marked `TODO(flash-mode-op)` in `useCapturePicture.ts` for removal when the new
+parameter lands. The screen itself is described in [Capture-Picture.md](Capture-Picture.md).
+
 Note that **connecting to a device sets `op26 = 1`**, because `FACTORY_DEFAULTS` says so and
 the pre-deployment checks write any parameter that has drifted. Automatic switching is
 therefore on for practically every device the app has touched.
@@ -178,11 +211,13 @@ only when the image task starts, so a write takes effect at the next wake. `AI e
 records. The firmware's answer was to shorten the labels, which fixed the truncation and
 changed the wording. Nothing in the app depends on the wording any more, and nothing should.
 
-**The gain-based light check may fire the flash LED.** `decideDarkBrightGainBased()` wakes
-the sensor into streaming for 500 ms without disabling the STROBE pin, which the previous
-sleep may have armed for motion-detection illumination. The mean-based path saves, disables
-and restores it. Reported to the firmware author; a fast flicker during a light check is
-this, not a fault in the app's request.
+**The gain-based light check used to fire the flash LED.** `decideDarkBrightGainBased()`
+woke the sensor into streaming without disabling the STROBE pin, which the previous sleep may
+have armed for motion-detection illumination, so a check after a dark capture flickered the
+LED. Fixed on `ae_review` at e8b7feb5 (3 September 2026): the check now saves, disables and
+restores STROBE the way the mean-based path always did, and the settle delay dropped from
+500 ms to 200 ms. On older firmware a fast flicker during a light check is this, not a fault
+in the app's request.
 
 **A camera fault is not the same as a camera switched off.** A hardware failure sets
 self-test bit 8 and needs a physical fix; op10 = 0 sets no bit at all and the app can undo

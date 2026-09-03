@@ -73,7 +73,7 @@ Related: `BLE_Architecture.md` says the session starts on a "Search" button pres
 > The Engineer Console is a **pure terminal** … **What the Engineer Console does NOT do:** ❌ Execute workflow actions (DFU, capture, GPS, motion detection) ❌ Import or use `useCapturePreview` …
 > **Never** call `bleSession.execute()` from the Engineer Console.
 
-[04-ENGINEER-CONSOLE.md:202-252](onboarding/04-ENGINEER-CONSOLE.md) then documents 11 Flows launched *from* the Engineer Console, including `CAPTURE_PREVIEW` ("sends `AI capture 1 500`, receives the image via BLE binary transfer"), `RESET_TO_DEFAULTS` ("Uses `useDeviceSettings.resetToDefaults()`"), `UPDATE_HIMAX_FIRMWARE`, and `MODEL_VALIDATION_TEST`.
+[04-ENGINEER-CONSOLE.md:202-252](onboarding/04-ENGINEER-CONSOLE.md) then documents 11 Flows launched *from* the Engineer Console, including `CAPTURE_PREVIEW` ("sends `AI capture 1 500`, receives the image via BLE binary transfer"; folded into `CAPTURE_PICTURE` on 2 September 2026), `RESET_TO_DEFAULTS` ("Uses `useDeviceSettings.resetToDefaults()`"), `UPDATE_HIMAX_FIRMWARE`, and `MODEL_VALIDATION_TEST`.
 
 **Code:** both readings are partly true, which is why this needs resolving explicitly. `useEngineerConsoleActions.ts:19,53` uses only `writeRaw` — the *typed command line* is a pure terminal. But `src/components/FlowsReferenceModal.tsx` and the `type: 'process'` entries in `src/ble/types.ts:597-660` do launch workflows and navigate to workflow screens from the same screen. The invariant as stated in `BLE_Architecture.md` is false; what's actually true is narrower ("the console's raw input path never enqueues typed commands").
 
@@ -342,7 +342,7 @@ Present in code, absent from all 27 documents:
 - **Tutorial / first-run carousel** — a real route in `navigation/index.tsx`; `Testing-Guide.md:350` writes E2E assertions against `tutorial-skip-button` but no doc explains the gate.
 - **Developer settings surface** — `navigation/screens/developer/` has 12 components (`MigrationStatusSection`, `NativeModulesSection`, `EnvironmentItem`, …). Only `DatabaseDevToolsSection` gets a passing mention in `03-DATA-AND-SYNC.md:381`.
 - **`LightSensorScreen` + `useLightSensor`** — directly relevant to the "AE as light-sensor proxy" investigation in `04-ENGINEER-CONSOLE.md:324`, which says it "has not yet been implemented".
-- **Camera/resolution switching** (`useCameraSwitch`, `useResolutionSwitch`, `CameraSelector`, `CaptureModeSelector`) — shipped in the day-camera resolution PR (#233) at HEAD.
+- **Camera/resolution switching** (`useCameraSwitch`, `useResolutionSwitch`, `CameraModeSelector`, `FlashSelector`) — shipped in the day-camera resolution PR (#233) at HEAD. Documented since 3 September 2026 in `resources/Capture-Picture.md`.
 - **`DeploymentPhotoService` / `DeploymentPhotosSection`** — deployment photo capture and storage.
 - **`SyncBarrier`** — described in `BLE_Architecture.md` but missing from `02-CODEBASE-GUIDE.md`'s service list and `03-DATA-AND-SYNC.md`, where it belongs.
 - **`DeviceReconnectProvider`** — listed in `02-CODEBASE-GUIDE.md:257` as an active provider, but it is not mounted in `src/App.tsx`. Either dead code or an undocumented mounting point.
@@ -396,7 +396,7 @@ Every one of these is now wrong in a different way. Recommend a single generated
 | WSL2 ADB bridge setup | `Testing-Guide.md:157-166` and `WSL2-Setup-Guide.md` |
 | EAS profile table | `Expo-EAS-Guide.md:58-62` and `publishing_guide.md:9-13`, verbatim — and both wrong (§1.13) |
 | Docker quick start | `00-GETTING-STARTED.md:70-77` and `Docker-Development-Guide.md:24-39`, with conflicting install commands (§1.12) |
-| Capture-preview three-phase flow | `BLE_Architecture.md:117-175` (sequence diagram) and `BLE_Architecture.md:697-721` (prose) — same document, twice |
+| Capture-preview three-phase flow | Was told twice in `BLE_Architecture.md` (a sequence diagram and prose). Resolved 3 September 2026: the diagram is gone, the prose in §12 stays, and the flow's behaviour lives in `resources/Capture-Picture.md` |
 | Disconnect fail-fast cascade | `BLE_Architecture.md:519`, `:556`, `:784-819`, and `04-ENGINEER-CONSOLE.md:413-429` |
 | `AI getop -1` bulk-fetch optimisation | `04:166-175`, `05:149`, `05:157`, `05:206` |
 

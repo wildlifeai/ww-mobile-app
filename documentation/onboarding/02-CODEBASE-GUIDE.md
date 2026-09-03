@@ -264,7 +264,8 @@ ble/
 │       ├── crc16ccitt.ts
 │       └── filenameValidator.ts
 ├── session/                    # Deterministic workflow API
-│   └── createBleSession.ts     # Session factory
+│   ├── createBleSession.ts     # Session factory
+│   └── keepAwake.ts            # Hold a device awake for a screen visit (op8 raised, restored on exit or next connection)
 └── workflows/                  # Reusable BLE workflow functions
     ├── deploymentPipeline.ts   # Shared deployment pipeline
     ├── resetToDefaults.ts      # executeResetToDefaults — shared OP factory reset

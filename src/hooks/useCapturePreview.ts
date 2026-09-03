@@ -6,6 +6,7 @@ import { bleEventBus, BleEvent } from '../ble/protocol/eventBus'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { createBleSession } from '../ble/session/createBleSession'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
+import { keepAwake } from '../ble/session/keepAwake'
 import { log, logError, logWarn } from '../utils/logger'
 
 
@@ -55,6 +56,17 @@ export const useCapturePreview = ({
     const downloadRequested = useRef(false)
     const downloadTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+    // False once the screen using this hook is gone. The capture is a chain of
+    // awaits, and without this a Back press in the middle let the chain keep
+    // going: on the bench (3 September 2026) the capture and its txfile went
+    // out 4 and 8 s after the screen was left, and the picture turned up on the
+    // next visit as if it had been taken there.
+    const mountedRef = useRef(true)
+    useEffect(() => {
+        mountedRef.current = true
+        return () => { mountedRef.current = false }
+    }, [])
+
     // Clear timeout helper
     const clearDownloadTimeout = useCallback(() => {
         if (downloadTimeoutRef.current) {
@@ -78,6 +90,12 @@ export const useCapturePreview = ({
     // Listen for image download completion and progress
     useEffect(() => {
         const handleImageComplete = (fileUri: string) => {
+            // The reassembler is shared by every screen: only the one that sent
+            // the txfile shows the picture. Anything else stays in the cache.
+            if (!downloadRequested.current) {
+                log('[useCapturePreview] Image arrived from a transfer this screen did not start; left in the cache:', fileUri)
+                return
+            }
             log('[useCapturePreview] Image download complete, URI:', fileUri)
             clearDownloadTimeout()
             
@@ -102,6 +120,7 @@ export const useCapturePreview = ({
         }
 
         const handleImageError = (errorMessage: string) => {
+            if (!downloadRequested.current) return
             logError('[useCapturePreview] Image transfer error:', errorMessage)
             clearDownloadTimeout()
 
@@ -163,6 +182,20 @@ export const useCapturePreview = ({
     // Each phase lets the device fully complete its inactivity → Save State → DPD
     // cycle before the next command wakes it. This prevents the FatFS race condition
     // where txfile's open file handle was invalidated by a concurrent Save State.
+    //
+    // The wait before the capture also applies any parameter written since the
+    // last wake (flash LED, brightness, camera settings are all read at wake),
+    // so it always runs; it returns at once when the device is already asleep.
+    // The wait after the capture exists only to keep txfile clear of the Save
+    // State, and is skipped while a screen holds the device awake (keepAwake,
+    // op8 raised to 3 s), because txfile follows Captured well inside that.
+    // Measured 3 September 2026: that wait and the wake it forced were 3 to 4 s
+    // of a 22 s capture.
+    //
+    // Leaving the screen stops the chain at the next step: no capture and no
+    // txfile go out for a screen nobody is looking at. A transfer already
+    // streaming runs to its end (the transport holds everything else until
+    // it does) and the file stays in the cache.
     const startCapture = useCallback(async (captureCount: number = 1, captureInterval: number = 500) => {
         if (!device) {
             const error = new Error('No device connected')
@@ -170,6 +203,12 @@ export const useCapturePreview = ({
             if (onError) onError(error)
             else Alert.alert('Error', 'No device connected')
             return
+        }
+
+        const screenLeft = (next: string): boolean => {
+            if (mountedRef.current) return false
+            log(`[useCapturePreview] Screen left; not sending ${next}`)
+            return true
         }
 
         log(`[useCapturePreview] startCapture called (count=${captureCount}, interval=${captureInterval})`)
@@ -209,11 +248,15 @@ export const useCapturePreview = ({
             } catch (e) {
                 logWarn('[useCapturePreview] Pre-flight getops failed, proceeding anyway:', e)
             }
+            if (screenLeft('the capture')) return
 
-            // Let the device complete Save State and enter DPD before capture
+            // Let the device complete Save State and enter DPD before capture.
+            // Not skipped under a hold: the wake that follows is what applies
+            // any parameter written since the last one.
             log('[useCapturePreview] Phase 1 complete — waiting for device to sleep')
             setCaptureStage('Waiting for device…')
             await session.waitForSleep(5000)
+            if (screenLeft('the capture')) return
 
             // ── Phase 2: CAPTURE ────────────────────────────────────────
             setCaptureStage(`Capturing ${captureCount} image(s)…`)
@@ -226,9 +269,16 @@ export const useCapturePreview = ({
             // inactivity timer (1000ms) → Save State → DPD entry.
             // This is the critical fix: the old flow sent txfile immediately,
             // racing against Save State which corrupted the FatFS file handle.
-            setCaptureStage('Waiting for device…')
-            log('[useCapturePreview] Waiting for device to sleep after capture (Save State + DPD)')
-            await session.waitForSleep(5000)
+            // Under a hold the timer is 3 s away and txfile follows Captured
+            // within a second, so it can go at once.
+            if (keepAwake.holds(device.id)) {
+                log('[useCapturePreview] Device held awake; sending txfile without waiting for sleep')
+            } else {
+                setCaptureStage('Waiting for device…')
+                log('[useCapturePreview] Waiting for device to sleep after capture (Save State + DPD)')
+                await session.waitForSleep(5000)
+            }
+            if (screenLeft('txfile')) return
 
             // ── Phase 3: TRANSFER ───────────────────────────────────────
             // Device wakes fresh from DPD — FatFS is clean, no competing operations.

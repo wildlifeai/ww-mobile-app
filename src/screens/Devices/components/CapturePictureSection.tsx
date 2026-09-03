@@ -1,6 +1,7 @@
 import { View, StyleSheet, ScrollView, Image, TouchableOpacity, Alert } from 'react-native'
-import { Surface, Divider, Button, ActivityIndicator, ProgressBar } from 'react-native-paper'
+import { Surface, Divider, Button } from 'react-native-paper'
 import { CameraModeSelector } from '../../../components/device/CameraModeSelector'
+import { CaptureSteps } from './CaptureSteps'
 import { FlashSelector } from '../../../components/device/FlashSelector'
 import { FLASH_LED_LABELS } from '../../../hooks/useDeviceSettings'
 import { WWText } from '../../../components/ui/WWText'
@@ -31,7 +32,8 @@ export const CapturePictureSection = ({ device }: Props) => {
         // as `selectedImage.aeData` in the preview modal below, where the numbers
         // sit beside the shot they describe rather than beside the next one.
         capturedImages,
-        capturePreview
+        capturePreview,
+        captureSteps
     } = useCapturePicture({ device })
 
     const { issues: healthIssues, isChecking: isCheckingHealth, refresh: recheckHealth } = useDeviceSelfTest({ device })
@@ -64,7 +66,7 @@ export const CapturePictureSection = ({ device }: Props) => {
                 across two panels made the screen read as two unrelated tools.
                 The mode control moved here when Capture Preview was folded into
                 this screen, since it was the only thing that flow added. */}
-            <Surface style={[styles.card, { backgroundColor: colors.surface, marginTop: 8 }]} elevation={1}>
+            <Surface style={[styles.card, styles.settingsCard, { backgroundColor: colors.surface }]} elevation={1}>
 
                 <View style={styles.inputGroup}>
                     <CameraModeSelector device={device} onShowHelp={handleShowHelp} />
@@ -89,27 +91,23 @@ export const CapturePictureSection = ({ device }: Props) => {
                     onPress={applyAndCapture}
                     loading={isApplying || capturePreview.isCapturing}
                     disabled={!device?.connected || isApplying || capturePreview.isCapturing}
-                    style={{ flex: 1 }}
+                    style={styles.captureButton}
                 >
-                    <WWText style={{ color: 'white' }}>{!device?.connected ? 'Disconnected' : 'Capture Image'}</WWText>
+                    <WWText style={styles.captureButtonText}>{!device?.connected ? 'Disconnected' : 'Capture Image'}</WWText>
                 </Button>
             </View>
 
 
+            {/* What the camera is doing, step by step, ticked on its own messages.
+                The app's stage text sits underneath for the waits the device is
+                silent through (sleeping before the capture, mostly). */}
             {(isApplying || capturePreview.isCapturing) && (
                 <View style={styles.progressContainer}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-                        <ActivityIndicator size="small" />
-                        <WWText>{applyStage || capturePreview.captureStage || 'Processing…'}</WWText>
-                    </View>
-                    {capturePreview.captureProgress > 0 && (
-                        <View style={{ width: '100%', marginTop: 16 }}>
-                            <ProgressBar progress={capturePreview.captureProgress} color={colors.primary} />
-                            <WWText variant="labelSmall" style={{ textAlign: 'center', marginTop: 4 }}>
-                                {Math.round(capturePreview.captureProgress * 100)}%
-                            </WWText>
-                        </View>
-                    )}
+                    <CaptureSteps
+                        state={captureSteps.state}
+                        now={captureSteps.now}
+                        stage={applyStage || capturePreview.captureStage}
+                    />
                 </View>
             )}
 
@@ -148,12 +146,12 @@ export const CapturePictureSection = ({ device }: Props) => {
                 onDismiss={() => setModalVisible(false)}
             >
                 {selectedImage && (
-                    <View style={{ marginTop: 8, paddingHorizontal: 4, width: '100%' }}>
+                    <View style={styles.modalCaption}>
                         <WWText variant="labelMedium" style={{ color: colors.onSurfaceVariant }}>
                             Flash: {FLASH_LED_LABELS[selectedImage.params.flashLed]} ({selectedImage.params.ledBrightness}%)
                         </WWText>
                         {selectedImage.aeData && (
-                            <WWText variant="labelMedium" style={{ color: colors.primary, marginTop: 2 }}>
+                            <WWText variant="labelMedium" style={[styles.modalAe, { color: colors.primary }]}>
                                 AE Mean: {selectedImage.aeData.aeMean} | Conv: {selectedImage.aeData.aeConverged}
                             </WWText>
                         )}
@@ -161,7 +159,7 @@ export const CapturePictureSection = ({ device }: Props) => {
                 )}
             </ImagePreviewModal>
             
-            <View style={{ height: 40 }} />
+            <View style={styles.bottomSpacer} />
         </ScrollView>
     )
 }
@@ -199,14 +197,25 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         alignItems: 'center',
     },
-    aeRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 4,
+    settingsCard: {
+        marginTop: 8,
     },
-    divider: {
-        marginVertical: 4,
+    captureButton: {
+        flex: 1,
+    },
+    captureButtonText: {
+        color: 'white',
+    },
+    modalCaption: {
+        marginTop: 8,
+        paddingHorizontal: 4,
+        width: '100%',
+    },
+    modalAe: {
+        marginTop: 2,
+    },
+    bottomSpacer: {
+        height: 40,
     },
     gallery: {
         flexDirection: 'row',

@@ -1,0 +1,751 @@
+# Capture Picture flow, flash selection check: app dev after #263 (branch feat/light-sensor-readings b9f2ba56), firmware ae_review ee65771f
+# Started 2026-09-03 12:21:41. Times are MM:SS.mmm from the start of the capture.
+# himax = COM6 @ 921600 (known adapter FTFAERNNA)
+# nrf   = COM5 @ 115200 (known adapter FTH0BZPJA)
+#
+# Filtered to the lines that carry the story: app writes and receipts, nRF relay, Himax capture, flash, light, sleep and transfer markers. Hex dumps and per-packet chatter removed.
+[05:09.412] himax | DEBUG: ledFlashSelectLED(0)
+[05:09.412] nrf   | BLE in: Received   8 bytes 'AI slots'
+[05:09.412] nrf   | <info> app: AI processor is in DPD. Waking it. (slots)
+[05:09.439] app   | Written AI slots to the device WILD-CNKW (12:26:51-228)
+[05:09.713] himax | HM0360 initialisation failed 4
+[05:09.713] himax | CIS Init fail
+[05:09.713] himax |   Flash LED(s) in use: 1
+[05:09.713] himax | MKL62BA command received: 'selftest'
+[05:09.713] himax | selfTest 0300
+[05:09.713] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0300'
+[05:09.713] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 33 30 ....selfTest 030
+[05:10.028] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[05:10.028] nrf   | BLE out: Sent 117 bytes: 'Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[05:10.028] himax | MKL62BA command received: 'slots'
+[05:10.038] app   | Written AI getop -1 to the device WILD-CNKW (12:26:51-828)
+[05:10.301] app   | Written AI getop -1 to the device WILD-CNKW (12:26:52-092)
+[05:10.342] himax | MKL62BA command received: 'getop -1'
+[05:10.342] himax | MKL62BA command received: 'getop -1'
+[05:10.342] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[05:10.642] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[05:10.642] nrf   | BLE in: Received   8 bytes 'selftest'
+[05:10.733] app   | Written AI getop -1 to the device WILD-CNKW (12:26:52-524)
+[05:10.958] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[05:10.958] himax | MKL62BA command received: 'getop -1'
+[05:14.024] himax | Inactive for 3000ms
+[05:14.024] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 298 ... op8=3000 ... op24=15 op25=0 ...
+[05:14.024] himax | >>> Entering DPD at 2024:01:01 00:00:08
+[05:14.024] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[05:29.014] nrf   | BLE in: Received   8 bytes 'selftest'
+[05:53.305] nrf   | BLE in: Received   8 bytes 'selftest'
+[06:02.514] app   | Written AI ver to the device WILD-CNKW (12:27:44-306)
+[06:02.784] himax | DEBUG: ledFlashSelectLED(0)
+[06:02.784] nrf   | BLE in: Received   6 bytes 'AI ver'
+[06:02.784] nrf   | <info> app: AI processor is in DPD. Waking it. (ver)
+[06:03.078] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[06:03.078] himax | DEBUG: ledFlashSelectLED(1)
+[06:03.078] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[06:03.078] himax |   Flash LED(s) in use: 1
+[06:03.078] himax | MKL62BA command received: 'selftest'
+[06:03.078] himax | selfTest 0000
+[06:03.078] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[06:03.078] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[06:03.078] himax | MKL62BA command received: 'ver'
+[06:03.385] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[06:06.167] himax | Inactive for 3000ms
+[06:06.468] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[06:06.468] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 298 ... op8=3000 ... op24=15 op25=0 ...
+[06:06.468] himax |  No LED flashes.
+[06:06.468] himax | >>> Entering DPD at 2024:01:01 00:00:11
+[06:10.903] app   | Written AI slots to the device WILD-CNKW (12:27:52-696)
+[06:11.068] himax | DEBUG: ledFlashSelectLED(0)
+[06:11.068] nrf   | BLE in: Received   8 bytes 'AI slots'
+[06:11.068] nrf   | <info> app: AI processor is in DPD. Waking it. (slots)
+[06:11.383] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[06:11.383] himax | DEBUG: ledFlashSelectLED(1)
+[06:11.383] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[06:11.383] himax |   Flash LED(s) in use: 1
+[06:11.383] himax | MKL62BA command received: 'selftest'
+[06:11.383] himax | selfTest 0000
+[06:11.383] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[06:11.383] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[06:11.698] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[06:11.698] nrf   | BLE out: Sent 117 bytes: 'Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[06:11.698] himax | MKL62BA command received: 'slots'
+[06:11.928] app   | Written AI getop -1 to the device WILD-CNKW (12:27:53-720)
+[06:12.328] himax | MKL62BA command received: 'getop -1'
+[06:12.629] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[06:12.638] app   | Written AI getop -1 to the device WILD-CNKW (12:27:54-430)
+[06:12.943] himax | MKL62BA command received: 'getop -1'
+[06:12.943] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[06:13.557] nrf   | BLE in: Received   8 bytes 'selftest'
+[06:13.627] app   | Written AI getop -1 to the device WILD-CNKW (12:27:55-420)
+[06:13.872] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[06:13.872] himax | MKL62BA command received: 'getop -1'
+[06:16.949] himax | Inactive for 3000ms
+[06:16.949] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 298 ... op8=3000 ... op24=15 op25=0 ...
+[06:16.949] himax |  No LED flashes.
+[06:16.949] himax | >>> Entering DPD at 2024:01:01 00:00:22
+[06:16.949] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[06:25.252] app   | Written AI setop 13 2 to the device WILD-CNKW (12:28:07-045)
+[06:25.597] nrf   | BLE in: Received  13 bytes 'AI setop 13 2'
+[06:25.597] nrf   | <info> app: AI processor is in DPD. Waking it. (setop 13 2)
+[06:25.597] himax | DEBUG: ledFlashSelectLED(0)
+[06:25.898] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[06:25.898] himax | DEBUG: ledFlashSelectLED(1)
+[06:25.898] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[06:25.898] himax |   Flash LED(s) in use: 1
+[06:26.199] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[06:26.199] nrf   | <info> app: AI processor replies: 'Set OpParam 13 = 2'
+[06:26.199] nrf   | BLE out: Sent  19 bytes: 'Set OpParam 13 = 2'
+[06:26.199] himax | MKL62BA command received: 'selftest'
+[06:26.199] himax | selfTest 0000
+[06:26.199] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[06:26.199] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[06:26.199] himax | MKL62BA command received: 'setop 13 2'
+[06:26.199] himax | Set OpParam 13 = 2
+[06:26.199] himax | Sending 24 bytes: Header 4, payload 18, checksum 2 'Set OpParam 13 = 2'
+[06:26.199] himax | 000: 80 04 12 00 53 65 74 20  4f 70 50 61 72 61 6d 20 ....Set OpParam 
+[06:26.373] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 13 = 2
+[06:29.293] himax | Inactive for 3000ms
+[06:29.293] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 298 ... op8=3000 ... op24=15 op25=0 ...
+[06:29.293] himax |  No LED flashes.
+[06:29.293] himax | >>> Entering DPD at 2024:01:01 00:00:35
+[06:29.570] app   | [useCapturePreview] startCapture called (count=1, interval=500)
+[06:29.572] app   | [useCapturePreview] Phase 1: Setup  checking device state
+[06:29.573] app   | Written AI getop -1 to the device WILD-CNKW (12:28:11-367)
+[06:29.594] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[06:29.909] himax | DEBUG: ledFlashSelectLED(0)
+[06:29.909] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[06:29.909] nrf   | <info> app: AI processor is in DPD. Waking it. (getop -1)
+[06:30.165] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[06:30.165] himax | DEBUG: ledFlashSelectLED(2)
+[06:30.165] himax | [LS] In ledFlashSetFlashModeFromOpParam with 2 Mode 1
+[06:30.165] himax |   Flash LED(s) in use: 2
+[06:30.165] himax | MKL62BA command received: 'selftest'
+[06:30.165] himax | selfTest 0000
+[06:30.165] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[06:30.165] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[06:30.165] himax | MKL62BA command received: 'getop -1'
+[06:30.512] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[06:30.653] app   | [useCapturePreview] Phase 1 complete  waiting for device to sleep
+[06:33.256] himax | Inactive for 3000ms
+[06:33.556] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 298 ... op8=3000 ... op24=15 op25=0 ...
+[06:33.556] himax |  No LED flashes.
+[06:33.556] himax | >>> Entering DPD at 2024:01:01 00:00:40
+[06:33.588] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[06:33.669] app   | [useCapturePreview] Phase 2: Capture  sending AI capture 1 500
+[06:33.673] app   | Written AI capture 1 500 to the device WILD-CNKW (12:28:15-465)
+[06:33.858] himax | DEBUG: ledFlashSelectLED(0)
+[06:33.890] nrf   | BLE in: Received  16 bytes 'AI capture 1 500'
+[06:33.890] nrf   | <info> app: AI processor is in DPD. Waking it. (capture 1 500)
+[06:34.159] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[06:34.159] himax | DEBUG: ledFlashSelectLED(2)
+[06:34.159] himax | [LS] In ledFlashSetFlashModeFromOpParam with 2 Mode 1
+[06:34.159] himax |   Flash LED(s) in use: 2
+[06:34.159] himax | MKL62BA command received: 'selftest'
+[06:34.159] himax | selfTest 0000
+[06:34.159] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[06:34.159] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[06:34.474] himax | MKL62BA command received: 'capture 1 500'
+[06:34.474] himax | Images to capture: 1
+[06:34.490] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[06:34.490] nrf   | BLE out: Sent  64 bytes: 'About to capture 1 image with an interval of '500' milliseconds'
+[06:37.513] himax | Inactive for 3000ms
+[06:37.513] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 298 ... op8=3000 ... op24=15 op25=0 ...
+[06:37.529] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[06:39.348] himax | >>>> Frame timed out - restarting sensor, retry 1/5
+[06:41.193] himax |  No LED flashes.
+[06:41.193] himax | >>> Entering DPD at 2024:01:01 00:00:48
+[07:03.687] app   | '[useCapturePreview] Capture failed:', [Error: TIMEOUT]
+[07:03.702] app   | '[CapturePicture] Capture failed:', [Error: TIMEOUT]
+[07:37.489] nrf   | <info> app: BLE Timeout: disconnecting
+[13:52.216] app   | Written AI slots to the device WILD-CNKW (12:35:34-018)
+[13:52.249] himax | DEBUG: ledFlashSelectLED(0)
+[13:52.249] nrf   | BLE in: Received   8 bytes 'AI slots'
+[13:52.249] nrf   | <info> app: AI processor is in DPD. Waking it. (slots)
+[13:52.564] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[13:52.564] himax | DEBUG: ledFlashSelectLED(2)
+[13:52.564] himax | [LS] In ledFlashSetFlashModeFromOpParam with 2 Mode 1
+[13:52.564] himax |   Flash LED(s) in use: 2
+[13:52.564] himax | MKL62BA command received: 'selftest'
+[13:52.564] himax | selfTest 0000
+[13:52.564] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[13:52.564] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[13:52.564] himax | MKL62BA command received: 'slots'
+[13:52.865] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[13:52.865] nrf   | BLE out: Sent 117 bytes: 'Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[13:53.023] app   | Written AI getop -1 to the device WILD-CNKW (12:35:34-826)
+[13:53.180] himax | MKL62BA command received: 'getop -1'
+[13:53.180] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[13:53.423] app   | Written AI getop -1 to the device WILD-CNKW (12:35:35-225)
+[13:53.482] himax | MKL62BA command received: 'getop -1'
+[13:53.782] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[13:54.043] app   | Written AI getop -1 to the device WILD-CNKW (12:35:35-845)
+[13:54.084] nrf   | BLE in: Received   8 bytes 'selftest'
+[13:54.084] himax | MKL62BA command received: 'getop -1'
+[13:54.387] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[13:57.141] himax | Inactive for 3000ms
+[13:57.456] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 298 ... op8=3000 ... op24=15 op25=0 ...
+[13:57.456] himax |  No LED flashes.
+[13:57.456] himax | >>> Entering DPD at 2024:01:01 00:08:20
+[13:57.456] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[14:42.955] app   | Written AI slots to the device WILD-CNKW (12:36:24-757)
+[14:43.071] nrf   | BLE in: Received   8 bytes 'AI slots'
+[14:43.071] nrf   | <info> app: AI processor is in DPD. Waking it. (slots)
+[14:43.071] himax | DEBUG: ledFlashSelectLED(0)
+[14:43.372] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[14:43.372] himax | DEBUG: ledFlashSelectLED(2)
+[14:43.372] himax | [LS] In ledFlashSetFlashModeFromOpParam with 2 Mode 1
+[14:43.372] himax |   Flash LED(s) in use: 2
+[14:43.687] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[14:43.687] nrf   | BLE out: Sent 117 bytes: 'Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[14:43.687] himax | MKL62BA command received: 'selftest'
+[14:43.687] himax | selfTest 0000
+[14:43.687] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[14:43.687] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[14:43.687] himax | MKL62BA command received: 'slots'
+[14:44.209] app   | Written AI switchslot to the device WILD-CNKW (12:36:26-013)
+[14:44.594] himax | MKL62BA command received: 'switchslot'
+[14:44.594] nrf   | BLE in: Received  13 bytes 'AI switchslot'
+[14:44.594] nrf   | BLE out: Sent  58 bytes: 'Switched to slot 1 ('RP3 (day/colour)'). Reset scheduled.'
+[14:47.633] himax | Inactive for 3000ms
+[14:47.633] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 298 ... op8=3000 ... op24=15 op25=0 ...
+[14:47.633] himax |  No LED flashes.
+[14:47.633] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[14:47.936] himax | DEBUG: ledFlashSelectLED(0)
+[14:49.886] app   | Written AI slots to the device WILD-CNKW (12:36:31-690)
+[14:50.076] nrf   | BLE in: Received   8 bytes 'AI slots'
+[14:50.076] nrf   | <info> app: AI processor is in DPD. Waking it. (slots)
+[14:51.283] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[14:51.283] himax | DEBUG: ledFlashSelectLED(2)
+[14:51.283] himax | [LS] In ledFlashSetFlashModeFromOpParam with 2 Mode 1
+[14:51.585] himax |   Flash LED(s) in use: 2
+[14:51.585] himax | MKL62BA command received: 'selftest'
+[14:51.585] himax | selfTest 0000
+[14:51.888] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[14:51.888] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[14:51.888] himax | MKL62BA command received: 'slots'
+[14:51.888] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[14:51.888] nrf   | BLE out: Sent 116 bytes: 'Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[14:52.378] app   | Written AI getop -1 to the device WILD-CNKW (12:36:34-182)
+[14:52.793] himax | MKL62BA command received: 'getop -1'
+[14:52.793] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[14:53.696] himax | Inactive for 1000ms
+[14:53.696] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 298 ... op8=3000 ... op24=15 op25=0 ...
+[14:53.696] himax |  No LED flashes.
+[14:53.696] himax | >>> Entering DPD at 2024:01:01 00:00:04
+[14:54.000] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[15:02.735] app   | Written AI setop 13 1 to the device WILD-CNKW (12:36:44-540)
+[15:02.856] nrf   | BLE in: Received  13 bytes 'AI setop 13 1'
+[15:02.856] nrf   | <info> app: AI processor is in DPD. Waking it. (setop 13 1)
+[15:02.856] himax | DEBUG: ledFlashSelectLED(0)
+[15:03.458] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[15:03.458] himax | DEBUG: ledFlashSelectLED(2)
+[15:03.458] himax | [LS] In ledFlashSetFlashModeFromOpParam with 2 Mode 1
+[15:03.458] himax |   Flash LED(s) in use: 2
+[15:03.458] himax | MKL62BA command received: 'selftest'
+[15:03.458] himax | selfTest 0000
+[15:03.458] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[15:03.458] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[15:03.759] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[15:03.759] nrf   | <info> app: AI processor replies: 'Set OpParam 13 = 1'
+[15:03.759] nrf   | BLE out: Sent  19 bytes: 'Set OpParam 13 = 1'
+[15:03.759] himax | MKL62BA command received: 'setop 13 1'
+[15:03.759] himax | Set OpParam 13 = 1
+[15:03.759] himax | Sending 24 bytes: Header 4, payload 18, checksum 2 'Set OpParam 13 = 1'
+[15:03.759] himax | 000: 80 04 12 00 53 65 74 20  4f 70 50 61 72 61 6d 20 ....Set OpParam 
+[15:03.864] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 13 = 1
+[15:06.795] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[15:06.795] himax | Inactive for 3000ms
+[15:06.795] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 298 ... op8=3000 ... op24=15 op25=0 ...
+[15:06.795] himax |  No LED flashes.
+[15:06.795] himax | >>> Entering DPD at 2024:01:01 00:00:18
+[15:07.181] app   | [useCapturePreview] startCapture called (count=1, interval=500)
+[15:07.181] app   | [useCapturePreview] Phase 1: Setup  checking device state
+[15:07.184] app   | Written AI getop -1 to the device WILD-CNKW (12:36:48-988)
+[15:07.399] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[15:07.399] nrf   | <info> app: AI processor is in DPD. Waking it. (getop -1)
+[15:07.701] himax | DEBUG: ledFlashSelectLED(0)
+[15:08.319] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[15:08.319] himax | DEBUG: ledFlashSelectLED(1)
+[15:08.319] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[15:08.319] himax |   Flash LED(s) in use: 1
+[15:08.319] himax | MKL62BA command received: 'selftest'
+[15:08.319] himax | selfTest 0000
+[15:08.319] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[15:08.319] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[15:08.319] himax | MKL62BA command received: 'getop -1'
+[15:08.621] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[15:08.856] app   | [useCapturePreview] Phase 1 complete  waiting for device to sleep
+[15:11.364] himax | Inactive for 3000ms
+[15:11.364] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 298 ... op8=3000 ... op24=15 op25=0 ...
+[15:11.364] himax |  No LED flashes.
+[15:11.364] himax | >>> Entering DPD at 2024:01:01 00:00:23
+[15:11.666] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[15:11.683] app   | [useCapturePreview] Phase 2: Capture  sending AI capture 1 500
+[15:11.685] app   | Written AI capture 1 500 to the device WILD-CNKW (12:36:53-490)
+[15:11.968] nrf   | BLE in: Received  16 bytes 'AI capture 1 500'
+[15:11.968] nrf   | <info> app: AI processor is in DPD. Waking it. (capture 1 500)
+[15:12.268] himax | DEBUG: ledFlashSelectLED(0)
+[15:12.584] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[15:12.584] himax | DEBUG: ledFlashSelectLED(1)
+[15:12.584] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[15:12.584] himax |   Flash LED(s) in use: 1
+[15:12.816] himax | MKL62BA command received: 'selftest'
+[15:12.816] himax | selfTest 0000
+[15:12.816] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[15:12.816] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[15:12.816] himax | MKL62BA command received: 'capture 1 500'
+[15:12.816] himax | Images to capture: 1
+[15:12.816] himax | Image capture 1/1 took 52ms
+[15:12.816] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT
+[15:12.816] himax | Sending 49 bytes: Header 4, payload 43, checksum 2 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[15:12.816] himax |   Integration time = 376 lines
+[15:12.816] himax |   Analog gain = 0
+[15:12.816] himax |   Digital gain = 118
+[15:12.816] himax |   AE Mean = 84
+[15:13.084] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[15:13.084] nrf   | BLE out: Sent  64 bytes: 'About to capture 1 image with an interval of '500' milliseconds'
+[15:13.084] nrf   | BLE out: Sent  44 bytes: 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[15:13.125] himax |   Integration time = 376 lines
+[15:13.125] himax |   Analog gain = 0
+[15:13.125] himax |   Digital gain = 118
+[15:13.125] himax |   AE Mean = 84
+[15:13.309] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AE light check: AGain = 0, conv=Y -> BRIGHT
+[15:13.392] nrf   |   Integration time = 376 lines
+[15:13.392] nrf   |   Analog gain = 0
+[15:13.392] nrf   |   Digital gain = 118
+[15:13.392] nrf   |   AE Mean = 84
+[15:13.392] nrf   | BLE out: Sent  63 bytes: 'Captured 1 images. Last is 59200990.JPG (File write 51ms avg.)'
+[15:13.439] himax | File write took 51ms
+[15:13.535] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Integration time = 376 lines
+[15:13.537] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Analog gain = 0
+[15:13.538] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Digital gain = 118
+[15:13.539] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AE Mean = 84
+[15:14.410] app   | [useCapturePreview] Phase 2 complete  captured: 59200990.JPG
+[15:14.411] app   | [useCapturePreview] Waiting for device to sleep after capture (Save State + DPD)
+[15:16.478] himax | Inactive for 3000ms
+[15:16.478] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 299 ... op8=3000 ... op24=15 op25=0 ...
+[15:16.478] himax |  No LED flashes.
+[15:16.478] himax | >>> Entering DPD at 2024:01:01 00:00:28
+[15:16.718] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[15:16.771] app   | [useCapturePreview] Phase 3: Transfer  requesting txfile 59200990.JPG
+[15:16.775] app   | Written AI txfile 59200990.JPG to the device WILD-CNKW (12:36:58-580)
+[15:17.019] nrf   | BLE in: Received  22 bytes 'AI txfile 59200990.JPG'
+[15:17.019] nrf   | <info> app: AI processor is in DPD. Waking it. (txfile 59200990.JPG)
+[15:17.083] himax | DEBUG: ledFlashSelectLED(0)
+[15:17.686] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[15:17.686] himax | DEBUG: ledFlashSelectLED(1)
+[15:17.686] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[15:17.686] himax |   Flash LED(s) in use: 1
+[15:17.686] himax | MKL62BA command received: 'selftest'
+[15:17.686] himax | selfTest 0000
+[15:17.686] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[15:17.686] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[15:17.874] himax | MKL62BA command received: 'txfile 59200990.JPG'
+[15:17.874] himax | 12942 bytes in 59200990.JPG
+[15:17.874] himax | Sending 33 bytes: Header 4, payload 27, checksum 2 '12942 bytes in 59200990.JPG'
+[15:18.224] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[15:18.224] nrf   | <info> app: AI processor replies: '12942 bytes in 59200990.JPG'
+[15:18.224] nrf   | BLE out: Sent  28 bytes: '12942 bytes in 59200990.JPG'
+[15:18.224] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 12942 bytes in 59200990.JPG
+[15:18.224] app   | [useBleListeners] Detected image transfer start: 59200990.JPG (12942 bytes)
+[15:18.225] app   | ImageReassembler: Initializing transfer for 12942 bytes
+[15:28.506] himax | Finished sending 12942 bytes (54 packets)
+[15:28.506] himax | Sending 47 bytes: Header 4, payload 41, checksum 2 'Finished sending 12942 bytes (54 packets)'
+[15:28.554] nrf   | BLE out: Failed to send  42 bytes: 'Finished sending 12942 bytes (54 packets)'
+[15:28.554] nrf   | BLE out: Failed to send  42 bytes: 'Finished sending 12942 bytes (54 packets)'
+[15:28.854] nrf   | BLE out: Sent  42 bytes: 'Finished sending 12942 bytes (54 packets)'
+[15:28.879] app   | ImageReassembler: Transfer complete! Received 12942/12942 (0 gaps)
+[15:28.942] app   | '[useCapturePreview] Image download complete, URI:', 'file:///data/user/0/com.wildlife.wildlifewatcher.expo/cache/capture_1788395830687.jpg'
+[15:29.196] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Finished sending 12942 bytes (54 packets)
+[15:31.536] himax | Inactive for 3000ms
+[15:31.536] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 299 ... op8=3000 ... op24=15 op25=0 ...
+[15:31.536] himax |  No LED flashes.
+[15:31.536] himax | >>> Entering DPD at 2024:01:01 00:00:44
+[15:31.884] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[16:30.307] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[17:28.857] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[18:27.107] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[19:25.640] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[20:23.943] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[21:22.190] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[22:20.869] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[23:19.233] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[24:17.700] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[25:16.444] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[26:15.100] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[27:13.324] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[27:51.347] app   | Written AI fash 50 500 to the device WILD-CNKW (12:49:33-167)
+[27:51.567] nrf   | BLE in: Received  14 bytes 'AI fash 50 500'
+[27:51.567] nrf   | <info> app: AI processor is in DPD. Waking it. (fash 50 500)
+[27:51.567] himax | DEBUG: ledFlashSelectLED(0)
+[27:52.181] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[27:52.181] himax | DEBUG: ledFlashSelectLED(1)
+[27:52.181] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[27:52.181] himax |   Flash LED(s) in use: 1
+[27:52.181] himax | MKL62BA command received: 'selftest'
+[27:52.181] himax | selfTest 0000
+[27:52.181] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[27:52.181] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[27:52.482] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[27:52.482] nrf   | BLE out: Sent  13 bytes: 'Unrecognised'
+[27:52.482] himax | MKL62BA command received: 'fash 50 500'
+[27:55.564] himax | Inactive for 3000ms
+[27:55.564] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 299 ... op8=3000 ... op24=15 op25=0 ...
+[27:55.564] himax |  No LED flashes.
+[27:55.564] himax | >>> Entering DPD at 2024:01:01 00:13:34
+[27:55.564] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[28:42.082] app   | Written AI flash 50 500 to the device WILD-CNKW (12:50:23-902)
+[28:42.371] himax | DEBUG: ledFlashSelectLED(0)
+[28:42.371] nrf   | BLE in: Received  15 bytes 'AI flash 50 500'
+[28:42.371] nrf   | <info> app: AI processor is in DPD. Waking it. (flash 50 500)
+[28:42.986] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[28:42.986] himax | DEBUG: ledFlashSelectLED(1)
+[28:42.986] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[28:42.986] himax |   Flash LED(s) in use: 1
+[28:42.986] himax | MKL62BA command received: 'selftest'
+[28:42.986] himax | selfTest 0000
+[28:42.986] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[28:42.986] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[28:42.986] himax | MKL62BA command received: 'flash 50 500'
+[28:42.986] himax | DEBUG: ledFlashSelectLED(0)
+[28:42.986] himax | DEBUG: ledFlashBrightness(50%) [brbits = 0x7]
+[28:42.986] himax | DEBUG: ledFlashSelectLED(1)
+[28:42.986] himax | DEBUG: ledFlashEnable()
+[28:42.986] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[28:46.650] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[28:46.650] himax | Inactive for 3000ms
+[28:46.650] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 299 ... op8=3000 ... op24=15 op25=0 ...
+[28:46.650] himax |  No LED flashes.
+[28:46.650] himax | >>> Entering DPD at 2024:01:01 00:14:27
+[29:20.551] app   | Written AI getop 25 to the device WILD-CNKW (12:51:02-374)
+[29:20.794] himax | DEBUG: ledFlashSelectLED(0)
+[29:20.794] nrf   | BLE in: Received  11 bytes 'AI getop 25'
+[29:20.794] nrf   | <info> app: AI processor is in DPD. Waking it. (getop 25)
+[29:21.398] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[29:21.398] himax | DEBUG: ledFlashSelectLED(1)
+[29:21.398] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[29:21.398] himax |   Flash LED(s) in use: 1
+[29:21.398] himax | MKL62BA command received: 'selftest'
+[29:21.398] himax | selfTest 0000
+[29:21.398] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[29:21.398] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[29:21.398] himax | MKL62BA command received: 'getop 25'
+[29:21.700] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[29:24.454] himax | Inactive for 3000ms
+[29:24.754] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 299 ... op8=3000 ... op24=15 op25=0 ...
+[29:24.754] himax |  No LED flashes.
+[29:24.754] himax | >>> Entering DPD at 2024:01:01 00:15:06
+[29:24.754] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[29:40.278] nrf   | BLE in: Received  13 bytes 'AI setop 25 1'
+[29:40.278] nrf   | <info> app: AI processor is in DPD. Waking it. (setop 25 1)
+[29:40.313] app   | Written AI setop 25 1 to the device WILD-CNKW (12:51:22-136)
+[29:40.579] himax | DEBUG: ledFlashSelectLED(0)
+[29:40.881] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[29:40.881] himax | DEBUG: ledFlashSelectLED(1)
+[29:40.881] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[29:40.881] himax |   Flash LED(s) in use: 1
+[29:41.182] himax | MKL62BA command received: 'selftest'
+[29:41.182] himax | selfTest 0000
+[29:41.182] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[29:41.182] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[29:41.182] himax | MKL62BA command received: 'setop 25 1'
+[29:41.182] himax | Set OpParam 25 = 1
+[29:41.182] himax | Sending 24 bytes: Header 4, payload 18, checksum 2 'Set OpParam 25 = 1'
+[29:41.182] himax | 000: 80 04 12 00 53 65 74 20  4f 70 50 61 72 61 6d 20 ....Set OpParam 
+[29:41.182] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[29:41.182] nrf   | <info> app: AI processor replies: 'Set OpParam 25 = 1'
+[29:41.182] nrf   | BLE out: Sent  19 bytes: 'Set OpParam 25 = 1'
+[29:41.781] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 25 = 1
+[29:44.240] himax | Inactive for 3000ms
+[29:44.240] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 299 ... op8=3000 ... op24=15 op25=1 ...
+[29:44.240] himax |  No LED flashes.
+[29:44.240] himax | >>> Entering DPD at 2024:01:01 00:15:27
+[29:44.540] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[30:03.375] app   | Written AI capture 1 500 to the device WILD-CNKW (12:51:45-197)
+[30:03.411] nrf   | BLE in: Received  16 bytes 'AI capture 1 500'
+[30:03.411] nrf   | <info> app: AI processor is in DPD. Waking it. (capture 1 500)
+[30:03.411] himax | DEBUG: ledFlashSelectLED(0)
+[30:04.027] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[30:04.027] himax | DEBUG: ledFlashSelectLED(1)
+[30:04.027] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[30:04.027] himax |   Flash LED(s) in use: 1
+[30:04.027] himax | MKL62BA command received: 'selftest'
+[30:04.027] himax | selfTest 0000
+[30:04.027] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[30:04.027] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[30:04.168] himax | MKL62BA command received: 'capture 1 500'
+[30:04.168] himax | Images to capture: 1
+[30:04.168] himax | DEBUG: ledFlashEnable()
+[30:04.168] himax | Image capture 1/1 took 52ms
+[30:04.168] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT (change)
+[30:04.168] himax | Sending 58 bytes: Header 4, payload 52, checksum 2 'AE light check: AGain = 0, conv=Y -> BRIGHT (change)'
+[30:04.168] himax |   Integration time = 188 lines
+[30:04.168] himax |   Analog gain = 0
+[30:04.168] himax |   Digital gain = 119
+[30:04.168] himax |   AE Mean = 78
+[30:04.168] himax |   Integration time = 188 lines
+[30:04.168] himax |   Analog gain = 0
+[30:04.168] himax |   Digital gain = 119
+[30:04.168] himax |   AE Mean = 78
+[30:04.329] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[30:04.329] nrf   | BLE out: Sent  64 bytes: 'About to capture 1 image with an interval of '500' milliseconds'
+[30:04.329] nrf   | BLE out: Sent  53 bytes: 'AE light check: AGain = 0, conv=Y -> BRIGHT (change)'
+[30:04.630] nrf   |   Integration time = 188 lines
+[30:04.630] nrf   |   Analog gain = 0
+[30:04.630] nrf   |   Digital gain = 119
+[30:04.630] nrf   |   AE Mean = 78
+[30:04.772] himax | File write took 53ms
+[30:04.930] nrf   | BLE out: Sent  63 bytes: 'Captured 1 images. Last is 59204340.JPG (File write 53ms avg.)'
+[30:05.180] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AE light check: AGain = 0, conv=Y -> BRIGHT (change)
+[30:05.566] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Integration time = 188 lines
+[30:05.567] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Analog gain = 0
+[30:05.569] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Digital gain = 119
+[30:05.584] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AE Mean = 78
+[30:07.867] himax | Inactive for 3000ms
+[30:07.867] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 300 ... op8=3000 ... op24=15 op25=0 ...
+[30:07.867] himax |  No LED flashes.
+[30:07.867] himax | >>> Entering DPD at 2024:01:01 00:15:51
+[30:07.994] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[31:06.206] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[31:06.506] nrf   | BLE in: Received   8 bytes 'AI light'
+[31:06.506] nrf   | <info> app: AI processor is in DPD. Waking it. (light)
+[31:06.697] himax | DEBUG: ledFlashSelectLED(0)
+[31:07.009] app   | Written AI light to the device WILD-CNKW (12:52:48-834)
+[31:07.228] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[31:07.228] himax | DEBUG: ledFlashSelectLED(1)
+[31:07.228] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[31:07.228] himax |   Flash LED(s) in use: 1
+[31:07.228] himax | MKL62BA command received: 'selftest'
+[31:07.228] himax | selfTest 0000
+[31:07.228] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[31:07.228] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[31:07.228] himax | MKL62BA command received: 'light'
+[31:07.228] himax | Images to capture: 1
+[31:07.386] himax | Image capture 1/1 took 52ms
+[31:07.386] himax | [LS] Skipping NN processing (AE light check).
+[31:07.386] himax | [LS] AE light check: AGain = 4, conv=Y -> DARK (change)
+[31:07.386] himax | Sending 56 bytes: Header 4, payload 50, checksum 2 'AE light check: AGain = 4, conv=Y -> DARK (change)'
+[31:07.386] himax |   Integration time = 376 lines
+[31:07.386] himax |   Analog gain = 4
+[31:07.386] himax |   Digital gain = 71
+[31:07.386] himax |   AE Mean = 71
+[31:07.386] himax |   Integration time = 376 lines
+[31:07.386] himax |   Analog gain = 4
+[31:07.386] himax |   Digital gain = 71
+[31:07.386] himax |   AE Mean = 71
+[31:07.638] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[31:07.638] nrf   | BLE out: Sent  51 bytes: 'AE light check: AGain = 4, conv=Y -> DARK (change)'
+[31:07.638] nrf   |   Integration time = 376 lines
+[31:07.638] nrf   |   Analog gain = 4
+[31:07.638] nrf   |   Digital gain = 71
+[31:07.638] nrf   |   AE Mean = 71
+[31:07.944] nrf   | BLE out: Sent  50 bytes: 'Captured 1 images. Last is  (File write 0ms avg.)'
+[31:08.760] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AE light check: AGain = 4, conv=Y -> DARK (change)
+[31:09.213] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Integration time = 376 lines
+[31:09.214] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Analog gain = 4
+[31:09.218] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Digital gain = 71
+[31:09.218] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AE Mean = 71
+[31:10.746] himax | Inactive for 3000ms
+[31:10.746] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 301 ... op8=3000 ... op24=15 op25=1 ...
+[31:10.746] himax |  No LED flashes.
+[31:10.746] himax | >>> Entering DPD at 2024:01:01 00:16:56
+[31:10.984] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[31:27.510] app   | Written AI capture 1 500 to the device WILD-CNKW (12:53:09-333)
+[31:27.513] nrf   | BLE in: Received  16 bytes 'AI capture 1 500'
+[31:27.513] nrf   | <info> app: AI processor is in DPD. Waking it. (capture 1 500)
+[31:27.624] himax | DEBUG: ledFlashSelectLED(0)
+[31:28.228] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[31:28.228] himax | DEBUG: ledFlashSelectLED(1)
+[31:28.228] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[31:28.228] himax |   Flash LED(s) in use: 1
+[31:28.228] himax | MKL62BA command received: 'selftest'
+[31:28.228] himax | selfTest 0000
+[31:28.228] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[31:28.228] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[31:28.410] himax | MKL62BA command received: 'capture 1 500'
+[31:28.410] himax | Images to capture: 1
+[31:28.410] himax | DEBUG: ledFlashEnable()
+[31:28.410] himax | Image capture 1/1 took 52ms
+[31:28.410] himax | [LS] AE light check: AGain = 4, conv=Y -> DARK
+[31:28.410] himax | Sending 47 bytes: Header 4, payload 41, checksum 2 'AE light check: AGain = 4, conv=Y -> DARK'
+[31:28.410] himax |   Integration time = 376 lines
+[31:28.410] himax |   Analog gain = 4
+[31:28.410] himax |   Digital gain = 71
+[31:28.410] himax |   AE Mean = 72
+[31:28.410] himax |   Integration time = 376 lines
+[31:28.410] himax |   Analog gain = 4
+[31:28.410] himax |   Digital gain = 71
+[31:28.410] himax |   AE Mean = 72
+[31:28.660] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[31:28.660] nrf   | BLE out: Sent  64 bytes: 'About to capture 1 image with an interval of '500' milliseconds'
+[31:28.660] nrf   | BLE out: Sent  42 bytes: 'AE light check: AGain = 4, conv=Y -> DARK'
+[31:28.972] nrf   |   Integration time = 376 lines
+[31:28.972] nrf   |   Analog gain = 4
+[31:28.972] nrf   |   Digital gain = 71
+[31:28.972] nrf   |   AE Mean = 72
+[31:28.972] nrf   | BLE out: Sent  63 bytes: 'Captured 1 images. Last is 592048B0.JPG (File write 55ms avg.)'
+[31:29.035] himax | File write took 55ms
+[31:29.686] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AE light check: AGain = 4, conv=Y -> DARK
+[31:30.171] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Integration time = 376 lines
+[31:30.173] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Analog gain = 4
+[31:30.175] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Digital gain = 71
+[31:30.176] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AE Mean = 72
+[31:32.089] himax | Inactive for 3000ms
+[31:32.089] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 302 ... op8=3000 ... op24=15 op25=1 ...
+[31:32.089] himax |  No LED flashes.
+[31:32.089] himax | >>> Entering DPD at 2024:01:01 00:17:18
+[31:32.341] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[32:26.608] app   | Written AI txfile 592048B0 to the device WILD-CNKW (12:54:08-434)
+[32:26.737] nrf   | BLE in: Received  18 bytes 'AI txfile 592048B0'
+[32:26.737] nrf   | <info> app: AI processor is in DPD. Waking it. (txfile 592048B0)
+[32:26.752] himax | DEBUG: ledFlashSelectLED(0)
+[32:27.356] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[32:27.356] himax | DEBUG: ledFlashSelectLED(1)
+[32:27.356] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[32:27.356] himax |   Flash LED(s) in use: 1
+[32:27.356] himax | MKL62BA command received: 'selftest'
+[32:27.356] himax | selfTest 0000
+[32:27.356] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[32:27.356] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[32:27.640] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[32:27.656] himax | MKL62BA command received: 'txfile 592048B0'
+[32:30.679] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[32:30.695] himax | Inactive for 3000ms
+[32:30.695] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 302 ... op8=3000 ... op24=15 op25=1 ...
+[32:30.695] himax |  No LED flashes.
+[32:30.695] himax | >>> Entering DPD at 2024:01:01 00:18:19
+[33:25.417] nrf   | BLE in: Received  22 bytes 'AI txfile 592048B0.JPG'
+[33:25.417] nrf   | <info> app: AI processor is in DPD. Waking it. (txfile 592048B0.JPG)
+[33:25.417] himax | DEBUG: ledFlashSelectLED(0)
+[33:25.427] app   | Written AI txfile 592048B0.JPG to the device WILD-CNKW (12:55:07-255)
+[33:26.020] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[33:26.020] himax | DEBUG: ledFlashSelectLED(1)
+[33:26.020] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[33:26.020] himax |   Flash LED(s) in use: 1
+[33:26.020] himax | MKL62BA command received: 'selftest'
+[33:26.020] himax | selfTest 0000
+[33:26.020] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[33:26.020] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[33:26.174] himax | MKL62BA command received: 'txfile 592048B0.JPG'
+[33:26.174] himax | 19395 bytes in 592048B0.JPG
+[33:26.174] himax | Sending 33 bytes: Header 4, payload 27, checksum 2 '19395 bytes in 592048B0.JPG'
+[33:26.321] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[33:26.321] nrf   | <info> app: AI processor replies: '19395 bytes in 592048B0.JPG'
+[33:26.321] nrf   | BLE out: Sent  28 bytes: '19395 bytes in 592048B0.JPG'
+[33:27.107] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 19395 bytes in 592048B0.JPG
+[33:27.107] app   | [useBleListeners] Detected image transfer start: 592048B0.JPG (19395 bytes)
+[33:27.108] app   | ImageReassembler: Initializing transfer for 19395 bytes
+[33:43.239] himax | Finished sending 19395 bytes (81 packets)
+[33:43.239] himax | Sending 47 bytes: Header 4, payload 41, checksum 2 'Finished sending 19395 bytes (81 packets)'
+[33:43.350] nrf   | BLE out: Failed to send  42 bytes: 'Finished sending 19395 bytes (81 packets)'
+[33:43.350] nrf   | BLE out: Failed to send  42 bytes: 'Finished sending 19395 bytes (81 packets)'
+[33:43.568] app   | ImageReassembler: Transfer complete! Received 19395/19395 (0 gaps)
+[33:43.665] nrf   | BLE out: Sent  42 bytes: 'Finished sending 19395 bytes (81 packets)'
+[33:43.736] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Finished sending 19395 bytes (81 packets)
+[33:46.265] himax | Inactive for 3000ms
+[33:46.265] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 302 ... op8=3000 ... op24=15 op25=1 ...
+[33:46.393] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[33:46.568] himax |  No LED flashes.
+[33:46.568] himax | >>> Entering DPD at 2024:01:01 00:19:37
+[34:07.996] nrf   | BLE in: Received  15 bytes 'AI setop 8 1000'
+[34:07.996] nrf   | <info> app: AI processor is in DPD. Waking it. (setop 8 1000)
+[34:08.169] himax | DEBUG: ledFlashSelectLED(0)
+[34:08.179] app   | Written AI setop 8 1000 to the device WILD-CNKW (12:55:50-006)
+[34:08.770] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[34:08.770] himax | DEBUG: ledFlashSelectLED(1)
+[34:08.770] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[34:08.770] himax |   Flash LED(s) in use: 1
+[34:08.770] himax | MKL62BA command received: 'selftest'
+[34:08.770] himax | selfTest 0000
+[34:08.770] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[34:08.770] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[34:08.770] himax | MKL62BA command received: 'setop 8 1000'
+[34:08.770] himax | Set OpParam 8 = 1000
+[34:08.770] himax | Sending 26 bytes: Header 4, payload 20, checksum 2 'Set OpParam 8 = 1000'
+[34:08.770] himax | 000: 80 04 14 00 53 65 74 20  4f 70 50 61 72 61 6d 20 ....Set OpParam 
+[34:08.914] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[34:08.914] nrf   | <info> app: AI processor replies: 'Set OpParam 8 = 1000'
+[34:08.914] nrf   | BLE out: Sent  21 bytes: 'Set OpParam 8 = 1000'
+[34:09.876] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 8 = 1000
+[34:12.101] himax | Inactive for 3000ms
+[34:12.101] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 302 ... op8=1000 ... op24=15 op25=1 ...
+[34:12.101] himax |  No LED flashes.
+[34:12.101] himax | >>> Entering DPD at 2024:01:01 00:20:04
+[34:12.243] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[34:27.196] nrf   | BLE in: Received   8 bytes 'AI slots'
+[34:27.196] nrf   | <info> app: AI processor is in DPD. Waking it. (slots)
+[34:27.307] himax | DEBUG: ledFlashSelectLED(0)
+[34:27.404] app   | Written AI slots to the device WILD-CNKW (12:56:09-232)
+[34:27.889] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[34:27.889] himax | DEBUG: ledFlashSelectLED(1)
+[34:27.889] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[34:27.889] himax |   Flash LED(s) in use: 1
+[34:27.889] himax | MKL62BA command received: 'selftest'
+[34:27.889] himax | selfTest 0000
+[34:27.889] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[34:27.889] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[34:27.889] himax | MKL62BA command received: 'slots'
+[34:28.098] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[34:28.098] nrf   | BLE out: Sent 116 bytes: 'Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[34:29.097] himax | Inactive for 1000ms
+[34:29.097] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 302 ... op8=1000 ... op24=15 op25=1 ...
+[34:29.097] himax |  No LED flashes.
+[34:29.097] himax | >>> Entering DPD at 2024:01:01 00:20:22
+[34:29.303] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[35:28.110] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[36:26.560] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[37:25.354] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[38:23.798] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[39:22.666] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[40:21.484] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[41:20.367] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[42:18.967] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[43:17.908] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[44:16.769] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[45:15.612] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[46:14.267] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[47:12.821] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[48:11.737] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[48:58.258] himax | DEBUG: ledFlashSelectLED(0)
+[48:58.569] himax | DEBUG: ledFlashBrightness(95%) [brbits = 0xe]
+[48:58.569] himax | DEBUG: ledFlashSelectLED(1)
+[48:58.569] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[48:58.569] himax |   Flash LED(s) in use: 1
+[48:58.569] himax | [LS] Timer wake for AE light check
+[48:58.569] himax | Images to capture: 1
+[48:58.742] himax | Image capture 1/1 took 52ms
+[48:58.742] himax | [LS] Skipping NN processing (AE light check).
+[48:58.742] himax | MKL62BA command received: 'selftest'
+[48:58.742] himax | selfTest 0000
+[48:58.742] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[48:58.742] himax | 000: 80 04 0d 00 73 65 6c 66  54 65 73 74 20 30 30 30 ....selfTest 000
+[48:58.742] himax | [LS] AE light check: AGain = 3, conv=Y -> DARK
+[48:58.742] himax | Sending 47 bytes: Header 4, payload 41, checksum 2 'AE light check: AGain = 3, conv=Y -> DARK'
+[48:58.742] himax |   Integration time = 376 lines
+[48:58.742] himax |   Analog gain = 3
+[48:58.742] himax |   Digital gain = 119
+[48:58.742] himax |   AE Mean = 57
+[48:58.742] himax |   Integration time = 376 lines
+[48:58.742] himax |   Analog gain = 3
+[48:58.742] himax |   Digital gain = 119
+[48:58.742] himax |   AE Mean = 57
+[48:59.049] himax | MKL62BA command received: 'getop -1'
+[48:59.064] nrf   | BLE out: Sent  13 bytes: 'Wake (Timer)'
+[48:59.064] nrf   | BLE out: Sent  42 bytes: 'AE light check: AGain = 3, conv=Y -> DARK'
+[48:59.064] nrf   |   Integration time = 376 lines
+[48:59.064] nrf   |   Analog gain = 3
+[48:59.064] nrf   |   Digital gain = 119
+[48:59.064] nrf   |   AE Mean = 57
+[48:59.064] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[48:59.378] nrf   | BLE out: Sent  50 bytes: 'Captured 1 images. Last is  (File write 0ms avg.)'
+[49:00.111] app   | Written AI getop -1 to the device WILD-CNKW (13:10:41-957)
+[49:00.112] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AE light check: AGain = 3, conv=Y -> DARK
+[49:00.298] himax | Inactive for 1000ms
+[49:00.298] himax | Sending 100 bytes: Header 4, payload 94, checksum 2 'Sleep 303 ... op8=1000 ... op24=15 op25=1 ...
+[49:00.298] himax |  No LED flashes.
+[49:00.298] himax | >>> Entering DPD at 2024:01:01 00:35:24
+[49:00.314] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[49:00.758] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Integration time = 376 lines
+[49:00.759] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Analog gain = 3
+[49:00.761] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Digital gain = 119
+[49:00.765] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AE Mean = 57
+[50:00.405] nrf   | <info> app: BLE Timeout: disconnecting

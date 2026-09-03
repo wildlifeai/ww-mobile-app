@@ -43,6 +43,14 @@ interface Props {
  * is making is between a white LED and an infrared one, and "Visible" only reads
  * as its opposite if you already know IR means invisible.
  *
+ * Selecting a flash does not by itself make it fire. Since firmware d9d9d253
+ * the LED lights on a capture only when the device's last light decision
+ * (op25) was DARK. Capture Picture works around that for now by writing op25
+ * before each capture (see useCapturePicture, "INTERIM"); the Dev Deployment
+ * Test does not, so there the choice takes effect only in the dark. Both go
+ * back to plain selection when the firmware's flash-mode parameter lands.
+ * See Light-Sensor.md, "How the decision reaches the flash LED".
+ *
  * Renders bare, with no Card of its own, so each caller groups it with whatever
  * else belongs beside it.
  */

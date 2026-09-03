@@ -7,7 +7,7 @@ import { createBleSession } from '../ble/session/createBleSession'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
 import { parseLightCheck, type LightCheck } from '../ble/protocol/lightCheck'
 import { log, logError } from '../utils/logger'
-import type { AEData } from '../screens/Devices/hooks/useCapturePicture'
+import { AEData, grabAeFields } from '../utils/aeRegisters'
 
 export interface LightSensorState {
     darkThreshold: number      // op23 - the firmware's mean-rule threshold
@@ -41,39 +41,9 @@ export type MeasureResult =
     /** Acknowledged, but no register block followed. See the note on measureNow. */
     | 'timeout'
 
-const EMPTY_AE: AEData = { integration: '', analogGain: '', digitalGain: '', aeMean: '', aeConverged: '' }
-
-/**
- * Lift whichever AE register fields this line carries into a copy of `prev`.
- * Returns null when the line carried none, so callers can tell "nothing here"
- * from "same as before".
- *
- * The block is five lines on the wire. Whether they reach the app as five
- * events or one depends on how the relay framed them, so each field is matched
- * unanchored and the block is treated as complete when its last field,
- * `AEConverged`, has been seen.
- *
- *   HM0360 AE regs:
- *     Integration time = 284 lines
- *     Analog gain = 4
- *     Digital gain = 255
- *     AE Mean = 24
- *     AEConverged?: N
- */
-export const grabAeFields = (line: string, prev: AEData | null): AEData | null => {
-    const next: AEData = { ...(prev ?? EMPTY_AE) }
-    let updated = false
-    const grab = (re: RegExp, key: keyof AEData) => {
-        const m = line.match(re)
-        if (m) { next[key] = m[1]; updated = true }
-    }
-    grab(/Integration time\s*=\s*(\d+)/i, 'integration')
-    grab(/\bAnalog gain\s*=\s*(\d+)/i, 'analogGain')
-    grab(/\bDigital gain\s*=\s*(\d+)/i, 'digitalGain')
-    grab(/\bAE Mean\s*=\s*(\d+)/i, 'aeMean')
-    grab(/AEConverged\?:\s*(Y|N)/i, 'aeConverged')
-    return updated ? next : null
-}
+// The AE register block and its parser live in utils/aeRegisters.ts, shared
+// with Capture Picture so the two screens cannot read the same block differently.
+export type { AEData }
 
 /**
  * Wait for the next complete `HM0360 AE regs` block from this device. Resolves

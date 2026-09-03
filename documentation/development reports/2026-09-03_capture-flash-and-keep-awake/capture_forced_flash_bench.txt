@@ -1,0 +1,141 @@
+# Capture Picture with the interim op25 write (flash forced on for the picture) on Charles's ae_review e8b7feb5: app branch feat/capture-keep-awake (uncommitted)
+# Started 2026-09-03 15:09:54. Times are MM:SS.mmm from the start of the capture.
+# himax = COM6 @ 921600 (known adapter FTFAERNNA)
+# nrf   = COM5 @ 115200 (known adapter FTH0BZPJA)
+#
+# Two captures with the interim op25 write, Black & White image, lit room. Filtered to app writes and hook logs, the Himax wake, flash-mode restore, light check, capture, sleep and transfer markers.
+[03:32.893] app   | Device WILD-CNKW connected
+[03:38.489] app   | Written AI slots to the device WILD-CNKW (15:13:32-886)
+[03:38.542] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[03:38.857] himax | DEBUG: ledFlashBrightness(80%) [brbits = 0xc]
+[03:38.857] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[03:39.133] app   | Written AI getop -1 to the device WILD-CNKW (15:13:33-532)
+[03:39.465] app   | Written AI getop -1 to the device WILD-CNKW (15:13:33-864)
+[03:39.894] app   | Written AI getop -1 to the device WILD-CNKW (15:13:34-293)
+[03:40.162] app   | Written AI getop -1 to the device WILD-CNKW (15:13:34-560)
+[03:40.471] app   | Written AI setop 8 3000 to the device WILD-CNKW (15:13:34-870)
+[03:40.673] nrf   | <info> app: AI processor replies: 'Set OpParam 8 = 3000'
+[03:40.673] nrf   | BLE out: Sent  21 bytes: 'Set OpParam 8 = 3000'
+[03:40.689] himax | Set OpParam 8 = 3000
+[03:40.689] himax | Sending 26 bytes: Header 4, payload 20, checksum 2 'Set OpParam 8 = 3000'
+[03:40.689] himax | 000: 80 04 14 00 53 65 74 20  4f 70 50 61 72 61 6d 20 ....Set OpParam 
+[03:40.758] app   | [KeepAwake] holding D6:47:9B:89:E7:23 awake: op8 1000 -> 3000
+[03:41.594] himax | Inactive for 1000ms
+[03:41.668] app   | Written AI setop 25 1 to the device WILD-CNKW (15:13:36-068)
+[03:41.908] himax | Sending 95 bytes: Header 4, payload 89, checksum 2 'Sleep 5 0 0 4 20 1 500 0 3000 80 1 0 100 1 0 0 18 1 0 4 0 2 50 65 15 0 0 286 326 1 110 1 '
+[03:41.908] himax | 000: 80 04 59 00 53 6c 65 65  70 20 35 20 30 20 30 20 ..Y.Sleep 5 0 0 
+[03:41.908] himax |  No LED flashes.
+[03:41.908] himax | >>> Entering DPD at 2024:01:01 00:43:07
+[03:41.908] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[03:42.208] himax | DEBUG: ledFlashBrightness(80%) [brbits = 0xc]
+[03:42.208] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[03:42.509] himax | Set OpParam 25 = 1
+[03:42.509] himax | Sending 24 bytes: Header 4, payload 18, checksum 2 'Set OpParam 25 = 1'
+[03:42.509] himax | 000: 80 04 12 00 53 65 74 20  4f 70 50 61 72 61 6d 20 ....Set OpParam 
+[03:42.509] nrf   | <info> app: AI processor replies: 'Set OpParam 25 = 1'
+[03:42.509] nrf   | BLE out: Sent  19 bytes: 'Set OpParam 25 = 1'
+[03:45.547] app   | [BleSession] SLEEP signal detected  proceeding.
+[03:45.574] himax | Inactive for 3000ms
+[03:45.574] himax | Sending 95 bytes: Header 4, payload 89, checksum 2 'Sleep 5 0 0 4 21 1 500 0 3000 80 1 0 100 1 0 0 18 1 0 4 0 2 50 65 15 1 0 286 326 1 110 1 '
+[03:45.574] himax | 000: 80 04 59 00 53 6c 65 65  70 20 35 20 30 20 30 20 ..Y.Sleep 5 0 0 
+[03:45.574] himax |  No LED flashes.
+[03:45.574] himax | >>> Entering DPD at 2024:01:01 00:43:11
+[03:45.647] app   | [useCapturePreview] startCapture called (count=1, interval=500)
+[03:45.647] app   | [useCapturePreview] Phase 1: Setup  checking device state
+[03:45.766] app   | Written AI getop -1 to the device WILD-CNKW (15:13:40-165)
+[03:45.890] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[03:46.190] himax | DEBUG: ledFlashBrightness(80%) [brbits = 0xc]
+[03:46.190] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[03:46.465] app   | [useCapturePreview] Phase 1 complete  waiting for device to sleep
+[03:49.446] app   | [BleSession] SLEEP signal detected  proceeding.
+[03:49.542] himax | Inactive for 3000ms
+[03:49.542] himax | Sending 95 bytes: Header 4, payload 89, checksum 2 'Sleep 5 0 0 4 22 1 500 0 3000 80 1 0 100 1 0 0 18 1 0 4 0 2 50 65 15 1 0 286 326 1 110 1 '
+[03:49.542] himax | 000: 80 04 59 00 53 6c 65 65  70 20 35 20 30 20 30 20 ..Y.Sleep 5 0 0 
+[03:49.542] himax |  No LED flashes.
+[03:49.542] himax | >>> Entering DPD at 2024:01:01 00:43:15
+[03:49.551] app   | [useCapturePreview] Phase 2: Capture  sending AI capture 1 500
+[03:49.663] app   | Written AI capture 1 500 to the device WILD-CNKW (15:13:44-062)
+[03:49.843] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[03:50.121] himax | DEBUG: ledFlashBrightness(80%) [brbits = 0xc]
+[03:50.121] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[03:50.425] himax | Image capture 1/1 took 55ms
+[03:50.425] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT (change)
+[03:50.425] himax | Sending 58 bytes: Header 4, payload 52, checksum 2 'AE light check: AGain = 0, conv=Y -> BRIGHT (change)'
+[03:50.727] himax | Sending 68 bytes: Header 4, payload 62, checksum 2 'Captured 1 images. Last is 5920AA40.JPG (File write 44ms avg.)'
+[03:50.727] himax | 000: 80 04 3e 00 43 61 70 74  75 72 65 64 20 31 20 69 ..>.Captured 1 i
+[03:50.775] nrf   | BLE out: Sent  53 bytes: 'AE light check: AGain = 0, conv=Y -> BRIGHT (change)'
+[03:50.775] nrf   | BLE out: Sent  63 bytes: 'Captured 1 images. Last is 5920AA40.JPG (File write 44ms avg.)'
+[03:51.264] app   | [useCapturePreview] Phase 2 complete  captured: 5920AA40.JPG
+[03:51.264] app   | [useCapturePreview] Device held awake; sending txfile without waiting for sleep
+[03:51.264] app   | [useCapturePreview] Phase 3: Transfer  requesting txfile 5920AA40.JPG
+[03:51.320] app   | Written AI txfile 5920AA40.JPG to the device WILD-CNKW (15:13:45-718)
+[03:51.342] himax | 10786 bytes in 5920AA40.JPG
+[03:51.342] himax | Sending 33 bytes: Header 4, payload 27, checksum 2 '10786 bytes in 5920AA40.JPG'
+[03:51.426] app   | ImageReassembler: Initializing transfer for 10786 bytes
+[03:51.993] nrf   | <info> app: AI processor replies: '10786 bytes in 5920AA40.JPG'
+[03:51.993] nrf   | BLE out: Sent  28 bytes: '10786 bytes in 5920AA40.JPG'
+[03:59.824] himax | Finished sending 10786 bytes (45 packets)
+[03:59.824] himax | Sending 47 bytes: Header 4, payload 41, checksum 2 'Finished sending 10786 bytes (45 packets)'
+[04:00.159] nrf   | BLE out: Failed to send  42 bytes: 'Finished sending 10786 bytes (45 packets)'
+[04:00.159] nrf   | BLE out: Failed to send  42 bytes: 'Finished sending 10786 bytes (45 packets)'
+[04:00.459] nrf   | BLE out: Sent  42 bytes: 'Finished sending 10786 bytes (45 packets)'
+[04:00.532] app   | ImageReassembler: Transfer complete! Received 10786/10786 (0 gaps)
+[04:00.623] app   | ImageReassembler: Image saved to file:///data/user/0/com.wildlife.wildlifewatcher.expo/cache/capture_1788405234939.jpg [SUCCESS] (10786/10786 bytes)
+[04:03.193] himax | Inactive for 3000ms
+[04:03.193] himax | Sending 95 bytes: Header 4, payload 89, checksum 2 'Sleep 6 0 0 4 23 1 500 0 3000 80 1 0 100 1 0 0 18 1 0 5 0 2 50 65 15 0 0 286 326 1 110 1 '
+[04:03.193] himax | 000: 80 04 59 00 53 6c 65 65  70 20 36 20 30 20 30 20 ..Y.Sleep 6 0 0 
+[04:03.193] himax |  No LED flashes.
+[04:03.193] himax | >>> Entering DPD at 2024:01:01 00:43:29
+[04:08.790] app   | Written AI getop -1 to the device WILD-CNKW (15:14:03-188)
+[04:08.993] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[04:09.257] himax | DEBUG: ledFlashBrightness(80%) [brbits = 0xc]
+[04:09.257] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[04:09.856] app   | Written AI setop 25 1 to the device WILD-CNKW (15:14:04-254)
+[04:10.173] himax | Set OpParam 25 = 1
+[04:10.173] himax | Sending 24 bytes: Header 4, payload 18, checksum 2 'Set OpParam 25 = 1'
+[04:10.173] himax | 000: 80 04 12 00 53 65 74 20  4f 70 50 61 72 61 6d 20 ....Set OpParam 
+[04:10.271] nrf   | <info> app: AI processor replies: 'Set OpParam 25 = 1'
+[04:10.271] nrf   | BLE out: Sent  19 bytes: 'Set OpParam 25 = 1'
+[04:13.205] app   | [BleSession] SLEEP signal detected  proceeding.
+[04:13.224] himax | Inactive for 3000ms
+[04:13.224] himax | Sending 95 bytes: Header 4, payload 89, checksum 2 'Sleep 6 0 0 4 24 1 500 0 3000 80 1 0 100 1 0 0 18 1 0 5 0 2 50 65 15 1 0 286 326 1 110 1 '
+[04:13.224] himax | 000: 80 04 59 00 53 6c 65 65  70 20 36 20 30 20 30 20 ..Y.Sleep 6 0 0 
+[04:13.224] himax |  No LED flashes.
+[04:13.224] himax | >>> Entering DPD at 2024:01:01 00:43:39
+[04:13.401] app   | [useCapturePreview] startCapture called (count=1, interval=500)
+[04:13.401] app   | [useCapturePreview] Phase 1: Setup  checking device state
+[04:13.402] app   | [useCapturePreview] Phase 1 complete  waiting for device to sleep
+[04:13.402] app   | [BleSession] Device already asleep  proceeding immediately.
+[04:13.402] app   | [useCapturePreview] Phase 2: Capture  sending AI capture 1 500
+[04:13.544] app   | Written AI capture 1 500 to the device WILD-CNKW (15:14:07-943)
+[04:13.826] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[04:14.127] himax | DEBUG: ledFlashBrightness(80%) [brbits = 0xc]
+[04:14.127] himax | [LS] In ledFlashSetFlashModeFromOpParam with 1 Mode 1
+[04:14.441] himax | Image capture 1/1 took 55ms
+[04:14.441] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT (change)
+[04:14.441] himax | Sending 58 bytes: Header 4, payload 52, checksum 2 'AE light check: AGain = 0, conv=Y -> BRIGHT (change)'
+[04:14.743] himax | Sending 68 bytes: Header 4, payload 62, checksum 2 'Captured 1 images. Last is 5920ABD0.JPG (File write 44ms avg.)'
+[04:14.743] himax | 000: 80 04 3e 00 43 61 70 74  75 72 65 64 20 31 20 69 ..>.Captured 1 i
+[04:14.858] nrf   | BLE out: Sent  53 bytes: 'AE light check: AGain = 0, conv=Y -> BRIGHT (change)'
+[04:14.858] nrf   | BLE out: Sent  63 bytes: 'Captured 1 images. Last is 5920ABD0.JPG (File write 44ms avg.)'
+[04:15.703] app   | [useCapturePreview] Phase 2 complete  captured: 5920ABD0.JPG
+[04:15.703] app   | [useCapturePreview] Device held awake; sending txfile without waiting for sleep
+[04:15.704] app   | [useCapturePreview] Phase 3: Transfer  requesting txfile 5920ABD0.JPG
+[04:15.761] app   | Written AI txfile 5920ABD0.JPG to the device WILD-CNKW (15:14:10-161)
+[04:15.870] himax | 10642 bytes in 5920ABD0.JPG
+[04:15.870] himax | Sending 33 bytes: Header 4, payload 27, checksum 2 '10642 bytes in 5920ABD0.JPG'
+[04:15.939] app   | ImageReassembler: Initializing transfer for 10642 bytes
+[04:16.376] nrf   | <info> app: AI processor replies: '10642 bytes in 5920ABD0.JPG'
+[04:16.376] nrf   | BLE out: Sent  28 bytes: '10642 bytes in 5920ABD0.JPG'
+[04:25.355] himax | Finished sending 10642 bytes (45 packets)
+[04:25.355] himax | Sending 47 bytes: Header 4, payload 41, checksum 2 'Finished sending 10642 bytes (45 packets)'
+[04:25.842] nrf   | BLE out: Failed to send  42 bytes: 'Finished sending 10642 bytes (45 packets)'
+[04:25.842] nrf   | BLE out: Failed to send  42 bytes: 'Finished sending 10642 bytes (45 packets)'
+[04:26.155] nrf   | BLE out: Sent  42 bytes: 'Finished sending 10642 bytes (45 packets)'
+[04:26.314] app   | ImageReassembler: Transfer complete! Received 10642/10642 (0 gaps)
+[04:26.375] app   | ImageReassembler: Image saved to file:///data/user/0/com.wildlife.wildlifewatcher.expo/cache/capture_1788405260715.jpg [SUCCESS] (10642/10642 bytes)
+[04:28.726] himax | Inactive for 3000ms
+[04:29.037] himax | Sending 95 bytes: Header 4, payload 89, checksum 2 'Sleep 7 0 0 4 25 1 500 0 3000 80 1 0 100 1 0 0 18 1 0 6 0 2 50 65 15 0 0 286 326 1 110 1 '
+[04:29.037] himax | 000: 80 04 59 00 53 6c 65 65  70 20 37 20 30 20 30 20 ..Y.Sleep 7 0 0 
+[04:29.037] himax |  No LED flashes.
+[04:29.037] himax | >>> Entering DPD at 2024:01:01 00:43:56
