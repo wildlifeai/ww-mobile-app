@@ -254,6 +254,8 @@ export const useBle = (): ReturnType => {
 					newPeripheral.intervals = {}
 
 					dispatch(deviceUpdate({ ...newPeripheral }))
+					// Connecting changes nothing on the device. Writes happen only
+					// inside flows the user opens; the Engineer Console is a terminal.
 				} catch (e: any) {
 					log(e)
 					log("Connecting to device failed, disconnecting device.")

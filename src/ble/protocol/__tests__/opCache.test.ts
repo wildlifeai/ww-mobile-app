@@ -55,9 +55,31 @@ describe('opCache', () => {
         expect(opCache.get(DEVICE)).toBeNull()
     })
 
-    it('drops the entry when invalidated, which is what a setop does', () => {
+    it('drops the entry when invalidated', () => {
         opCache.set(DEVICE, OPS)
         opCache.invalidate(DEVICE)
+        expect(opCache.get(DEVICE)).toBeNull()
+    })
+
+    it('patches one value a setop wrote and keeps the rest, which spares a wake', () => {
+        // A capture that changed the flash used to re-read the whole array,
+        // waking a device that then had to sleep again before the picture.
+        opCache.set(DEVICE, OPS)
+        opCache.patch(DEVICE, 3, '7')
+        expect(opCache.get(DEVICE)).toEqual(['1', '0', '0', '7', '9', '1', '500'])
+        // The array handed out before the patch is not changed under the caller.
+        expect(OPS[3]).toBe('5')
+    })
+
+    it('patches nothing when it holds nothing', () => {
+        opCache.patch(DEVICE, 3, '7')
+        expect(opCache.get(DEVICE)).toBeNull()
+    })
+
+    it('drops the entry when the patched index is beyond what it holds', () => {
+        // The firmware knows a parameter this copy does not: the copy is stale.
+        opCache.set(DEVICE, OPS)
+        opCache.patch(DEVICE, 32, '1')
         expect(opCache.get(DEVICE)).toBeNull()
     })
 

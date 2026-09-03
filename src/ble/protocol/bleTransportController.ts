@@ -20,6 +20,7 @@
 import { bleEventBus, BleEvent } from './eventBus';
 import { BLE_PROTOCOL_TIMINGS } from './protocolConstants';
 import { DeviceSignal } from './deviceSignals';
+import { imageReassemblerEmitter } from '../emitters';
 import { log, logWarn } from '../../utils/logger';
 
 /**
@@ -28,10 +29,25 @@ import { log, logWarn } from '../../utils/logger';
  *
  *   IDLE         — No commands queued or active, transport available
  *   RUNNING      — Actively executing a command
- *   PAUSED_SLEEP — Device is in DPD sleep; queue blocked until WAKE
+ *   PAUSED_SLEEP — Device is entering DPD; queue blocked until WAKE, or
+ *                  until SLEEP_SETTLE_MS has passed, whichever comes first.
+ *                  The device wakes only when sent a command, so a pause
+ *                  that waited for a Wake alone stranded every command
+ *                  queued behind it (bench, 3 September 2026: a Sleep that
+ *                  landed while a slow JS thread was still completing
+ *                  `slots` froze Capture Picture until the link dropped).
  *   PAUSED_BUSY  — Device reported BUSY; queue blocked until resume
  *   LOCKED       — Exclusive lock held (e.g. file transfer); queue
  *                  rejects non-holder commands
+ *
+ * Two gates sit beside that state: the exclusive lock above, and the image
+ * stream. While `AI txfile` is streaming a picture in, nothing may be sent.
+ * The nRF forwards any command to the Himax at once, restarts its binary
+ * packet counter, and the reply only comes once the file has finished
+ * (bench, 3 September 2026: a `slots` sent mid-stream produced "AI processor
+ * not responding", 412 phantom sequence gaps and a reply 14 s late). The
+ * reassembler announces the stream's start and end; the queue holds between
+ * them, with a stall timer so a stream that dies cannot hold it for good.
  */
 export type TransportState = 'IDLE' | 'RUNNING' | 'PAUSED_SLEEP' | 'PAUSED_BUSY';
 export type CommandState = 'CREATED' | 'ACTIVE' | 'COMPLETING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
@@ -73,8 +89,19 @@ class BleTransportController {
   // for the entire transfer session.
   private _lockHolder: string | null = null;
 
+  // Lifts a sleep pause on its own once the device has had time to enter DPD.
+  private sleepSettleTimer: NodeJS.Timeout | null = null;
+
+  // Holds the queue while an image streams in. See the header.
+  private streamActive = false;
+  private streamStallTimer: NodeJS.Timeout | null = null;
+
   constructor() {
     bleEventBus.on('deviceSignal', this.handleDeviceSignal.bind(this));
+    imageReassemblerEmitter.on('onImageStart', () => this.beginStream());
+    imageReassemblerEmitter.on('onImageProgress', () => this.armStreamStall());
+    imageReassemblerEmitter.on('onImageComplete', () => this.endStream('image saved'));
+    imageReassemblerEmitter.on('onImageError', () => this.endStream('transfer failed'));
   }
 
   // ── State inspection ──────────────────────────────────────────────
@@ -220,6 +247,7 @@ class BleTransportController {
   private handleDeviceSignal(event: BleEvent & { type: 'DEVICE_SIGNAL' }) {
     if (event.signal === DeviceSignal.SLEEP) {
       this.transitionQueue('PAUSED_SLEEP');
+      if (this.state === 'PAUSED_SLEEP') this.armSleepSettle();
     } else if (event.signal === DeviceSignal.BUSY) {
       this.transitionQueue('PAUSED_BUSY');
     } else if (event.signal === DeviceSignal.CONFIG_ERROR) {
@@ -229,6 +257,7 @@ class BleTransportController {
       // Pausing the queue here would deadlock — the condition will
       // never self-resolve.
     } else if (event.signal === DeviceSignal.WAKE) {
+      this.clearSleepSettle();
       if (this.state === 'PAUSED_SLEEP') {
         this.transitionQueue('RUNNING');
         this.processNext(); // Resume
@@ -237,6 +266,68 @@ class BleTransportController {
       // Fail-fast: reject all queued + active commands immediately
       // instead of letting each one time out sequentially (3s × N).
       this.clearAll();
+    }
+  }
+
+  /**
+   * After a Sleep, resume on our own once the device has had time to enter
+   * DPD. The nRF wakes the Himax for whatever we send next, so the next
+   * command is the wake; waiting for a Wake signal instead would wait forever.
+   */
+  private armSleepSettle() {
+    this.clearSleepSettle();
+    this.sleepSettleTimer = setTimeout(() => {
+      this.sleepSettleTimer = null;
+      if (this.state === 'PAUSED_SLEEP') {
+        this.transitionQueue('RUNNING');
+        this.processNext();
+      }
+    }, BLE_PROTOCOL_TIMINGS.SLEEP_SETTLE_MS);
+  }
+
+  private clearSleepSettle() {
+    if (this.sleepSettleTimer) {
+      clearTimeout(this.sleepSettleTimer);
+      this.sleepSettleTimer = null;
+    }
+  }
+
+  // ── Image stream gate ─────────────────────────────────────────────
+
+  /** Whether an image is streaming in and the queue is holding for it. */
+  public get isStreaming(): boolean {
+    return this.streamActive;
+  }
+
+  private beginStream() {
+    this.streamActive = true;
+    this.armStreamStall();
+    log(`[BleTransport] Image stream started; holding ${this.queue.length} queued command(s) until it ends`);
+  }
+
+  private endStream(reason: string) {
+    if (!this.streamActive) return;
+    this.streamActive = false;
+    this.clearStreamStall();
+    log(`[BleTransport] Image stream ended (${reason}); ${this.queue.length} command(s) waiting`);
+    this.processNext();
+  }
+
+  /** A stream that stops delivering must not hold the queue for good. */
+  private armStreamStall() {
+    if (!this.streamActive) return;
+    this.clearStreamStall();
+    this.streamStallTimer = setTimeout(() => {
+      this.streamStallTimer = null;
+      logWarn(`[BleTransport] Image stream silent for ${BLE_PROTOCOL_TIMINGS.IMAGE_STREAM_STALL_MS} ms; releasing the queue`);
+      this.endStream('stalled');
+    }, BLE_PROTOCOL_TIMINGS.IMAGE_STREAM_STALL_MS);
+  }
+
+  private clearStreamStall() {
+    if (this.streamStallTimer) {
+      clearTimeout(this.streamStallTimer);
+      this.streamStallTimer = null;
     }
   }
 
@@ -260,6 +351,9 @@ class BleTransportController {
     }
     if (this.state === 'PAUSED_SLEEP' || this.state === 'PAUSED_BUSY') {
       return;
+    }
+    if (this.streamActive) {
+      return; // endStream() resumes
     }
 
     this.isProcessing = true;
@@ -313,6 +407,9 @@ class BleTransportController {
    */
   public clearAll() {
     this._lockHolder = null;
+    this.clearSleepSettle();
+    this.streamActive = false;
+    this.clearStreamStall();
     const error = new Error('Session Reset');
     if (this.activeTask) {
       this.transitionCommand(this.activeTask, 'CANCELLED');

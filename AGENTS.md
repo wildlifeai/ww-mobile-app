@@ -83,6 +83,7 @@ npm run docs:validate    # every path/link in documentation/ resolves
 | Structure, hooks, services | `documentation/onboarding/02-CODEBASE-GUIDE.md` — the maintained inventory |
 | BLE engine | `src/ble/` — protocol/, session/, workflows/; deep dive in `documentation/resources/BLE_Architecture.md` |
 | Day/night light sensor | `documentation/resources/Light-Sensor.md` — op23/24/25/26, `AI light`, and why op25 reads stale |
+| Capture Picture | `documentation/resources/Capture-Picture.md` — the capture in order, the 3 s hold, what applies at wake, the flash gate and its interim write |
 | Device flows | `documentation/onboarding/05-DEVICE-FLOWS.md`, `06-BLE-CONNECTIONS.md` |
 | Offline/sync | `documentation/onboarding/03-DATA-AND-SYNC.md` |
 | How the code got this way | `documentation/development reports/` |

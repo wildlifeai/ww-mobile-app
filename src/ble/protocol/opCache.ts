@@ -25,7 +25,11 @@ import { log } from '../../utils/logger';
  *
  * The entry lives for one wake window and no longer:
  *
- * - **`setop` invalidates it.** The app has just changed a value it holds.
+ * - **`setop` patches it.** The device has confirmed the value with `Set OpParam
+ *   N = V`, so the array is updated in place rather than dropped. Dropping it
+ *   cost a wake on every capture that changed a setting: the capture's
+ *   pre-flight re-read the array, which woke the device, which then had to
+ *   sleep again before the capture (measured 3.6 s each, 3 September 2026).
  * - **`Wake` invalidates it.** The device can change its own parameters while we
  *   are not looking: automatic day/night switching rewrites the active slot, and
  *   the AE check writes its decision to op25. Anything read before a sleep is a
@@ -63,9 +67,27 @@ class OpCache {
         return this.ops.get(deviceId) ?? null;
     }
 
-    /** Forget this device's array, e.g. after a `setop`. */
+    /** Forget this device's array. */
     public invalidate(deviceId: string) {
         this.ops.delete(deviceId);
+    }
+
+    /**
+     * Record one value the device has just confirmed writing, keeping the rest
+     * of the array. Nothing happens when no array is held; an index the array
+     * does not reach drops it, because the firmware evidently knows more
+     * parameters than the copy held here.
+     */
+    public patch(deviceId: string, index: number, value: string) {
+        const current = this.ops.get(deviceId);
+        if (!current) return;
+        if (index < 0 || index >= current.length) {
+            this.ops.delete(deviceId);
+            return;
+        }
+        const next = current.slice();
+        next[index] = value;
+        this.ops.set(deviceId, next);
     }
 
     /** Forget everything. Used on a transport reset. */

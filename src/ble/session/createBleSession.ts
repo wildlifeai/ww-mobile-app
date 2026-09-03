@@ -110,19 +110,38 @@ export function createBleSession(peripheral: ExtendedPeripheral) {
    * the device's internal inactivity timer (which could cause it to ignore 
    * the command and drop into DPD while the command is running).
    */
-  const waitForSleep = (timeoutMs = 3000): Promise<void> => {
+  const waitForSleep = (timeoutMs = 3000): Promise<boolean> => {
     // Already there. Waiting for a Sleep signal that has already been sent is
     // how this call used to burn its whole timeout once the op cache stopped
     // the capture path from waking the device in the first place.
     if (sleepState.isAsleep(peripheral.id)) {
       log('[BleSession] Device already asleep — proceeding immediately.');
-      return Promise.resolve();
+      return Promise.resolve(true);
     }
-    return new Promise((resolve) => {
+    return waitForSignal(DeviceSignal.SLEEP, timeoutMs);
+  };
+
+  /**
+   * Wait for the device to wake, e.g. after a scheduled reset. Resolves at once
+   * when it is not known to be asleep, so call it after a Sleep was seen.
+   *
+   * @returns true when the Wake arrived, false on timeout.
+   */
+  const waitForWake = (timeoutMs = 15000): Promise<boolean> => {
+    if (!sleepState.isAsleep(peripheral.id)) {
+      log('[BleSession] Device not known to be asleep — proceeding immediately.');
+      return Promise.resolve(true);
+    }
+    return waitForSignal(DeviceSignal.WAKE, timeoutMs);
+  };
+
+  /** Resolve true on the next `signal` from this device, false after `timeoutMs`. */
+  const waitForSignal = (signal: typeof DeviceSignal.SLEEP | typeof DeviceSignal.WAKE, timeoutMs: number): Promise<boolean> =>
+    new Promise((resolve) => {
       const timeoutId = setTimeout(() => {
         cleanup();
-        logWarn(`[BleSession] Timed out waiting for Sleep signal after ${timeoutMs}ms.`);
-        resolve();
+        logWarn(`[BleSession] Timed out waiting for ${signal} signal after ${timeoutMs}ms.`);
+        resolve(false);
       }, timeoutMs);
 
       const cleanup = () => {
@@ -130,17 +149,16 @@ export function createBleSession(peripheral: ExtendedPeripheral) {
       };
 
       const onDeviceSignal = (event: BleEvent & { type: 'DEVICE_SIGNAL' }) => {
-        if (event.deviceId === peripheral.id && event.signal === DeviceSignal.SLEEP) {
+        if (event.deviceId === peripheral.id && event.signal === signal) {
           clearTimeout(timeoutId);
           cleanup();
-          log(`[BleSession] Sleep signal detected — proceeding.`);
-          resolve();
+          log(`[BleSession] ${signal} signal detected — proceeding.`);
+          resolve(true);
         }
       };
 
       bleEventBus.on('deviceSignal', onDeviceSignal);
     });
-  };
 
 
   return {
@@ -149,6 +167,7 @@ export function createBleSession(peripheral: ExtendedPeripheral) {
     reset,
     disconnect,
     waitForSleep,
+    waitForWake,
     subscribe: streamRegistry.registerStream.bind(streamRegistry),
     unsubscribe: streamRegistry.unregisterStream.bind(streamRegistry),
     // Attach listener for specific device signals or info

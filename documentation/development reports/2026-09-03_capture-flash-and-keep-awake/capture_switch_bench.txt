@@ -1,0 +1,481 @@
+# Capture Picture with keepAwake hold on Charles's ae_review e8b7feb5, SD card wiped so CONFIG.TXT is at firmware defaults: app branch feat/capture-keep-awake on dev 00ef2983 (uncommitted)
+# Started 2026-09-03 14:04:28. Times are MM:SS.mmm from the start of the capture.
+# himax = COM6 @ 921600 (known adapter FTFAERNNA)
+# nrf   = COM5 @ 115200 (known adapter FTH0BZPJA)
+#
+# Three camera switches and four captures on the fresh card. First switch under the 20 s hold (14:04), second with a 10 s wait then polling (14:26), third waiting on Sleep and Wake (14:30), two captures each changing a setting (14:32), then two captures with the cache patched on setop (14:41). Filtered to app writes and hook logs, slot replies, and the Himax capture, flash, light, sleep, reset and boot markers.
+[00:19.439] app   | Device WILD-CNKW connected
+[00:22.686] app   | Written AI slots to the device WILD-CNKW (14:04:50-992)
+[00:22.753] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[00:23.355] himax | DEBUG: ledFlashBrightness(5%) [brbits = 0x0]
+[00:23.636] app   | Written AI getop -1 to the device WILD-CNKW (14:04:51-946)
+[00:23.668] himax | Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[00:23.668] himax | Sending 121 bytes: Header 4, payload 115, checksum 2 'Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[00:23.668] himax | 000: 80 04 73 00 41 63 74 69  76 65 20 73 6c 6f 74 20 ..s.Active slot 
+[00:23.745] nrf   | <info> app: AI processor replies: 'Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[00:23.745] nrf   | BLE out: Sent 116 bytes: 'Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[00:23.930] app   | Written AI getop -1 to the device WILD-CNKW (14:04:52-239)
+[00:24.326] app   | Written AI getop -1 to the device WILD-CNKW (14:04:52-636)
+[00:24.589] app   | Written AI getop -1 to the device WILD-CNKW (14:04:52-899)
+[00:24.916] app   | Written AI setop 8 20000 to the device WILD-CNKW (14:04:53-226)
+[00:25.207] himax | Set OpParam 8 = 20000
+[00:25.207] himax | Sending 27 bytes: Header 4, payload 21, checksum 2 'Set OpParam 8 = 20000'
+[00:25.207] himax | 000: 80 04 15 00 53 65 74 20  4f 70 50 61 72 61 6d 20 ....Set OpParam 
+[00:25.219] app   | [KeepAwake] holding D6:47:9B:89:E7:23 awake: op8 1000 -> 20000
+[00:25.285] nrf   | <info> app: AI processor replies: 'Set OpParam 8 = 20000'
+[00:25.285] nrf   | BLE out: Sent  22 bytes: 'Set OpParam 8 = 20000'
+[00:26.143] himax | Inactive for 1000ms
+[00:26.143] himax | Sending 94 bytes: Header 4, payload 88, checksum 2 'Sleep 0 ... op8=20000 op9=5 op13=0 op25=Sleep 0 1 ...
+[00:26.143] himax | 000: 80 04 58 00 53 6c 65 65  70 20 30 20 30 20 30 20 ..X.Sleep 0 0 0 
+[00:26.143] himax | >>> Entering DPD at 2024:01:01 00:00:08
+[00:29.365] app   | Written AI slots to the device WILD-CNKW (14:04:57-674)
+[00:29.544] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[00:30.153] himax | DEBUG: ledFlashBrightness(5%) [brbits = 0x0]
+[00:30.153] himax | Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[00:30.153] himax | Sending 121 bytes: Header 4, payload 115, checksum 2 'Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[00:30.153] himax | 000: 80 04 73 00 41 63 74 69  76 65 20 73 6c 6f 74 20 ..s.Active slot 
+[00:30.379] app   | [useCameraSwitch] switching from RP3 to HM0360
+[00:30.409] app   | Written AI switchslot to the device WILD-CNKW (14:04:58-720)
+[00:30.539] nrf   | <info> app: AI processor replies: 'Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[00:30.539] nrf   | BLE out: Sent 116 bytes: 'Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[00:30.762] himax | write_slot_selector: slot 0 selector written OK
+[00:30.762] himax | Switched to slot 0 ('HM0360 (night/IR)'). Reset scheduled.
+[00:30.762] himax | Sending 64 bytes: Header 4, payload 58, checksum 2 'Switched to slot 0 ('HM0360 (night/IR)'). Reset scheduled.'
+[00:30.841] nrf   | <info> app: AI processor replies: 'Switched to slot 0 ('HM0360 (night/IR)'). Reset scheduled.'
+[00:30.841] nrf   | BLE out: Sent  59 bytes: 'Switched to slot 0 ('HM0360 (night/IR)'). Reset scheduled.'
+[00:35.777] app   | Written AI slots to the device WILD-CNKW (14:05:04-087)
+[00:36.017] himax | Active slot 0 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[00:36.017] himax | Sending 121 bytes: Header 4, payload 115, checksum 2 'Active slot 0 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[00:36.017] himax | 000: 80 04 73 00 41 63 74 69  76 65 20 73 6c 6f 74 20 ..s.Active slot 
+[00:36.126] nrf   | <info> app: AI processor replies: 'Active slot 0 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[00:36.126] nrf   | BLE out: Sent 116 bytes: 'Active slot 0 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[00:41.078] app   | Written AI slots to the device WILD-CNKW (14:05:09-387)
+[00:41.305] himax | Active slot 0 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[00:41.305] himax | Sending 121 bytes: Header 4, payload 115, checksum 2 'Active slot 0 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[00:41.305] himax | 000: 80 04 73 00 41 63 74 69  76 65 20 73 6c 6f 74 20 ..s.Active slot 
+[00:41.384] nrf   | <info> app: AI processor replies: 'Active slot 0 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[00:41.384] nrf   | BLE out: Sent 116 bytes: 'Active slot 0 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[00:46.490] app   | Written AI slots to the device WILD-CNKW (14:05:14-800)
+[00:46.856] himax | Active slot 0 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[00:46.856] himax | Sending 121 bytes: Header 4, payload 115, checksum 2 'Active slot 0 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[00:46.856] himax | 000: 80 04 73 00 41 63 74 69  76 65 20 73 6c 6f 74 20 ..s.Active slot 
+[00:46.918] nrf   | <info> app: AI processor replies: 'Active slot 0 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[00:46.918] nrf   | BLE out: Sent 116 bytes: 'Active slot 0 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[00:51.952] app   | Written AI slots to the device WILD-CNKW (14:05:20-263)
+[00:52.126] himax | Active slot 0 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[00:52.126] himax | Sending 121 bytes: Header 4, payload 115, checksum 2 'Active slot 0 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[00:52.126] himax | 000: 80 04 73 00 41 63 74 69  76 65 20 73 6c 6f 74 20 ..s.Active slot 
+[00:52.188] nrf   | <info> app: AI processor replies: 'Active slot 0 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[00:52.188] nrf   | BLE out: Sent 116 bytes: 'Active slot 0 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[00:52.339] app   | '[useCameraSwitch] switch failed:', [Error: Device did not come back running HM0360. It may have booted the other image - check with 'AI slots' and switch again if needed.]
+[01:12.218] himax | Inactive for 20000ms
+[01:12.218] himax | Sending 94 bytes: Header 4, payload 88, checksum 2 'Sleep 0 ... op8=20000 op9=5 op13=0 op25=Sleep 0 1 ...
+[01:12.218] himax | 000: 80 04 58 00 53 6c 65 65  70 20 30 20 30 20 30 20 ..X.Sleep 0 0 0 
+[01:12.218] himax | >>> Reset by watchdog
+[01:12.522] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0000 Cold boot
+[01:16.822] himax | DEBUG: ledFlashBrightness(5%) [brbits = 0x0]
+[01:18.070] himax | Inactive for 1000ms
+[01:18.070] himax | Sending 94 bytes: Header 4, payload 88, checksum 2 'Sleep 0 ... op8=20000 op9=5 op13=0 op25=Sleep 0 1 ...
+[01:18.070] himax | 000: 80 04 58 00 53 6c 65 65  70 20 30 20 30 20 30 20 ..X.Sleep 0 0 0 
+[01:18.070] himax | >>> Entering DPD at 2024:01:01 00:00:03
+[21:20.596] app   | Device WILD-CNKW connected
+[21:20.879] app   | Written AI setop 8 1000 to the device WILD-CNKW (14:25:49-212)
+[21:21.107] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[21:21.417] himax | DEBUG: ledFlashBrightness(5%) [brbits = 0x0]
+[21:21.718] nrf   | <info> app: AI processor replies: 'Set OpParam 8 = 1000'
+[21:21.718] nrf   | BLE out: Sent  21 bytes: 'Set OpParam 8 = 1000'
+[21:21.718] himax | Set OpParam 8 = 1000
+[21:21.718] himax | Sending 26 bytes: Header 4, payload 20, checksum 2 'Set OpParam 8 = 1000'
+[21:21.718] himax | 000: 80 04 14 00 53 65 74 20  4f 70 50 61 72 61 6d 20 ....Set OpParam 
+[21:21.762] app   | [KeepAwake] op8 on D6:47:9B:89:E7:23 restored to 1000 (reconnect)
+[21:26.870] app   | Written AI slots to the device WILD-CNKW (14:25:55-203)
+[21:26.924] himax | Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[21:26.924] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[21:26.924] himax | 000: 80 04 74 00 41 63 74 69  76 65 20 73 6c 6f 74 20 ..t.Active slot 
+[21:26.924] nrf   | <info> app: AI processor replies: 'Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[21:26.924] nrf   | BLE out: Sent 117 bytes: 'Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[21:27.060] app   | Written AI getop -1 to the device WILD-CNKW (14:25:55-397)
+[21:27.337] app   | Written AI getop -1 to the device WILD-CNKW (14:25:55-672)
+[21:27.775] app   | Written AI getop -1 to the device WILD-CNKW (14:25:56-103)
+[21:28.169] app   | Written AI getop -1 to the device WILD-CNKW (14:25:56-502)
+[21:28.517] app   | Written AI setop 8 3000 to the device WILD-CNKW (14:25:56-850)
+[21:28.786] himax | Set OpParam 8 = 3000
+[21:28.786] himax | Sending 26 bytes: Header 4, payload 20, checksum 2 'Set OpParam 8 = 3000'
+[21:28.786] himax | 000: 80 04 14 00 53 65 74 20  4f 70 50 61 72 61 6d 20 ....Set OpParam 
+[21:28.786] nrf   | <info> app: AI processor replies: 'Set OpParam 8 = 3000'
+[21:28.786] nrf   | BLE out: Sent  21 bytes: 'Set OpParam 8 = 3000'
+[21:28.832] app   | [KeepAwake] holding D6:47:9B:89:E7:23 awake: op8 1000 -> 3000
+[21:31.992] app   | Written AI slots to the device WILD-CNKW (14:26:00-325)
+[21:32.151] himax | Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[21:32.151] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[21:32.151] himax | 000: 80 04 74 00 41 63 74 69  76 65 20 73 6c 6f 74 20 ..t.Active slot 
+[21:32.151] nrf   | <info> app: AI processor replies: 'Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[21:32.151] nrf   | BLE out: Sent 117 bytes: 'Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[21:32.203] app   | [useCameraSwitch] switching from HM0360 to RP3
+[21:32.232] app   | Written AI switchslot to the device WILD-CNKW (14:26:00-565)
+[21:32.467] nrf   | <info> app: AI processor replies: 'Switched to slot 1 ('RP3 (day/colour)'). Reset scheduled.'
+[21:32.467] nrf   | BLE out: Sent  58 bytes: 'Switched to slot 1 ('RP3 (day/colour)'). Reset scheduled.'
+[21:32.467] himax | write_slot_selector: slot 1 selector written OK
+[21:32.467] himax | Switched to slot 1 ('RP3 (day/colour)'). Reset scheduled.
+[21:32.467] himax | Sending 63 bytes: Header 4, payload 57, checksum 2 'Switched to slot 1 ('RP3 (day/colour)'). Reset scheduled.'
+[21:42.499] app   | [BleSession] Timed out waiting for Sleep signal after 10000ms.
+[21:47.632] app   | Written AI slots to the device WILD-CNKW (14:26:15-965)
+[21:47.914] nrf   | <info> app: AI processor replies: 'Active slot 1 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[21:47.914] nrf   | BLE out: Sent 117 bytes: 'Active slot 1 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[21:47.914] himax | Active slot 1 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[21:47.914] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'Active slot 1 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[21:47.914] himax | 000: 80 04 74 00 41 63 74 69  76 65 20 73 6c 6f 74 20 ..t.Active slot 
+[21:53.008] app   | Written AI slots to the device WILD-CNKW (14:26:21-343)
+[21:53.174] himax | Active slot 1 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[21:53.174] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'Active slot 1 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[21:53.174] himax | 000: 80 04 74 00 41 63 74 69  76 65 20 73 6c 6f 74 20 ..t.Active slot 
+[21:53.487] nrf   | <info> app: AI processor replies: 'Active slot 1 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[21:53.487] nrf   | BLE out: Sent 117 bytes: 'Active slot 1 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[21:58.485] app   | Written AI slots to the device WILD-CNKW (14:26:26-818)
+[21:58.720] nrf   | <info> app: AI processor replies: 'Active slot 1 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[21:58.720] nrf   | BLE out: Sent 117 bytes: 'Active slot 1 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[21:58.720] himax | Active slot 1 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[21:58.720] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'Active slot 1 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[21:58.720] himax | 000: 80 04 74 00 41 63 74 69  76 65 20 73 6c 6f 74 20 ..t.Active slot 
+[22:03.949] app   | Written AI slots to the device WILD-CNKW (14:26:32-282)
+[22:04.280] nrf   | <info> app: AI processor replies: 'Active slot 1 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[22:04.280] nrf   | BLE out: Sent 117 bytes: 'Active slot 1 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[22:04.280] himax | Active slot 1 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[22:04.280] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'Active slot 1 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[22:04.280] himax | 000: 80 04 74 00 41 63 74 69  76 65 20 73 6c 6f 74 20 ..t.Active slot 
+[22:04.338] app   | '[useCameraSwitch] switch failed:', [Error: Device did not come back running RP3. It may have booted the other image - check with 'AI slots' and switch again if needed.]
+[22:24.282] himax | Inactive for 20000ms
+[22:24.282] himax | Sending 93 bytes: Header 4, payload 87, checksum 2 'Sleep 0 ... op8=3000 op9=5 op13=0 op25=Sleep 0 1 ...
+[22:24.282] himax | 000: 80 04 57 00 53 6c 65 65  70 20 30 20 30 20 30 20 ..W.Sleep 0 0 0 
+[22:24.282] himax | >>> Reset by watchdog
+[22:24.594] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0000 Cold boot
+[22:27.959] himax | DEBUG: ledFlashBrightness(5%) [brbits = 0x0]
+[22:29.483] himax | Inactive for 1000ms
+[22:29.483] himax | Sending 93 bytes: Header 4, payload 87, checksum 2 'Sleep 0 ... op8=3000 op9=5 op13=0 op25=Sleep 0 1 ...
+[22:29.483] himax | 000: 80 04 57 00 53 6c 65 65  70 20 30 20 30 20 30 20 ..W.Sleep 0 0 0 
+[22:29.483] himax | >>> Entering DPD at 2024:01:01 00:00:03
+[23:39.812] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[23:40.428] himax | DEBUG: ledFlashBrightness(5%) [brbits = 0x0]
+[23:40.428] himax | Set OpParam 8 = 1000
+[23:40.428] himax | Sending 26 bytes: Header 4, payload 20, checksum 2 'Set OpParam 8 = 1000'
+[23:40.428] himax | 000: 80 04 14 00 53 65 74 20  4f 70 50 61 72 61 6d 20 ....Set OpParam 
+[23:40.743] nrf   | <info> app: AI processor replies: 'Set OpParam 8 = 1000'
+[23:40.743] nrf   | BLE out: Sent  21 bytes: 'Set OpParam 8 = 1000'
+[23:43.546] himax | Inactive for 3000ms
+[23:43.855] himax | Sending 93 bytes: Header 4, payload 87, checksum 2 'Sleep 0 ... op8=1000 op9=5 op13=0 op25=Sleep 0 1 ...
+[23:43.855] himax | 000: 80 04 57 00 53 6c 65 65  70 20 30 20 30 20 30 20 ..W.Sleep 0 0 0 
+[23:43.855] himax | >>> Entering DPD at 2024:01:01 00:00:07
+[25:58.044] app   | Device WILD-CNKW connected
+[25:58.348] app   | Written AI setop 8 1000 to the device WILD-CNKW (14:30:26-682)
+[25:58.787] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[25:59.099] himax | DEBUG: ledFlashBrightness(5%) [brbits = 0x0]
+[25:59.407] nrf   | <info> app: AI processor replies: 'Set OpParam 8 = 1000'
+[25:59.407] nrf   | BLE out: Sent  21 bytes: 'Set OpParam 8 = 1000'
+[25:59.407] himax | Set OpParam 8 = 1000
+[25:59.407] himax | Sending 26 bytes: Header 4, payload 20, checksum 2 'Set OpParam 8 = 1000'
+[25:59.407] himax | 000: 80 04 14 00 53 65 74 20  4f 70 50 61 72 61 6d 20 ....Set OpParam 
+[25:59.528] app   | [KeepAwake] op8 on D6:47:9B:89:E7:23 restored to 1000 (reconnect)
+[26:00.633] himax | Inactive for 1000ms
+[26:00.633] himax | Sending 93 bytes: Header 4, payload 87, checksum 2 'Sleep 0 ... op8=1000 op9=5 op13=0 op25=Sleep 0 1 ...
+[26:00.633] himax | 000: 80 04 57 00 53 6c 65 65  70 20 30 20 30 20 30 20 ..W.Sleep 0 0 0 
+[26:00.633] himax | >>> Entering DPD at 2024:01:01 00:00:10
+[26:11.473] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[26:11.560] app   | Written AI slots to the device WILD-CNKW (14:30:39-899)
+[26:12.099] himax | DEBUG: ledFlashBrightness(5%) [brbits = 0x0]
+[26:12.414] nrf   | <info> app: AI processor replies: 'Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[26:12.414] nrf   | BLE out: Sent 116 bytes: 'Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[26:12.414] himax | Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[26:12.414] himax | Sending 121 bytes: Header 4, payload 115, checksum 2 'Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[26:12.414] himax | 000: 80 04 73 00 41 63 74 69  76 65 20 73 6c 6f 74 20 ..s.Active slot 
+[26:12.460] app   | Written AI getop -1 to the device WILD-CNKW (14:30:40-803)
+[26:12.764] app   | Written AI getop -1 to the device WILD-CNKW (14:30:41-102)
+[26:13.207] app   | Written AI getop -1 to the device WILD-CNKW (14:30:41-546)
+[26:13.464] app   | Written AI getop -1 to the device WILD-CNKW (14:30:41-803)
+[26:13.799] app   | Written AI setop 8 3000 to the device WILD-CNKW (14:30:42-137)
+[26:13.963] himax | Set OpParam 8 = 3000
+[26:13.963] himax | Sending 26 bytes: Header 4, payload 20, checksum 2 'Set OpParam 8 = 3000'
+[26:13.963] himax | 000: 80 04 14 00 53 65 74 20  4f 70 50 61 72 61 6d 20 ....Set OpParam 
+[26:13.963] nrf   | <info> app: AI processor replies: 'Set OpParam 8 = 3000'
+[26:13.963] nrf   | BLE out: Sent  21 bytes: 'Set OpParam 8 = 3000'
+[26:14.122] app   | [KeepAwake] holding D6:47:9B:89:E7:23 awake: op8 1000 -> 3000
+[26:15.187] himax | Inactive for 1000ms
+[26:15.187] himax | Sending 93 bytes: Header 4, payload 87, checksum 2 'Sleep 0 ... op8=3000 op9=5 op13=0 op25=Sleep 0 1 ...
+[26:15.187] himax | 000: 80 04 57 00 53 6c 65 65  70 20 30 20 30 20 30 20 ..W.Sleep 0 0 0 
+[26:15.187] himax | >>> Entering DPD at 2024:01:01 00:00:13
+[26:17.562] app   | Written AI slots to the device WILD-CNKW (14:30:45-901)
+[26:17.627] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[26:18.244] himax | DEBUG: ledFlashBrightness(5%) [brbits = 0x0]
+[26:18.555] nrf   | <info> app: AI processor replies: 'Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[26:18.555] nrf   | BLE out: Sent 116 bytes: 'Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[26:18.555] himax | Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[26:18.555] himax | Sending 121 bytes: Header 4, payload 115, checksum 2 'Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[26:18.555] himax | 000: 80 04 73 00 41 63 74 69  76 65 20 73 6c 6f 74 20 ..s.Active slot 
+[26:18.713] app   | [useCameraSwitch] switching from RP3 to HM0360
+[26:18.744] app   | Written AI switchslot to the device WILD-CNKW (14:30:47-083)
+[26:19.166] nrf   | <info> app: AI processor replies: 'Switched to slot 0 ('HM0360 (night/IR)'). Reset scheduled.'
+[26:19.166] nrf   | BLE out: Sent  59 bytes: 'Switched to slot 0 ('HM0360 (night/IR)'). Reset scheduled.'
+[26:19.166] himax | write_slot_selector: slot 0 selector written OK
+[26:19.166] himax | Switched to slot 0 ('HM0360 (night/IR)'). Reset scheduled.
+[26:19.166] himax | Sending 64 bytes: Header 4, payload 58, checksum 2 'Switched to slot 0 ('HM0360 (night/IR)'). Reset scheduled.'
+[26:22.201] app   | [BleSession] SLEEP signal detected  proceeding.
+[26:22.217] himax | Inactive for 3000ms
+[26:22.217] himax | Sending 93 bytes: Header 4, payload 87, checksum 2 'Sleep 0 ... op8=3000 op9=5 op13=0 op25=Sleep 0 1 ...
+[26:22.217] himax | 000: 80 04 57 00 53 6c 65 65  70 20 30 20 30 20 30 20 ..W.Sleep 0 0 0 
+[26:22.217] himax | >>> Reset by watchdog
+[26:22.531] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0000 Cold boot
+[26:26.877] app   | [BleSession] WAKE signal detected  proceeding.
+[26:26.883] himax | DEBUG: ledFlashBrightness(5%) [brbits = 0x0]
+[26:27.127] app   | Written AI slots to the device WILD-CNKW (14:30:55-466)
+[26:27.196] himax | Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[26:27.196] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[26:27.196] himax | 000: 80 04 74 00 41 63 74 69  76 65 20 73 6c 6f 74 20 ..t.Active slot 
+[26:27.417] app   | [useCameraSwitch] now running HM0360
+[26:27.498] nrf   | <info> app: AI processor replies: 'Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[26:27.498] nrf   | BLE out: Sent 117 bytes: 'Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[26:28.417] himax | Inactive for 1000ms
+[26:28.417] himax | Sending 93 bytes: Header 4, payload 87, checksum 2 'Sleep 0 ... op8=3000 op9=5 op13=0 op25=Sleep 0 1 ...
+[26:28.417] himax | 000: 80 04 57 00 53 6c 65 65  70 20 30 20 30 20 30 20 ..W.Sleep 0 0 0 
+[26:28.417] himax | >>> Entering DPD at 2024:01:01 00:00:03
+[27:34.045] app   | Written AI getop -1 to the device WILD-CNKW (14:32:02-386)
+[27:34.082] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[27:34.392] himax | DEBUG: ledFlashBrightness(5%) [brbits = 0x0]
+[27:35.012] app   | Written AI setop 13 1 to the device WILD-CNKW (14:32:03-352)
+[27:35.320] nrf   | <info> app: AI processor replies: 'Set OpParam 13 = 1'
+[27:35.320] nrf   | BLE out: Sent  19 bytes: 'Set OpParam 13 = 1'
+[27:35.320] himax | Set OpParam 13 = 1
+[27:35.320] himax | Sending 24 bytes: Header 4, payload 18, checksum 2 'Set OpParam 13 = 1'
+[27:35.320] himax | 000: 80 04 12 00 53 65 74 20  4f 70 50 61 72 61 6d 20 ....Set OpParam 
+[27:38.403] himax | Inactive for 3000ms
+[27:38.403] himax | Sending 93 bytes: Header 4, payload 87, checksum 2 'Sleep 0 ... op8=3000 op9=5 op13=1 op25=Sleep 0 1 ...
+[27:38.403] himax | 000: 80 04 57 00 53 6c 65 65  70 20 30 20 30 20 30 20 ..W.Sleep 0 0 0 
+[27:38.403] himax | >>> Entering DPD at 2024:01:01 00:00:08
+[27:38.432] app   | [BleSession] SLEEP signal detected  proceeding.
+[27:38.573] app   | [useCapturePreview] startCapture called (count=1, interval=500)
+[27:38.573] app   | [useCapturePreview] Phase 1: Setup  checking device state
+[27:38.576] app   | Written AI getop -1 to the device WILD-CNKW (14:32:06-916)
+[27:38.704] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[27:39.018] himax | DEBUG: ledFlashBrightness(5%) [brbits = 0x0]
+[27:39.018] himax | DEBUG: ledFlashSelectLED(1)
+[27:39.682] app   | [useCapturePreview] Phase 1 complete  waiting for device to sleep
+[27:42.422] himax | Inactive for 3000ms
+[27:42.422] himax | Sending 93 bytes: Header 4, payload 87, checksum 2 'Sleep 0 ... op8=3000 op9=5 op13=1 op25=Sleep 0 1 ...
+[27:42.422] himax | 000: 80 04 57 00 53 6c 65 65  70 20 30 20 30 20 30 20 ..W.Sleep 0 0 0 
+[27:42.422] himax | >>> Entering DPD at 2024:01:01 00:00:12
+[27:42.529] app   | [BleSession] SLEEP signal detected  proceeding.
+[27:42.675] app   | [useCapturePreview] Phase 2: Capture  sending AI capture 1 500
+[27:42.680] app   | Written AI capture 1 500 to the device WILD-CNKW (14:32:11-020)
+[27:43.047] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[27:43.268] himax | DEBUG: ledFlashBrightness(5%) [brbits = 0x0]
+[27:43.268] himax | DEBUG: ledFlashSelectLED(1)
+[27:43.315] app   | [OpCache] dropped on wake for D6:47:9B:89:E7:23
+[27:43.573] himax | Image capture 1/1 took 46ms
+[27:43.573] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT
+[27:43.573] himax | Sending 49 bytes: Header 4, payload 43, checksum 2 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[27:43.884] himax | Sending 68 bytes: Header 4, payload 62, checksum 2 'Captured 1 images. Last is 592008D0.JPG (File write 43ms avg.)'
+[27:43.884] himax | 000: 80 04 3e 00 43 61 70 74  75 72 65 64 20 31 20 69 ..>.Captured 1 i
+[27:43.978] nrf   | BLE out: Sent  44 bytes: 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[27:43.978] nrf   | BLE out: Sent  63 bytes: 'Captured 1 images. Last is 592008D0.JPG (File write 43ms avg.)'
+[27:44.811] app   | [useCapturePreview] Phase 2 complete  captured: 592008D0.JPG
+[27:44.812] app   | [useCapturePreview] Device held awake; sending txfile without waiting for sleep
+[27:44.812] app   | [useCapturePreview] Phase 3: Transfer  requesting txfile 592008D0.JPG
+[27:44.867] app   | Written AI txfile 592008D0.JPG to the device WILD-CNKW (14:32:13-210)
+[27:44.995] himax | 11326 bytes in 592008D0.JPG
+[27:44.995] himax | Sending 33 bytes: Header 4, payload 27, checksum 2 '11326 bytes in 592008D0.JPG'
+[27:45.058] app   | ImageReassembler: Initializing transfer for 11326 bytes
+[27:45.506] nrf   | <info> app: AI processor replies: '11326 bytes in 592008D0.JPG'
+[27:45.506] nrf   | BLE out: Sent  28 bytes: '11326 bytes in 592008D0.JPG'
+[27:54.241] himax | Finished sending 11326 bytes (47 packets)
+[27:54.241] himax | Sending 47 bytes: Header 4, payload 41, checksum 2 'Finished sending 11326 bytes (47 packets)'
+[27:54.794] nrf   | BLE out: Failed to send  42 bytes: 'Finished sending 11326 bytes (47 packets)'
+[27:54.794] nrf   | BLE out: Failed to send  42 bytes: 'Finished sending 11326 bytes (47 packets)'
+[27:54.794] nrf   | BLE out: Sent  42 bytes: 'Finished sending 11326 bytes (47 packets)'
+[27:55.207] app   | ImageReassembler: Transfer complete! Received 11326/11326 (0 gaps)
+[27:55.218] app   | [useCapturePreview] "Finished sending" detected (expected 11326 bytes). Waiting 500ms grace period for last packets...
+[27:55.475] app   | ImageReassembler: Image saved to file:///data/user/0/com.wildlife.wildlifewatcher.expo/cache/capture_1788402743549.jpg [SUCCESS] (11326/11326 bytes)
+[27:57.628] himax | Inactive for 3000ms
+[27:57.628] himax | Sending 94 bytes: Header 4, payload 88, checksum 2 'Sleep 1 ... op8=3000 op9=5 op13=1 op25=Sleep 1 1 ...
+[27:57.628] himax | 000: 80 04 58 00 53 6c 65 65  70 20 31 20 30 20 30 20 ..X.Sleep 1 0 0 
+[27:57.628] himax | >>> Entering DPD at 2024:01:01 00:00:28
+[28:09.937] app   | Written AI getop -1 to the device WILD-CNKW (14:32:38-279)
+[28:10.042] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[28:10.352] himax | DEBUG: ledFlashBrightness(5%) [brbits = 0x0]
+[28:10.352] himax | DEBUG: ledFlashSelectLED(1)
+[28:11.074] app   | Written AI setop 9 50 to the device WILD-CNKW (14:32:39-414)
+[28:11.280] himax | Set OpParam 9 = 50
+[28:11.280] himax | Sending 24 bytes: Header 4, payload 18, checksum 2 'Set OpParam 9 = 50'
+[28:11.280] himax | 000: 80 04 12 00 53 65 74 20  4f 70 50 61 72 61 6d 20 ....Set OpParam 
+[28:11.543] nrf   | <info> app: AI processor replies: 'Set OpParam 9 = 50'
+[28:11.543] nrf   | BLE out: Sent  19 bytes: 'Set OpParam 9 = 50'
+[28:14.371] himax | Inactive for 3000ms
+[28:14.371] himax | Sending 95 bytes: Header 4, payload 89, checksum 2 'Sleep 1 ... op8=3000 op9=50 op13=1 op25=Sleep 1 1 ...
+[28:14.371] himax | 000: 80 04 59 00 53 6c 65 65  70 20 31 20 30 20 30 20 ..Y.Sleep 1 0 0 
+[28:14.511] app   | [BleSession] SLEEP signal detected  proceeding.
+[28:14.685] himax | >>> Entering DPD at 2024:01:01 00:00:45
+[28:14.751] app   | [useCapturePreview] startCapture called (count=1, interval=500)
+[28:14.753] app   | [useCapturePreview] Phase 1: Setup  checking device state
+[28:14.754] app   | Written AI getop -1 to the device WILD-CNKW (14:32:43-096)
+[28:14.997] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[28:15.309] himax | DEBUG: ledFlashBrightness(50%) [brbits = 0x7]
+[28:15.309] himax | DEBUG: ledFlashSelectLED(1)
+[28:16.190] app   | [useCapturePreview] Phase 1 complete  waiting for device to sleep
+[28:18.701] himax | Inactive for 3000ms
+[28:18.701] himax | Sending 95 bytes: Header 4, payload 89, checksum 2 'Sleep 1 ... op8=3000 op9=50 op13=1 op25=Sleep 1 1 ...
+[28:18.701] himax | 000: 80 04 59 00 53 6c 65 65  70 20 31 20 30 20 30 20 ..Y.Sleep 1 0 0 
+[28:18.701] himax | >>> Entering DPD at 2024:01:01 00:00:49
+[28:18.801] app   | [BleSession] SLEEP signal detected  proceeding.
+[28:19.006] app   | [useCapturePreview] Phase 2: Capture  sending AI capture 1 500
+[28:19.010] app   | Written AI capture 1 500 to the device WILD-CNKW (14:32:47-351)
+[28:19.325] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[28:19.640] himax | DEBUG: ledFlashBrightness(50%) [brbits = 0x7]
+[28:19.640] himax | DEBUG: ledFlashSelectLED(1)
+[28:19.774] app   | [OpCache] dropped on wake for D6:47:9B:89:E7:23
+[28:19.950] himax | Image capture 1/1 took 47ms
+[28:20.130] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT
+[28:20.131] himax | Sending 49 bytes: Header 4, payload 43, checksum 2 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[28:20.447] himax | Sending 68 bytes: Header 4, payload 62, checksum 2 'Captured 1 images. Last is 59200B30.JPG (File write 44ms avg.)'
+[28:20.447] himax | 000: 80 04 3e 00 43 61 70 74  75 72 65 64 20 31 20 69 ..>.Captured 1 i
+[28:20.525] nrf   | BLE out: Sent  44 bytes: 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[28:20.525] nrf   | BLE out: Sent  63 bytes: 'Captured 1 images. Last is 59200B30.JPG (File write 44ms avg.)'
+[28:21.673] app   | [useCapturePreview] Phase 2 complete  captured: 59200B30.JPG
+[28:21.674] app   | [useCapturePreview] Device held awake; sending txfile without waiting for sleep
+[28:21.674] app   | [useCapturePreview] Phase 3: Transfer  requesting txfile 59200B30.JPG
+[28:21.728] app   | Written AI txfile 59200B30.JPG to the device WILD-CNKW (14:32:50-069)
+[28:21.851] himax | 13442 bytes in 59200B30.JPG
+[28:21.851] himax | Sending 33 bytes: Header 4, payload 27, checksum 2 '13442 bytes in 59200B30.JPG'
+[28:21.915] app   | ImageReassembler: Initializing transfer for 13442 bytes
+[28:22.376] nrf   | <info> app: AI processor replies: '13442 bytes in 59200B30.JPG'
+[28:22.376] nrf   | BLE out: Sent  28 bytes: '13442 bytes in 59200B30.JPG'
+[28:33.930] himax | Finished sending 13442 bytes (56 packets)
+[28:33.930] himax | Sending 47 bytes: Header 4, payload 41, checksum 2 'Finished sending 13442 bytes (56 packets)'
+[28:34.128] nrf   | BLE out: Failed to send  42 bytes: 'Finished sending 13442 bytes (56 packets)'
+[28:34.128] nrf   | BLE out: Failed to send  42 bytes: 'Finished sending 13442 bytes (56 packets)'
+[28:34.128] nrf   | BLE out: Sent  42 bytes: 'Finished sending 13442 bytes (56 packets)'
+[28:34.261] app   | ImageReassembler: Transfer complete! Received 13442/13442 (0 gaps)
+[28:34.328] app   | ImageReassembler: Image saved to file:///data/user/0/com.wildlife.wildlifewatcher.expo/cache/capture_1788402782606.jpg [SUCCESS] (13442/13442 bytes)
+[28:37.008] himax | Inactive for 3000ms
+[28:37.008] himax | Sending 95 bytes: Header 4, payload 89, checksum 2 'Sleep 2 ... op8=3000 op9=50 op13=1 op25=Sleep 2 1 ...
+[28:37.008] himax | 000: 80 04 59 00 53 6c 65 65  70 20 32 20 30 20 30 20 ..Y.Sleep 2 0 0 
+[28:37.008] himax | >>> Entering DPD at 2024:01:01 00:01:08
+[29:37.415] app   | [KeepAwake] link to D6:47:9B:89:E7:23 dropped with a hold active; restore deferred to the next connection
+[36:29.573] app   | Device WILD-CNKW connected
+[36:29.884] app   | Written AI setop 8 1000 to the device WILD-CNKW (14:40:58-241)
+[36:30.185] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[36:30.489] himax | DEBUG: ledFlashBrightness(50%) [brbits = 0x7]
+[36:30.489] himax | DEBUG: ledFlashSelectLED(1)
+[36:30.489] himax | Set OpParam 8 = 1000
+[36:30.489] himax | Sending 26 bytes: Header 4, payload 20, checksum 2 'Set OpParam 8 = 1000'
+[36:30.489] himax | 000: 80 04 14 00 53 65 74 20  4f 70 50 61 72 61 6d 20 ....Set OpParam 
+[36:30.710] app   | [KeepAwake] op8 on D6:47:9B:89:E7:23 restored to 1000 (reconnect)
+[36:30.792] nrf   | <info> app: AI processor replies: 'Set OpParam 8 = 1000'
+[36:30.792] nrf   | BLE out: Sent  21 bytes: 'Set OpParam 8 = 1000'
+[36:33.843] himax | Inactive for 3000ms
+[36:33.843] himax | Sending 95 bytes: Header 4, payload 89, checksum 2 'Sleep 2 ... op8=1000 op9=50 op13=1 op25=Sleep 2 1 ...
+[36:33.843] himax | 000: 80 04 59 00 53 6c 65 65  70 20 32 20 30 20 30 20 ..Y.Sleep 2 0 0 
+[36:33.843] himax | >>> Entering DPD at 2024:01:01 00:09:22
+[36:34.391] app   | Written AI slots to the device WILD-CNKW (14:41:02-752)
+[36:34.454] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[36:34.757] himax | DEBUG: ledFlashBrightness(50%) [brbits = 0x7]
+[36:34.757] himax | DEBUG: ledFlashSelectLED(1)
+[36:35.059] nrf   | <info> app: AI processor replies: 'Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[36:35.059] nrf   | BLE out: Sent 117 bytes: 'Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[36:35.059] himax | Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[36:35.059] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[36:35.059] himax | 000: 80 04 74 00 41 63 74 69  76 65 20 73 6c 6f 74 20 ..t.Active slot 
+[36:35.059] app   | Written AI getop -1 to the device WILD-CNKW (14:41:03-412)
+[36:35.335] app   | Written AI getop -1 to the device WILD-CNKW (14:41:03-686)
+[36:35.800] app   | Written AI getop -1 to the device WILD-CNKW (14:41:04-150)
+[36:36.056] app   | Written AI getop -1 to the device WILD-CNKW (14:41:04-419)
+[36:36.390] app   | Written AI setop 8 3000 to the device WILD-CNKW (14:41:04-750)
+[36:36.584] nrf   | <info> app: AI processor replies: 'Set OpParam 8 = 3000'
+[36:36.584] nrf   | BLE out: Sent  21 bytes: 'Set OpParam 8 = 3000'
+[36:36.584] himax | Set OpParam 8 = 3000
+[36:36.584] himax | Sending 26 bytes: Header 4, payload 20, checksum 2 'Set OpParam 8 = 3000'
+[36:36.584] himax | 000: 80 04 14 00 53 65 74 20  4f 70 50 61 72 61 6d 20 ....Set OpParam 
+[36:36.745] app   | [KeepAwake] holding D6:47:9B:89:E7:23 awake: op8 1000 -> 3000
+[36:37.795] himax | Inactive for 1000ms
+[36:37.795] himax | Sending 95 bytes: Header 4, payload 89, checksum 2 'Sleep 2 ... op8=3000 op9=50 op13=1 op25=Sleep 2 1 ...
+[36:37.795] himax | 000: 80 04 59 00 53 6c 65 65  70 20 32 20 30 20 30 20 ..Y.Sleep 2 0 0 
+[36:37.795] himax | >>> Entering DPD at 2024:01:01 00:09:26
+[36:43.671] app   | [BleSession] Device already asleep  proceeding immediately.
+[36:43.676] app   | [useCapturePreview] startCapture called (count=1, interval=500)
+[36:43.676] app   | [useCapturePreview] Phase 1: Setup  checking device state
+[36:43.676] app   | [useCapturePreview] Phase 1 complete  waiting for device to sleep
+[36:43.676] app   | [BleSession] Device already asleep  proceeding immediately.
+[36:43.676] app   | [useCapturePreview] Phase 2: Capture  sending AI capture 1 500
+[36:43.811] app   | Written AI capture 1 500 to the device WILD-CNKW (14:41:12-163)
+[36:43.943] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[36:44.174] app   | [OpCache] dropped on wake for D6:47:9B:89:E7:23
+[36:44.253] himax | DEBUG: ledFlashBrightness(50%) [brbits = 0x7]
+[36:44.253] himax | DEBUG: ledFlashSelectLED(1)
+[36:44.568] himax | Image capture 1/1 took 46ms
+[36:44.568] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT
+[36:44.568] himax | Sending 49 bytes: Header 4, payload 43, checksum 2 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[36:45.051] himax | Sending 68 bytes: Header 4, payload 62, checksum 2 'Captured 1 images. Last is 59202BE0.JPG (File write 43ms avg.)'
+[36:45.051] himax | 000: 80 04 3e 00 43 61 70 74  75 72 65 64 20 31 20 69 ..>.Captured 1 i
+[36:45.189] nrf   | BLE out: Sent  44 bytes: 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[36:45.189] nrf   | BLE out: Sent  63 bytes: 'Captured 1 images. Last is 59202BE0.JPG (File write 43ms avg.)'
+[36:45.317] app   | [useCapturePreview] Phase 2 complete  captured: 59202BE0.JPG
+[36:45.317] app   | [useCapturePreview] Device held awake; sending txfile without waiting for sleep
+[36:45.317] app   | [useCapturePreview] Phase 3: Transfer  requesting txfile 59202BE0.JPG
+[36:45.426] app   | Written AI txfile 59202BE0.JPG to the device WILD-CNKW (14:41:13-789)
+[36:45.474] app   | ImageReassembler: Initializing transfer for 11170 bytes
+[36:45.489] himax | 11170 bytes in 59202BE0.JPG
+[36:45.489] himax | Sending 33 bytes: Header 4, payload 27, checksum 2 '11170 bytes in 59202BE0.JPG'
+[36:45.799] nrf   | <info> app: AI processor replies: '11170 bytes in 59202BE0.JPG'
+[36:45.799] nrf   | BLE out: Sent  28 bytes: '11170 bytes in 59202BE0.JPG'
+[36:53.141] himax | Finished sending 11170 bytes (47 packets)
+[36:53.141] himax | Sending 47 bytes: Header 4, payload 41, checksum 2 'Finished sending 11170 bytes (47 packets)'
+[36:53.441] nrf   | BLE out: Failed to send  42 bytes: 'Finished sending 11170 bytes (47 packets)'
+[36:53.441] nrf   | BLE out: Failed to send  42 bytes: 'Finished sending 11170 bytes (47 packets)'
+[36:53.441] nrf   | BLE out: Sent  42 bytes: 'Finished sending 11170 bytes (47 packets)'
+[36:53.589] app   | ImageReassembler: Transfer complete! Received 11170/11170 (0 gaps)
+[36:53.668] app   | ImageReassembler: Image saved to file:///data/user/0/com.wildlife.wildlifewatcher.expo/cache/capture_1788403281954.jpg [SUCCESS] (11170/11170 bytes)
+[36:55.236] app   | Written AI getop -1 to the device WILD-CNKW (14:41:23-591)
+[36:55.568] app   | Written AI setop 9 80 to the device WILD-CNKW (14:41:23-920)
+[36:55.578] himax | Set OpParam 9 = 80
+[36:55.578] himax | Sending 24 bytes: Header 4, payload 18, checksum 2 'Set OpParam 9 = 80'
+[36:55.578] himax | 000: 80 04 12 00 53 65 74 20  4f 70 50 61 72 61 6d 20 ....Set OpParam 
+[36:55.893] nrf   | <info> app: AI processor replies: 'Set OpParam 9 = 80'
+[36:55.893] nrf   | BLE out: Sent  19 bytes: 'Set OpParam 9 = 80'
+[36:58.876] app   | [BleSession] SLEEP signal detected  proceeding.
+[36:58.940] himax | Inactive for 3000ms
+[36:58.940] himax | Sending 95 bytes: Header 4, payload 89, checksum 2 'Sleep 3 ... op8=3000 op9=80 op13=1 op25=Sleep 3 1 ...
+[36:58.940] himax | 000: 80 04 59 00 53 6c 65 65  70 20 33 20 30 20 30 20 ..Y.Sleep 3 0 0 
+[36:58.940] himax | >>> Entering DPD at 2024:01:01 00:09:48
+[36:59.061] app   | [useCapturePreview] startCapture called (count=1, interval=500)
+[36:59.061] app   | [useCapturePreview] Phase 1: Setup  checking device state
+[36:59.061] app   | [useCapturePreview] Phase 1 complete  waiting for device to sleep
+[36:59.061] app   | [BleSession] Device already asleep  proceeding immediately.
+[36:59.061] app   | [useCapturePreview] Phase 2: Capture  sending AI capture 1 500
+[36:59.061] app   | Written AI capture 1 500 to the device WILD-CNKW (14:41:27-420)
+[36:59.557] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[36:59.792] himax | DEBUG: ledFlashBrightness(80%) [brbits = 0xc]
+[36:59.792] himax | DEBUG: ledFlashSelectLED(1)
+[36:59.841] app   | [OpCache] dropped on wake for D6:47:9B:89:E7:23
+[37:00.098] himax | Image capture 1/1 took 47ms
+[37:00.098] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT
+[37:00.098] himax | Sending 49 bytes: Header 4, payload 43, checksum 2 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[37:00.399] himax | Sending 68 bytes: Header 4, payload 62, checksum 2 'Captured 1 images. Last is 59202CE0.JPG (File write 43ms avg.)'
+[37:00.399] himax | 000: 80 04 3e 00 43 61 70 74  75 72 65 64 20 31 20 69 ..>.Captured 1 i
+[37:00.478] nrf   | BLE out: Sent  44 bytes: 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[37:00.478] nrf   | BLE out: Sent  63 bytes: 'Captured 1 images. Last is 59202CE0.JPG (File write 43ms avg.)'
+[37:01.281] app   | [useCapturePreview] Phase 2 complete  captured: 59202CE0.JPG
+[37:01.281] app   | [useCapturePreview] Device held awake; sending txfile without waiting for sleep
+[37:01.281] app   | [useCapturePreview] Phase 3: Transfer  requesting txfile 59202CE0.JPG
+[37:01.336] app   | Written AI txfile 59202CE0.JPG to the device WILD-CNKW (14:41:29-693)
+[37:01.523] himax | 11226 bytes in 59202CE0.JPG
+[37:01.523] himax | Sending 33 bytes: Header 4, payload 27, checksum 2 '11226 bytes in 59202CE0.JPG'
+[37:01.599] app   | ImageReassembler: Initializing transfer for 11226 bytes
+[37:02.020] nrf   | <info> app: AI processor replies: '11226 bytes in 59202CE0.JPG'
+[37:02.020] nrf   | BLE out: Sent  28 bytes: '11226 bytes in 59202CE0.JPG'
+[37:10.452] himax | Finished sending 11226 bytes (47 packets)
+[37:10.452] himax | Sending 47 bytes: Header 4, payload 41, checksum 2 'Finished sending 11226 bytes (47 packets)'
+[37:10.653] nrf   | BLE out: Failed to send  42 bytes: 'Finished sending 11226 bytes (47 packets)'
+[37:10.653] nrf   | BLE out: Failed to send  42 bytes: 'Finished sending 11226 bytes (47 packets)'
+[37:10.958] nrf   | BLE out: Sent  42 bytes: 'Finished sending 11226 bytes (47 packets)'
+[37:11.010] app   | ImageReassembler: Transfer complete! Received 11226/11226 (0 gaps)
+[37:11.077] app   | ImageReassembler: Image saved to file:///data/user/0/com.wildlife.wildlifewatcher.expo/cache/capture_1788403299373.jpg [SUCCESS] (11226/11226 bytes)
+[37:13.825] himax | Inactive for 3000ms
+[37:13.825] himax | Sending 95 bytes: Header 4, payload 89, checksum 2 'Sleep 4 ... op8=3000 op9=80 op13=1 op25=Sleep 4 1 ...
+[37:13.825] himax | 000: 80 04 59 00 53 6c 65 65  70 20 34 20 30 20 30 20 ..Y.Sleep 4 0 0 
+[37:13.825] himax | >>> Entering DPD at 2024:01:01 00:10:04
