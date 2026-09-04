@@ -43,13 +43,13 @@ post-run motion wakes prove the detector works. A release-build repeat is owed f
 
 | | Finding | Repo | Type | Issue |
 |---|---|---|---|---|
-| [A](A_sensitivity_compiled_out_on_rp3/explanation.md) | MD sensitivity (op17, `AI md`) is compiled out of the RP3 build: Low, Med, High are the same thresholds on the colour camera | firmware | bug, bench-verified | pending |
-| [B](B_capture_sequence_cannot_be_aborted/explanation.md) | A capture sequence cannot be aborted, so "Stop" only stops listening and the cleanup races the stream | firmware | enhancement | pending |
-| [C](C_grid_only_streaming/explanation.md) | Each test frame is a full capture and about 250 bytes; a grid-only mode would make sub-second intervals real | firmware | enhancement | pending |
-| [D](D_motion_test_op8_outside_keepawake/explanation.md) | The test raises op8 outside `keepAwake`, so a dropped link leaves the device awake in the field | app | bug | pending |
-| [E](E_sensitivity_feedback_and_labels/explanation.md) | The app hides a refused `AI md`, maps the sensitivity row id straight to a level, and labels the grid as if it were the test's own motion | app | cleanup | pending |
-| [F](F_app_receive_backlog_during_stream/explanation.md) | The app falls a minute behind the device during a test and writes its cleanup late (dev build measurement) | app | bug, to re-measure on release | pending |
-| [G](G_detector_rate_inherited_from_op11/explanation.md) | The test cannot set the detector's rate; it inherits op11 from the last sleep, two seconds after a stop or reset | app, firmware | bug | pending |
+| [A](A_sensitivity_compiled_out_on_rp3/explanation.md) | MD sensitivity (op17, `AI md`) is compiled out of the RP3 build: Low, Med, High are the same thresholds on the colour camera | firmware | bug, bench-verified | [Seeed #211](https://github.com/wildlifeai/Seeed_Grove_Vision_AI_Module_V2/issues/211) |
+| [B](B_capture_sequence_cannot_be_aborted/explanation.md) | A capture sequence cannot be aborted, so "Stop" only stops listening and the cleanup races the stream | firmware | enhancement | [Seeed #212](https://github.com/wildlifeai/Seeed_Grove_Vision_AI_Module_V2/issues/212) |
+| [C](C_grid_only_streaming/explanation.md) | Each test frame is a full capture and about 250 bytes; a grid-only mode would make sub-second intervals real | firmware | enhancement | [Seeed #213](https://github.com/wildlifeai/Seeed_Grove_Vision_AI_Module_V2/issues/213) |
+| [D](D_motion_test_op8_outside_keepawake/explanation.md) | The test raises op8 outside `keepAwake`, so a dropped link leaves the device awake in the field | app | bug | [ww-mobile-app #271](https://github.com/wildlifeai/ww-mobile-app/issues/271) |
+| [E](E_sensitivity_feedback_and_labels/explanation.md) | The app hides a refused `AI md`, maps the sensitivity row id straight to a level, and labels the grid as if it were the test's own motion | app | cleanup | [ww-mobile-app #272](https://github.com/wildlifeai/ww-mobile-app/issues/272) |
+| [F](F_app_receive_backlog_during_stream/explanation.md) | The app falls a minute behind the device during a test and writes its cleanup late (dev build measurement) | app | bug, to re-measure on release | [ww-mobile-app #273](https://github.com/wildlifeai/ww-mobile-app/issues/273) |
+| [G](G_detector_rate_inherited_from_op11/explanation.md) | The test cannot set the detector's rate; it inherits op11 from the last sleep, two seconds after a stop or reset | app, firmware | bug | [ww-mobile-app #274](https://github.com/wildlifeai/ww-mobile-app/issues/274) |
 
 ## The runs
 
@@ -69,7 +69,7 @@ slot. They are listed in the findings as the bench checks still owed.
 
 ## Open items
 
-Issues to file from the folders above; numbers go in the table when they exist. D, E and G
+All seven filed on 4 September 2026, permalinked to 561da458: A, B, C in Seeed_Grove_Vision_AI_Module_V2, D to G in this repo. D, E and G
 are the app-only changes and go first, on one branch.
 
 ## Files
