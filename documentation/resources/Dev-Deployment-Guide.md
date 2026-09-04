@@ -81,7 +81,7 @@ Both flows share these pipeline functions from `deploymentPipeline.ts`:
 | 8 | Live Monitor |
 
 > [!NOTE]
-> Dev Deployment does **not** run `resetOps` — it assumes the developer wants full control over all parameters. If a clean slate is needed, the developer can run `resetToDefaults` from the Engineer Console first.
+> Dev Deployment runs the same `pipeline.resetOps` as Start Monitoring before it applies the dev configuration (step 4b in `useDevDeployment`), and since #268 a refused reset aborts the deployment. Connecting no longer resets anything, so this is the only clean slate the dev deployment gets; every parameter the cards do not set starts at its factory default.
 
 ---
 

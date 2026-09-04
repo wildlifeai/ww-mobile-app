@@ -71,36 +71,34 @@ flowchart TD
 
 ### BLE Initialization
 
-BLE initialization happens **upstream** in the Scanner connection flow, and the results reach this screen via the `initPayload` navigation parameter. Measured on hardware, Sep 2026, connecting sends 16 commands:
+BLE initialization happens **upstream** in the Scanner connection flow, and the results reach this screen via the `initPayload` navigation parameter. Connecting is **read-only**: it sends six commands and writes nothing (since #268, Sep 2026; it used to send thirteen, including a factory reset):
 
 | Step | Commands | Notes |
 |---|---|---|
 | `useBleInitialization` | `selftest`, `setutc`, `battery` | There is **no SD card command**: SD status is bit 11 of the self-test bitmask, and battery level is bit 0 plus the `battery` command |
-| AI wake | `AI info` | Up to 3 attempts; the Himax is asleep until something addresses it |
-| Post-wake health | `selftest` **again** | See the warning below. Not a duplicate |
-| Silent OP reset | `AI getop -1`, then one `setop` per drifted parameter | Runs here, during connect, not on this screen's mount. Typically 5 writes |
-| Version checks | `ver`, `AI ver`, `AI info` | Currently issued twice each, which is redundant |
+| AI wake | `AI info` | Up to 3 attempts; the Himax is asleep until something addresses it. The only Himax wake on connect |
+| Post-wake health | none sent | The Himax broadcasts `Error bits = 0x....` on every wake (on the bench, 60 ms after `Wake`). `useDevicePreDeploymentChecks` listens for it while `AI info` runs and only sends `selftest` if no broadcast came |
+| Version checks | `ver`, `AI ver` | Once each. The screen trusts this snapshot; it re-queries only on focus return after a firmware update or on pull-to-refresh |
 
 > [!WARNING]
-> **The two `selftest` calls answer different questions and neither is removable.** The
+> **The pre-wake `selftest` and the post-wake broadcast answer different questions.** The
 > first runs before the Himax is awake, and at that point the BLE processor still has every
 > AI-processor bit (8-15) preset to 1; `useBleInitialization` masks the whole range as
-> stale. Only the second, after `AI info` wakes the Himax, can see real camera or SD card
+> stale. Only the bits after `AI info` wakes the Himax can show real camera or SD card
 > faults. Anything reading self-test bits must know which of the two it is looking at.
 
 > [!NOTE]
 > **A deployed device never reaches any of this.** `useDeviceDiscovery` checks
 > `getActiveDeploymentForDeviceId` first and routes an active deployment straight to Stop
-> Monitoring, so the OP reset cannot disturb a camera that is out working.
+> Monitoring.
 
-The reset writes `FACTORY_DEFAULTS`, which includes `SLOT_SWITCH` (OP 26) = 1, so **connecting enables automatic day/night camera switching** on any device where it was off. See [Light-Sensor.md](../resources/Light-Sensor.md).
+**The factory reset happens once, in the Start Monitoring pipeline** (`pipeline.resetOps`, step 5 below), after the user has decided to deploy. It is the guarantee that nothing leaks from a previous deployment or an Engineer Console session (test-mode bits, extended inactivity timeout, flash overrides, intervals). A refused write there aborts the deployment; it is not a warning. The reset writes `FACTORY_DEFAULTS`, which includes `SLOT_SWITCH` (OP 26) = 1, so **every deployment starts with automatic day/night camera switching** on. See [Light-Sensor.md](../resources/Light-Sensor.md).
 
 On this screen:
 - `isInitializing` is hardcoded to `false` (initialization is already complete)
-- `initErrors` displays any warnings from the upstream selftest (e.g., LoRaWAN connectivity)
-- A silent `resetOps` runs on mount to clear leftover state from previous sessions
+- `initErrors` displays any warnings from the upstream checks (e.g., LoRaWAN connectivity)
 - `useBleSession` + `useBleActions` maintain the BLE heartbeat during form entry
-- **BLE query optimization:** On screen mount, the firmware versions are resolved silently from `initPayload` rather than actively querying the connected device over BLE. This prevents BLE command queue collisions during screen initialization.
+- **BLE query optimization:** On screen mount, the firmware versions are resolved silently from `initPayload` rather than actively querying the connected device over BLE. Before #268 the hook re-queried the device whenever the snapshot looked outdated, which on a bench build was every time.
 - **Focus state recheck:** When the screen regains focus (e.g., after the operator navigates back from a successful firmware update), the active BLE query `checkStatus()` is run to refresh the firmware status and clear the outdated firmware warning banner automatically.
 
 ### User Form
@@ -162,7 +160,7 @@ When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeplo
 | 8 | Disconnect | User initiates manual disconnect (`dis`) |
 
 > [!NOTE]
-> **On initial screen mount**, `resetOps` also runs silently once to clear any leftover MD test state (`TEST_MODE_BITS`, extended DPD, etc.) before the user even fills the form.
+> Live monitoring after step 7 polls `AI getop 19` once a minute for the stored-image count; the poll is owned by `DeploymentMonitorView`'s single `useDeploymentMonitor` instance, which also feeds the activity log. Each poll wakes the Himax.
 
 ### OP Factory Reset (`pipeline.resetOps` / `executeResetToDefaults`)
 
@@ -174,7 +172,7 @@ The shared steps:
 
 1. `AI getop -1` — [bulk fetch](./04-ENGINEER-CONSOLE.md#op-bulk-fetch-optimization-ai-getop--1) current OPs (also wakes device from DPD)
 2. **Skips Tracking Counters** — ignores OPs like `NUM_PICTURES`, `NUM_NN_ANALYSES`, etc., so device lifetime history is preserved
-3. **Erases AI Model** — automatically sends `erasemodel` if a model is currently loaded
+3. **Keeps the AI model** — the pipeline passes `preserveModel: true`, so no `erasemodel` is sent and op14/op15 are left alone; model state belongs to the AI Model Sync step. The Engineer Console's reset omits the flag and does erase a loaded model
 4. Diff against `FACTORY_DEFAULTS` — only writes values that differ to save BLE round trips
 5. Clears Deployment ID and zeroizes GPS natively
 

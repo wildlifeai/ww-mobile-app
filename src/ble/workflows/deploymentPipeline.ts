@@ -36,15 +36,20 @@ export async function syncTime(
 }
 
 /**
- * Step 1b: Reset all operational parameters to factory defaults.
+ * Reset all operational parameters to factory defaults (step 5 of the Start
+ * Monitoring pipeline in 05-DEVICE-FLOWS.md, step 4b of the dev deployment).
  *
  * Ensures the device has a clean slate before deployment. Prevents leftover
- * state from MD tests (TEST_MODE_BITS=8) or previous deployments from
- * contaminating the new deployment.
+ * state from MD tests (TEST_MODE_BITS=8), Engineer Console sessions or
+ * previous deployments from contaminating the new deployment.
  *
  * Uses diff-based logic: reads current OPs via getop -1, only writes
  * values that differ from FACTORY_DEFAULTS. Each setop receives a
  * confirmation response, so no verification pass is needed.
+ *
+ * This is the only reset a deployment gets: connecting no longer runs one
+ * (#268), so a refused write here is a failed deployment, not a warning.
+ * The error propagates; the caller aborts.
  */
 
 
@@ -71,8 +76,9 @@ export async function resetOps(
         addLog('Device parameters reset successfully')
         setProgress(0.09)
     } catch (e) {
-        logWarn('[ResetOps] Reset failed, continuing:', e)
-        addLog('Parameter reset failed — continuing with deployment')
+        logWarn('[ResetOps] Reset failed:', e)
+        addLog('Parameter reset failed — the device may still carry settings from a previous session')
+        throw e
     }
 }
 
