@@ -16,6 +16,8 @@ import { useBleSession } from '../../../hooks/useBleSession'
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { checkSdCard } from '../../../ble/workflows/checkSdCard'
 import { extractErrorBits } from '../../../ble/messageClassifier'
+import { selfTestCache } from '../../../ble/protocol/selfTestCache'
+import { SelfTestBit } from '../../../utils/deviceSelfTest'
 import { useBleActions } from '../../../providers/BleEngineProvider'
 import { useDeploymentConfiguration } from '../../../hooks/useDeploymentConfiguration'
 import { useBle } from '../../../hooks/useBle'
@@ -761,12 +763,18 @@ export const useStartDeployment = ({
                     setSdCardStatus({ total: sdStatus.totalSpaceMb, free: sdStatus.freeSpaceMb })
                     return
                 } catch (err: any) {
-                    // Try to determine the exact cause by reading selftest status
+                    // Try to determine the exact cause from the self-test bits. The
+                    // `AI info` that just failed woke the device, and the wake's
+                    // broadcast is usually already in the cache; only ask if not.
                     try {
-                        const statusStr = await bleSession?.execute<string>(commandRegistry.selftest)
-                        const hexBits = statusStr ? extractErrorBits(statusStr) : null
+                        let bits: number | null = selfTestCache.getFresh(bleDevice.id, Date.now() - 10_000)?.bits ?? null
+                        if (bits === null) {
+                            const statusStr = await bleSession?.execute<string>(commandRegistry.selftest)
+                            const hexBits = statusStr ? extractErrorBits(statusStr) : null
+                            bits = hexBits ? parseInt(hexBits, 16) : null
+                        }
                         // eslint-disable-next-line no-bitwise
-                        if (hexBits && (parseInt(hexBits, 16) & 0x0800)) {
+                        if (bits !== null && (bits & (1 << SelfTestBit.AI_NO_SD_CARD))) {
                             Alert.alert('No SD Card Detected', 'The device reports no SD card is inserted.', [{ text: 'OK' }])
                             setSdCardStatus(null)
                             return

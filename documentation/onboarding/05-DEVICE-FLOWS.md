@@ -77,7 +77,7 @@ BLE initialization happens **upstream** in the Scanner connection flow, and the 
 |---|---|---|
 | `useBleInitialization` | `selftest`, `setutc`, `battery` | There is **no SD card command**: SD status is bit 11 of the self-test bitmask, and battery level is bit 0 plus the `battery` command |
 | AI wake | `AI info` | Up to 3 attempts; the Himax is asleep until something addresses it. The only Himax wake on connect |
-| Post-wake health | none sent | The Himax broadcasts `Error bits = 0x....` on every wake (on the bench, 60 ms after `Wake`). `useDevicePreDeploymentChecks` listens for it while `AI info` runs and only sends `selftest` if no broadcast came |
+| Post-wake health | none sent | The Himax broadcasts `Error bits = 0x....` on every wake (on the bench, 60 ms after `Wake`). The shared `selfTestCache` (`src/ble/protocol/selfTestCache.ts`) hears every such line; `useDevicePreDeploymentChecks` waits up to 1.5 s for the one that follows its `AI info` wake and only sends `selftest` if none came. The Capture Picture and camera-readiness checks read the same cache, so a console flow entered after a wake sends no `selftest` either |
 | Version checks | `ver`, `AI ver` | Once each. The screen trusts this snapshot; it re-queries only on focus return after a firmware update or on pull-to-refresh |
 
 > [!WARNING]
