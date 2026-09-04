@@ -54,6 +54,10 @@ to motion-detection illumination. The app's Off / White / IR selector was built 
 eras. Charles's proposal reconstructs what `39639dac` had, minus the op22 overloading; the working
 code is recoverable from that commit.
 
+**Superseded on 5 September 2026 (#283).** Capture Picture now holds op34 = 2 for the visit and
+writes the previous mode back on exit; the op25 write below survives only for firmware without a
+flash mode. What follows is the state of things when this thread was written.
+
 **Interim, agreed with Victor:** Capture Picture writes op25 = 1 before a capture with a flash
 selected, so the picture is lit whatever the room; the check after the capture puts the real
 verdict back. Only that screen does it. The block is marked `TODO(flash-mode-op)` in
