@@ -69,10 +69,10 @@ op13 only chooses the LED. On every wake the firmware restores op25 into its `fl
 flag, and a capture lights the LED only when that flag is set; the check after the capture
 then rewrites op25 for the next one. So a flash selected in the app fires on the next capture
 only if the device's last decision was DARK, and in a lit room it never fires at all. There is
-no "always flash" value yet: the firmware repo's `flash_led_modes_proposal.md` (on `ae_review`,
-3 September 2026) proposes always-on and time-of-day modes behind a new op parameter, and
-wants to number it from 32, which this app already uses for `CAM_RESOLUTION`. When a flash
-does not fire, isolate it in three console commands before looking at the app:
+no "always flash" value in the app yet: the firmware's `ae_review` build (September 2026) adds
+always-on and time-of-day modes as op34 `FLASH_MODE` with its window in op35 and op36, which
+the app carries in `OP_PARAMETER` and resets to off at every deployment but does not expose.
+When a flash does not fire, isolate it in three console commands before looking at the app:
 
 | Command | Proves |
 |---|---|

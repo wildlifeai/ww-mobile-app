@@ -55,10 +55,16 @@ export const OP_PARAMETER = {
     CAM_AE_TARGET: 30,
     /** RP camera white balance: 0 = off, 1 = auto (grey-world per frame), 2 = manual op27/op28 */
     CAM_WB_MODE: 31,
-    /** RP camera capture resolution: 0 = 640x480, 1 = 1280x960 single JPEG — REQUIRES the NN off (op14 = 0), so deployments must reset this */
-    CAM_RESOLUTION: 32,
-    /** MD global-motion rejection: skip the capture when an MD wake moves MORE than this many of the 256 grid blocks (whole-scene shift = camera knock/pan or lighting change, not an animal). 0 disables */
-    MD_BLOCK_NUM_MAX: 33,
+    /** Reserved (was CAM_RESOLUTION hi-res until ae_review, Sep 2026; the firmware dropped it) */
+    RFU_1: 32,
+    /** Reserved (was MD_BLOCK_NUM_MAX until ae_review, Sep 2026; the firmware dropped it) */
+    RFU_2: 33,
+    /** Capture flash mode: 0 = off, 1 = AE (light sensor decides), 2 = always on, 3 = time of day. See firmware flash_led_modes_proposal.md */
+    FLASH_MODE: 34,
+    /** FLASH_MODE time of day: minutes after midnight UTC when the flash turns on */
+    FLASH_TOD_START: 35,
+    /** FLASH_MODE time of day: minutes the flash stays on, wrapping past midnight */
+    FLASH_TOD_DURATION: 36,
 } as const
 
 /**
@@ -118,17 +124,21 @@ export const FACTORY_DEFAULTS: Record<number, number> = {
     [OP_PARAMETER.SLOT_SWITCH]: 1,
     [OP_PARAMETER.WB_RED_GAIN]: 286,
     [OP_PARAMETER.WB_BLUE_GAIN]: 326,
-    // 29-33: firmware in-RAM defaults (fatfs_task.c op_parameter[]). Including
-    // them here means resetOps clears bench experiments at deployment start and
-    // configVerification covers them — critically op32 (hi-res) and op33 (MD
-    // global-motion max): a bench-set op32=1 conflicts with the NN model a
-    // deployment loads (hi-res requires op14 = 0), and a bench-set op33 would
-    // silently change field MD behaviour.
+    // 29-36: firmware in-RAM defaults (fatfs_task.c op_parameter[], ae_review
+    // 4bcb722c). Including them means resetOps clears bench experiments at
+    // deployment start and configVerification covers them. 32 and 33 are
+    // reserved on this firmware (the hi-res and MD global-motion parameters
+    // were dropped); 34 to 36 are the capture flash mode and its time-of-day
+    // window, off by default, so a bench-set always-on flash does not follow
+    // the device into a deployment.
     [OP_PARAMETER.CAM_AE_ENABLE]: 1,
     [OP_PARAMETER.CAM_AE_TARGET]: 110,
     [OP_PARAMETER.CAM_WB_MODE]: 1,
-    [OP_PARAMETER.CAM_RESOLUTION]: 0,
-    [OP_PARAMETER.MD_BLOCK_NUM_MAX]: 0,
+    [OP_PARAMETER.RFU_1]: 0,
+    [OP_PARAMETER.RFU_2]: 0,
+    [OP_PARAMETER.FLASH_MODE]: 0,
+    [OP_PARAMETER.FLASH_TOD_START]: 0,
+    [OP_PARAMETER.FLASH_TOD_DURATION]: 0,
 }
 
 

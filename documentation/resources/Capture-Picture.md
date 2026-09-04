@@ -12,7 +12,7 @@ page is how it behaves now; how it got here is in the
 
 | Part | Code |
 |---|---|
-| Camera mode: Colour, Black & White, High-res Colour where the firmware has op32 | [`CameraModeSelector`](../../src/components/device/CameraModeSelector.tsx), [`useCameraSwitch`](../../src/hooks/useCameraSwitch.ts), [`useResolutionSwitch`](../../src/hooks/useResolutionSwitch.ts) |
+| Camera mode: Colour or Black & White, one per firmware slot (the hi-res colour mode went with the firmware's op32 in September 2026) | [`CameraModeSelector`](../../src/components/device/CameraModeSelector.tsx), [`useCameraSwitch`](../../src/hooks/useCameraSwitch.ts) |
 | Flash: Off, White, IR (op13) and brightness (op9) | [`FlashSelector`](../../src/components/device/FlashSelector.tsx) |
 | Capture Image, the step list while it runs, the picture, a gallery | [`CapturePictureSection`](../../src/screens/Devices/components/CapturePictureSection.tsx), [`CaptureSteps`](../../src/screens/Devices/components/CaptureSteps.tsx) |
 | The screen's own logic: settings, hold, step state | [`useCapturePicture`](../../src/screens/Devices/hooks/useCapturePicture.ts), [`useCaptureSteps`](../../src/screens/Devices/hooks/useCaptureSteps.ts), [`captureSteps.ts`](../../src/utils/captureSteps.ts) |

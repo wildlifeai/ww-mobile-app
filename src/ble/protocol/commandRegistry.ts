@@ -368,10 +368,10 @@ export const commandRegistry = {
     (match) => match[1].trim(),
     // 8s: AI processor may need DPD wake cycle (3-5s)
     //
-    // failureRegex: the app is deliberately ahead of the firmware on op
-    // indices (op32/CAM_RESOLUTION exists here before it ships on the
-    // device), so asking for one the running build does not have is an
-    // expected outcome, not a fault. Without this the rejection matches
+    // failureRegex: the app and the firmware do not always agree on how many
+    // op indices exist (the app once carried op32 before any build shipped
+    // it), so asking for one the running build does not have is an expected
+    // outcome, not a fault. Without this the rejection matches
     // neither success nor failure and the command sits for the full 8s,
     // then retries for another 8. Measured on the bench, 2 September:
     // 16s of dead time and two DPD wakes on entering Capture Preview,
