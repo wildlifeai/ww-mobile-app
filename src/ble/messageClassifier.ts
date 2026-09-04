@@ -201,21 +201,6 @@ export function isWakeMessage(message: string): boolean {
 }
 
 /**
- * Check if a message is an Error bits message
- */
-export function isErrorBitsMessage(message: string): boolean {
-  return /^Error bits = 0x[0-9A-Fa-f]+$/i.test(message.trim())
-}
-
-/**
- * Extract error bits value from message
- */
-export function extractErrorBits(message: string): string | null {
-  const match = message.match(/Error bits = (0x[0-9A-Fa-f]+)/i)
-  return match ? match[1] : null
-}
-
-/**
  * Check if a message indicates AI NACK error
  */
 export function isAiNackError(message: string): boolean {

@@ -144,7 +144,12 @@ class SelfTestCache {
         set.add(fn)
         return () => {
             set!.delete(fn)
-            if (set!.size === 0) this.listeners.delete(deviceId)
+            // Only retire the set this listener belonged to. A late unsubscribe
+            // (a React double-cleanup, or one that outlives a remount) must not
+            // delete a newer set that other subscribers are already on.
+            if (set!.size === 0 && this.listeners.get(deviceId) === set) {
+                this.listeners.delete(deviceId)
+            }
         }
     }
 

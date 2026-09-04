@@ -94,6 +94,20 @@ describe('selfTestCache', () => {
         expect(seen).toEqual([1])
     })
 
+    it('a late unsubscribe does not silence subscribers that came after it', () => {
+        // React double-cleanups and remounts: the old effect's unsubscribe can
+        // run after the new effect has subscribed. It must retire only the set
+        // it belonged to, never the live one.
+        const early = selfTestCache.subscribe(DEVICE, () => {})
+        early()                                         // set now empty, retired
+        const seen: number[] = []
+        const late = selfTestCache.subscribe(DEVICE, r => seen.push(r.bits))   // fresh set
+        early()                                         // stale cleanup runs again
+        line('Error bits = 0x0001')
+        expect(seen).toEqual([1])
+        late()
+    })
+
     it('waitForFresh resolves with a qualifying reading that arrives later', async () => {
         wake(DEVICE, 1000)
         const pending = selfTestCache.waitForFresh(DEVICE, 1000, 500)

@@ -15,9 +15,8 @@ import FirmwareService from '../../../services/FirmwareService'
 import { useBleSession } from '../../../hooks/useBleSession'
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { checkSdCard } from '../../../ble/workflows/checkSdCard'
-import { extractErrorBits } from '../../../ble/messageClassifier'
 import { selfTestCache } from '../../../ble/protocol/selfTestCache'
-import { SelfTestBit } from '../../../utils/deviceSelfTest'
+import { parseSelfTestBits, SelfTestBit } from '../../../utils/deviceSelfTest'
 import { useBleActions } from '../../../providers/BleEngineProvider'
 import { useDeploymentConfiguration } from '../../../hooks/useDeploymentConfiguration'
 import { useBle } from '../../../hooks/useBle'
@@ -770,8 +769,7 @@ export const useStartDeployment = ({
                         let bits: number | null = selfTestCache.getFresh(bleDevice.id, Date.now() - 10_000)?.bits ?? null
                         if (bits === null) {
                             const statusStr = await bleSession?.execute<string>(commandRegistry.selftest)
-                            const hexBits = statusStr ? extractErrorBits(statusStr) : null
-                            bits = hexBits ? parseInt(hexBits, 16) : null
+                            bits = parseSelfTestBits(statusStr)
                         }
                         // eslint-disable-next-line no-bitwise
                         if (bits !== null && (bits & (1 << SelfTestBit.AI_NO_SD_CARD))) {

@@ -8,8 +8,7 @@ import ReferenceDataService from '../services/ReferenceDataService'
 import { log, logWarn } from '../utils/logger'
 import { convertBleToSemanticVersion } from '../utils/versionUtils'
 import { InitPayload } from '../navigation/types'
-import { extractErrorBits } from '../ble/messageClassifier'
-import { CRITICAL_AI_MASK, formatSelfTestBits, selfTestWarnings } from '../utils/deviceSelfTest'
+import { CRITICAL_AI_MASK, formatSelfTestBits, parseSelfTestBits, selfTestWarnings } from '../utils/deviceSelfTest'
 
 /**
  * Pre-deployment checks: what the Scanner runs between "connected" and the Start
@@ -135,9 +134,7 @@ export const useDevicePreDeploymentChecks = () => {
                     onProgress('Checking AI processor health...')
                     const statusMsg = await session.execute(commandRegistry.selftest)
                     log('[Pre-Deployment] Post-wake self-test result (requested, no broadcast seen):', statusMsg)
-                    const hex = statusMsg ? extractErrorBits(statusMsg) : null
-                    const parsed = hex ? parseInt(hex, 16) : NaN
-                    bits = isNaN(parsed) ? null : parsed
+                    bits = parseSelfTestBits(statusMsg)
                 } catch (e) {
                     logWarn('[Pre-Deployment] Post-wake health check failed:', e)
                 }
