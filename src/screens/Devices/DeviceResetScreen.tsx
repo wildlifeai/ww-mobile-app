@@ -84,8 +84,11 @@ const OP_NAMES: Record<number, string> = {
     [OP_PARAMETER.CAM_AE_ENABLE]: 'Camera Auto-Exposure',
     [OP_PARAMETER.CAM_AE_TARGET]: 'AE Target Luma',
     [OP_PARAMETER.CAM_WB_MODE]: 'White Balance Mode',
-    [OP_PARAMETER.CAM_RESOLUTION]: 'Capture Resolution',
-    [OP_PARAMETER.MD_BLOCK_NUM_MAX]: 'MD Global-Motion Max',
+    [OP_PARAMETER.RFU_1]: 'Reserved (op32)',
+    [OP_PARAMETER.RFU_2]: 'Reserved (op33)',
+    [OP_PARAMETER.FLASH_MODE]: 'Capture Flash Mode',
+    [OP_PARAMETER.FLASH_TOD_START]: 'Flash Time-of-Day Start (min UTC)',
+    [OP_PARAMETER.FLASH_TOD_DURATION]: 'Flash Time-of-Day Duration (min)',
 }
 
 // Single source of truth from the reset workflow itself; SEQUENCE_NUMBER is
