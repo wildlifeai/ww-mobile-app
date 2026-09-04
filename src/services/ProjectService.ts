@@ -22,6 +22,7 @@ import type {
 import UserRoleService from './UserRoleService'
 import UserRole from '../database/models/UserRole'
 import { log, logError } from '../utils/logger'
+import { DEFAULT_FLASH_LED, DEFAULT_FLASH_MODE } from '../utils/projectFlash'
 
 
 class ProjectService {
@@ -273,6 +274,12 @@ class ProjectService {
 					project.recordGpsInImages = input.record_gps_in_images || false
 					project.lorawanRequired = input.lorawan_required || false
 					project.isArchived = false
+					// Same defaults as the projects table, so a project created
+					// offline deploys with a lit capture and night IR (#282).
+					project.flashMode = input.flash_mode ?? DEFAULT_FLASH_MODE
+					project.flashLed = input.flash_led ?? DEFAULT_FLASH_LED
+					project.flashWindowStartMinutesUtc = input.flash_window_start_minutes_utc ?? null
+					project.flashWindowMinutes = input.flash_window_minutes ?? null
 				})
 
 
@@ -347,6 +354,10 @@ class ProjectService {
 					if (updates.record_gps_in_images !== undefined) p.recordGpsInImages = updates.record_gps_in_images ?? false
 					if (updates.lorawan_required !== undefined) p.lorawanRequired = updates.lorawan_required ?? false
 					if (updates.is_archived !== undefined) p.isArchived = updates.is_archived ?? false
+					if (updates.flash_mode !== undefined) p.flashMode = updates.flash_mode ?? DEFAULT_FLASH_MODE
+					if (updates.flash_led !== undefined) p.flashLed = updates.flash_led ?? DEFAULT_FLASH_LED
+					if (updates.flash_window_start_minutes_utc !== undefined) p.flashWindowStartMinutesUtc = updates.flash_window_start_minutes_utc ?? null
+					if (updates.flash_window_minutes !== undefined) p.flashWindowMinutes = updates.flash_window_minutes ?? null
 
 					if (currentUserId) p.modifiedBy = currentUserId
 				})
@@ -592,6 +603,10 @@ class ProjectService {
 				record_gps_in_images: model.recordGpsInImages || false,
 				lorawan_required: model.lorawanRequired || false,
 				is_archived: model.isArchived || false,
+				flash_mode: model.flashMode || DEFAULT_FLASH_MODE,
+				flash_led: model.flashLed || DEFAULT_FLASH_LED,
+				flash_window_start_minutes_utc: model.flashWindowStartMinutesUtc ?? null,
+				flash_window_minutes: model.flashWindowMinutes ?? null,
 				// Computed fields
 				member_count: memberCount,
 				deployment_count: deploymentCount,
@@ -631,6 +646,10 @@ class ProjectService {
 			record_gps_in_images: model.recordGpsInImages || false,
 			lorawan_required: model.lorawanRequired || false,
 			is_archived: model.isArchived || false,
+			flash_mode: model.flashMode || DEFAULT_FLASH_MODE,
+			flash_led: model.flashLed || DEFAULT_FLASH_LED,
+			flash_window_start_minutes_utc: model.flashWindowStartMinutesUtc ?? null,
+			flash_window_minutes: model.flashWindowMinutes ?? null,
 		}
 	}
 }

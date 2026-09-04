@@ -313,8 +313,11 @@ export const useDevDeployment = ({
 
             // 4b. Reset OPs to factory defaults before applying dev config (shared pipeline).
             // The only reset this deployment gets (connecting is read-only, #268).
+            let opsAfterReset: string[] = currentOps
             try {
-                await pipeline.resetOps(bleSession, cb, currentOps)
+                // Configure against the post-reset table, not the snapshot the
+                // reset was diffed from — see useStartDeployment (#282).
+                opsAfterReset = (await pipeline.resetOps(bleSession, cb, currentOps)) ?? currentOps
             } catch (resetError) {
                 logWarn('[DevDeploy] OP reset failed, aborting:', resetError)
                 progress.addLog('OP reset failed — aborting deployment')
@@ -351,21 +354,31 @@ export const useDevDeployment = ({
             progress.addLog(`Deployment created: ${newDeployment.id.substring(0, 8)}...`)
 
             // 6. Configure device OPs (shared pipeline)
+            // The dev screen picks the LED itself rather than taking the
+            // project's, so the flash goes in as always-on with that LED: a
+            // test deployment lights every capture, whatever the light outside.
+            // op13 alone would not fire on ae_review, which gates it behind
+            // op34 (#282).
+            const devFlash = {
+                flash_mode: flashParams.flashLed === 0 ? 'off' : 'always_on',
+                flash_led: flashParams.flashLed === 1 ? 'white' : 'ir',
+            }
+
             await pipeline.configureDevice(bleDevice, startConfigure, {
                 deploymentId: newDeployment.id,
                 captureMethodId: effectiveCaptureMethod,
                 timelapseInterval: effectiveTimelapseInterval,
                 recordGpsInImages: project.record_gps_in_images || false,
                 gpsLocation,
-            }, cb, currentOps)
+                flash: devFlash,
+            }, cb, opsAfterReset)
 
-            // 7. Flash OPs (dev-specific)
+            // 7. Flash brightness (dev-specific; the LED and mode went in above)
             progress.addLog('Setting flash parameters...')
             progress.setFinishStep('Flash settings...')
             progress.setFinishProgress(0.7)
             const session = bleSession
             await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.LED_BRIGHTNESS, value: flashParams.ledBrightness }))
-            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_LED, value: flashParams.flashLed }))
             progress.addLog(`Flash: ${FLASH_LED_LABELS[flashParams.flashLed]} @ ${flashParams.ledBrightness}%`)
 
             // 7b. Dev diagnostic: Enable JPG+BMP capture mode

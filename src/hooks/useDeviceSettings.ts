@@ -77,6 +77,14 @@ export const OP_PARAMETER = {
 export const FLASH_LED_LABELS = ['Off', 'White', 'IR'] as const
 
 /**
+ * op34 FLASH_MODE, by value: `FLASH_MODE_OP_LABELS[value]` names one.
+ *
+ * The same four modes the project's `flash_mode` column names in words; the
+ * translation between the two vocabularies is in `utils/projectFlash.ts`.
+ */
+export const FLASH_MODE_OP_LABELS = ['Off', 'Light sensor', 'Always on', 'Time of day'] as const
+
+/**
  * Test mode bitmask flags for OP_PARAMETER.TEST_MODE_BITS.
  * These control diagnostic capture behaviour on the Himax firmware.
  */
@@ -124,13 +132,18 @@ export const FACTORY_DEFAULTS: Record<number, number> = {
     [OP_PARAMETER.SLOT_SWITCH]: 1,
     [OP_PARAMETER.WB_RED_GAIN]: 286,
     [OP_PARAMETER.WB_BLUE_GAIN]: 326,
-    // 29-36: firmware in-RAM defaults (fatfs_task.c op_parameter[], ae_review
-    // 4bcb722c). Including them means resetOps clears bench experiments at
-    // deployment start and configVerification covers them. 32 and 33 are
-    // reserved on this firmware (the hi-res and MD global-motion parameters
-    // were dropped); 34 to 36 are the capture flash mode and its time-of-day
-    // window, off by default, so a bench-set always-on flash does not follow
-    // the device into a deployment.
+    // 29-36: firmware in-RAM defaults (fatfs_task.c op_parameter[],
+    // ae_review_to_merge 931ef923). Including them means resetOps clears bench
+    // experiments at deployment start and configVerification covers them. 32
+    // and 33 are reserved on this firmware (the hi-res and MD global-motion
+    // parameters were dropped).
+    //
+    // op34 is 0: the flash mode is off after a reset, matching the firmware's
+    // own default. It is not the value a deployed camera runs on - the
+    // deployment writes op13 and op34 from the project straight after this
+    // reset (#282) - and holding it at 0 here keeps the reset a clean slate,
+    // so a bench-set always-on flash cannot follow the device into the field.
+    // op35 and op36 are its time-of-day window, unused in the other modes.
     [OP_PARAMETER.CAM_AE_ENABLE]: 1,
     [OP_PARAMETER.CAM_AE_TARGET]: 110,
     [OP_PARAMETER.CAM_WB_MODE]: 1,

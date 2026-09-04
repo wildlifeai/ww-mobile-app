@@ -21,6 +21,14 @@ export default class Project extends Model {
     @field('timelapse_interval_seconds') timelapseIntervalSeconds?: number | null
     @field('record_gps_in_images') recordGpsInImages!: boolean
     @field('lorawan_required') lorawanRequired!: boolean
+    /** Capture flash mode written to the device as op34: off | light_sensor | always_on | time_of_day */
+    @text('flash_mode') flashMode!: string
+    /** LED the capture flash uses, written as op13: white | ir */
+    @text('flash_led') flashLed!: string
+    /** time_of_day only: start of the flash window, minutes after midnight UTC (op35) */
+    @field('flash_window_start_minutes_utc') flashWindowStartMinutesUtc?: number | null
+    /** time_of_day only: length of the flash window in minutes (op36) */
+    @field('flash_window_minutes') flashWindowMinutes?: number | null
     @field('is_archived') isArchived!: boolean
     @text('project_image') projectImage?: string | null
     @text('website') website?: string | null

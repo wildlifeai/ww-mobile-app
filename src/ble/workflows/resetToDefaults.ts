@@ -26,11 +26,17 @@ export interface ResetToDefaultsOptions {
  *
  * Each setop/setgps command receives a confirmation response from the
  * firmware, so no verification pass is needed.
+ *
+ * Returns the op table as it stands after the reset - the snapshot it read,
+ * with every value it wrote applied - or null when the ops could not be read.
+ * Callers that keep configuring the device must use this rather than their own
+ * pre-reset snapshot: a diff-write against stale values skips exactly the
+ * parameters the reset has just changed underneath it.
  */
 export async function executeResetToDefaults(
     session: BleSession,
     options?: ResetToDefaultsOptions
-): Promise<void> {
+): Promise<string[] | null> {
     const { onProgress, isCancelled } = options || {}
 
     // Step 1: Read current OPs (this also wakes the device from DPD)
@@ -167,4 +173,15 @@ export async function executeResetToDefaults(
 
     onProgress?.('Reset complete', 1.0)
     log(`[ResetDefaults] Factory reset complete. ${opsWritten} OPs written.`)
+
+    if (!currentOps) return null
+
+    // The op table as the device now holds it: the snapshot plus what was
+    // written. Nothing here re-reads the device - every setop above was
+    // confirmed by the firmware, and a getops costs a full BLE round trip.
+    const resultingOps = [...currentOps]
+    for (const { index, value } of opsToWrite) {
+        if (index < resultingOps.length) resultingOps[index] = value.toString()
+    }
+    return resultingOps
 }

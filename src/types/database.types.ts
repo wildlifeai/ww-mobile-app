@@ -3079,6 +3079,10 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           description: string | null
+          flash_led: string
+          flash_mode: string
+          flash_window_minutes: number | null
+          flash_window_start_minutes_utc: number | null
           id: string
           is_active: boolean
           is_archived: boolean
@@ -3103,6 +3107,10 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           description?: string | null
+          flash_led?: string
+          flash_mode?: string
+          flash_window_minutes?: number | null
+          flash_window_start_minutes_utc?: number | null
           id?: string
           is_active?: boolean
           is_archived?: boolean
@@ -3127,6 +3135,10 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           description?: string | null
+          flash_led?: string
+          flash_mode?: string
+          flash_window_minutes?: number | null
+          flash_window_start_minutes_utc?: number | null
           id?: string
           is_active?: boolean
           is_archived?: boolean
@@ -3690,6 +3702,10 @@ export type Database = {
           deleted_at: string | null
           deployment_count: number | null
           description: string | null
+          flash_led: string | null
+          flash_mode: string | null
+          flash_window_minutes: number | null
+          flash_window_start_minutes_utc: number | null
           id: string | null
           is_active: boolean | null
           is_archived: boolean | null
@@ -3719,6 +3735,10 @@ export type Database = {
           deleted_at?: string | null
           deployment_count?: never
           description?: string | null
+          flash_led?: string | null
+          flash_mode?: string | null
+          flash_window_minutes?: number | null
+          flash_window_start_minutes_utc?: number | null
           id?: string | null
           is_active?: boolean | null
           is_archived?: boolean | null
@@ -3748,6 +3768,10 @@ export type Database = {
           deleted_at?: string | null
           deployment_count?: never
           description?: string | null
+          flash_led?: string | null
+          flash_mode?: string | null
+          flash_window_minutes?: number | null
+          flash_window_start_minutes_utc?: number | null
           id?: string | null
           is_active?: boolean | null
           is_archived?: boolean | null

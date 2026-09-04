@@ -14,6 +14,7 @@ import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
 
 import { executeResetToDefaults } from './resetToDefaults'
 import { log, logWarn } from '../../utils/logger'
+import { describeProjectFlash, ProjectFlashColumns } from '../../utils/projectFlash'
 
 interface ProgressCallbacks {
     addLog: (msg: string) => void
@@ -50,6 +51,10 @@ export async function syncTime(
  * This is the only reset a deployment gets: connecting no longer runs one
  * (#268), so a refused write here is a failed deployment, not a warning.
  * The error propagates; the caller aborts.
+ *
+ * Returns the op table as it stands after the reset (null if the ops were
+ * unreadable). Pass it to `configureDevice` instead of the pre-reset snapshot,
+ * or the diff-write there skips the parameters the reset has just changed.
  */
 
 
@@ -57,13 +62,13 @@ export async function resetOps(
     session: BleSession,
     { addLog, setStep, setProgress }: ProgressCallbacks,
     currentOps?: string[]
-): Promise<void> {
+): Promise<string[] | null> {
     addLog('Resetting operational parameters...')
     setStep('Resetting device...')
     setProgress(0.06)
 
     try {
-        await executeResetToDefaults(session, {
+        const opsAfterReset = await executeResetToDefaults(session, {
             currentOps,
             skipIdentityReset: true,
             // syncAiModel owns model state in the deployment pipeline - the
@@ -75,6 +80,7 @@ export async function resetOps(
         })
         addLog('Device parameters reset successfully')
         setProgress(0.09)
+        return opsAfterReset
     } catch (e) {
         logWarn('[ResetOps] Reset failed:', e)
         addLog('Parameter reset failed — the device may still carry settings from a previous session')
@@ -264,6 +270,9 @@ export async function syncAiModel(
 
 /**
  * Step 4: Configure device operational parameters via the deployment configuration hook.
+ *
+ * `currentOps` must be the op table as it stands now, which after step 5's
+ * reset means `resetOps`' return value, not the snapshot taken before it.
  */
 export async function configureDevice(
     device: ExtendedPeripheral,
@@ -274,6 +283,7 @@ export async function configureDevice(
         timelapseInterval: number
         recordGpsInImages: boolean
         gpsLocation?: { latitude: number; longitude: number; altitude?: number | null } | null
+        flash?: ProjectFlashColumns | null
     },
     { addLog, setStep, setProgress }: ProgressCallbacks,
     currentOps?: string[]
@@ -299,9 +309,11 @@ export async function configureDevice(
             latitude: config.gpsLocation.latitude,
             longitude: config.gpsLocation.longitude,
             altitude: config.gpsLocation.altitude || 0
-        } : undefined
+        } : undefined,
+        flash: config.flash ?? undefined
     }, currentOps)
 
+    if (config.flash !== undefined) addLog(`Capture flash: ${describeProjectFlash(config.flash)}`)
     addLog('Device configuration successful')
     log('[Deployment] Device configuration successful')
 }

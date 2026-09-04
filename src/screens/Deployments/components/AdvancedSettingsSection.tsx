@@ -185,7 +185,7 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
                             <View style={styles.switchLabel}>
                                 <Text variant="bodyMedium">Record JPEG only</Text>
                                 <Text style={styles.statusHint}>
-                                    Off (default): record JPG + raw BMP for higher quality. On: JPEG only, smaller and faster.
+                                    On (default): one JPEG per trigger, smaller and faster. Off: also record a raw BMP, higher quality at two pictures per trigger.
                                 </Text>
                             </View>
                             <Switch
