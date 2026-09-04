@@ -34,7 +34,7 @@ Five findings, one folder each, in the issue template's shape:
 | [A](A_sync_watermarks_survive_user_switch/explanation.md) | Sync watermarks survive a user switch; the next user sees no projects | app | bug | [ww-mobile-app #267](https://github.com/wildlifeai/ww-mobile-app/issues/267) |
 | [B](B_person_detection_labels_one_line/explanation.md) | Person Detection labels file has one label for two classes; the person class is `''` in EXIF | data, website, firmware | data | [ww-website #134](https://github.com/wildlifeai/ww-website/issues/134) |
 | [C](C_light_check_capture_fails/explanation.md) | The light-check capture in Start Monitoring was refused by the sensor; a motion wake completed the step by chance | app, firmware | bug, seen once | [ww-mobile-app #269](https://github.com/wildlifeai/ww-mobile-app/issues/269) |
-| [D](D_duplicate_commands_on_connect_and_monitor/explanation.md) | Connect sends thirteen commands and writes where six reads would do; the monitor polls the image count twice a minute. Includes the connect-sequence scope and the reset guarantee | app | cleanup | [ww-mobile-app #268](https://github.com/wildlifeai/ww-mobile-app/issues/268) |
+| [D](D_duplicate_commands_on_connect_and_monitor/explanation.md) | Connect sends thirteen commands and writes where six reads would do; the monitor polls the image count twice a minute. Includes the connect-sequence scope and the reset guarantee | app | cleanup, fixed in [PR #270](https://github.com/wildlifeai/ww-mobile-app/pull/270) | [ww-mobile-app #268](https://github.com/wildlifeai/ww-mobile-app/issues/268) |
 | [E](E_organisation_manager_not_full_access/explanation.md) | Decide: organisation managers see only project-scoped roles, in the app and in RLS | app, backend, website | decision | [ww-backend #162](https://github.com/wildlifeai/ww-backend/issues/162) |
 
 ## The run, step by step
@@ -67,4 +67,5 @@ table above is the list. Filed where the fix lives: A, C and D in this repo, B i
 | File | What |
 |---|---|
 | [flow_bench.txt](flow_bench.txt) | Three-way log of the whole run, filtered: hex dumps, LED debug lines, nRF state-machine chatter, AE register blocks and motion-grid rows removed. The unfiltered capture is 16,208 lines and is kept on the bench PC |
+| [fix268_bench.txt](fix268_bench.txt) | Same filter, the verification run of the #268 fix ([PR #270](https://github.com/wildlifeai/ww-mobile-app/pull/270)): dirtied ops, read-only connect, reset at Start, one poll per minute |
 | `<Letter>_*/explanation.md` | One per finding, in the review-finding template's four sections plus an evidence table |

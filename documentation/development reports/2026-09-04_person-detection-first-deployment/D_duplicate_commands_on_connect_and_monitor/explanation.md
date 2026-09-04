@@ -116,9 +116,34 @@ not yet decided to deploy. Two conditions for the change:
 - the post-wake `Error bits` broadcast must feed the same warning path the second `selftest`
   feeds today, or the SD-card and camera warnings on the screen go dark.
 
+## Verification of the fix
+
+Fix on branch `fix/connect-sequence-268`, commit 592e5ff0,
+[PR #270](https://github.com/wildlifeai/ww-mobile-app/pull/270). Bench run the same
+afternoon, log in [`fix268_bench.txt`](../fix268_bench.txt).
+
+1. Dirtied the device from the Engineer Console: `AI setop 18 8` and `AI setop 8 5000`
+   (`[02:29`, `[02:45`).
+2. Scanner connect (`[03:25` to `[03:27`): `selftest`, `setutc`, `battery`, `AI info`,
+   `ver`, `AI ver`. The app logged `Post-wake self-test from broadcast: 0x0000`; no
+   `selftest` after the wake, no `setop`, no second round. 2.1 s from first command to last
+   reply. The Himax slept five seconds after `AI ver`, so op8 = 5000 was still in force: the
+   connect wrote nothing.
+3. Start Monitoring (`[04:12`): `[ResetDefaults] 2 OPs need writing, model loaded: true`,
+   then `setop 8 1000` and `setop 18 0`, model preserved, then the usual configure.
+4. Monitoring: `AI getop 19` at the 5 s mark and once per minute. The pair at `[05:19` and
+   `[05:27` is the command manager's 8 s timeout retry after the first landed during a
+   motion wake, not a second poll instance.
+5. Stop Monitoring unchanged.
+
+Left over, not worth widening the change: `configureDevice` diffs against the pre-reset
+snapshot, so `setop 8 1000` went out twice, once from the reset and once from configure
+(`[04:12.649` and `[04:15.417`). One redundant write per deployment start.
+
 ## Evidence
 
 | What | Where |
 |---|---|
 | Connect, both rounds | [`flow_bench.txt`](../flow_bench.txt), `[00:28` to `[00:37` |
 | Monitor polls at 04:52, 05:52, 06:52 | same file |
+| Verification run against the fix | [`fix268_bench.txt`](../fix268_bench.txt) |
