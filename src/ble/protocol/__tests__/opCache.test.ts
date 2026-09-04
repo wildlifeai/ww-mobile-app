@@ -91,10 +91,98 @@ describe('opCache', () => {
     })
 
     it('does not hand out a live reference that a caller could mutate', () => {
-        opCache.set(DEVICE, OPS)
-        const first = opCache.get(DEVICE)
-        expect(first).toEqual(OPS)
-        // Guards the shared-singleton risk: every hook reads the same object.
+        // This test previously carried this name while only reading the value
+        // back twice, so it passed against a cache that did hand out the live
+        // array. Mutating what `get` returned is the whole point of it.
+        //
+        // Both halves store a fresh array and assert against OPS rather than
+        // storing OPS itself: hand out the live reference and the mutation
+        // below would rewrite OPS too, so `toEqual(OPS)` would compare a
+        // mutated array against itself and pass either way.
+        opCache.set(DEVICE, [...OPS])
+        const handedOut = opCache.get(DEVICE)!
+        handedOut[0] = 'mutated'
         expect(opCache.get(DEVICE)).toEqual(OPS)
+    })
+
+    it('does not keep a reference to the array it was given', () => {
+        // The other half: `runCommandPipeline` passes the array it is about to
+        // return to its own caller, so the cache and that caller would share it.
+        const fromDevice = [...OPS]
+        opCache.set(DEVICE, fromDevice)
+        fromDevice[0] = 'mutated'
+        expect(opCache.get(DEVICE)).toEqual(OPS)
+    })
+
+    describe('fetchOnce', () => {
+        /** A fetcher whose resolution the test controls, standing in for `AI getop -1`. */
+        const deferred = () => {
+            let resolve!: (ops: string[]) => void
+            let reject!: (e: Error) => void
+            const promise = new Promise<string[]>((res, rej) => { resolve = res; reject = rej })
+            const fetcher = jest.fn(() => promise)
+            return { fetcher, resolve, reject }
+        }
+
+        it('serves the cache without calling the fetcher', async () => {
+            opCache.set(DEVICE, OPS)
+            const { fetcher } = deferred()
+            await expect(opCache.fetchOnce(DEVICE, fetcher)).resolves.toEqual(OPS)
+            expect(fetcher).not.toHaveBeenCalled()
+        })
+
+        it('shares one fetch between callers that miss the cache together', async () => {
+            // Capture Picture entry sent four `AI getop -1` in a second on the
+            // bench, one per hook, because every hook missed before the first
+            // reply landed. Only the first caller may pay for the command.
+            const { fetcher, resolve } = deferred()
+            const a = opCache.fetchOnce(DEVICE, fetcher)
+            const b = opCache.fetchOnce(DEVICE, fetcher)
+            const c = opCache.fetchOnce(DEVICE, fetcher)
+            expect(fetcher).toHaveBeenCalledTimes(1)
+            resolve([...OPS])
+            await expect(Promise.all([a, b, c])).resolves.toEqual([OPS, OPS, OPS])
+        })
+
+        it('hands each sharer its own copy', async () => {
+            const { fetcher, resolve } = deferred()
+            const a = opCache.fetchOnce(DEVICE, fetcher)
+            const b = opCache.fetchOnce(DEVICE, fetcher)
+            resolve([...OPS])
+            const [first, second] = await Promise.all([a, b])
+            first[0] = 'mutated'
+            expect(second).toEqual(OPS)
+        })
+
+        it('fetches again once the shared fetch has settled and nothing was cached', async () => {
+            // The pipeline stores the reply; if it did not (a parse failure,
+            // say), the next caller must not be handed a promise that is over.
+            const first = deferred()
+            const a = opCache.fetchOnce(DEVICE, first.fetcher)
+            first.resolve([...OPS])
+            await a
+            const second = deferred()
+            opCache.fetchOnce(DEVICE, second.fetcher)
+            expect(second.fetcher).toHaveBeenCalledTimes(1)
+        })
+
+        it('forgets a failed fetch so the next caller retries', async () => {
+            const first = deferred()
+            const a = opCache.fetchOnce(DEVICE, first.fetcher)
+            first.reject(new Error('timeout'))
+            await expect(a).rejects.toThrow('timeout')
+            const second = deferred()
+            opCache.fetchOnce(DEVICE, second.fetcher)
+            expect(second.fetcher).toHaveBeenCalledTimes(1)
+        })
+
+        it('keeps fetches for different devices apart', () => {
+            const a = deferred()
+            const b = deferred()
+            opCache.fetchOnce(DEVICE, a.fetcher)
+            opCache.fetchOnce(OTHER, b.fetcher)
+            expect(a.fetcher).toHaveBeenCalledTimes(1)
+            expect(b.fetcher).toHaveBeenCalledTimes(1)
+        })
     })
 })

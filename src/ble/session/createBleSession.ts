@@ -80,11 +80,11 @@ export function createBleSession(peripheral: ExtendedPeripheral) {
    * again. See opCache.ts for what invalidates it.
    */
   const getOps = async (options?: { force?: boolean }): Promise<string[]> => {
-    if (!options?.force) {
-      const cached = opCache.get(peripheral.id);
-      if (cached) return cached;
-    }
-    return execute(() => commandRegistry.getops());
+    const fetch = () => execute(() => commandRegistry.getops());
+    if (options?.force) return fetch();
+    // Cache first, then any fetch already in flight for this device (hooks
+    // that mount together all miss the cache in the same tick), then the wire.
+    return opCache.fetchOnce(peripheral.id, fetch);
   };
 
   const reset = () => {
