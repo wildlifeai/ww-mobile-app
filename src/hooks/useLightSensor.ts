@@ -6,7 +6,7 @@ import { bleEventBus, BleEvent } from '../ble/protocol/eventBus'
 import { createBleSession } from '../ble/session/createBleSession'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
 import { parseLightCheck, type LightCheck } from '../ble/protocol/lightCheck'
-import { log, logError } from '../utils/logger'
+import { log, logError, logWarn } from '../utils/logger'
 import { AEData, grabAeFields } from '../utils/aeRegisters'
 
 export interface LightSensorState {
@@ -15,6 +15,7 @@ export interface LightSensorState {
     flashState: number | null  // op25 - last AE flash decision (1 = dark/flash, 0 = bright); null = not read yet
     flashLed: number | null    // op13 - 0 = flash OFF, 1 = visible, 2 = IR (the light check runs when op13 != 0 OR op26 = 1)
     autoSwitch: number | null  // op26 - 1 = automatic day/night camera switching; null = not read yet / older firmware
+    flashMode: number | null   // op34 - 0 = off, 1 = AE (this verdict drives the flash), 2 = always on, 3 = time of day; null = firmware without a flash mode
 }
 
 const DEFAULTS: LightSensorState = {
@@ -23,6 +24,7 @@ const DEFAULTS: LightSensorState = {
     flashState: null,
     flashLed: null,
     autoSwitch: null,
+    flashMode: null,
 }
 
 /** Parse one op value out of a getops array; fallback when absent (older firmware). */
@@ -141,6 +143,36 @@ export const useLightSensor = ({ device }: { device: ExtendedPeripheral | undefi
         return () => { unmountedRef.current = true }
     }, [])
 
+    // True once this screen has turned automatic day/night switching off, so
+    // leaving can put it back. Held in a ref because the cleanup below runs
+    // once, from a closure taken when the device arrived.
+    const turnedAutoSwitchOffRef = useRef(false)
+
+    // Put op26 back on the way out.
+    //
+    // Turning it off is this screen's own doing (see refresh), and until the
+    // flash became a project setting it did not matter much: the next
+    // deployment's reset wrote op26 = 1 again, and a flash in AE mode kept the
+    // light check running meanwhile. Now a project can deploy in any mode, and
+    // `lightSensor_isRequired()` in the firmware is true only for mode 1 or
+    // op26. Leaving both off means the device runs no light check at all after
+    // a visit here, so op25 and the automatic camera switch quietly stop.
+    useEffect(() => {
+        if (!device) return
+        const deviceId = device.id
+        const session = createBleSession(device)
+        return () => {
+            if (!turnedAutoSwitchOffRef.current) return
+            turnedAutoSwitchOffRef.current = false
+            session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.SLOT_SWITCH, value: 1 }))
+                .then(() => log(`[LightSensor] op26 restored to 1 on ${deviceId}`))
+                .catch((e) => logWarn('[LightSensor] could not restore op26; the next deployment reset will:', e))
+        }
+        // A new device object arrives on every redux update; only the identity
+        // and the connection matter here.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [device?.id, device?.connected])
+
     // Live AE lines arrive over BLE after each capture / light check, in two
     // forms: the raw register block and the firmware's own decision line.
     useEffect(() => {
@@ -184,9 +216,7 @@ export const useLightSensor = ({ device }: { device: ExtendedPeripheral | undefi
      * sleep after a DARK verdict. On-demand `AI light` checks are passive and
      * never trigger it, but a capture with the photo option on, or the
      * periodic op24 check, would, and a reboot in the middle of a run is a lost
-     * session. Not turned back on when leaving: a deployment's reset to
-     * defaults writes op26 = 1 again, which is where the field setting comes
-     * from anyway.
+     * session. Put back when the screen closes, by the effect above.
      */
     const refresh = useCallback(async () => {
         if (!device?.connected) return
@@ -201,6 +231,7 @@ export const useLightSensor = ({ device }: { device: ExtendedPeripheral | undefi
             if (autoSwitch === 1) {
                 await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.SLOT_SWITCH, value: 0 }))
                 log('[LightSensor] op26 was 1 on entry; set to 0 so a light check cannot reboot the device mid-session')
+                turnedAutoSwitchOffRef.current = true
                 autoSwitch = 0
                 if (unmountedRef.current) return
             }
@@ -215,6 +246,12 @@ export const useLightSensor = ({ device }: { device: ExtendedPeripheral | undefi
                     ? opInt(ops, OP_PARAMETER.FLASH_LED, 0)
                     : null,
                 autoSwitch,
+                // op34 decides whether this verdict reaches the flash at all:
+                // lightSensor_isRequired() in the firmware is true only for
+                // mode 1 or op26, and in the other modes op25 stops moving.
+                flashMode: ops.length > OP_PARAMETER.FLASH_MODE
+                    ? opInt(ops, OP_PARAMETER.FLASH_MODE, 0)
+                    : null,
             }))
         } catch (e) {
             logError('[LightSensor] refresh failed:', e)
@@ -320,5 +357,24 @@ export const useLightSensor = ({ device }: { device: ExtendedPeripheral | undefi
         }
     }, [device])
 
-    return { state, aeData, lightCheck, isBusy, stage, refresh, measureNow, resetReadings }
+    /**
+     * Write op34 FLASH_MODE. The engineer's own choice on this screen, so it is
+     * written straight through rather than held and restored: unlike Capture
+     * Picture's visit-length hold, changing the mode here is the point of the
+     * control. A deployment writes the project's mode over it.
+     */
+    const setFlashMode = useCallback(async (mode: number) => {
+        if (!device?.connected) return
+        try {
+            const session = createBleSession(device)
+            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_MODE, value: mode }))
+            if (unmountedRef.current) return
+            setState(prev => ({ ...prev, flashMode: mode }))
+            log(`[LightSensor] op34 set to ${mode}`)
+        } catch (e) {
+            logError('[LightSensor] could not set the flash mode:', e)
+        }
+    }, [device])
+
+    return { state, aeData, lightCheck, isBusy, stage, refresh, measureNow, resetReadings, setFlashMode }
 }

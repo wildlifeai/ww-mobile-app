@@ -17,6 +17,7 @@ import { useCameraSwitch, CAMERA_VARIANT_LABELS, type CameraVariant } from '../.
 import { useCapturePreview } from '../../hooks/useCapturePreview'
 import { useLightSensorLog } from '../../hooks/useLightSensorLog'
 import { toRegisterReading, scoreByMean, scoreByGain } from '../../utils/lightSensorRules'
+import { FLASH_MODE_OP_LABELS } from '../../hooks/useDeviceSettings'
 
 const formatDuration = (ms: number): string => {
     const s = Math.max(0, Math.round(ms / 1000))
@@ -105,7 +106,7 @@ export const LightSensorScreen = () => {
     const deviceId = route.params?.deviceId
     const device = useAppSelector(state => state.devices[deviceId || ''])
 
-    const { state, aeData, lightCheck, isBusy, stage, measureNow, resetReadings } = useLightSensor({ device })
+    const { state, aeData, lightCheck, isBusy, stage, measureNow, resetReadings, setFlashMode } = useLightSensor({ device })
     // Whether the camera can work at all belongs to the device, not to this
     // feature, so it is asked once on entry rather than discovered when a
     // measurement fails. Enabled here because reaching this screen means the user
@@ -383,6 +384,20 @@ export const LightSensorScreen = () => {
                 </Surface>
             )}
 
+            {/* The verdict on this screen only drives the flash in mode 1. In
+                the other modes the firmware runs no light check after a capture
+                and op25 stops moving, so what is measured here is a reading and
+                nothing more. Say so rather than let an engineer conclude the
+                flash is broken (#283). */}
+            {state.flashMode !== null && state.flashMode !== 1 && (
+                <Surface style={[styles.notice, { backgroundColor: colors.surfaceVariant }]} elevation={1}>
+                    <WWText variant="titleSmall">The camera is not using this verdict</WWText>
+                    <WWText variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
+                        {`Its flash mode is ${FLASH_MODE_OP_LABELS[state.flashMode] ?? state.flashMode}. The light check still measures the scene, but only the light-sensor mode lets that decision arm the flash. The mode comes from the project at every deployment.`}
+                    </WWText>
+                </Surface>
+            )}
+
             {/* Hidden entirely when no photo was asked for: with the tick off the
                 screen is just the reading, the button and the log. */}
             {withPhoto && (
@@ -527,6 +542,33 @@ export const LightSensorScreen = () => {
                                 Streaming is light-only. Untick the photo option to stream.
                             </WWText>
                         )}
+                    </View>
+
+                    <Divider />
+
+                    {/* op34. Written straight through: choosing it here is the
+                        point of the control, and a deployment writes the
+                        project's mode over it. The light-sensor mode is the only
+                        one that uses the verdict this screen measures. */}
+                    <View style={styles.setting}>
+                        <WWText variant="titleSmall">Capture flash mode</WWText>
+                        <WWText variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
+                            {state.flashMode === null
+                                ? 'This firmware has no flash mode.'
+                                : state.flashMode === 1
+                                    ? 'Light sensor: the verdict below arms the flash. Still in development.'
+                                    : 'Only the light-sensor mode uses the verdict below.'}
+                        </WWText>
+                        <SegmentedButtons
+                            value={state.flashMode === null ? '' : String(state.flashMode)}
+                            onValueChange={(v) => setFlashMode(Number(v))}
+                            buttons={[
+                                { value: '0', label: 'Off', disabled: state.flashMode === null || busy || streaming },
+                                { value: '1', label: 'Light', disabled: state.flashMode === null || busy || streaming },
+                                { value: '2', label: 'Always', disabled: state.flashMode === null || busy || streaming },
+                                { value: '3', label: 'Time', disabled: state.flashMode === null || busy || streaming },
+                            ]}
+                        />
                     </View>
 
                     <Divider />
