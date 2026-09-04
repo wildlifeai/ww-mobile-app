@@ -5,7 +5,7 @@
 #### 4 September 2026
 
 **Branch:** `docs/person-detection-first-deployment`
-**Status:** Open. Bench run complete; findings drafted, issues not yet filed.
+**Status:** Open. Bench run complete, five findings filed as issues; closes when they are resolved or decided.
 
 ## Outcome
 
@@ -29,13 +29,13 @@ fixing first.
 
 Five findings, one folder each, in the issue template's shape:
 
-| | Finding | Repo | Type |
-|---|---|---|---|
-| [A](A_sync_watermarks_survive_user_switch/explanation.md) | Sync watermarks survive a user switch; the next user sees no projects | app | bug |
-| [B](B_person_detection_labels_one_line/explanation.md) | Person Detection labels file has one label for two classes; the person class is `''` in EXIF | data, website, firmware | data |
-| [C](C_light_check_capture_fails/explanation.md) | The light-check capture in Start Monitoring was refused by the sensor; a motion wake completed the step by chance | app, firmware | bug, seen once |
-| [D](D_duplicate_commands_on_connect_and_monitor/explanation.md) | Connect sends ver, AI info, AI ver twice; the monitor polls the image count twice a minute | app | cleanup |
-| [E](E_organisation_manager_not_full_access/explanation.md) | Decide: organisation managers see only project-scoped roles, in the app and in RLS | app, backend, website | decision |
+| | Finding | Repo | Type | Issue |
+|---|---|---|---|---|
+| [A](A_sync_watermarks_survive_user_switch/explanation.md) | Sync watermarks survive a user switch; the next user sees no projects | app | bug | [ww-mobile-app #267](https://github.com/wildlifeai/ww-mobile-app/issues/267) |
+| [B](B_person_detection_labels_one_line/explanation.md) | Person Detection labels file has one label for two classes; the person class is `''` in EXIF | data, website, firmware | data | [ww-website #134](https://github.com/wildlifeai/ww-website/issues/134) |
+| [C](C_light_check_capture_fails/explanation.md) | The light-check capture in Start Monitoring was refused by the sensor; a motion wake completed the step by chance | app, firmware | bug, seen once | [ww-mobile-app #269](https://github.com/wildlifeai/ww-mobile-app/issues/269) |
+| [D](D_duplicate_commands_on_connect_and_monitor/explanation.md) | Connect sends ver, AI info, AI ver twice; the monitor polls the image count twice a minute | app | cleanup | [ww-mobile-app #268](https://github.com/wildlifeai/ww-mobile-app/issues/268) |
+| [E](E_organisation_manager_not_full_access/explanation.md) | Decide: organisation managers see only project-scoped roles, in the app and in RLS | app, backend, website | decision | [ww-backend #162](https://github.com/wildlifeai/ww-backend/issues/162) |
 
 ## The run, step by step
 
@@ -58,8 +58,9 @@ mode in the progress dialog. Finding C is the case for removing its capture.
 
 ## Open items
 
-To be filed from the finding folders, in this order: A, B, D, C, E. Issue numbers go in the
-table above when they exist.
+All five filed on 4 September 2026, permalinked to commit a97c91ec; the issue column in the
+table above is the list. Filed where the fix lives: A, C and D in this repo, B in ww-website
+(the upload wrote the file), E in ww-backend (the policy lives there).
 
 ## Files
 
