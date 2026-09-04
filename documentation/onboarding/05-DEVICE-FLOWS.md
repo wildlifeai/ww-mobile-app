@@ -172,7 +172,7 @@ The shared steps:
 
 1. `AI getop -1` — [bulk fetch](./04-ENGINEER-CONSOLE.md#op-bulk-fetch-optimization-ai-getop--1) current OPs (also wakes device from DPD)
 2. **Skips Tracking Counters** — ignores OPs like `NUM_PICTURES`, `NUM_NN_ANALYSES`, etc., so device lifetime history is preserved
-3. **Erases AI Model** — automatically sends `erasemodel` if a model is currently loaded
+3. **Keeps the AI model** — the pipeline passes `preserveModel: true`, so no `erasemodel` is sent and op14/op15 are left alone; model state belongs to the AI Model Sync step. The Engineer Console's reset omits the flag and does erase a loaded model
 4. Diff against `FACTORY_DEFAULTS` — only writes values that differ to save BLE round trips
 5. Clears Deployment ID and zeroizes GPS natively
 

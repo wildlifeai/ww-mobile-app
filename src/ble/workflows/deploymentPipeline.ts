@@ -36,7 +36,8 @@ export async function syncTime(
 }
 
 /**
- * Step 1b: Reset all operational parameters to factory defaults.
+ * Reset all operational parameters to factory defaults (step 5 of the Start
+ * Monitoring pipeline in 05-DEVICE-FLOWS.md, step 4b of the dev deployment).
  *
  * Ensures the device has a clean slate before deployment. Prevents leftover
  * state from MD tests (TEST_MODE_BITS=8), Engineer Console sessions or
