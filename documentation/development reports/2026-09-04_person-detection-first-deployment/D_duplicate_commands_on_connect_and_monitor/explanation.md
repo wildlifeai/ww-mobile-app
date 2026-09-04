@@ -1,4 +1,4 @@
-# Connecting sends ver, AI info and AI ver twice, and the live monitor polls the image count twice a minute, each wake costing a DPD cycle
+# Connecting sends thirteen commands and writes to the device where six reads would do, and the live monitor polls the image count twice a minute
 
 #### File: explanation.md
 #### Author: Claude (Fable 5.1), with Victor Anton at the bench
@@ -74,6 +74,47 @@ processor and resets the HM0360 motion detector.
 - Hoist the monitor hook so one instance feeds both the stats view and the activity log, or
   keep the poll in one of them only. Consider dropping the poll altogether: the "Captured N
   images" broadcast arrives after every capture and the hook already listens to it.
+
+## Scope: the whole connect sequence
+
+Added 4 September after the run, when the question became "do we need all sixteen?". This
+is the list from today's log in the order sent, with the verdict for each.
+
+| # | Command | Sent by | Verdict |
+|---|---|---|---|
+| 1 | `selftest` | BLE init | Drop. Runs before the Himax is awake, so the app masks bits 8 to 15 and keeps only battery, LoRaWAN and reset flags. All of those come again in the post-wake broadcast |
+| 2 | `setutc` | BLE init | Keep. EXIF timestamps depend on it |
+| 3 | `battery` | pre-deployment checks | Keep. Feeds the warning and the deployment record. BLE processor only, no wake |
+| 4 | `AI info` | pre-deployment checks | Keep. The one necessary wake, and the only source of SD total and free space |
+| 5 | `selftest` | pre-deployment checks | Drop. The Himax broadcasts `Error bits = 0x....` after every wake; today it arrived 60 ms after "Wake", before the app asked. Parse the broadcast instead |
+| 6 | `AI getop -1` | pre-deployment reset | Keep, for the screen's snapshot |
+| 7 | `AI setop 0 1` | pre-deployment reset | Move. Seeds the sequence counter on a fresh card, by design, but it belongs with the Start reset |
+| 8 | `AI setop 26 1` | pre-deployment reset | Move. Enabling day and night switching before the user has chosen anything contradicts "connecting never writes to the device" in the BLE guide |
+| 9 | `ver` | pre-deployment checks | Keep |
+| 10 | `AI ver` | pre-deployment checks | Keep |
+| 11 to 13 | `ver`, `AI info`, `AI ver` | firmware-status hook | Drop, the duplicate above |
+
+The count in the device-flows guide reaches sixteen by adding one `setop` per drifted
+parameter and a second `getop -1` and `setutc`; today those were the two setops in rows 7 and
+8, and the second `getop -1` and `setutc` belong to Start Monitoring.
+
+Target: six commands (`setutc`, `battery`, `AI info`, `AI getop -1`, `ver`, `AI ver`), one
+Himax wake instead of two, no writes, and about three seconds instead of seven.
+
+**The reset stays, it moves.** Connecting must not write, but every deployment must start
+from a known state: nothing may leak from the previous deployment or from an Engineer
+Console session (test-mode bits, extended inactivity timeout, flash overrides, motion
+intervals). That guarantee is the Start Monitoring pipeline's `resetOps`, which already runs
+unconditionally before `configureDevice`, diffs every op in `FACTORY_DEFAULTS` against the
+device, and skips only the model (synced a step earlier), identity (set a step later) and the
+lifetime counters in `RESET_PRESERVED_OPS`. Removing the connect-time reset changes nothing
+about what a deployment starts with; it only stops the app writing to a device the user has
+not yet decided to deploy. Two conditions for the change:
+
+- the Start reset must fail loudly, not "continue with configuration", when a write is
+  refused, since it is now the only reset;
+- the post-wake `Error bits` broadcast must feed the same warning path the second `selftest`
+  feeds today, or the SD-card and camera warnings on the screen go dark.
 
 ## Evidence
 
