@@ -37,11 +37,11 @@ never writes either, so no project gets a capture flash or night IR. Finding A, 
 
 | | Finding | Repo | Type | Issue |
 |---|---|---|---|---|
-| [A](A_deployments_never_flash/explanation.md) | A deployment never fires the capture flash and never arms the night IR: op13 and op34 are reset to 0 and nothing writes them back | app | bug | filed below |
-| B | The console flows (Capture Picture, Motion Detection Preview, Light Sensor) need to drive op34 instead of the op25 workaround | app | enhancement | filed below |
-| C | `projects` needs flash mode, LED and time-of-day window columns | backend | enhancement | filed below |
-| D | Project Defaults panel needs the flash fields, with local time converted to UTC minutes | website | enhancement | filed below |
-| E | Modes 2 and 3 take a throwaway frame on the periodic wake they do not need, and the flash console lines should carry the mode | firmware | enhancement | filed below |
+| [A](A_deployments_never_flash/explanation.md) | A deployment never fires the capture flash and never arms the night IR: op13 and op34 are reset to 0 and nothing writes them back | app | bug | [ww-mobile-app #282](https://github.com/wildlifeai/ww-mobile-app/issues/282) |
+| B | The console flows (Capture Picture, Motion Detection Preview, Light Sensor) need to drive op34 instead of the op25 workaround | app | enhancement | [ww-mobile-app #283](https://github.com/wildlifeai/ww-mobile-app/issues/283) |
+| C | `projects` needs flash mode, LED and time-of-day window columns | backend | enhancement | [ww-backend #163](https://github.com/wildlifeai/ww-backend/issues/163) |
+| D | Project Defaults panel needs the flash fields, with local time converted to UTC minutes | website | enhancement | [ww-website #137](https://github.com/wildlifeai/ww-website/issues/137) |
+| E | Modes 2 and 3 take a throwaway frame on the periodic wake they do not need, and the flash console lines should carry the mode | firmware | enhancement | [Seeed #214](https://github.com/wildlifeai/Seeed_Grove_Vision_AI_Module_V2/issues/214) |
 
 ## Where the setting should live
 
@@ -57,7 +57,7 @@ leaves daytime pictures unlit.
 
 ## Open items
 
-Issues, one per repo, are listed in the findings table once filed.
+All five filed on 4 September 2026 and linked in the findings table, permalinked to f7fe54ed. Order of work: ww-backend #163 (columns), then ww-website #137 and ww-mobile-app #282 together, ww-mobile-app #283 for the console flows, Seeed #214 at Charles's pace.
 
 ## Files
 
