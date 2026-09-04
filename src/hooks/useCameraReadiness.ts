@@ -2,10 +2,10 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { OP_PARAMETER } from './useDeviceSettings'
-import { bleEventBus, BleEvent } from '../ble/protocol/eventBus'
+import { selfTestCache } from '../ble/protocol/selfTestCache'
 import { createBleSession } from '../ble/session/createBleSession'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
-import { parseSelfTestBits, decodeSelfTest } from '../utils/deviceSelfTest'
+import { parseSelfTestBits, decodeSelfTest, isBootPreset, formatSelfTestBits } from '../utils/deviceSelfTest'
 import { log, logWarn } from '../utils/logger'
 
 export type ReadinessStatus =
@@ -21,31 +21,10 @@ export type ReadinessStatus =
     | 'faulted'
 
 /**
- * The device announces its self-test result after every wake, unprompted. That
- * broadcast is the same `Error bits = 0xNNNN` string the `selftest` command
- * returns, so listening costs nothing and keeps the verdict current.
- *
- * Anchored on the whole label rather than reusing parseSelfTestBits alone, which
- * matches any `0x` in any string: plenty of unrelated device chatter carries hex,
- * for example `Wakeup_event = 0x0000` and `Image Event Start Capture (0x0a01)`,
- * and treating one of those as a self-test result would corrupt the state.
+ * The device announces its self-test result after every wake, unprompted, and
+ * the shared `selfTestCache` (ble/protocol/selfTestCache.ts) keeps the latest
+ * reading per connection, boot presets already rejected. This hook follows it.
  */
-const ERROR_BITS_LINE = /^\s*Error bits\s*=\s*0x[0-9a-f]+/i
-
-/**
- * Bits 8-15 are the AI processor's. The BLE processor pre-sets **all** of them
- * at boot and clears them only once the AI processor reports for itself, so a
- * self-test seen before the Himax is awake carries `0xFF00` as an initial value
- * rather than as a finding. `useBleInitialization` masks the whole AI range for
- * that reason at connect time.
- *
- * We cannot mask the range here, since bits 8 and 9 are the two this hook exists
- * to read. Instead we reject the specific pattern that can only be the preset:
- * every AI bit set at once, which would otherwise be reported as five
- * simultaneous hardware failures on a healthy device.
- */
-const AI_BITS = 0xff00
-const isBootPreset = (bits: number) => (bits & AI_BITS) === AI_BITS
 
 /**
  * Is this device's camera actually usable, asked before a flow that needs it.
@@ -105,23 +84,19 @@ export const useCameraReadiness = ({
 
     // Free and always current: every wake tells us the answer without being asked.
     useEffect(() => {
-        const listener = (event: BleEvent & { type: 'TEXT_LINE' }) => {
-            if (!device || event.deviceId !== device.id) return
-            if (!ERROR_BITS_LINE.test(event.line)) return
-            const parsed = parseSelfTestBits(event.line)
-            if (parsed === null) return
-            if (isBootPreset(parsed)) {
-                log('[CameraReadiness] ignoring boot preset 0x' + parsed.toString(16))
-                return
-            }
-            bitsRef.current = parsed
-            setBits(prev => {
-                if (prev !== parsed) log(`[CameraReadiness] device reports 0x${parsed.toString(16).padStart(4, '0')}`)
-                return parsed
-            })
+        if (!device) return
+        const held = selfTestCache.get(device.id)
+        if (held?.postWake) {
+            bitsRef.current = held.bits
+            setBits(held.bits)
         }
-        bleEventBus.on('textLine', listener)
-        return () => { bleEventBus.removeListener('textLine', listener) }
+        return selfTestCache.subscribe(device.id, reading => {
+            bitsRef.current = reading.bits
+            setBits(prev => {
+                if (prev !== reading.bits) log(`[CameraReadiness] device reports ${formatSelfTestBits(reading.bits)}`)
+                return reading.bits
+            })
+        })
     }, [device])
 
     const issues = useMemo(() => (bits === null ? [] : decodeSelfTest(bits)), [bits])

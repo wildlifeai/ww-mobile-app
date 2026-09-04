@@ -3,7 +3,7 @@ import { useCallback, useRef } from 'react'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { createBleSession } from '../ble/session/createBleSession'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
-import { extractErrorBits } from '../ble/messageClassifier'
+import { AI_BITS_MASK, formatSelfTestBits, parseSelfTestBits, selfTestWarnings } from '../utils/deviceSelfTest'
 
 import { log, logError, logWarn } from '../utils/logger'
 
@@ -56,33 +56,23 @@ export const useBleInitialization = () => {
       // Brief delay to allow device to stabilize after connection
       await new Promise(resolve => setTimeout(resolve, 300))
       
-      let statusMsg = ''
-      let hexBits: string | null = null
-      let bits = 0
-      
+      // The BLE processor's half of the self-test (bits 0-7). Bits 8-15 are the
+      // AI processor's, and the BLE processor presets every one of them at boot
+      // until the Himax reports for itself. This runs before anything wakes the
+      // Himax, so the AI range is masked here; the post-wake broadcast (kept by
+      // ble/protocol/selfTestCache.ts) is where those bits are read.
+      let bits: number | null = null
+
       try {
           const session = createBleSession(device)
-          
-          // The MKL62BA auto-wakes the Himax when it receives any command,
-          // so we skip the explicit wake and go straight to selftest.
-          statusMsg = await session.execute(commandRegistry.selftest)
+          const statusMsg = await session.execute(commandRegistry.selftest)
           log('[BLE Init] Self-test result:', statusMsg)
-          
-          hexBits = statusMsg ? extractErrorBits(statusMsg) : null
-          if (hexBits) {
-              bits = parseInt(hexBits, 16)
-              // Bits 8-15 are AI processor errors. The BLE processor pre-sets
-              // ALL of them (0xFF00) at boot and only clears them once the AI
-              // processor sends its own selftest result.  Because this selftest
-              // runs BEFORE we wake the AI processor, any AI-range bits that
-              // are still set are stale initialization values — not real errors.
-              // Mask them out so only BLE-processor bits (0-7) are evaluated.
-              const bleOnlyBits = bits & 0x00FF
-              if (bleOnlyBits !== bits) {
-                  const maskedBits = bits & 0xFF00
-                  logWarn(`[BLE Init] Masking stale AI processor bits 0x${maskedBits.toString(16).toUpperCase().padStart(4, '0')} (AI not yet awake). Keeping BLE bits: 0x${bleOnlyBits.toString(16).toUpperCase().padStart(4, '0')}`)
-                  bits = bleOnlyBits
-                  hexBits = bleOnlyBits === 0 ? null : bleOnlyBits.toString(16).toUpperCase().padStart(4, '0')
+
+          const raw = parseSelfTestBits(statusMsg)
+          if (raw !== null) {
+              bits = raw & ~AI_BITS_MASK
+              if (bits !== raw) {
+                  logWarn(`[BLE Init] Masking AI processor bits ${formatSelfTestBits(raw & AI_BITS_MASK)} (AI not yet awake). Keeping BLE bits: ${formatSelfTestBits(bits)}`)
               }
           }
       } catch (e) {
@@ -93,47 +83,13 @@ export const useBleInitialization = () => {
           errors.deviceHealth.push('Hardware self-test failed to run.')
       }
 
-      // Check for hardware warnings
-      if (hexBits && bits !== 0) {
-              logWarn(`[BLE Init] Non-zero error bits detected: ${hexBits} (${bits})`)
-              const warnings: string[] = []
-
-              // Define known bit masks based on selfTest.h
-              const SelfTestErrorBits = {
-                  LOW_BATTERY: 1 << 0,
-                  AI_PROCESSOR_NO_RESPONSE: 1 << 1,
-                  LORAWAN_ERROR: 1 << 2,
-                  WATCHDOG_RESET: 1 << 3,
-                  BROWNOUT_RESET: 1 << 4,
-                  MAIN_CAMERA_ERROR: 1 << 8,
-                  MOTION_DETECTOR_ERROR: 1 << 9,
-                  LED_FLASH_FAILURE: 1 << 10,
-                  NO_SD_CARD: 1 << 11,
-                  PDM_MIC_FAILURE: 1 << 12,
-                  NEURAL_NETWORK_ERROR: 1 << 13,
-              }
-
-              if (bits & SelfTestErrorBits.LOW_BATTERY) warnings.push("Low Battery detected (Bit 0)")
-              if (bits & SelfTestErrorBits.AI_PROCESSOR_NO_RESPONSE) warnings.push("AI Processor not responding (Bit 1)")
-              if (bits & SelfTestErrorBits.LORAWAN_ERROR) warnings.push("LoRaWAN Error (Bit 2)")
-              if (bits & SelfTestErrorBits.WATCHDOG_RESET) warnings.push("Watchdog Reset occurred (Bit 3)")
-              if (bits & SelfTestErrorBits.BROWNOUT_RESET) warnings.push("Brownout Reset occurred (Bit 4)")
-
-              // Bits 8-15 are AI processor errors
-              if (bits & SelfTestErrorBits.MAIN_CAMERA_ERROR) warnings.push("Main Camera Error (Bit 8)")
-              if (bits & SelfTestErrorBits.MOTION_DETECTOR_ERROR) warnings.push("Motion Detector Camera Error (Bit 9)")
-              if (bits & SelfTestErrorBits.LED_FLASH_FAILURE) warnings.push("LED Flash Circuit Failure (Bit 10)")
-              if (bits & SelfTestErrorBits.NO_SD_CARD) warnings.push("Device has no SD card detected (Bit 11)")
-              if (bits & SelfTestErrorBits.PDM_MIC_FAILURE) warnings.push("PDM Microphone Failure (Bit 12)")
-              if (bits & SelfTestErrorBits.NEURAL_NETWORK_ERROR) warnings.push("Neural Network Error (Bit 13)")
-
-              // If we have bits but no mapped warnings
-              if (warnings.length === 0) warnings.push(`Unknown hardware issue (Code: ${hexBits})`)
-
-              errors.deviceHealth = warnings
-      } else if (!hexBits && bits === 0) {
-          // If bits were cleared or 0
-           log('[BLE Init] Hardware check passed (error bits = 0x0000 or ignored init state)')
+      // The bit names live in utils/deviceSelfTest.ts, the one copy of the
+      // firmware's selfTest.h table.
+      if (bits !== null && bits !== 0) {
+          logWarn(`[BLE Init] Non-zero error bits detected: ${formatSelfTestBits(bits)} (${bits})`)
+          errors.deviceHealth = selfTestWarnings(bits)
+      } else if (bits === 0) {
+          log('[BLE Init] Hardware check passed (BLE bits 0x0000; AI bits read after the wake)')
       }
 
       try {

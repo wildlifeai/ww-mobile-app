@@ -212,7 +212,7 @@ hooks/
 ├── useBluetoothStatus.ts      # Bluetooth adapter state
 ├── useEngineerConnect.ts      # Console connection management
 ├── useScanLoop.ts             # Shared 3s burst scan loop + cache flush
-├── useDeviceSelfTest.ts       # selftest bitmask parsing
+├── useDeviceSelfTest.ts       # Device health from the self-test cache (Capture Picture banner)
 ├── useReconnectDevice.tsx     # Reconnection helper
 ├── useSelectDevice.tsx        # Device selection helper
 ├── useDeploymentConfiguration.ts # Capture method → OP mapping
@@ -257,6 +257,7 @@ ble/
 │   ├── protocolConstants.ts    # Timing constants (MTU, timeouts)
 │   ├── deviceSignals.ts        # Sleep/Wake/Busy signals
 │   ├── textStreamScope.ts      # Text stream scoping for responses
+│   ├── selfTestCache.ts        # Latest `Error bits` per connection, from the wake broadcast
 │   └── fileTransfer/           # Chunked file transfer protocol
 │       ├── runFileTransferPipeline.ts
 │       ├── fileTransferPackets.ts

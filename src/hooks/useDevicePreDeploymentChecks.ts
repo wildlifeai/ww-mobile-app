@@ -3,12 +3,12 @@ import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { useBleInitialization } from './useBleInitialization'
 import { createBleSession } from '../ble/session/createBleSession'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
-import { bleEventBus, BleEvent } from '../ble/protocol/eventBus'
+import { selfTestCache } from '../ble/protocol/selfTestCache'
 import ReferenceDataService from '../services/ReferenceDataService'
 import { log, logWarn } from '../utils/logger'
 import { convertBleToSemanticVersion } from '../utils/versionUtils'
 import { InitPayload } from '../navigation/types'
-import { extractErrorBits } from '../ble/messageClassifier'
+import { CRITICAL_AI_MASK, formatSelfTestBits, parseSelfTestBits, selfTestWarnings } from '../utils/deviceSelfTest'
 
 /**
  * Pre-deployment checks: what the Scanner runs between "connected" and the Start
@@ -21,7 +21,7 @@ import { extractErrorBits } from '../ble/messageClassifier'
  * The self-test bits after the wake are not requested: the Himax broadcasts
  * `Error bits = 0x....` on every wake, and on the bench it arrives 60 ms after
  * `Wake`, well before the `AI info` reply that wakes it has finished. The
- * listener below catches it; `selftest` is only sent if no broadcast came.
+ * shared selfTestCache holds it; `selftest` is only sent if no broadcast came.
  */
 export const useDevicePreDeploymentChecks = () => {
     const { initialize: runBleStandardInit } = useBleInitialization()
@@ -73,17 +73,11 @@ export const useDevicePreDeploymentChecks = () => {
         const AI_WAKE_MAX_RETRIES = 3
         const AI_WAKE_RETRY_DELAY_MS = 2000
         let aiAwake = false
-        let broadcastErrorBits: string | null = null
-
-        const onTextLine = (event: BleEvent & { type: 'TEXT_LINE' }) => {
-            if (event.deviceId !== device.id) return
-            const bits = extractErrorBits(event.line)
-            if (bits) broadcastErrorBits = bits
-        }
-        bleEventBus.on('textLine', onTextLine)
+        // Anything the cache holds from before this moment predates our wake.
+        const wakeStartedAt = Date.now()
 
         onProgress('Waking AI processor...')
-        try {
+        {
             for (let attempt = 1; attempt <= AI_WAKE_MAX_RETRIES; attempt++) {
                 try {
                     log(`[Pre-Deployment] AI wake attempt ${attempt}/${AI_WAKE_MAX_RETRIES}...`)
@@ -119,8 +113,6 @@ export const useDevicePreDeploymentChecks = () => {
                     }
                 }
             }
-        } finally {
-            bleEventBus.removeListener('textLine', onTextLine)
         }
 
         if (!aiAwake) {
@@ -131,71 +123,33 @@ export const useDevicePreDeploymentChecks = () => {
         } else {
             // Post-wake health: the broadcast carries the real camera, SD and NN bits
             // (bits 8-15), which the pre-wake selftest in useBleInitialization masks.
-            // Only ask if the broadcast did not come.
-            let hexBits: string | null = broadcastErrorBits
-            if (hexBits) {
-                log('[Pre-Deployment] Post-wake self-test from broadcast:', hexBits)
+            // The cache has usually heard it by now; give it a moment, then ask.
+            let bits: number | null = null
+            const heard = await selfTestCache.waitForFresh(device.id, wakeStartedAt, 1500)
+            if (heard) {
+                bits = heard.bits
+                log('[Pre-Deployment] Post-wake self-test from broadcast:', formatSelfTestBits(bits))
             } else {
                 try {
                     onProgress('Checking AI processor health...')
                     const statusMsg = await session.execute(commandRegistry.selftest)
                     log('[Pre-Deployment] Post-wake self-test result (requested, no broadcast seen):', statusMsg)
-                    hexBits = statusMsg ? extractErrorBits(statusMsg) : null
+                    bits = parseSelfTestBits(statusMsg)
                 } catch (e) {
                     logWarn('[Pre-Deployment] Post-wake health check failed:', e)
                 }
             }
 
-            if (hexBits) {
-                const bits = parseInt(hexBits, 16)
-                if (!isNaN(bits) && bits !== 0) {
-                    logWarn(`[Pre-Deployment] Non-zero error bits detected after AI wake: ${hexBits} (${bits})`)
-
-                    const SelfTestErrorBits = {
-                        LOW_BATTERY: 1 << 0,
-                        AI_PROCESSOR_NO_RESPONSE: 1 << 1,
-                        LORAWAN_ERROR: 1 << 2,
-                        WATCHDOG_RESET: 1 << 3,
-                        BROWNOUT_RESET: 1 << 4,
-                        MAIN_CAMERA_ERROR: 1 << 8,
-                        MOTION_DETECTOR_ERROR: 1 << 9,
-                        LED_FLASH_FAILURE: 1 << 10,
-                        NO_SD_CARD: 1 << 11,
-                        PDM_MIC_FAILURE: 1 << 12,
-                        NEURAL_NETWORK_ERROR: 1 << 13,
+            if (bits !== null && bits !== 0) {
+                logWarn(`[Pre-Deployment] Non-zero error bits detected after AI wake: ${formatSelfTestBits(bits)} (${bits})`)
+                for (const warning of selfTestWarnings(bits)) {
+                    if (!newErrors.deviceHealth.includes(warning)) {
+                        newErrors.deviceHealth.push(warning)
                     }
-
-                    const addWarning = (warning: string) => {
-                        if (!newErrors.deviceHealth.includes(warning)) {
-                            newErrors.deviceHealth.push(warning)
-                        }
-                    }
-
-                    if (bits & SelfTestErrorBits.LOW_BATTERY) addWarning("Low Battery detected (Bit 0)")
-                    if (bits & SelfTestErrorBits.AI_PROCESSOR_NO_RESPONSE) addWarning("AI Processor not responding (Bit 1)")
-                    if (bits & SelfTestErrorBits.LORAWAN_ERROR) addWarning("LoRaWAN Error (Bit 2)")
-                    if (bits & SelfTestErrorBits.WATCHDOG_RESET) addWarning("Watchdog Reset occurred (Bit 3)")
-                    if (bits & SelfTestErrorBits.BROWNOUT_RESET) addWarning("Brownout Reset occurred (Bit 4)")
-                    if (bits & SelfTestErrorBits.MAIN_CAMERA_ERROR) addWarning("Main Camera Error (Bit 8)")
-                    if (bits & SelfTestErrorBits.MOTION_DETECTOR_ERROR) addWarning("Motion Detector Camera Error (Bit 9)")
-                    if (bits & SelfTestErrorBits.LED_FLASH_FAILURE) addWarning("LED Flash Circuit Failure (Bit 10)")
-                    if (bits & SelfTestErrorBits.NO_SD_CARD) addWarning("Device has no SD card detected (Bit 11)")
-                    if (bits & SelfTestErrorBits.PDM_MIC_FAILURE) addWarning("PDM Microphone Failure (Bit 12)")
-                    if (bits & SelfTestErrorBits.NEURAL_NETWORK_ERROR) addWarning("Neural Network Error (Bit 13)")
-
-                    const knownMask = 0x3F1F
-                    if ((bits & ~knownMask) !== 0) {
-                        addWarning(`Unknown hardware issue (Code: ${hexBits})`)
-                    }
-
-                    // Block starting deployment if there's a critical hardware error on the AI/Camera module
-                    const criticalAiErrorMask = SelfTestErrorBits.MAIN_CAMERA_ERROR |
-                                               SelfTestErrorBits.MOTION_DETECTOR_ERROR |
-                                               SelfTestErrorBits.NEURAL_NETWORK_ERROR
-
-                    if ((bits & criticalAiErrorMask) !== 0) {
-                        payload.aiProcessorFailed = true
-                    }
+                }
+                // Block starting deployment if there's a critical hardware error on the AI/Camera module
+                if ((bits & CRITICAL_AI_MASK) !== 0) {
+                    payload.aiProcessorFailed = true
                 }
             }
         }
