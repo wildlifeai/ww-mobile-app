@@ -87,4 +87,3 @@ npm run docs:validate    # every path/link in documentation/ resolves
 | Device flows | `documentation/onboarding/05-DEVICE-FLOWS.md`, `06-BLE-CONNECTIONS.md` |
 | Offline/sync | `documentation/onboarding/03-DATA-AND-SYNC.md` |
 | How the code got this way | `documentation/development reports/` |
-| Known doc drift | `documentation/DOCUMENTATION-AUDIT.md` |

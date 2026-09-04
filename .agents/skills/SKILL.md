@@ -22,9 +22,10 @@ cost someone a day.
   `npm run docs:validate`.
 - Don't hand-edit generated files: `src/database/schema.ts` (from `schema:generate`) and
   `src/types/database.types.ts` (from `types:cloud-dev`).
-- **Verify against the code, not the docs.** `documentation/DOCUMENTATION-AUDIT.md`
-  records a period where ~40 documented facts had drifted from reality. Much is fixed;
-  treat any undated claim as a hypothesis.
+- **Verify against the code, not the docs.** A July 2026 audit found about 40
+  documented facts that had drifted from reality; they were fixed in v0.0.62 and
+  `npm run docs:validate` now guards paths and links, but not claims. Treat any
+  undated claim as a hypothesis.
 - **PRs are squash-merged, and the branch is auto-deleted.** Two consequences:
   1. Squashing rewrites the commit SHAs, so a branch built on the pre-merge commits
      shows every already-merged commit again as "new". After a PR merges, `git fetch`
