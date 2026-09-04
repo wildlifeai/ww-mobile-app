@@ -39,7 +39,7 @@ export const DeploymentMonitorView: React.FC<Props> = ({
 }) => {
   const { colors } = useExtendedTheme()
   const { bottom } = useSafeAreaInsets()
-  const { stats } = useDeploymentMonitor(device, deploymentStartTime)
+  const { stats, activityLog } = useDeploymentMonitor(device, deploymentStartTime)
 
   const [isEnteringNotes, setIsEnteringNotes] = useState(false)
   const [endNotes, setEndNotes] = useState('')
@@ -148,7 +148,7 @@ export const DeploymentMonitorView: React.FC<Props> = ({
       {/* Activity Log */}
       <Text style={[styles.sectionTitle, { color: colors.onSurface }]}>Live Monitoring Log</Text>
       <View style={styles.logContainer}>
-        <LiveActivityLog device={device} />
+        <LiveActivityLog activityLog={activityLog} />
       </View>
 
       {/* Spacer to push footer down */}

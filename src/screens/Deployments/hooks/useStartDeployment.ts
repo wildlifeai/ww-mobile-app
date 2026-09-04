@@ -552,12 +552,16 @@ export const useStartDeployment = ({
                     .catch((e) => logWarn('[Deployment] Photo upload deferred:', e))
             }
 
-            // 6. Reset OPs to factory defaults before applying deployment config
+            // 6. Reset OPs to factory defaults before applying deployment config.
+            // The only reset this deployment gets (connecting is read-only, #268):
+            // a device that cannot be reset must not be deployed with whatever a
+            // previous deployment or an Engineer Console session left on it.
             try {
                 await pipeline.resetOps(bleSession, cb, currentOps)
             } catch (resetError) {
-                logWarn('[Deployment] OP reset failed, continuing with configuration:', resetError)
-                progress.addLog('OP reset failed — continuing with configuration')
+                logError('[Deployment] OP reset failed, aborting deployment:', resetError)
+                progress.addLog('OP reset failed — aborting deployment')
+                throw new Error('The device could not be reset to defaults. Reconnect and try again.')
             }
 
             // 7. Configure device OPs for this specific deployment (shared pipeline)

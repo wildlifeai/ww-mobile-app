@@ -311,12 +311,14 @@ export const useDevDeployment = ({
             await persistProjectSettings()
             progress.addLog('Project settings saved')
 
-            // 4b. Reset OPs to factory defaults before applying dev config (shared pipeline)
+            // 4b. Reset OPs to factory defaults before applying dev config (shared pipeline).
+            // The only reset this deployment gets (connecting is read-only, #268).
             try {
                 await pipeline.resetOps(bleSession, cb, currentOps)
             } catch (resetError) {
-                logWarn('[DevDeploy] OP reset failed, continuing with configuration:', resetError)
-                progress.addLog('OP reset failed — continuing with configuration')
+                logWarn('[DevDeploy] OP reset failed, aborting:', resetError)
+                progress.addLog('OP reset failed — aborting deployment')
+                throw new Error('The device could not be reset to defaults. Reconnect and try again.')
             }
 
             // 5. Create deployment record
