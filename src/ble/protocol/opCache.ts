@@ -5,10 +5,10 @@ import { log } from '../../utils/logger';
 /**
  * Per-connection cache of the device's operational parameter array.
  *
- * `AI getop -1` returns all 32 values at once, and nearly every device hook
- * wants one or two of them. A bench run on 2 September counted **18 fetches of
- * the same array** for six photos and one camera switch, three of them within
- * 400ms of each other on screen entry.
+ * `AI getop -1` returns every value at once (37 on the September 2026 firmware),
+ * and nearly every device hook wants one or two of them. A bench run on
+ * 2 September counted **18 fetches of the same array** for six photos and one
+ * camera switch, three of them within 400ms of each other on screen entry.
  *
  * The cost is not the bytes. The AI processor sleeps after about a second of
  * inactivity, so a fetch usually has to wake it, and the capture path then waits
@@ -55,7 +55,7 @@ import { log } from '../../utils/logger';
  * be handed the same array object: one caller writing into it would silently
  * rewrite the parameters every other caller reads, with nothing in the logs to
  * show where the value came from. Arrays are copied in and out. Nobody mutates
- * one today, and 32 strings are cheap enough that keeping it that way should
+ * one today, and a few dozen strings are cheap enough that keeping it that way should
  * not depend on nobody ever doing so.
  */
 class OpCache {
