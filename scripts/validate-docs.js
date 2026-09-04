@@ -36,9 +36,6 @@ const problems = [];
 
 for (const file of walk(DOCS)) {
 	const rel = path.relative(ROOT, file).replace(/\\/g, '/');
-	// The audit itself quotes stale paths on purpose.
-	if (rel.endsWith('DOCUMENTATION-AUDIT.md')) continue;
-
 	const body = fs.readFileSync(file, 'utf8');
 	const lineOf = (index) => body.slice(0, index).split('\n').length;
 

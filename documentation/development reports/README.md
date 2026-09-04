@@ -69,6 +69,7 @@ Example:
 | [sliding_window_file_transfer.md](sliding_window_file_transfer.md) (2026-04-29) | **Superseded.** The window=2 design was never shipped; transport is credit streaming (`windowSize ?? 12`). Retained for the `ftx err 7` root-cause analysis, which drove real firmware fixes. |
 | [sliding_window_file_transfer_spec.md](sliding_window_file_transfer_spec.md) (2026-04-28) | **Superseded — never implemented as specified.** Do not build from it; its `FILE_START` field order is also reversed relative to the wire format. Historical context only. |
 
-Related, outside this folder: [`DOCUMENTATION-AUDIT.md`](../DOCUMENTATION-AUDIT.md) — the
-Jul 2026 audit of the whole `documentation/` tree, its remediation status, and the gaps
-still open.
+A July 2026 audit of the whole `documentation/` tree (`DOCUMENTATION-AUDIT.md`, removed in
+September 2026 once its remediation had shipped in v0.0.62) is in the git history. Its last
+open gaps are tracked as issues #275 (developer settings), #276 (tutorial carousel) and #277
+(`DeviceReconnectProvider`).
