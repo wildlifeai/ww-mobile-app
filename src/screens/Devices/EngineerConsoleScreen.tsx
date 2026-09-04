@@ -66,10 +66,20 @@ export const EngineerConsoleScreen = () => {
         })
     }, [navigation, headerLeft])
 
-    // Connection Ownership: Engineer Console is a CHILD screen.
-    // It must NOT disconnect on back-navigation.
-    // The parent screen (StartMonitoring / StopMonitoring) owns the BLE lifecycle.
-    // See: src/ble/CONNECTION_OWNERSHIP.md
+    // Connection ownership: this screen OWNS the link and drops it on the way out.
+    //
+    // `handleBack` in useEngineerConsoleActions disconnects the device and then
+    // navigates to the Devices tab, and the hardware back button is bound to the
+    // same handler. Both back affordances therefore end the BLE session, and the
+    // device needs its button pressed again to advertise before anything can
+    // reconnect.
+    //
+    // This comment used to say the opposite - that the console is a child screen
+    // which must not disconnect, with a pointer to a src/ble/CONNECTION_OWNERSHIP.md
+    // that does not exist - and it cost a bench session a dropped link on
+    // 5 September 2026. The flows reached from here (Capture Picture, Motion
+    // Detection, Light Sensor) ARE children and come back to this screen with the
+    // link intact; it is leaving the console itself that disconnects.
 
     const lastProcessedLogLength = useRef<number>(0)
 

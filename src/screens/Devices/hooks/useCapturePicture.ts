@@ -10,6 +10,8 @@ import { createBleSession } from '../../../ble/session/createBleSession'
 import { keepAwake } from '../../../ble/session/keepAwake'
 import { flashHold } from '../../../ble/session/flashHold'
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'
+import { selfTestCache } from '../../../ble/protocol/selfTestCache'
+import { decodeSelfTest, SelfTestIssue } from '../../../utils/deviceSelfTest'
 import { log, logError, logWarn } from '../../../utils/logger'
 
 /** The two flash settings this screen tunes: op13 (which LED) and op9 (brightness). */
@@ -90,11 +92,33 @@ export const useCapturePicture = ({ device }: UseCapturePictureOptions) => {
     // What the device has done so far in the current run, for the step list.
     const captureSteps = useCaptureSteps({ device })
 
+    /**
+     * Explain a capture failure with what the device said about itself.
+     *
+     * A capture on a slot whose sensor is not fitted times out, and the raw
+     * message is the word TIMEOUT. The device does say why, but only once: the
+     * firmware runs its camera self-test at boot, so a missing sensor is
+     * reported on the first wake of a session and every warm wake after it
+     * reports clean. Bench, 5 September 2026: a board with no HM0360 fitted
+     * reported 0x0300, then 0x0000, then timed out three captures in a row
+     * while the screen showed nothing but TIMEOUT and the Himax console said
+     * "HM0360 not present at 0x24".
+     */
+    const captureFailureDetail = useCallback((message: string): string => {
+        if (!device || !/timeout/i.test(message)) return message
+        const fault = selfTestCache.getLastFault(device.id)
+        if (!fault) return message
+        const issues = decodeSelfTest(fault.bits).filter((i: SelfTestIssue) => i.severity === 'error')
+        if (issues.length === 0) return message
+        return `${message}. This device reported ${issues.map((i: SelfTestIssue) => i.title).join(' and ')} earlier in this session, which is the usual reason a capture never produces a frame.`
+    }, [device])
+
     const handleCaptureError = useCallback((e: Error) => {
         logError('[CapturePicture] Capture failed:', e)
-        captureSteps.markFailed(e?.message || 'Capture failed')
-        Alert.alert('Capture failed', e?.message || 'An error occurred while capturing the image.')
-    }, [captureSteps])
+        const detail = captureFailureDetail(e?.message || 'Capture failed')
+        captureSteps.markFailed(detail)
+        Alert.alert('Capture failed', detail)
+    }, [captureSteps, captureFailureDetail])
 
     const capturePreview = useCapturePreview({
         device,
