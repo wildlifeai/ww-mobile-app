@@ -5,10 +5,10 @@ import { log } from '../../utils/logger';
 /**
  * Per-connection cache of the device's operational parameter array.
  *
- * `AI getop -1` returns all 32 values at once, and nearly every device hook
- * wants one or two of them. A bench run on 2 September counted **18 fetches of
- * the same array** for six photos and one camera switch, three of them within
- * 400ms of each other on screen entry.
+ * `AI getop -1` returns every value at once (37 on the September 2026 firmware),
+ * and nearly every device hook wants one or two of them. A bench run on
+ * 2 September counted **18 fetches of the same array** for six photos and one
+ * camera switch, three of them within 400ms of each other on screen entry.
  *
  * The cost is not the bytes. The AI processor sleeps after about a second of
  * inactivity, so a fetch usually has to wake it, and the capture path then waits
@@ -39,9 +39,28 @@ import { log } from '../../utils/logger';
  *
  * That window is exactly the one the redundant reads happen in, so the narrow
  * lifetime costs almost nothing and keeps the cache honest.
+ *
+ * ## One fetch at a time
+ *
+ * A miss is not the whole story. Several hooks mount together on a screen and
+ * each asks for the array in the same tick, before the first reply can fill the
+ * cache, so every one of them misses and sends its own `AI getop -1`. Capture
+ * Picture entry sent four on the bench on 4 September 2026, back to back. So a
+ * fetch in flight is shared: `fetchOnce` hands the same promise to everyone who
+ * asks until it settles, and only the first caller pays for the command.
+ *
+ * ## Copies, not references
+ *
+ * This is a module-level singleton, so every hook that reads it would otherwise
+ * be handed the same array object: one caller writing into it would silently
+ * rewrite the parameters every other caller reads, with nothing in the logs to
+ * show where the value came from. Arrays are copied in and out. Nobody mutates
+ * one today, and a few dozen strings are cheap enough that keeping it that way should
+ * not depend on nobody ever doing so.
  */
 class OpCache {
     private ops: Map<string, string[]> = new Map();
+    private pending: Map<string, Promise<string[]>> = new Map();
 
     constructor() {
         bleEventBus.on('deviceSignal', (event: BleEvent & { type: 'DEVICE_SIGNAL' }) => {
@@ -59,12 +78,40 @@ class OpCache {
     /** Store the array a `getops` call just returned. */
     public set(deviceId: string, ops: string[]) {
         if (!Array.isArray(ops) || ops.length === 0) return;
-        this.ops.set(deviceId, ops);
+        this.ops.set(deviceId, [...ops]);
     }
 
     /** The array for this device, or null when nothing usable is held. */
     public get(deviceId: string): string[] | null {
-        return this.ops.get(deviceId) ?? null;
+        const ops = this.ops.get(deviceId);
+        return ops ? [...ops] : null;
+    }
+
+    /**
+     * The array from the cache, from a fetch already in flight for this device,
+     * or from `fetcher`, in that order. Concurrent callers share one fetch; a
+     * fetch that fails is forgotten at once, so the next caller tries again.
+     * The pipeline behind `fetcher` stores the reply itself.
+     */
+    public fetchOnce(deviceId: string, fetcher: () => Promise<string[]>): Promise<string[]> {
+        const cached = this.get(deviceId);
+        if (cached) return Promise.resolve(cached);
+
+        const inFlight = this.pending.get(deviceId);
+        if (inFlight) {
+            log(`[OpCache] sharing the fetch in flight for ${deviceId}`);
+            return inFlight.then(ops => [...ops]);
+        }
+
+        const fetch = fetcher();
+        this.pending.set(deviceId, fetch);
+        const settled = () => {
+            if (this.pending.get(deviceId) === fetch) this.pending.delete(deviceId);
+        };
+        // Both branches handled here, so a failed fetch nobody else joined is
+        // never an unhandled rejection; the caller sees it through the copy.
+        fetch.then(settled, settled);
+        return fetch.then(ops => [...ops]);
     }
 
     /** Forget this device's array. */
@@ -90,9 +137,14 @@ class OpCache {
         this.ops.set(deviceId, next);
     }
 
-    /** Forget everything. Used on a transport reset. */
+    /**
+     * Forget everything held, fetches in flight included. Used on a transport
+     * reset: a fetch started before the reset may never answer, and nobody
+     * should be made to wait on it.
+     */
     public clear() {
         this.ops.clear();
+        this.pending.clear();
     }
 }
 

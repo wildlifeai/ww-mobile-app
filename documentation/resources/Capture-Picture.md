@@ -111,8 +111,8 @@ phantom gaps from two counter restarts, and the picture appeared on the new visi
 
 ## Known limits
 
-- Screen entry sends four `AI getop -1` within a second, one per hook; the op cache does not
-  coalesce concurrent misses yet.
+- Screen entry used to send four `AI getop -1` within a second, one per hook. The op cache now
+  shares a fetch in flight (`opCache.fetchOnce`), so entry sends one; the hooks still each ask.
 - Progress and time-remaining are computed three ways across the screens that capture
   (`captureProgress`, the Light Sensor screen's own estimate, `captureSteps`). `captureSteps` is
   the one with tests and should absorb the others.
