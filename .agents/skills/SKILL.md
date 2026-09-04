@@ -74,7 +74,9 @@ people: `reset` reboots the nRF *after disconnect*; `AI reset` reboots only the 
   3 September 2026 and removed the same day for this reason; it now waits for the next hold.
 - **The device sleeps aggressively.** Deep Power Down after ~1000 ms of inactivity; the
   BLE link drops after ~60 s (hence the 58 s heartbeat). After *any* disconnect assume
-  the device is asleep and not advertising until woken by button, motion or timer.
+  the device is asleep and not advertising until woken by button, motion or timer, and
+  budget minutes: after a timeout disconnect on 4 September 2026 the nRF did not advertise
+  again for two and a half, and a connect attempt inside that gap simply timed out.
 - **Stored op values can be stale — check what keeps them updated.** The clearest case
   is the light decision (op25): the firmware only runs its AE check when something
   consumes the result, i.e. the flash is on (op13 ≠ 0) or auto camera switch is on
@@ -108,28 +110,22 @@ people: `reset` reboots the nRF *after disconnect*; `AI reset` reboots only the 
   cache stopped the capture path from waking the device, the wait sat out its full 5000ms timeout
   waiting for a Sleep signal that had already been sent. `startCapture` to `capture` went 2.03s →
   5.03s → **0.13s**. Note that *unknown* is not treated as awake, so a first-ever wait still waits.
-- **op8 (the inactivity timeout) is a field setting, not a session one.** It is written to
-  CONFIG.TXT and a device left raised stays awake that long after every motion capture in the
-  field. A screen that wants the device awake for a visit goes through `ble/session/keepAwake.ts`:
-  `acquire` raises op8 (to 3 s for Capture Picture) and records the original on disk, `release`
-  puts it back, and anything a dropped link left owed is restored the next time a flow takes a
-  hold on that device (nothing is written at connect time). Never `setop 8` from a screen
-  directly and never keep the original only in a ref; the Motion Detection
-  stream still does the latter and a drop mid-test leaves the device raised. While
-  `keepAwake.holds(deviceId)` is true the capture path sends `txfile` straight after `Captured`
-  instead of waiting for a sleep and paying a wake: 22 s to 13 s for the same picture.
-- **Most op parameters apply at wake, not on `setop`.** `setop` stores the value and saves
-  CONFIG.TXT; the flash LED and brightness (op13, op9) are selected in `setupLEDFlash()` when the
-  device wakes, the camera settings when the image task starts, and a camera switch resets the
-  device when it next sleeps. op8 itself is read at wake too: the inactivity timer of the current
-  awake window is whatever the card held when the device woke, so a `setop 8` changes the *next*
-  window, and a device that woke on a stale 20 s keeps it for that window whatever you write.
-  Anything that waits for a sleep must budget for that, and must send nothing while waiting,
-  because every command restarts the timer (`useCameraSwitch` learned this twice in one day). So a flow that changes a setting must let the device sleep before
-  the capture that should use it, and a hold on the device must stay short: a 20 s hold, tried
-  on 3 September 2026, meant a camera switch never reset while the app polled `slots` (each poll
-  restarted the timer) and a changed flash would not have reached the next capture. The
-  pre-capture `waitForSleep` is not an optimisation to remove.
+- **`setop` stores; the device applies at wake.** The flash LED and brightness (op13, op9) are
+  read in `setupLEDFlash()` when the device wakes, the camera settings when the image task
+  starts, a camera switch resets at the next sleep, and op8 itself sets the timer of the *next*
+  awake window. So a flow that changes a setting must let the device sleep before the capture
+  that should use it (the pre-capture `waitForSleep` is not an optimisation to remove), and it
+  must send nothing while waiting, because every command restarts the timer: a 20 s hold with
+  `slots` polling, tried on 3 September 2026, meant a camera switch never reset. Whether the
+  firmware should apply on `setop` instead is Charles's decision in Seeed #209.
+- **op8 is a field setting, so go through `ble/session/keepAwake.ts`.** It is written to
+  CONFIG.TXT, and a device left raised stays awake that long after every motion capture in the
+  field. `acquire` raises op8 (3 s for Capture Picture) and records the original on disk,
+  `release` puts it back, and anything a dropped link left owed is restored the next time a flow
+  takes a hold on that device; nothing is written at connect time. Never `setop 8` from a screen
+  and never keep the original only in a ref (the Motion Detection stream still does, an open
+  item). While `keepAwake.holds(deviceId)` the capture path sends `txfile` straight after
+  `Captured` instead of paying a wake: 22 s to 13 s for the same picture.
 - **The app runs ahead of the firmware on op indices, deliberately.** op32 (`CAM_RESOLUTION`) exists
   here before it ships on the device. Guard on the array length before touching a high index, the
   way `useCapturePicture` does for the WB gains, rather than reading it and hoping. `getop` now has
@@ -201,19 +197,32 @@ people: `reset` reboots the nRF *after disconnect*; `AI reset` reboots only the 
   not copy that elsewhere, it is a stand-in for the always-on mode Charles is adding behind a
   new op parameter (`flash_led_modes_proposal.md` on `ae_review`), proposed from index 32,
   which this app already uses for `CAM_RESOLUTION` (and 33 for `MD_BLOCK_NUM_MAX`): agree
-  the index before either side ships, then replace the op25 write with the new parameter.
+  the index before either side ships (Seeed #209), then replace the op25 write with the new
+  parameter.
+- **A multi-image capture with a gap above op8 is cut short by the device** (Seeed #208):
+  images after the first never come, `Captured` is never sent, and the app receives `Sleep`
+  instead. Keep any `capture N interval` below op8, and treat a `Sleep` during a capture as
+  the end of it rather than waiting on the 30 s timeout.
+- **The File Transfer Test's loopback benchmark cannot pass on BLE firmware 0.30.48.** The
+  nRF drops the echo unless an image stream is open (ww-hardware #36), so thirty timeouts in
+  a row is the firmware, not the phone or the link. The 500 KB upload on the same screen is
+  the working link measurement: 5.2 KB/s on 4 September 2026.
 - **Image transfer runs at about 1.1 KB/s and the app is not the reason.** `AI txfile` on
   its own measures the same as inside the capture flow. The nRF hex-dumps every 241-byte
   packet to its 115200 baud console and flushes the log before each BLE send, so the
   transfer runs at the speed of the debug UART. A 12 KB image is 10 s; do not spend app
-  time on it.
+  time on it. Filed as ww-hardware #34 with the proof: the nRF already gates that logging
+  off for uploads, and the same 241-byte packets went five times faster that way on the
+  same device. The app's 1.1 KB/s countdown model stands until the gate covers downloads.
 - **Nothing may be sent while an image is streaming in, and a flow must stop when its
   screen goes.** The nRF forwards any command to the Himax at once, restarts its binary
   packet counter, and the reply comes only when the file has finished: a `slots` sent
   mid-stream drew `AI processor not responding`, 412 phantom sequence gaps and a reply 14 s
-  late (3 September 2026). The transport holds the queue from `N bytes in` to the
-  reassembler's finish (`bleTransport.isStreaming`); do not work around it with a direct
-  write. The stream was there because a capture chain kept running after Back:
+  late (3 September 2026; ww-hardware #33, reproduced on demand). The transport holds the
+  queue from `N bytes in` to the reassembler's finish (`bleTransport.isStreaming`); do not
+  work around it with a direct write. The Engineer Console's typed line is that direct
+  write by design, which is why it can reproduce #33 and why nothing should be typed
+  during a transfer. The stream was there because a capture chain kept running after Back:
   `useCapturePreview` and `useCapturePicture` check a mounted ref before each command, and a
   screen shows only the picture it asked for. Any new multi-step flow needs the same check.
 - **A device that prints `IMAGE task unhandled event 'Image Event Inactivity' in
@@ -222,7 +231,12 @@ people: `reset` reboots the nRF *after disconnect*; `AI reset` reboots only the 
   transmitting a reply (op8 at 1 s, a command about a second after the last), the image task
   reached the shutdown barrier alone, and every later inactivity event is unhandled. No
   console command clears it (`AI reset` is consumed on the way into DPD). Do not spend time
-  on the app side when you see it; the app's flows time out correctly against it.
+  on the app side when you see it; the app's flows time out correctly against it. Filed as
+  Seeed #205, reproduced on demand, and an ordinary wake-then-command can trigger it. Two
+  more faces: once in the loop the nRF parks in SELFTEST and drops every app command, so
+  the console goes silent as well; and a `setop` inside the same window is acknowledged
+  with `Set OpParam N = V` and never saved (#207), so that reply is not proof a value
+  survived a sleep.
 - **Debug and store builds now coexist, but only on Android and only for debug.**
   `android/app/build.gradle` sets `applicationIdSuffix '.expo'` on the debug buildType, so
   a local build installs as `com.wildlife.wildlifewatcher.expo` alongside the Play Store
@@ -238,15 +252,9 @@ people: `reset` reboots the nRF *after disconnect*; `AI reset` reboots only the 
   the Google Maps key, or maps break in those builds. And `.expo` is not in the website's
   `assetlinks.json`, so App Links to `wildlifewatcher.ai/reset-password` will not open a
   debug build.
-- **`npm install --ignore-scripts` breaks the build.** It skips `postinstall`, so
-  `patch-package` never applies `patches/`, and the native build then fails somewhere
-  unrelated-looking.
-- **…but on Windows plain `npm install` fails anyway.** The `maestro` devDependency's
-  postinstall runs `./bin/welcome-message.sh`, which `cmd.exe` cannot execute
-  (`'.' is not recognized`), and npm aborts the whole install. On Windows use:
-  `npm install --ignore-scripts` then `npx patch-package` — that reaches the same state
-  as `postinstall` (`npx patch-package && npm run validate:deps`) without maestro's
-  broken script. Maestro is E2E-only; the app build does not need it.
+- **Installing on Windows** is in AGENTS.md: `npm install --ignore-scripts` then
+  `npx patch-package`, because `maestro`'s postinstall aborts a plain install and skipping
+  `postinstall` alone leaves `patches/` unapplied, which breaks the native build later.
 - **`ftx err 1` after a failed transfer.** The nRF's session is still open; every new
   `FILE_START` is rejected until the link drops. Disconnect/reconnect to clear. On iOS
   with BLE firmware < 0.30.48 the transfer dies mid-file and re-creates this state — fix
@@ -254,30 +262,16 @@ people: `reset` reboots the nRF *after disconnect*; `AI reset` reboots only the 
 - **8.3 filenames, uppercase.** The transfer validator rejects anything else *before*
   sending, so a lowercase extension means the file silently never reaches the SD card.
   Max 12 characters (a firmware truncation bug makes 13+ fail confusingly later).
-- **Play Store installs can be blocked invisibly.** Play Console → Protected with Play →
-  Store listing device checks filters devices, and those exclusions are deliberately
-  absent from the Device catalog tables. See `documentation/resources/publishing_guide.md`.
+- **Publishing traps live in `documentation/resources/publishing_guide.md`**, not here:
+  Play Store installs blocked invisibly by device checks, the five `eas.json` profiles and
+  the one that also submits, a failed submission that shows nothing in the web console
+  until re-run from the CLI, and store identifiers that must match EAS's credential
+  records rather than memory. Read that guide before dispatching a build or a submission.
 - **Version bumps are six files.** `package.json`, `app.config.ts` (×2),
   `android/app/build.gradle` (×2), `strings.xml`, and `package-lock.json` (only refreshed
   by `npm install` — it sat three versions behind until Aug 2026). Because `android/` is
   tracked, EAS reads the *native* values and ignores `app.config.ts`.
   `npm run version:check` catches all six.
-- **`eas.json` has five profiles, not three**, and `production` in the GitHub workflow
-  also **submits to the stores**. Check before dispatching a build.
-- **A failed submission tells you nothing through the web console.** It shows a bare
-  `ERRORED` with `error: null`, `logFiles: []` and `completedAt: null` — because it failed
-  before uploading, so there is nothing to log. **Re-run the same submission from the CLI**
-  (`eas submit --platform ios --profile production --id <buildId>`): it prints the actual
-  Apple response. That is how a month-old mystery turned out to be one wrong number.
-- **Store identifiers must match EAS's credential records, not memory.** A stale
-  `ascAppId` in `eas.json` made every iOS submission fail instantly
-  (`There is no resource of type 'apps' with id '…'`). Query what the stored App Store
-  Connect key can actually see rather than guessing — `remoteAppStoreConnectApps` on the
-  EAS GraphQL API lists it. Note the **web console ignores `eas.json` entirely** and uses
-  stored credentials, so a value being wrong there can hide until CI submits.
-- **`CI=1` in your shell changes behaviour.** `sync-types-cloud.js` treats
-  `process.env.CI` as strict mode: a failed type sync becomes fatal instead of a warning,
-  so `npm run android` dies at step 2. Don't export `CI` locally.
 - **`supabase gen types` needs auth and lies about failing.** It requires
   `npx supabase login` or `SUPABASE_ACCESS_TOKEN`, and on failure it **exits 0** while
   printing a JSON error blob to stdout. Any `cmd > file` capture therefore writes the
