@@ -1,4 +1,4 @@
-# Type alignment validation for Supabase cloud environments
+﻿# Type alignment validation for Supabase cloud environments
 # PowerShell version of check-types-cloud.sh
 # Checks if committed types match the schema of a cloud Supabase instance
 #

@@ -40,7 +40,13 @@ const ENVIRONMENTS = {
     },
     'cloud-dev': {
         checkScript: './scripts/check-types-cloud.sh cloud-dev',
-        description: 'Cloud Dev (nuhwmubvygxyddkycmpa)',
+        // The project ref is NOT hardcoded here: check-types-cloud reads it from
+        // EXPO_PUBLIC_SUPABASE_URL in .env.development, so it follows whatever
+        // that file points at. This label used to name nuhwmubvygxyddkycmpa,
+        // which is prod/staging, while the script was validating against dev
+        // (qegeovogqxiouqbrxmnh) all along - a stale string that sends a reader
+        // to the wrong database.
+        description: 'Cloud Dev (project ref from .env.development)',
         requiresBackend: false
     },
     'cloud-prod': {
@@ -109,6 +115,32 @@ function validateTypesAreCurrent() {
 }
 
 /**
+ * The contents of the `{ ... }` that follows `label` in `text`, with braces
+ * balanced, or null when the label or its block is not found.
+ *
+ * Generated Supabase types nest several levels deep (schema, Tables, table,
+ * Row, and Json-typed columns), which is more than a regex can follow.
+ */
+function extractBalancedBlock(text, label, fromIndex = 0) {
+    const labelAt = text.indexOf(label, fromIndex);
+    if (labelAt === -1) return null;
+
+    const open = text.indexOf('{', labelAt + label.length);
+    if (open === -1) return null;
+
+    let depth = 0;
+    for (let i = open; i < text.length; i++) {
+        const ch = text[i];
+        if (ch === '{') depth++;
+        else if (ch === '}') {
+            depth--;
+            if (depth === 0) return text.slice(open + 1, i);
+        }
+    }
+    return null;
+}
+
+/**
  * Parse Supabase types file for table structures
  * Enhanced version with better type detection
  */
@@ -120,24 +152,38 @@ function parseSupabaseTypes() {
     const content = fs.readFileSync(SUPABASE_TYPES_PATH, 'utf-8');
     const tables = {};
 
-    // Find the Tables type within public schema
-    const tablesMatch = content.match(/Tables:\s*\{([^}]+(?:\{[^}]*\}[^}]*)*)\}/s);
-    if (!tablesMatch) {
+    // Find the Tables block of the public schema.
+    //
+    // This used to be a regex, /Tables:\s*\{([^}]+(?:\{[^}]*\}[^}]*)*)\}/s,
+    // which cannot match balanced braces more than one level deep. Against a
+    // real generated types file it captured nothing usable, the table regex
+    // below then found zero tables, and every WatermelonDB table was reported
+    // as "exists in WatermelonDB but not in Supabase types" - as a *warning*.
+    // With no errors to report, the run finished "PASSED (with warnings)"
+    // having compared nothing at all. A validator that passes vacuously is
+    // worse than one that fails, so the brace matching is now explicit.
+    const tablesContent = extractBalancedBlock(content, 'Tables:');
+    if (tablesContent === null) {
         if (!JSON_OUTPUT) {
             console.log(`${colors.yellow}⚠ Could not find Tables definition in Supabase types${colors.reset}\n`);
         }
         return tables;
     }
 
-    const tablesContent = tablesMatch[1];
-
-    // Extract table definitions - match table_name: { Row: { ... } }
-    const tableRegex = /(\w+):\s*\{\s*Row:\s*\{([^}]+)\}/g;
+    // Each entry is `table_name: {` at the top level of the Tables block; its
+    // Row block is extracted the same brace-aware way.
     let match;
+    const tableRegex = /(\w+):\s*\{/g;
 
     while ((match = tableRegex.exec(tablesContent)) !== null) {
         const tableName = match[1];
-        const rowContent = match[2];
+        if (tableName === 'Row' || tableName === 'Insert' || tableName === 'Update' || tableName === 'Relationships') {
+            continue;
+        }
+        const tableBody = extractBalancedBlock(tablesContent, `${tableName}:`, match.index);
+        if (tableBody === null) continue;
+        const rowContent = extractBalancedBlock(tableBody, 'Row:');
+        if (rowContent === null) continue;
 
         const columns = {};
         const columnRegex = /(\w+):\s*([^;\n]+)/g;
@@ -249,8 +295,17 @@ function compareSchemas(watermelonTables, supabaseTables) {
         const supabaseTable = supabaseTables[tableName];
 
         for (const [columnName, watermelonColumn] of Object.entries(watermelonTable.columns)) {
-            // Skip WatermelonDB-specific columns
-            if (['id', '_status', '_changed', 'last_modified_at'].includes(columnName)) {
+            // Skip columns that live only on the device by design.
+            //
+            // The first four are WatermelonDB's own. The next three are this
+            // app's sync bookkeeping: `server_id` maps a local record to its
+            // cloud uuid, `_version` and `_custom_sync_status` drive the outbox.
+            // None has, or should have, a Supabase counterpart, so reporting
+            // them as drift is noise that hides the real differences.
+            if ([
+                'id', '_status', '_changed', 'last_modified_at',
+                'server_id', '_version', '_custom_sync_status',
+            ].includes(columnName)) {
                 continue;
             }
 
