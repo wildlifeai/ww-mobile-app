@@ -26,6 +26,22 @@ cost someone a day.
   documented facts that had drifted from reality; they were fixed in v0.0.62 and
   `npm run docs:validate` now guards paths and links, but not claims. Treat any
   undated claim as a hypothesis.
+- **A green check is a claim too: confirm it actually compared something.** On
+  5 September 2026 `schema:validate:live:cloud-dev` was reporting
+  `✅ PASSED (with warnings)` while parsing **zero** tables out of the Supabase types,
+  because its brace-matching regex could not cope with a real generated file. Every
+  table was reported missing, as a warning, so nothing failed. Layer 4 of the
+  documented anti-drift defence had been reading green while checking nothing. When a
+  tool passes, read the counts it prints (`Found 43 tables`, `Found 45 tables`), not
+  the tick. The same run also proved the point twice over: the checker could not
+  execute at all on Windows (BOM-less `.ps1` with emoji, read as ANSI by PowerShell
+  5.1), and its environment label named staging while it validated dev.
+- **Ground-truth a difference before calling it a bug.** That same validator's first
+  honest run reported 83 "errors". 76 were audit columns the app defines on tables
+  that genuinely lack them upstream, and 3 were legacy columns already labelled
+  `// Legacy fields` in `models/Deployment.ts`. Query the live database for the real
+  column list rather than reasoning from the generated types, and check whether the
+  code still uses the field, before proposing a fix.
 - **PRs are squash-merged, and the branch is auto-deleted.** Two consequences:
   1. Squashing rewrites the commit SHAs, so a branch built on the pre-merge commits
      shows every already-merged commit again as "new". After a PR merges, `git fetch`
