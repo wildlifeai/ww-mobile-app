@@ -231,6 +231,17 @@ people: `reset` reboots the nRF *after disconnect*; `AI reset` reboots only the 
   time on it. Filed as ww-hardware #34 with the proof: the nRF already gates that logging
   off for uploads, and the same 241-byte packets went five times faster that way on the
   same device. The app's 1.1 KB/s countdown model stands until the gate covers downloads.
+- **The transfer window only works on nRF firmware >= 0.30.47.** The app streams up to 12
+  packets ahead by default (`runFileTransferPipeline.ts`), which the nRF's 16-slot FIFO
+  (0.30.47+, ww-hardware #27) absorbs. On pre-FIFO firmware there is one relay slot: the
+  surplus packets are dropped with a log-only warning, an in-flight-ack race resets the AI
+  state machine to SLEEP, and the transfer hangs to the 15 s silence timeout with **no
+  `ftx err`** ("no transfer response for 15s"). It does not fail fast, and it does not
+  complete via retries — the windowed path has no per-packet ACK timeout. The window must
+  be gated on the `ver` string; until then a board on old firmware has to be DFU'd to
+  0.30.48 first. Filed as #289. The comment at `runFileTransferPipeline.ts` lines 109-111
+  and `File-Transfer-Protocol.md` ("fails fast with an ftx error" / "completes slowly via
+  ACK-timeout retries") both describe this wrongly.
 - **Nothing may be sent while an image is streaming in, and a flow must stop when its
   screen goes.** The nRF forwards any command to the Himax at once, restarts its binary
   packet counter, and the reply comes only when the file has finished: a `slots` sent
@@ -307,6 +318,18 @@ people: `reset` reboots the nRF *after disconnect*; `AI reset` reboots only the 
   sync. Never compute a cross-user aggregate (member counts, global lists) from a local
   query — fetch it from the cloud and degrade gracefully offline.
 - Writes go to WatermelonDB first; the outbox syncs them. Never block the UI on network.
+- **Reference sync must pull both `validated` and `deployed` models.** `ReferenceDataService`
+  filters `ai_models` to `status = 'validated'` only, but the backend contract (ww-backend
+  `MOBILE_INTEGRATION_GUIDE.md`) is `status IN ('validated','deployed')` — `deployed` means
+  in use on a device, the opposite of stale. A project pointing at a `deployed` model then
+  cannot be deployed from the app and the model never appears in the picker; the camera runs
+  with no model and only the Himax console says so. Filed as #290.
+- **A deployment must carry its device with it.** The push order (`projects`, `devices`,
+  `deployments`) is a foreign-key order, and `DeploymentService.createDeployment` queues an
+  idempotent device CREATE alongside the deployment (the server's devices insert is
+  `ON CONFLICT DO NOTHING`) so the device row always reaches the server first. Without it the
+  first push fails `23503` and only a self-healing retry recovers it a cycle later, which the
+  operator sees as a sync error (#294). A bare "touch" to trigger reactivity is not a sync op.
 
 ### Schema version — only moves on a real change
 
@@ -332,9 +355,14 @@ quoting a number, and any version below ~402 in an older document means nothing.
 These run on Windows, macOS and CI. Every bug found in them so far has been at the
 shell boundary, and none of them reproduced in a Linux container:
 
-- **Merge stderr.** `java -version` writes to **stderr**; `adb devices` to stdout. A
-  helper that captures only stdout reports "java not on PATH" for a perfectly good JDK.
-  Use `cmd 2>&1`.
+- **Merge stderr to read diagnostics — never into a payload you compare.** `java -version`
+  writes to **stderr**; `adb devices` to stdout. A helper that captures only stdout reports
+  "java not on PATH" for a perfectly good JDK, so use `cmd 2>&1` when you want a tool's
+  messages. But when stdout *is* the data you parse or diff, keep stderr separate:
+  `check-types-cloud.ps1` merged `supabase gen types` stderr into the "fresh types" and the
+  npm banner corrupted every comparison. On Windows PowerShell also beware `Out-File`/`>`,
+  which write a BOM and CRLF — strip the BOM and normalise line endings before comparing
+  generated files, or byte-identical content reads as "out of sync" (both fixed in #292).
 - **Always time out external commands.** The first `adb devices` after a reboot starts a
   daemon that inherits your stdout pipe and never closes it — an untimed `execSync` hangs
   forever even though `adb devices` itself exited. Warm it with `adb start-server` first.

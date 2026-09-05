@@ -244,6 +244,8 @@ private async uploadOutbox() {
 }
 ```
 
+The outbox is uploaded in a fixed foreign-key order — `projects`, then `devices`, then `deployments` — so a parent row always lands before the child that references it. Because of this, `DeploymentService.createDeployment` queues an idempotent device `CREATE` alongside the deployment (the server's devices insert is `ON CONFLICT DO NOTHING`), guaranteeing the device is in the same push and reaches the server first. Without it, a deployment whose device was never synced fails with `23503` (foreign key) and only a self-healing retry in `SupabaseSyncService` recovers it a cycle later, which the operator sees as a transient sync error (#294). A bare "touch" of the device to trigger UI reactivity records no outbox operation, so it does not count.
+
 ### Pull
 
 ```typescript
