@@ -2,6 +2,8 @@
 import { Q } from '@nozbe/watermelondb'
 import database from '../database'
 import Deployment from '../database/models/Deployment'
+import Device from '../database/models/Device'
+import SyncOutbox from '../database/models/SyncOutbox'
 import OutboxService from './OutboxService'
 import SupabaseSyncService from './SupabaseSyncService'
 import ProjectService from './ProjectService'
@@ -163,18 +165,61 @@ export const DeploymentService = {
 
         if (!newDeployment) throw new Error("Failed to create deployment instance")
 
-        // 4. Touch Device to trigger observers/refresh
+        // 4. Ensure the device is queued for sync, then touch it for reactivity.
+        //
+        // A deployment's device_id is a foreign key: push_changes inserts the
+        // deployment only if the device row already exists on the server. The
+        // device usually reaches the server from its own CREATE op at discovery
+        // (DeviceService.createDevice), but that op can be gone — e.g. it was
+        // refused before the devices INSERT policy existed (ww-backend #179) and
+        // then abandoned. When it is, the deployment push fails with 23503 and
+        // only the self-healing retry in SupabaseSyncService recovers it, one
+        // cycle late, which the operator sees as a sync error.
+        //
+        // So queue an idempotent device CREATE here. push_changes' devices insert
+        // is ON CONFLICT (id) DO NOTHING, so re-queuing a device already on the
+        // server is a harmless no-op; if it is missing, the ordered push (devices
+        // before deployments) now satisfies the foreign key on the first attempt
+        // and the self-heal stays a fallback. Skipped when a device CREATE is
+        // already waiting in the outbox, so no duplicate op is made.
         try {
+            const device = await database.get<Device>('devices').find(data.deviceId)
+
+            const pendingDeviceCreate = await database.get<SyncOutbox>('sync_outbox').query(
+                Q.where('table_name', 'devices'),
+                Q.where('record_id', device.id),
+                Q.where('operation_type', 'CREATE'),
+                Q.where('status', Q.oneOf(['pending', 'syncing', 'failed'])),
+            ).fetch()
+
             await database.write(async () => {
-                const device = await database.get('devices').find(data.deviceId)
-                await device.update(() => {
-                    // Just update the timestamp to trigger reactivity
-                    // (WatermelonDB models update updatedAt automatically on save)
-                })
+                const batchOps: (Device | SyncOutbox)[] = [
+                    // Bump updated_at to trigger observers/refresh.
+                    device.prepareUpdate(() => {}),
+                ]
+
+                if (pendingDeviceCreate.length === 0) {
+                    batchOps.push(OutboxService.recordOperation({
+                        operation: 'CREATE',
+                        tableName: 'devices',
+                        recordId: device.id,
+                        payload: {
+                            id: device.id,
+                            bluetooth_id: device.bluetoothId,
+                            name: device.name,
+                            organisation_id: device.organisationId || null,
+                            device_eui: device.deviceEui || null,
+                            modified_by: data.setupBy,
+                        },
+                        userId: data.setupBy,
+                    }))
+                }
+
+                await database.batch(...batchOps)
             })
-            log('[DeploymentService] Touched device:', data.deviceId)
+            log('[DeploymentService] Ensured device is queued for sync:', data.deviceId)
         } catch (e) {
-            logWarn('[DeploymentService] Failed to touch device:', e)
+            logWarn('[DeploymentService] Failed to ensure device is queued for sync:', e)
         }
 
         // Trigger background sync
