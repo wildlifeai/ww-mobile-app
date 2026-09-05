@@ -8,10 +8,30 @@ AS $$
 $$;
 
 -- Pull Changes RPC (needed for WatermelonDB sync)
+--
+-- SECURITY INVOKER, deliberately (issue #166). This was SECURITY DEFINER and so
+-- bypassed RLS, while performing no caller scoping of its own: its queries filter
+-- on time and deleted_at only, never on who is asking. Any authenticated user
+-- received every organisation's projects, deployments and devices — measured as
+-- 6 projects for a user whose RLS-scoped view of the same table was 2.
+--
+-- As INVOKER the existing SELECT policies do the scoping, which is exactly the
+-- behaviour we want and keeps one source of truth for access rules. `authenticated`
+-- already holds SELECT on all three tables, so nothing else is required.
+--
+-- ⚠ THE DELETE LIST DEPENDS ON READING SOFT-DELETED ROWS.
+-- The `_*_deleted` queries below select rows WHERE deleted_at > _ts. That only
+-- works while the SELECT policies do NOT filter the row's own deleted_at — which
+-- today they do not. Issue #160 proposes adding exactly that filter. If it lands
+-- without carving out this path, these lists silently return empty: clients would
+-- never learn about deletions and would keep showing deleted records forever, with
+-- nothing failing loudly. Guarded by
+-- supabase/tests/database/15_sync_scoping_invariants.test.sql — if that test starts
+-- failing after an RLS change, this is why.
 CREATE OR REPLACE FUNCTION public.pull_changes(last_pulled_at bigint)
 RETURNS jsonb
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path = ''
 AS $$
 DECLARE
