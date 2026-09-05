@@ -8,6 +8,7 @@
 import { BleSession } from '../session/createBleSession'
 import { commandRegistry } from '../protocol/commandRegistry'
 import { runFileTransferPipeline } from '../protocol/fileTransfer'
+import { crc16ccitt } from '../protocol/fileTransfer/crc16ccitt'
 import ReferenceDataService from '../../services/ReferenceDataService'
 import AiModelService from '../../services/AiModelService'
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
@@ -176,6 +177,55 @@ export async function syncAiModel(
             } catch (dirError) {
                 logWarn('SD card dir check failed, assuming files missing:', dirError)
                 addLog('Could not list SD card — will attempt transfer')
+            }
+
+            // 4a. A matching name is not a matching file. Check the contents.
+            //
+            // Until this existed, a file whose name matched was assumed correct
+            // and skipped, and `dir` matching is a substring test at that. The
+            // failure is not hypothetical: a card still holding the one-line
+            // `unknown` labels file from before ww-website#139 kept those labels
+            // through every later deployment, and the documented workaround was
+            // to delete the file or reformat the card by hand. The device named
+            // both classes wrongly for as long as that file survived.
+            //
+            // The device computes CRC16-CCITT over a file with `crc`, and the
+            // app computes the same over the bytes it would have sent, so the
+            // two are directly comparable. A file that differs is treated as
+            // missing and retransferred below.
+            //
+            // Deliberately non-fatal in both directions. Verifying needs the
+            // real bytes, so it downloads them, and a phone in the field may
+            // have no connectivity: if the download or the `crc` command fails
+            // we keep the old name-only behaviour rather than blocking a
+            // deployment over a check we could not run.
+            if (hasTfl || hasLabels) {
+                try {
+                    const localFiles = await AiModelService.ensureFilesDownloaded(targetModel)
+                    const expected: Array<{ filename: string, uri: string | null, present: boolean, clear: () => void }> = [
+                        { filename: tflFilename, uri: localFiles.modelUri, present: hasTfl, clear: () => { hasTfl = false } },
+                        { filename: labelsFilename, uri: localFiles.labelsUri, present: hasLabels, clear: () => { hasLabels = false } },
+                    ]
+
+                    for (const file of expected) {
+                        if (!file.present || !file.uri) continue
+                        const bytes = await AiModelService.readModelAsBytes(file.uri)
+                        if (!bytes) continue
+                        const want = crc16ccitt(bytes)
+                        const onCard = await session.execute(() => commandRegistry.crc(file.filename))
+                        const wantHex = `0x${want.toString(16).toUpperCase().padStart(4, '0')}`
+
+                        if (onCard.crc.toUpperCase() !== wantHex || onCard.sizeBytes !== bytes.length) {
+                            addLog(`♻️ ${file.filename} on the card does not match the model (card ${onCard.crc}, ${onCard.sizeBytes} bytes; expected ${wantHex}, ${bytes.length} bytes) — replacing it`)
+                            file.clear()
+                        } else {
+                            addLog(`✅ ${file.filename} on the card matches (${wantHex})`)
+                        }
+                    }
+                } catch (verifyError) {
+                    logWarn('Could not verify the model files already on the card:', verifyError)
+                    addLog('Could not check the files on the card; using the ones that are there')
+                }
             }
 
             // 5. Only download and transfer files that are missing

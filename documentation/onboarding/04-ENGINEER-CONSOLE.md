@@ -100,7 +100,8 @@ Commands prefixed with `AI` — routed via BLE to the Himax chip. These interact
 | `AI info` | `30515200 K total... 30511056 K available.` | SD card space (total / available KB) |
 | `AI camera` | `HM0360` / `RP2` / `RP3` | Connected camera sensor type |
 | `AI inithm0360` | `OK` / `Error` | Reinitialise HM0360 sensor (recovery from black images) |
-| `AI firmware <filename> [crc]` | `Firmware update OK/FAILED` | Update Himax firmware from SD card image (supports optional CRC validation) |
+| `AI firmware <filename> [crc]` | `Firmware update OK/FAILED` | Update Himax firmware from SD card image. With a CRC the device recomputes the file's own and refuses to touch flash on a mismatch |
+| `AI crc <filename>` | `CRC 0x4569 (487424 bytes)` | CRC16-CCITT and size of a file in `/MANIFEST/`. The same algorithm the file transfer uses, so a file already on the card can be checked against a release or a model without sending it again |
 
 #### Operational Parameters
 

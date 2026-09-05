@@ -745,9 +745,55 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
             advancePhase('sending')
             appendLog(`${passLabel}Sending firmware flash command...`)
 
+            // Verify the file on the card before anything touches flash.
+            //
+            // The card copy is trusted on filename alone: `dir` finds
+            // R6905142.IMG and the screen offers it as "on SD card". A file of
+            // that name whose bytes are wrong, truncated by an interrupted
+            // transfer, or left by an older build, would otherwise be flashed
+            // as if it were the real image. The transfer path has a whole-file
+            // CRC; this path had nothing.
+            //
+            // Two layers, deliberately. The device's `firmware <name> 0xCRC`
+            // refuses to touch flash on a mismatch, which is the one that
+            // matters. Reading `crc` first is what lets the app say WHICH file
+            // is wrong and by how much, rather than surfacing a bare failure,
+            // and it is the only check available when the database record has
+            // no CRC of its own.
             const targetCrc = fwToFlash?.crcChecksum || undefined
-            if (targetCrc) {
-                appendLog(`${passLabel}Using database CRC for flash: ${targetCrc}`)
+            let onCard: { crc: string; sizeBytes: number } | null = null
+            try {
+                onCard = await session.execute(() => commandRegistry.crc(filenameToFlash))
+                appendLog(`${passLabel}File on card: ${onCard.crc}, ${onCard.sizeBytes.toLocaleString()} bytes`)
+            } catch (e: any) {
+                // Older firmware has no `crc` command. Not fatal: the device
+                // still checks the CRC itself when we pass one below.
+                logWarn('[FW Update] could not read the card file CRC:', e)
+                appendLog(`${passLabel}Could not read the file's CRC from the card`)
+            }
+
+            if (targetCrc && onCard) {
+                const expected = targetCrc.toUpperCase().startsWith('0X')
+                    ? `0X${targetCrc.slice(2).toUpperCase().padStart(4, '0')}`
+                    : `0X${targetCrc.toUpperCase().padStart(4, '0')}`
+                const actual = onCard.crc.toUpperCase()
+                if (actual !== expected) {
+                    const msg = `The file on the SD card does not match the release: it is ${onCard.crc}, the release is ${targetCrc}. Nothing was written. Choose the cloud copy to send it again.`
+                    appendLog(`${passLabel}${msg}`)
+                    throw new Error(msg)
+                }
+                const expectedSize = fwToFlash?.fileSizeBytes
+                if (expectedSize && onCard.sizeBytes !== expectedSize) {
+                    const msg = `The file on the SD card is ${onCard.sizeBytes.toLocaleString()} bytes, the release is ${expectedSize.toLocaleString()}. Nothing was written.`
+                    appendLog(`${passLabel}${msg}`)
+                    throw new Error(msg)
+                }
+                appendLog(`${passLabel}Card file matches the release (${targetCrc}). Flashing.`)
+            } else if (!targetCrc) {
+                // An SD-only file, or a release row with no CRC recorded. The
+                // device cannot verify what it is about to flash, and neither
+                // can we, so say so plainly rather than let it look checked.
+                appendLog(`${passLabel}No CRC to check this file against, so it is being flashed unverified`)
             }
 
             // Same silent-flash window as the download path (see above).
