@@ -8,12 +8,14 @@
 import { BleSession } from '../session/createBleSession'
 import { commandRegistry } from '../protocol/commandRegistry'
 import { runFileTransferPipeline } from '../protocol/fileTransfer'
+import { crc16ccitt } from '../protocol/fileTransfer/crc16ccitt'
 import ReferenceDataService from '../../services/ReferenceDataService'
 import AiModelService from '../../services/AiModelService'
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
 
 import { executeResetToDefaults } from './resetToDefaults'
 import { log, logWarn } from '../../utils/logger'
+import { describeProjectFlash, ProjectFlashColumns } from '../../utils/projectFlash'
 
 interface ProgressCallbacks {
     addLog: (msg: string) => void
@@ -50,6 +52,10 @@ export async function syncTime(
  * This is the only reset a deployment gets: connecting no longer runs one
  * (#268), so a refused write here is a failed deployment, not a warning.
  * The error propagates; the caller aborts.
+ *
+ * Returns the op table as it stands after the reset (null if the ops were
+ * unreadable). Pass it to `configureDevice` instead of the pre-reset snapshot,
+ * or the diff-write there skips the parameters the reset has just changed.
  */
 
 
@@ -57,13 +63,13 @@ export async function resetOps(
     session: BleSession,
     { addLog, setStep, setProgress }: ProgressCallbacks,
     currentOps?: string[]
-): Promise<void> {
+): Promise<string[] | null> {
     addLog('Resetting operational parameters...')
     setStep('Resetting device...')
     setProgress(0.06)
 
     try {
-        await executeResetToDefaults(session, {
+        const opsAfterReset = await executeResetToDefaults(session, {
             currentOps,
             skipIdentityReset: true,
             // syncAiModel owns model state in the deployment pipeline - the
@@ -75,6 +81,7 @@ export async function resetOps(
         })
         addLog('Device parameters reset successfully')
         setProgress(0.09)
+        return opsAfterReset
     } catch (e) {
         logWarn('[ResetOps] Reset failed:', e)
         addLog('Parameter reset failed — the device may still carry settings from a previous session')
@@ -172,6 +179,55 @@ export async function syncAiModel(
                 addLog('Could not list SD card — will attempt transfer')
             }
 
+            // 4a. A matching name is not a matching file. Check the contents.
+            //
+            // Until this existed, a file whose name matched was assumed correct
+            // and skipped, and `dir` matching is a substring test at that. The
+            // failure is not hypothetical: a card still holding the one-line
+            // `unknown` labels file from before ww-website#139 kept those labels
+            // through every later deployment, and the documented workaround was
+            // to delete the file or reformat the card by hand. The device named
+            // both classes wrongly for as long as that file survived.
+            //
+            // The device computes CRC16-CCITT over a file with `crc`, and the
+            // app computes the same over the bytes it would have sent, so the
+            // two are directly comparable. A file that differs is treated as
+            // missing and retransferred below.
+            //
+            // Deliberately non-fatal in both directions. Verifying needs the
+            // real bytes, so it downloads them, and a phone in the field may
+            // have no connectivity: if the download or the `crc` command fails
+            // we keep the old name-only behaviour rather than blocking a
+            // deployment over a check we could not run.
+            if (hasTfl || hasLabels) {
+                try {
+                    const localFiles = await AiModelService.ensureFilesDownloaded(targetModel)
+                    const expected: Array<{ filename: string, uri: string | null, present: boolean, clear: () => void }> = [
+                        { filename: tflFilename, uri: localFiles.modelUri, present: hasTfl, clear: () => { hasTfl = false } },
+                        { filename: labelsFilename, uri: localFiles.labelsUri, present: hasLabels, clear: () => { hasLabels = false } },
+                    ]
+
+                    for (const file of expected) {
+                        if (!file.present || !file.uri) continue
+                        const bytes = await AiModelService.readModelAsBytes(file.uri)
+                        if (!bytes) continue
+                        const want = crc16ccitt(bytes)
+                        const onCard = await session.execute(() => commandRegistry.crc(file.filename))
+                        const wantHex = `0x${want.toString(16).toUpperCase().padStart(4, '0')}`
+
+                        if (onCard.crc.toUpperCase() !== wantHex || onCard.sizeBytes !== bytes.length) {
+                            addLog(`♻️ ${file.filename} on the card does not match the model (card ${onCard.crc}, ${onCard.sizeBytes} bytes; expected ${wantHex}, ${bytes.length} bytes) — replacing it`)
+                            file.clear()
+                        } else {
+                            addLog(`✅ ${file.filename} on the card matches (${wantHex})`)
+                        }
+                    }
+                } catch (verifyError) {
+                    logWarn('Could not verify the model files already on the card:', verifyError)
+                    addLog('Could not check the files on the card; using the ones that are there')
+                }
+            }
+
             // 5. Only download and transfer files that are missing
             if (!hasTfl || (!hasLabels && targetModel.labelsPath)) {
                 addLog('Downloading missing model files...')
@@ -264,6 +320,9 @@ export async function syncAiModel(
 
 /**
  * Step 4: Configure device operational parameters via the deployment configuration hook.
+ *
+ * `currentOps` must be the op table as it stands now, which after step 5's
+ * reset means `resetOps`' return value, not the snapshot taken before it.
  */
 export async function configureDevice(
     device: ExtendedPeripheral,
@@ -274,6 +333,7 @@ export async function configureDevice(
         timelapseInterval: number
         recordGpsInImages: boolean
         gpsLocation?: { latitude: number; longitude: number; altitude?: number | null } | null
+        flash?: ProjectFlashColumns | null
     },
     { addLog, setStep, setProgress }: ProgressCallbacks,
     currentOps?: string[]
@@ -299,9 +359,11 @@ export async function configureDevice(
             latitude: config.gpsLocation.latitude,
             longitude: config.gpsLocation.longitude,
             altitude: config.gpsLocation.altitude || 0
-        } : undefined
+        } : undefined,
+        flash: config.flash ?? undefined
     }, currentOps)
 
+    if (config.flash !== undefined) addLog(`Capture flash: ${describeProjectFlash(config.flash)}`)
     addLog('Device configuration successful')
     log('[Deployment] Device configuration successful')
 }

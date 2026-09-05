@@ -7,6 +7,7 @@ import { bleEventBus, BleEvent } from '../../../ble/protocol/eventBus'
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { bleTransport } from '../../../ble/protocol/bleTransportController'
 import { createBleSession } from '../../../ble/session/createBleSession'
+import { flashHold } from '../../../ble/session/flashHold'
 import { OP_PARAMETER } from '../../../hooks/useDeviceSettings'
 
 /** Maximum number of frames per test run. */
@@ -132,6 +133,7 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                                     .then(() => log(`[MotionDetectionStream] INTERVAL_BEFORE_DPD reset to ${originalDpd}`))
                             }
                         })
+                        .then(() => flashHold.release(cleanupSession, device.id))
                         .catch((e: any) => logWarn('[MotionDetectionStream] Failed to reset test mode bits:', e))
                 }
             }
@@ -344,6 +346,16 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                 await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_LED, value: flashLed }))
             }
 
+            // 1c-ii. Arm the flash for the run. op13 alone does not light
+            // anything: the firmware's ledFlashIsActive() also asks the flash
+            // mode, and in the shipped AE mode a lit bench keeps it off. Held
+            // at always-on for the test and put back when the test ends, the
+            // same hold Capture Picture takes (#283).
+            if (flashLed > 0) {
+                await flashHold.acquire(session, device.id)
+                    .catch((e: any) => logWarn('[MotionDetectionStream] Could not arm the flash for the test:', e))
+            }
+
             // 1d. Prevent DPD during test if interval > 1000ms
             const currentDpd = currentOps ? parseInt(currentOps[OP_PARAMETER.INTERVAL_BEFORE_DPD] ?? '1000', 10) : -1
             const requiredDpd = Math.max(1000, intervalMs + 2000)
@@ -484,6 +496,7 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                             .then(() => log(`[MotionDetectionStream] INTERVAL_BEFORE_DPD reset to ${originalDpd} (stop)`))
                     }
                 })
+                .then(() => flashHold.release(cleanupSession, device.id))
                 .catch((e: any) => logWarn('[MotionDetectionStream] Failed to reset test mode bits on stop:', e))
         }
     }, [device])

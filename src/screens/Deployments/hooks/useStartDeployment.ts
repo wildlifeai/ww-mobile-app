@@ -86,9 +86,11 @@ export const useStartDeployment = ({
     // Phone photos of the deployment site (local file:// paths until uploaded)
     const [deploymentPhotoPaths, setDeploymentPhotoPaths] = useState<string[]>([])
 
-    // Capture format (dev/testing quality trial): JPG+BMP by default; the advanced
-    // "Record JPEG only" toggle opts out. See bmp-ingestion-analysis.md.
-    const [recordJpegOnly, setRecordJpegOnly] = useState(false)
+    // Capture format: JPEG only by default (Victor, 5 September 2026). The raw
+    // BMP was a quality trial (bmp-ingestion-analysis.md) and costs a second
+    // picture per trigger, so it is now opt-in from the advanced settings
+    // rather than what every deployment writes.
+    const [recordJpegOnly, setRecordJpegOnly] = useState(true)
 
     const [submitting, setSubmitting] = useState(false)
     const [project, setProject] = useState<any>(null)
@@ -544,8 +546,13 @@ export const useStartDeployment = ({
             // The only reset this deployment gets (connecting is read-only, #268):
             // a device that cannot be reset must not be deployed with whatever a
             // previous deployment or an Engineer Console session left on it.
+            let opsAfterReset: string[] = currentOps
             try {
-                await pipeline.resetOps(bleSession, cb, currentOps)
+                // The reset returns the op table as it now stands. Configuring
+                // against the pre-reset snapshot instead would skip every write
+                // whose old value happened to match, leaving the device on the
+                // factory default the reset had just written (#282).
+                opsAfterReset = (await pipeline.resetOps(bleSession, cb, currentOps)) ?? currentOps
             } catch (resetError) {
                 logError('[Deployment] OP reset failed, aborting deployment:', resetError)
                 progress.addLog('OP reset failed — aborting deployment')
@@ -560,19 +567,23 @@ export const useStartDeployment = ({
                     timelapseInterval: project.timelapse_interval_seconds || 300,
                     recordGpsInImages: project.record_gps_in_images || false,
                     gpsLocation,
-                }, cb, currentOps)
+                    flash: project,
+                }, cb, opsAfterReset)
             } catch (configError) {
                 logError('[Deployment] Configuration failed:', configError)
                 progress.addLog('Configuration failed — aborting deployment')
                 throw configError
             }
 
-            // 7b. Capture format: JPG+BMP by default (quality trial); the advanced
-            // "Record JPEG only" toggle disables BMP. TEST_BIT_SAVE_BMP makes the
-            // firmware alternate JPG/BMP, so 2 pics/trigger yields one of each.
-            // Non-fatal: on failure the firmware keeps its clean-slate defaults
-            // (JPEG only). See bmp-ingestion-analysis.md. The hi-res option that
-            // used to sit here (op32) went with the firmware's ae_review build,
+            // 7b. Capture format: one JPEG per trigger by default. Turning the
+            // advanced "Record JPEG only" toggle off adds the raw BMP, which
+            // TEST_BIT_SAVE_BMP produces by alternating file types, so it needs
+            // 2 pics/trigger to yield one of each. The BMP was a quality trial
+            // (bmp-ingestion-analysis.md) and was the default until 5 September
+            // 2026; it doubles the captures and the card usage, so it is now
+            // opt-in. Non-fatal: on failure the firmware keeps its clean-slate
+            // defaults, which are JPEG only anyway. The hi-res option that used
+            // to sit here (op32) went with the firmware's ae_review build,
             // which reserves that parameter.
             try {
                 const testModeBits = recordJpegOnly ? 0 : TEST_BIT_SAVE_BMP

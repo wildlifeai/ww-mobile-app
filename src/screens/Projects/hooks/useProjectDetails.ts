@@ -14,6 +14,7 @@ import {
 	useGetAiModelsQuery,
 	useGetSamplingDesignsQuery,
 } from "../../../redux/api/projectsApi"
+import { formatUtcMinutes, parseUtcMinutes, resolveProjectFlash } from "../../../utils/projectFlash"
 
 export interface ProjectFormData {
 	name: string
@@ -28,6 +29,10 @@ export interface ProjectFormData {
 	model_id: string
 	is_archived: boolean
 	lorawan_required: boolean
+	flash_mode: string
+	flash_led: string
+	flash_window_start_minutes_utc: string
+	flash_window_minutes: string
 }
 
 export const useProjectDetails = (projectId: string, initialEditMode = false) => {
@@ -81,6 +86,10 @@ export const useProjectDetails = (projectId: string, initialEditMode = false) =>
 			model_id: "",
 			is_archived: false,
 			lorawan_required: false,
+			flash_mode: "off",
+			flash_led: "ir",
+			flash_window_start_minutes_utc: "",
+			flash_window_minutes: "",
 		},
 		values: project ? {
 			name: project.name,
@@ -95,11 +104,21 @@ export const useProjectDetails = (projectId: string, initialEditMode = false) =>
 			model_id: project.model_id || "__none__",
 			is_archived: project.is_archived || project.is_active === false,
 			lorawan_required: project.lorawan_required || false,
+			// Whatever the row holds, normalised: a value outside the check
+			// constraint resolves to the app's fallback rather than showing an
+			// option the camera would not accept.
+			flash_mode: resolveProjectFlash(project).mode,
+			flash_led: resolveProjectFlash(project).led,
+			flash_window_start_minutes_utc: typeof project.flash_window_start_minutes_utc === 'number'
+				? formatUtcMinutes(project.flash_window_start_minutes_utc)
+				: "",
+			flash_window_minutes: project.flash_window_minutes?.toString() || "",
 		} : undefined,
 	})
 
 	// Watch fields for conditional rendering
 	const selectedCaptureMethodId = watch("capture_method_id")
+	const selectedFlashMode = watch("flash_mode")
 
 	// Options for Select components
 	const captureMethodOptions = useMemo(() =>
@@ -165,6 +184,14 @@ export const useProjectDetails = (projectId: string, initialEditMode = false) =>
 							is_active: !data.is_archived,
 							is_archived: data.is_archived,
 							lorawan_required: data.lorawan_required,
+							flash_mode: data.flash_mode,
+							flash_led: data.flash_led,
+							flash_window_start_minutes_utc: data.flash_mode === 'time_of_day'
+								? parseUtcMinutes(data.flash_window_start_minutes_utc)
+								: null,
+							flash_window_minutes: data.flash_mode === 'time_of_day' && data.flash_window_minutes
+								? Number(data.flash_window_minutes)
+								: null,
 						},
 					}).unwrap()
 
@@ -267,6 +294,7 @@ export const useProjectDetails = (projectId: string, initialEditMode = false) =>
 		aiModelOptions,
 		isMotionDetection,
 		isTimeLapse,
+		selectedFlashMode,
 
 		// Handlers
 		handleEdit,

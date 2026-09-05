@@ -1,6 +1,6 @@
 import { bleEventBus, BleEvent } from './eventBus'
 import { DeviceSignal } from './deviceSignals'
-import { ERROR_BITS_LINE, isBootPreset, parseSelfTestBits, formatSelfTestBits } from '../../utils/deviceSelfTest'
+import { ERROR_BITS_LINE, isBootPreset, KNOWN_BITS_MASK, parseSelfTestBits, formatSelfTestBits } from '../../utils/deviceSelfTest'
 import { log } from '../../utils/logger'
 
 /**
@@ -42,6 +42,20 @@ type Listener = (reading: SelfTestReading) => void
 
 class SelfTestCache {
     private readings: Map<string, SelfTestReading> = new Map()
+    /**
+     * The last reading on this connection that carried a real fault, kept
+     * separately because the current one is not a record of the session.
+     *
+     * The firmware runs its camera self-test at boot, inside the
+     * `if (cameraSystemEnabled)` block, so a device with a missing sensor says
+     * so on the first wake of a session and then reports 0x0000 on every warm
+     * wake after it. On the bench on 5 September 2026 a device with no HM0360
+     * fitted reported 0x0300 twice and then a clean 0x0000, and the capture
+     * that followed timed out with nothing on screen but the word TIMEOUT.
+     * `getFresh` is right to answer with the current reading; a flow explaining
+     * a failure needs this one.
+     */
+    private faults: Map<string, SelfTestReading> = new Map()
     private lastWake: Map<string, number> = new Map()
     private listeners: Map<string, Set<Listener>> = new Map()
 
@@ -61,6 +75,7 @@ class SelfTestCache {
             this.lastWake.set(event.deviceId, event.ts)
         } else if (event.signal === DeviceSignal.DISCONNECT) {
             this.readings.delete(event.deviceId)
+            this.faults.delete(event.deviceId)
             this.lastWake.delete(event.deviceId)
         }
     }
@@ -84,11 +99,23 @@ class SelfTestCache {
         }
     }
 
+    /**
+     * The last fault this connection saw, or null if it has only ever reported
+     * clean. Not a freshness question: use it to explain a failure, never to
+     * decide whether the device is healthy now.
+     */
+    public getLastFault(deviceId: string): SelfTestReading | null {
+        this.attach()
+        return this.faults.get(deviceId) ?? null
+    }
+
     /** Store a reading the device has just sent, and tell anyone listening. */
     public record(deviceId: string, bits: number, ts: number = Date.now()) {
         this.attach()
         const reading: SelfTestReading = { bits, ts, postWake: this.lastWake.has(deviceId) }
         this.readings.set(deviceId, reading)
+        // eslint-disable-next-line no-bitwise
+        if ((bits & KNOWN_BITS_MASK) !== 0) this.faults.set(deviceId, reading)
         this.listeners.get(deviceId)?.forEach(fn => fn(reading))
     }
 
@@ -157,6 +184,7 @@ class SelfTestCache {
     public clear() {
         this.attach()
         this.readings.clear()
+        this.faults.clear()
         this.lastWake.clear()
     }
 }

@@ -100,7 +100,8 @@ Commands prefixed with `AI` — routed via BLE to the Himax chip. These interact
 | `AI info` | `30515200 K total... 30511056 K available.` | SD card space (total / available KB) |
 | `AI camera` | `HM0360` / `RP2` / `RP3` | Connected camera sensor type |
 | `AI inithm0360` | `OK` / `Error` | Reinitialise HM0360 sensor (recovery from black images) |
-| `AI firmware <filename> [crc]` | `Firmware update OK/FAILED` | Update Himax firmware from SD card image (supports optional CRC validation) |
+| `AI firmware <filename> [crc]` | `Firmware update OK/FAILED` | Update Himax firmware from SD card image. With a CRC the device recomputes the file's own and refuses to touch flash on a mismatch |
+| `AI crc <filename>` | `CRC 0x4569 (487424 bytes)` | CRC16-CCITT and size of a file in `/MANIFEST/`. The same algorithm the file transfer uses, so a file already on the card can be checked against a release or a model without sending it again |
 
 #### Operational Parameters
 
@@ -151,20 +152,23 @@ The following subset is directly used during deployment:
 
 | Index | Constant | Role |
 |-------|----------|------|
-| 5 | `NUM_PICTURES` | Images per trigger (factory default 1; the Dev Deployment screen defaults its own control to 2 for JPG+BMP pairs) |
+| 5 | `NUM_PICTURES` | Images per trigger. Start Monitoring writes 1 (JPEG only, the default since 5 September 2026) or 2 when the advanced BMP toggle is off; the Dev Deployment screen defaults its own control to 2 for JPG+BMP pairs |
 | 7 | `TIMELAPSE_INTERVAL` | 0 for activity, N seconds for timelapse/mixed |
 | 8 | `INTERVAL_BEFORE_DPD` | Always 1000ms |
 | 9 | `LED_BRIGHTNESS` | Flash brightness 0–100% |
 | 10 | `CAMERA_ENABLED` | 1 = on, 0 = off (always sent last) |
 | 11 | `MD_INTERVAL` | 1000ms for activity/mixed, 0 for timelapse |
 | 12 | `FLASH_DURATION` | Flash pulse duration in ms |
-| 13 | `FLASH_LED` | Flash type: 0 = off, 1 = visible, 2 = IR |
+| 13 | `FLASH_LED` | Which LED the capture flash uses: 0 = none, 1 = visible, 2 = IR. Written from the project's `flash_led` at deployment |
 | 14 | `MODEL_PROJECT` | Currently loaded AI model ID |
 | 15 | `MODEL_VERSION` | Currently loaded AI model version |
 | 17 | `MD_SENSITIVITY` | 1 for activity/mixed, 0 for timelapse |
 | 18 | `TEST_MODE_BITS` | Diagnostic bitmask (bit 1 = `TEST_BIT_SAVE_BMP`, bit 3 = `TEST_BIT_SKIP_FILE_CREATION`) |
 | 19 | `IMAGES_COUNT` | Total images captured (reset on new deployment) |
 | 20 | `IMAGES_FILE_INDEX` | Image subdirectory counter (reset on new deployment) |
+| 34 | `FLASH_MODE` | When the flash is armed: 0 = off, 1 = light sensor, 2 = always on, 3 = time of day. Written from the project's `flash_mode`. With op13 it is the gate the firmware's `ledFlashIsActive()` tests, so it also decides whether motion frames get IR light at night |
+| 35 | `FLASH_TOD_START` | Time-of-day mode only: minutes after midnight UTC when the flash turns on |
+| 36 | `FLASH_TOD_DURATION` | Time-of-day mode only: how many minutes it stays on, wrapping past midnight |
 
 ### OP Bulk Fetch Optimization (`AI getop -1`)
 
@@ -271,6 +275,18 @@ The following screens are accessed from the Engineer Console → Flows modal. Th
 - Parses `HM0360 motion in N blocks:` header + 32 hex-byte grid data from BLE text lines
 - Renders the 16×16 grid as a precomputed text string — visual feedback loop helps understand environmental threshold behaviour
 - **On completion/stop**, automatically resets `TEST_MODE_BITS` to 0 so subsequent captures (e.g., photo preview) save JPEG files normally
+
+**The flash on this screen, and how it differs from the field.** A test frame is lit through the
+awake path, which takes the LED from op13 and the brightness from op9. A deployed camera lights
+its motion frames through the STROBE path armed just before it sleeps, which takes them from
+op21 `MD_FLASH_LED` and op22 `MD_FLASH_BRIGHTNESS_PERCENT`, infrared at 50 percent by default.
+Same gate, different LED and brightness. The screen's two controls therefore open on the
+device's own op21 and op22 rather than on Off and 5 percent, so a night test predicts the
+deployment instead of a dimmer version of it.
+
+The gate itself is op34 with op13: since `ae_review` the LED fires only when the flash mode arms
+it, so the screen holds op34 at always-on for a test that asks for an LED and puts the previous
+mode back when the test ends ([`flashHold.ts`](../../src/ble/session/flashHold.ts)).
 
 ### Camera Settings Test Screen
 

@@ -4,6 +4,7 @@ import { createBleSession } from '../ble/session/createBleSession'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
 import { OP_PARAMETER } from './useDeviceSettings'
 import { log, logError, logWarn } from '../utils/logger'
+import { describeProjectFlash, ProjectFlashColumns, resolveProjectFlashOps } from '../utils/projectFlash'
 
 
 export interface DeploymentConfig {
@@ -17,6 +18,12 @@ export interface DeploymentConfig {
         altitude: number
     }
     recordGpsInImages?: boolean
+    /**
+     * The project's capture flash columns. Omitted leaves op13/op34 to op36
+     * alone, which after a reset means no flash and no night IR - only the dev
+     * deployment screen, which has no project of its own, should do that.
+     */
+    flash?: ProjectFlashColumns
 }
 
 export const useDeploymentConfiguration = () => {
@@ -134,6 +141,47 @@ export const useDeploymentConfiguration = () => {
     }, [applyUpdates])
 
     /**
+     * Writes the project's capture flash to the device: op34 FLASH_MODE, op13
+     * FLASH_LED and, in time-of-day mode, op35/op36 for the window.
+     *
+     * The reset before this leaves op13 = 0 and op34 = 0, so without this step
+     * a deployment captures unlit and, because the firmware's
+     * `ledFlashIsActive()` also gates the STROBE-driven IR for motion frames,
+     * sees nothing at night (#282). op21/op22 (which LED and how bright those
+     * motion frames are) keep their factory defaults; this only decides
+     * whether the gate in front of them is open.
+     */
+    const configureFlash = useCallback(async (
+        session: any,
+        flash: ProjectFlashColumns,
+        currentOps: string[]
+    ): Promise<void> => {
+        const { mode, led, windowStart, windowMinutes } = resolveProjectFlashOps(flash)
+        log(`[DeployConfig] Configuring capture flash: ${describeProjectFlash(flash)}`)
+
+        const updates: { index: number, value: number }[] = [
+            { index: OP_PARAMETER.FLASH_LED, value: led },
+            { index: OP_PARAMETER.FLASH_MODE, value: mode },
+            { index: OP_PARAMETER.FLASH_TOD_START, value: windowStart },
+            { index: OP_PARAMETER.FLASH_TOD_DURATION, value: windowMinutes },
+        ]
+
+        // Firmware older than ae_review has no op34 to op36: the setop would
+        // bounce off its bounds check. op13 alone still chooses the LED there,
+        // and the light verdict in op25 plays the part of the mode.
+        const supportsFlashMode = currentOps.length > OP_PARAMETER.FLASH_TOD_DURATION
+        if (!supportsFlashMode) {
+            logWarn(`[DeployConfig] Firmware reports ${currentOps.length} parameters — writing op13 only, no flash mode`)
+        }
+
+        await applyUpdates(
+            session,
+            supportsFlashMode ? updates : updates.slice(0, 1),
+            currentOps
+        )
+    }, [applyUpdates])
+
+    /**
      * Complete deployment configuration in one atomic operation
      */
     const configure = useCallback(async (
@@ -154,16 +202,22 @@ export const useDeploymentConfiguration = () => {
             // 2. Configure capture settings
             await configureCaptureMethod(session, config, currentOps)
 
+            // 3. Capture flash from the project, when the caller has one
+            if (config.flash) {
+                await configureFlash(session, config.flash, currentOps)
+            }
+
             log('[DeployConfig] Deployment configuration complete (Atomic)')
         } catch (error) {
             logError('[DeployConfig] Configuration transaction failed:', error)
             throw new Error(`Failed to configure deployment: ${error}`)
         }
-    }, [setDeploymentId, configureCaptureMethod])
+    }, [setDeploymentId, configureCaptureMethod, configureFlash])
 
     return {
         configure,
         setDeploymentId,
-        configureCaptureMethod
+        configureCaptureMethod,
+        configureFlash
     }
 }

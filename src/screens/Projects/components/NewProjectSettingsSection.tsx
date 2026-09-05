@@ -7,6 +7,7 @@ import { WWTextInput } from '../../../components/ui/WWTextInput'
 import { WWCheckbox } from '../../../components/ui/WWCheckbox'
 import { logError } from '../../../utils/logger'
 import { ProjectSettingsHelpDialogs } from './ProjectSettingsHelpDialogs'
+import { FLASH_MODE_LABELS, FLASH_LED_LABELS_BY_COLUMN } from '../../../utils/projectFlash'
 
 interface ProjectFormData {
     name: string
@@ -22,7 +23,31 @@ interface ProjectFormData {
     record_gps_in_images: boolean
     lorawan_required: boolean
     is_archived?: boolean
+    flash_mode: string
+    flash_led: string
+    flash_window_start_minutes_utc: string
+    flash_window_minutes: string
 }
+
+/**
+ * The capture flash the project deploys, written to the camera as op34 and
+ * op13 at every deployment (#282).
+ *
+ * "Light sensor" is offered but not recommended while the firmware's AE light
+ * check is still being worked on (5 September 2026): it is the one mode whose
+ * behaviour depends on that check. Nothing in the app defaults to it.
+ */
+const FLASH_MODE_OPTIONS: SelectOption[] = [
+    { label: FLASH_MODE_LABELS.off, value: 'off' },
+    { label: FLASH_MODE_LABELS.always_on, value: 'always_on' },
+    { label: FLASH_MODE_LABELS.time_of_day, value: 'time_of_day' },
+    { label: `${FLASH_MODE_LABELS.light_sensor} (in development)`, value: 'light_sensor' },
+]
+
+const FLASH_LED_OPTIONS: SelectOption[] = [
+    { label: `${FLASH_LED_LABELS_BY_COLUMN.ir} (invisible to wildlife)`, value: 'ir' },
+    { label: FLASH_LED_LABELS_BY_COLUMN.white, value: 'white' },
+]
 
 interface SelectOption {
     label: string
@@ -40,6 +65,8 @@ interface Props {
     isLoadingModels: boolean
     modelsError: any
     showArchiveToggle?: boolean
+    /** The flash mode currently chosen, so the LED and window fields can follow it */
+    flashMode: string
 }
 
 export const NewProjectSettingsSection: React.FC<Props> = ({
@@ -52,12 +79,14 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
     isTimeLapse,
     isLoadingModels,
     modelsError,
-    showArchiveToggle = false
+    showArchiveToggle = false,
+    flashMode
 }) => {
     const theme = useTheme()
     const [samplingHelpVisible, setSamplingHelpVisible] = useState(false)
     const [captureHelpVisible, setCaptureHelpVisible] = useState(false)
     const [gpsHelpVisible, setGpsHelpVisible] = useState(false)
+    const [flashHelpVisible, setFlashHelpVisible] = useState(false)
     const [expanded, setExpanded] = useState(false)
 
     // Card title render helpers: matching StartDeployment pattern
@@ -66,6 +95,16 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
             {...props}
             icon="help-circle-outline"
             onPress={() => setCaptureHelpVisible(true)}
+        >
+            <Text>Help</Text>
+        </Button>
+    ), [])
+
+    const renderFlashHelp = useCallback((props: any) => (
+        <Button
+            {...props}
+            icon="help-circle-outline"
+            onPress={() => setFlashHelpVisible(true)}
         >
             <Text>Help</Text>
         </Button>
@@ -129,6 +168,83 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
                                 />
                             )}
                         />
+                    )}
+                </Card.Content>
+            </Card>
+
+            {/* Capture Flash Card. The camera writes these at every deployment;
+                the mode also decides whether motion frames get IR light at night. */}
+            <Card>
+                <Card.Title
+                    title="Capture Flash"
+                    right={renderFlashHelp}
+                />
+                <Card.Content style={styles.cardContent}>
+                    <Controller
+                        control={control}
+                        name="flash_mode"
+                        render={({ field: { value, onChange } }) => (
+                            <WWSelect
+                                value={value || 'off'}
+                                onChange={onChange}
+                                options={FLASH_MODE_OPTIONS}
+                                label="Flash Mode"
+                                testID="flash-mode-select"
+                            />
+                        )}
+                    />
+
+                    {flashMode !== 'off' && (
+                        <Controller
+                            control={control}
+                            name="flash_led"
+                            render={({ field: { value, onChange } }) => (
+                                <WWSelect
+                                    value={value || 'ir'}
+                                    onChange={onChange}
+                                    options={FLASH_LED_OPTIONS}
+                                    label="Flash LED"
+                                    testID="flash-led-select"
+                                />
+                            )}
+                        />
+                    )}
+
+                    {flashMode === 'time_of_day' && (
+                        <>
+                            <Controller
+                                control={control}
+                                name="flash_window_start_minutes_utc"
+                                render={({ field: { value, onChange, onBlur } }) => (
+                                    <WWTextInput
+                                        value={value}
+                                        onChange={onChange}
+                                        onBlur={onBlur}
+                                        mode="outlined"
+                                        label="Window starts (UTC, HH:MM)"
+                                        placeholder="e.g., 18:00"
+                                    />
+                                )}
+                            />
+                            <Controller
+                                control={control}
+                                name="flash_window_minutes"
+                                render={({ field: { value, onChange, onBlur } }) => (
+                                    <WWTextInput
+                                        value={value}
+                                        onChange={onChange}
+                                        onBlur={onBlur}
+                                        mode="outlined"
+                                        label="Window length (minutes)"
+                                        keyboardType="numeric"
+                                        placeholder="e.g., 720"
+                                    />
+                                )}
+                            />
+                            <Text variant="bodySmall" style={styles.hint}>
+                                The camera runs on UTC, so this window is in UTC too. It may wrap past midnight.
+                            </Text>
+                        </>
                     )}
                 </Card.Content>
             </Card>
@@ -292,12 +408,18 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
                 setCaptureHelpVisible={setCaptureHelpVisible}
                 gpsHelpVisible={gpsHelpVisible}
                 setGpsHelpVisible={setGpsHelpVisible}
+                flashHelpVisible={flashHelpVisible}
+                setFlashHelpVisible={setFlashHelpVisible}
             />
         </View>
     )
 }
 
 const styles = StyleSheet.create({
+    hint: {
+        opacity: 0.7,
+        marginTop: 4,
+    },
     section: {
         gap: 16,
     },

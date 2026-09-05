@@ -9,6 +9,8 @@ interface Props {
     setCaptureHelpVisible: (visible: boolean) => void
     gpsHelpVisible: boolean
     setGpsHelpVisible: (visible: boolean) => void
+    flashHelpVisible?: boolean
+    setFlashHelpVisible?: (visible: boolean) => void
 }
 
 export const ProjectSettingsHelpDialogs: React.FC<Props> = ({
@@ -17,7 +19,9 @@ export const ProjectSettingsHelpDialogs: React.FC<Props> = ({
     captureHelpVisible,
     setCaptureHelpVisible,
     gpsHelpVisible,
-    setGpsHelpVisible
+    setGpsHelpVisible,
+    flashHelpVisible = false,
+    setFlashHelpVisible
 }) => {
     return (
         <Portal>
@@ -121,6 +125,46 @@ export const ProjectSettingsHelpDialogs: React.FC<Props> = ({
                 </Dialog.ScrollArea>
                 <Dialog.Actions>
                     <Button onPress={() => setGpsHelpVisible(false)}>
+                        <Text>Close</Text>
+                    </Button>
+                </Dialog.Actions>
+            </Dialog>
+
+            <Dialog
+                visible={flashHelpVisible}
+                onDismiss={() => setFlashHelpVisible?.(false)}
+                style={styles.dialog}
+            >
+                <Dialog.Title><Text>Capture Flash</Text></Dialog.Title>
+                <Dialog.ScrollArea>
+                    <ScrollView contentContainerStyle={styles.dialogScrollContent}>
+                        <Text style={styles.helpItem}>
+                            Every deployment writes this to the camera. It decides when the flash fires, and the same setting decides whether motion detection gets infrared light at night.
+                        </Text>
+                        <Divider style={styles.divider} />
+                        <Text style={styles.helpItem}>
+                            <Text style={styles.bold}>Off:</Text> <Text>no flash, and no infrared for night-time motion frames.</Text>
+                        </Text>
+                        <Divider style={styles.divider} />
+                        <Text style={styles.helpItem}>
+                            <Text style={styles.bold}>Always on:</Text> <Text>the flash fires on every picture, day and night.</Text>
+                        </Text>
+                        <Divider style={styles.divider} />
+                        <Text style={styles.helpItem}>
+                            <Text style={styles.bold}>Time of day:</Text> <Text>the flash is armed inside a window you set. The camera runs on UTC, so the window is in UTC.</Text>
+                        </Text>
+                        <Divider style={styles.divider} />
+                        <Text style={styles.helpItem}>
+                            <Text style={styles.bold}>Light sensor (in development):</Text> <Text>the camera decides from its own light reading. That reading is still being worked on, so choose one of the others for a real deployment.</Text>
+                        </Text>
+                        <Divider style={styles.divider} />
+                        <Text style={styles.helpItem}>
+                            <Text style={styles.bold}>Infrared or white:</Text> <Text>infrared is invisible to wildlife and is what the hardware was tuned for. White gives colour at night but is visible.</Text>
+                        </Text>
+                    </ScrollView>
+                </Dialog.ScrollArea>
+                <Dialog.Actions>
+                    <Button onPress={() => setFlashHelpVisible?.(false)}>
                         <Text>Close</Text>
                     </Button>
                 </Dialog.Actions>

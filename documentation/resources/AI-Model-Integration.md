@@ -84,6 +84,32 @@ When transferring a model to a device, the app follows this exact sequence:
 
 Steps 2–3 are critical — before issuing `loadmodel`, the app confirms the file actually exists on the SD card to prevent silent corruption from interrupted transfers.
 
+### Reusing a file already on the card: the contents are checked, not the name
+
+`syncAiModel` skips transferring a file the card already holds, which turns minutes of BLE
+transfer into nothing at all. Until 5 September 2026 that decision was made on the filename
+alone, and by substring match on the `dir` listing at that, so a file with the right name and
+the wrong bytes was used as if it were correct.
+
+That was not hypothetical. A card still holding the one-line `unknown` labels file from before
+[ww-website#139](https://github.com/wildlifeai/ww-website/pull/139) kept those labels through
+every later deployment: the sync sent only what was missing, `loadmodel` picked up the stale
+file, and the device named one class as an empty string on every capture. The documented
+workaround was to delete the file or reformat the card by hand.
+
+The app now compares contents. The device computes CRC16-CCITT over a file with `AI crc
+<filename>`, which replies `CRC 0x1234 (487424 bytes)`; the app computes the same over the
+bytes it would have sent, with `crc16ccitt` from the file-transfer protocol. A file whose
+checksum or size differs is treated as missing and replaced.
+
+Two deliberate limits. Verifying needs the real bytes, so it downloads them, where the old
+code downloaded only when something was missing; if that download fails, or the device is too
+old to have `crc`, the check is skipped and the old name-only behaviour applies. A deployment
+in the field is not blocked by a check that could not run. And the earlier exit above, where
+`OP 14` and `OP 15` already match the target and the function returns "AI model up to date",
+does not reach this: a matching pair means the model and its labels are already in flash, so
+the card copy no longer decides anything.
+
 ### Defensive Guards
 
 ```typescript

@@ -44,6 +44,7 @@ export const EditProjectScreen = () => {
 		aiModelOptions,
 		isMotionDetection,
 		isTimeLapse,
+		selectedFlashMode,
 		handleSave,
 	} = useProjectDetails(projectId, true)
 
@@ -156,6 +157,7 @@ export const EditProjectScreen = () => {
 					isTimeLapse={isTimeLapse}
 					isLoadingModels={isLoadingModels}
 					modelsError={modelsError}
+					flashMode={selectedFlashMode}
 					showArchiveToggle={true}
 				/>
 

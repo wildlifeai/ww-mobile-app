@@ -31,8 +31,8 @@ The Dev Deployment screen is only accessible from the Engineer Console's Flows m
 |--------|--------------------|----|
 | **Access** | Scanner tab → auto-connect → "Start Monitoring" | Engineer Console → Flows → "Dev Deployment Test" |
 | **Capture method** | Inherited from project settings | User selects directly on-screen (Activity / Timelapse / Mixed) |
-| **Flash settings** | Not configurable | Full control: LED type (Off / Visible / IR) + brightness (0-100%) |
-| **Capture diagnostics** | Not available | `NUM_PICTURES` and `TEST_MODE_BITS` (JPG+BMP alternating) |
+| **Flash settings** | Mode and LED inherited from the project (op34, op13) | LED type and brightness chosen on screen; the mode goes in as always-on so the choice actually fires |
+| **Capture diagnostics** | One JPEG per trigger by default; the advanced toggle adds the raw BMP | `NUM_PICTURES` and `TEST_MODE_BITS` (JPG+BMP alternating) |
 | **AI model** | Inherited from project | Overridable dropdown (including "None") |
 | **LoRaWAN / GPS** | Inherited from project | Toggleable switches |
 | **BLE init** | Upstream in Scanner flow | No BLE init — assumes connection from Engineer Console |
@@ -76,7 +76,7 @@ Both flows share these pipeline functions from `deploymentPipeline.ts`:
 | 3 | Persist project settings to DB |
 | 4 | Create DB Record |
 | 5 | Configure Device (capture method, deployment ID, GPS) |
-| 6 | Flash OPs (`LED_BRIGHTNESS`, `FLASH_LED`) |
+| 6 | Flash brightness (`LED_BRIGHTNESS`). The LED and the mode (`FLASH_LED`, `FLASH_MODE`) go in with step 5, so the reset cannot leave them at 0 |
 | 7 | Capture Diagnostics (`TEST_MODE_BITS`, `NUM_PICTURES`) |
 | 8 | Live Monitor |
 
@@ -106,8 +106,9 @@ The `DevDeploymentTestScreen` is a single scrollable page (no accordion) with th
   chosen. Shared with the Capture Picture flow via
   [`FlashSelector`](../../src/components/device/FlashSelector.tsx); the labels come from
   `FLASH_LED_LABELS` in `useDeviceSettings.ts`, which four screens used to spell differently.
-  The selection reaches the device, but the firmware fires the LED on a capture only when its
-  last light decision (op25) was DARK, so in daylight it will not flash whatever is chosen here.
+  The chosen LED is deployed as an always-on flash (op34 = 2), so it fires on every capture
+  whatever the light. Choosing Off deploys the mode as off, which also closes the gate on the
+  night-time motion illumination. A standard deployment takes both from the project instead.
   See [Light-Sensor.md](Light-Sensor.md), "How the decision reaches the flash LED".
 - **LED Brightness** — numeric input 0-100% (maps to OP 9)
 

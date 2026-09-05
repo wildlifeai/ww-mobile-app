@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from 'react'
+import React, { useCallback, useState, useEffect, useRef } from 'react'
 import { View, StyleSheet, FlatList } from 'react-native'
 import { Card, SegmentedButtons, TextInput, ProgressBar, Banner, useTheme } from 'react-native-paper'
 
@@ -7,7 +7,9 @@ import { WWButton } from '../../../components/ui/WWButton'
 import { WWIcon } from '../../../components/ui/WWIcon'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { useMotionDetectionStream, FrameSnapshot } from '../hooks/useMotionDetectionStream'
-import { log } from '../../../utils/logger'
+import { createBleSession } from '../../../ble/session/createBleSession'
+import { OP_PARAMETER } from '../../../hooks/useDeviceSettings'
+import { log, logWarn } from '../../../utils/logger'
 import { MotionGrid, MiniGrid } from './MotionGrid'
 
 const MIN_INTERVAL_SEC = 0.3
@@ -68,9 +70,38 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
         )
     }, [selectedFrame, theme.colors.primary])
 
-    // Flash parameters
+    // Flash parameters, seeded from what a deployment actually uses at night.
+    //
+    // A test frame is lit through the awake path, which takes the LED from op13
+    // and the brightness from op9. A deployed camera lights its motion frames
+    // through the STROBE path armed before sleep, which takes them from op21
+    // (MD_FLASH_LED) and op22 (MD_FLASH_BRIGHTNESS_PERCENT), IR at 50 percent by
+    // default. Starting the controls at "off" and 5 percent made a night test
+    // look far dimmer than the deployment it was meant to predict, so they open
+    // on the device's own motion-illumination settings instead.
     const [flashLed, setFlashLed] = useState<string>('0')
     const [ledBrightness, setLedBrightness] = useState<string>('5')
+    const didSeedFlashRef = useRef(false)
+
+    useEffect(() => {
+        if (!bleDevice?.connected || didSeedFlashRef.current) return
+        didSeedFlashRef.current = true
+        const seed = async () => {
+            try {
+                const ops = await createBleSession(bleDevice).getOps()
+                const mdLed = parseInt(ops?.[OP_PARAMETER.MD_FLASH_LED] ?? '', 10)
+                const mdBrightness = parseInt(ops?.[OP_PARAMETER.MD_FLASH_BRIGHTNESS_PERCENT] ?? '', 10)
+                if (!isNaN(mdLed)) setFlashLed(mdLed.toString())
+                if (!isNaN(mdBrightness)) setLedBrightness(Math.min(100, Math.max(0, mdBrightness)).toString())
+                log(`[MotionDetectionSection] Flash controls seeded from op21=${mdLed} op22=${mdBrightness}`)
+            } catch (e) {
+                // Non-fatal: the operator can still choose, the defaults just
+                // are not the deployment's.
+                logWarn('[MotionDetectionSection] could not read the motion illumination settings:', e)
+            }
+        }
+        seed()
+    }, [bleDevice])
 
     const {
         mdGrid,

@@ -155,7 +155,7 @@ When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeplo
 | 3 | Snapshot Data | Reads `battery`, `network` (if LoRaWAN required), `ver` for deployment record metadata |
 | 4 | Create DB Record | `DeploymentService.createDeployment()` → `OutboxService` → `SupabaseSyncService` |
 | 5 | Reset to Defaults | `pipeline.resetOps()` calls `executeResetToDefaults()` — shared workflow that intelligently resets parameters, skips tracking counters, and clears AI models. |
-| 6 | Configure Device | `pipeline.configureDevice()` — applies [capture method OPs](./04-ENGINEER-CONSOLE.md#capture-method-op-mapping), deployment ID, and GPS |
+| 6 | Configure Device | `pipeline.configureDevice()` — applies [capture method OPs](./04-ENGINEER-CONSOLE.md#capture-method-op-mapping), deployment ID, GPS, and the project's [capture flash](#c-configure-capture-flash). It configures against the op table **`resetOps` returned**, not the pre-reset snapshot |
 | 7 | Live Monitor | Transitions to `DeploymentMonitorView` (remains connected) |
 | 8 | Disconnect | User initiates manual disconnect (`dis`) |
 
@@ -175,6 +175,7 @@ The shared steps:
 3. **Keeps the AI model** — the pipeline passes `preserveModel: true`, so no `erasemodel` is sent and op14/op15 are left alone; model state belongs to the AI Model Sync step. The Engineer Console's reset omits the flag and does erase a loaded model
 4. Diff against `FACTORY_DEFAULTS` — only writes values that differ to save BLE round trips
 5. Clears Deployment ID and zeroizes GPS natively
+6. **Returns the resulting op table** — the snapshot with every write applied, so the configure step that follows diffs against what the device now holds rather than what it held before the reset
 
 ### Device Configuration (`useDeploymentConfiguration`)
 
@@ -193,6 +194,28 @@ setgps 0,0,0               (if recordGpsInImages is disabled / privacy mode)
 > The legacy OP-based deployment ID approach (`setop 20..27` with UUID chunks) has been removed — firmware no longer supports those parameters. OP 19 and OP 20 are now image directory counters.
 
 **B. Configure Capture Method:** See [Capture Method OP Mapping](./04-ENGINEER-CONSOLE.md#capture-method-op-mapping).
+
+**C. Configure Capture Flash:** the project's four flash columns, written as ops:
+
+```
+AI setop 13 <0 none | 1 white | 2 IR>       (FLASH_LED, from projects.flash_led)
+AI setop 34 <0 off | 1 light sensor | 2 always on | 3 time of day>   (FLASH_MODE, from projects.flash_mode)
+AI setop 35 <minutes after midnight UTC>    (time-of-day window start; 0 in every other mode)
+AI setop 36 <minutes>                       (time-of-day window length; 0 in every other mode)
+```
+
+The mapping between column values and op values lives in one place,
+[`src/utils/projectFlash.ts`](../../src/utils/projectFlash.ts). Mode `off` writes
+op13 = 0 as well, because the firmware's `ledFlashIsActive()` gate also arms the
+STROBE-driven IR that lights motion frames at night: a project that wants no
+flash wants that closed too. Firmware that reports fewer than 37 parameters has
+no flash mode, so only op13 is written there.
+
+Until #282 no step wrote either parameter, so every deployment ran with the
+flash off and no night IR. The reset before this step writes op13 = 0 and
+op34 = 0, which is why step 6 must diff against the post-reset table: against
+the older snapshot, a device that already held the project's flash before the
+reset would have had both writes skipped and stayed dark.
 
 ---
 

@@ -128,4 +128,41 @@ describe('selfTestCache', () => {
         jest.advanceTimersByTime(250)
         await expect(pending).resolves.toBeNull()
     })
+
+    describe('getLastFault', () => {
+        // The firmware runs its camera self-test at boot, so a device with a
+        // missing sensor says so once and then reports clean on every warm wake.
+        // A flow explaining a failed capture needs the fault, not the freshest
+        // reading (bench, 5 September 2026: 0x0300, then 0x0000, then a capture
+        // that timed out with nothing on screen but TIMEOUT).
+        it('remembers a fault after the device goes back to reporting clean', () => {
+            selfTestCache.record(DEVICE, 0x0300, 1000)
+            selfTestCache.record(DEVICE, 0x0000, 2000)
+
+            expect(selfTestCache.get(DEVICE)?.bits).toBe(0x0000)
+            expect(selfTestCache.getLastFault(DEVICE)?.bits).toBe(0x0300)
+        })
+
+        it('is null for a device that has only ever reported clean', () => {
+            selfTestCache.record(DEVICE, 0x0000, 1000)
+            expect(selfTestCache.getLastFault(DEVICE)).toBeNull()
+        })
+
+        it('keeps the most recent fault when there are several', () => {
+            selfTestCache.record(DEVICE, 0x0300, 1000)
+            selfTestCache.record(DEVICE, 0x0800, 2000)
+            expect(selfTestCache.getLastFault(DEVICE)?.bits).toBe(0x0800)
+        })
+
+        it('forgets it on disconnect, like every other reading', () => {
+            selfTestCache.record(DEVICE, 0x0300, 1000)
+            disconnect(DEVICE)
+            expect(selfTestCache.getLastFault(DEVICE)).toBeNull()
+        })
+
+        it('keeps devices apart', () => {
+            selfTestCache.record(DEVICE, 0x0300, 1000)
+            expect(selfTestCache.getLastFault(OTHER)).toBeNull()
+        })
+    })
 })

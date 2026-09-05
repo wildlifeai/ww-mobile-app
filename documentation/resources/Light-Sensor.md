@@ -70,15 +70,23 @@ flag, and a capture lights the LED only when that flag is set; the check after t
 then rewrites op25 for the next one. So a flash selected in the app fires on the next capture
 only if the device's last decision was DARK, and in a lit room it never fires at all. There is
 no "always flash" value in the app yet: the firmware's `ae_review` build (September 2026) adds
-always-on and time-of-day modes as op34 `FLASH_MODE` with its window in op35 and op36, which
-the app carries in `OP_PARAMETER` and resets to off at every deployment but does not expose.
+always-on and time-of-day modes as op34 `FLASH_MODE` with its window in op35 and op36.
+
+Since #282 a deployment writes all four from the project. `projects.flash_mode` and
+`projects.flash_led` (with `flash_window_start_minutes_utc` and `flash_window_minutes` for the
+time-of-day window) are set on the website, sync to the app, and go to the device as op34,
+op13, op35 and op36 after the reset. `lightSensor_isRequired()` in the firmware is true only
+for mode 1 or op26 auto-switching, so in the other modes no light check follows a capture and
+op25 stops moving: what this screen reads is then a record of the last check, not the gate.
+This screen says so when it reads a mode other than 1.
 When a flash does not fire, isolate it in three console commands before looking at the app:
 
 | Command | Proves |
 |---|---|
 | `AI flash 50 500` | The white LED, its driver and the command path: lights it directly at 50% for 500 ms, ignoring op13 and op25 |
-| `AI getop 25` | The gate. 0 means no capture will flash, whatever op13 says |
-| `AI setop 25 1`, wait for `Sleep`, then `AI capture 1 500` | The capture path can fire it: this capture flashes, then its check writes op25 back |
+| `AI getop 34` | The gate on `ae_review` and later. 0 is off, 1 defers to the light verdict, 2 is always on |
+| `AI getop 25` | The light verdict the AE mode uses. 0 means an AE-mode capture will not flash, whatever op13 says |
+| `AI setop 34 2`, wait for `Sleep`, then `AI capture 1 500` | The capture path can fire it: this capture flashes whatever the light. On older firmware use `AI setop 25 1` instead |
 
 Bench-proven on 3 September 2026; the record is in
 [the capture flash thread](../development%20reports/2026-09-03_capture-flash-and-keep-awake/README.md).
@@ -90,11 +98,26 @@ window) and always-on was the default; firmware `d9d9d253` on 5 July 2026 remove
 and made op13 light-driven only. The app's Off / White / IR selector was written for the earlier
 meaning.
 
-**Interim, until the flash-mode parameter ships:** Capture Picture writes op25 = 1 before a
-capture with a flash selected, so the picture is lit whatever the room; the check after the
-capture puts the real verdict back. Only that screen does it, deployments are untouched, and the
-block is marked `TODO(flash-mode-op)` in `useCapturePicture.ts` for removal when the new
-parameter lands. The screen itself is described in [Capture-Picture.md](Capture-Picture.md).
+**How the bench screens arm it.** Capture Picture and the Motion Detection preview hold op34 at
+2 (always on) for as long as they are open and write the previous mode back on the way out,
+through [`flashHold.ts`](../../src/ble/session/flashHold.ts). A flash chosen on those screens
+therefore fires whatever the room, which is what choosing it there means, and the project's mode
+is back on the device before the next deployment. The hold is remembered on disk, so a dropped
+link or a killed app restores it on the next visit. On firmware without op34 the older op25 = 1
+write still applies, on Capture Picture only. The screens themselves are described in
+[Capture-Picture.md](Capture-Picture.md).
+
+The Light Sensor screen turns automatic switching (op26) off on entry, so a light check cannot
+reboot the device into the other camera image in the middle of a session, **and puts it back
+when the screen closes**. It did not put it back before 5 September 2026, which stopped
+mattering the moment the flash became a project setting: `lightSensor_isRequired()` in the
+firmware is true only for mode 1 or op26, so a device left with both off runs no light check at
+all, and op25 and the automatic camera switch quietly stop until the next deployment's reset.
+
+The same screen can set op34 directly, which is the honest way to answer "why is the flash not
+firing" at the bench. That write goes straight through rather than being held and restored the
+way Capture Picture holds it: changing the mode is the point of the control, and a deployment
+writes the project's mode over it.
 
 Note that **connecting to a device sets `op26 = 1`**, because `FACTORY_DEFAULTS` says so and
 the pre-deployment checks write any parameter that has drifted. Automatic switching is

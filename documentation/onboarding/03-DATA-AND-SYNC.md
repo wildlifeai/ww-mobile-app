@@ -258,6 +258,17 @@ private async pullRemoteChanges() {
 }
 ```
 
+> [!WARNING]
+> **Both directions name their columns by hand, and both have dropped some.** `syncProjects`
+> assigns each field of a project row one line at a time, and ww-backend's `push_changes` lists
+> the columns it accepts in an `INSERT` and an `UPDATE`. A column missing from either list is
+> not an error: the pull leaves the local record at its model default, and the push writes the
+> row without that value and still reports success. `lorawan_required`, `record_gps_in_images`
+> and `is_archived` were missing from both for months (#285, ww-backend #170), so a project set
+> to record GPS on the website deployed with GPS zeroed and nothing said why. When you add a
+> column, add it to both lists in the same change, and check the round trip rather than the
+> save dialog.
+
 ### Retry Logic
 
 | Attempt | Delay |

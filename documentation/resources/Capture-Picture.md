@@ -18,11 +18,13 @@ page is how it behaves now; how it got here is in the
 | The screen's own logic: settings, hold, step state | [`useCapturePicture`](../../src/screens/Devices/hooks/useCapturePicture.ts), [`useCaptureSteps`](../../src/screens/Devices/hooks/useCaptureSteps.ts), [`captureSteps.ts`](../../src/utils/captureSteps.ts) |
 | The capture itself, shared with the deployment camera view and the Light Sensor screen | [`useCapturePreview`](../../src/hooks/useCapturePreview.ts) |
 | Holding the device awake | [`keepAwake.ts`](../../src/ble/session/keepAwake.ts) |
+| Holding the flash armed | [`flashHold.ts`](../../src/ble/session/flashHold.ts) |
 
 ## One capture, in order
 
 1. Read the op array (cached per wake). Write op9 and op13 only if they differ from the chosen
-   values. If a flash is chosen, write op25 = 1 (see the flash section).
+   values. The flash is already armed by the visit's op34 hold, taken when the screen opened
+   (see the flash section).
 2. Wait for the device to sleep. This is not optional: the firmware applies the flash LED,
    brightness and camera settings when it wakes, so the capture's wake is what makes a changed
    setting real. It returns at once when the device is already asleep.
@@ -60,19 +62,25 @@ awake window.
 
 ## The flash
 
-Since firmware `d9d9d253` (5 July 2026) op13 only chooses the LED. Whether it fires on a capture
-is decided by op25, the device's last light verdict, which the check after every capture
-rewrites; in a lit room that verdict is BRIGHT and nothing selected in the app would flash.
-Before that commit op13 was the flash type and every capture fired it. The full chain, the
-history and the three console commands that isolate a non-firing flash are in
-[Light-Sensor.md](Light-Sensor.md), "How the decision reaches the flash LED".
+op13 only chooses the LED. Whether it fires on a capture is `ledFlashIsActive()` in the
+firmware: op13 non-zero **and** the flash mode's own arming test. Since firmware `d9d9d253`
+(5 July 2026) that test was the device's last light verdict in op25, which the check after every
+capture rewrites, so in a lit room nothing selected in the app would flash. The `ae_review`
+build replaced it with op34 `FLASH_MODE`: 0 off, 1 AE (the old behaviour, and what the firmware
+ships), 2 always on, 3 time of day. The full chain, the history and the three console commands
+that isolate a non-firing flash are in [Light-Sensor.md](Light-Sensor.md), "How the decision
+reaches the flash LED".
 
-**Interim, marked `TODO(flash-mode-op)` in `useCapturePicture.ts`:** when a flash is chosen and
-the device's last verdict is not already dark, the screen writes op25 = 1 before the capture.
-The capture's wake arms the flash, the picture is lit, and the check afterwards puts the real
-verdict back, so nothing leaks into motion-detection lighting. Only this screen does it. It goes
-when the firmware's flash-mode parameter (Charles's `flash_led_modes_proposal.md` on `ae_review`)
-lands; that parameter's index has to be agreed first, because the app already uses 32 and 33.
+**The screen holds the flash armed for the visit.** Opening it writes op34 = 2 and closing it
+writes the previous mode back, through [`flashHold.ts`](../../src/ble/session/flashHold.ts),
+the same shape as the op8 keep-awake hold: the original is kept in memory and on disk, so a
+dropped link or a killed app restores it on the next visit rather than leaving a camera
+flashing every capture in the field. A chosen flash therefore fires on every picture here,
+whatever the light, which is what "flash this picture" means on a bench screen.
+
+Firmware without op34 keeps the old path: no hold is taken and the screen forces op25 = 1 for
+that picture, as it always did. The device decides which applies by how many parameters it
+reports.
 
 ## Changing camera
 

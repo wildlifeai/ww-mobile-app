@@ -13,6 +13,7 @@ import type { RootState } from '../redux'
 import { generateUUID } from '../utils/uuid'
 import type Deployment from '../database/models/Deployment'
 import { log, logError, logWarn } from '../utils/logger'
+import { DEFAULT_FLASH_LED, DEFAULT_FLASH_MODE } from '../utils/projectFlash'
 
 
 import { setGlobalSyncing, markInitialSyncComplete } from '../redux/slices/syncSlice'
@@ -971,6 +972,13 @@ class SupabaseSyncService {
                         rec.isBaited = row.is_baited ?? false
                         rec.isMonitoringMarkedIndividuals = row.is_monitoring_marked_individuals ?? false
                         rec.projectImage = row.project_image ?? undefined
+                        // Capture flash: the deployment writes these to the device
+                        // (op34/op13/op35/op36), so a project that never pulls them
+                        // deploys with the flash off and no night IR (#282).
+                        rec.flashMode = row.flash_mode ?? DEFAULT_FLASH_MODE
+                        rec.flashLed = row.flash_led ?? DEFAULT_FLASH_LED
+                        rec.flashWindowStartMinutesUtc = row.flash_window_start_minutes_utc ?? undefined
+                        rec.flashWindowMinutes = row.flash_window_minutes ?? undefined
                         rec.createdBy = row.created_by || ''
                         rec.modifiedBy = row.modified_by || '';
                         // Use _raw to bypass @readonly check
@@ -993,6 +1001,10 @@ class SupabaseSyncService {
                         rec.isBaited = row.is_baited ?? false
                         rec.isMonitoringMarkedIndividuals = row.is_monitoring_marked_individuals ?? false
                         rec.projectImage = row.project_image ?? undefined
+                        rec.flashMode = row.flash_mode ?? DEFAULT_FLASH_MODE
+                        rec.flashLed = row.flash_led ?? DEFAULT_FLASH_LED
+                        rec.flashWindowStartMinutesUtc = row.flash_window_start_minutes_utc ?? undefined
+                        rec.flashWindowMinutes = row.flash_window_minutes ?? undefined
                         rec.createdBy = row.created_by || ''
                         rec.modifiedBy = row.modified_by || '';
                         // Use _raw to bypass @readonly check
