@@ -188,10 +188,15 @@ export async function runFileTransferPipeline(
 
   const emitProgress = (phase: FileTransferProgress['phase']) => {
     const elapsed = Date.now() - startTime
-    const avgAckTime = ackTimes.length > 0 
-      ? ackTimes.slice(-10).reduce((a, b) => a + b, 0) / Math.min(ackTimes.length, 10)
+    // Estimate the time remaining from measured throughput (elapsed per byte
+    // sent), so it works in both transport modes. The previous estimate read
+    // `ackTimes`, which only the stop-and-wait branch fills; in the default
+    // windowed mode (every firmware transfer and model push) it stayed empty,
+    // so the ETA was always 0 and the progress card rendered "--:--" the whole
+    // way through (bench, 5 Sep 2026).
+    const remaining = bytesSent > 0 && elapsed > 0
+      ? Math.max(0, Math.round((data.length - bytesSent) * (elapsed / bytesSent)))
       : 0
-    const remaining = avgAckTime > 0 ? (totalPackets - packetsAcked) * avgAckTime : 0
     const speed = elapsed > 0 ? formatSpeed(bytesSent / elapsed) : '0 B/s'
 
     onProgress?.({
