@@ -35,14 +35,11 @@ export interface RootStackParamList extends ParamListBase {
 	ProjectVisualizationScreen: { projectId: string }
 	EngineerConsoleScreen: { deviceId: string }
 	StandaloneMotionDetectionScreen: { deviceId: string }
-	StandaloneCapturePreviewScreen: { deviceId: string }
-	CameraSettingsTestScreen: { deviceId: string }
+	CapturePictureScreen: { deviceId: string }
 	LightSensorScreen: { deviceId: string }
 	FirmwareUpdateScreen: { deviceId: string; target: 'ble' | 'himax'; restrictToLatest?: boolean }
 	FileTransferTestScreen: { deviceId: string }
 	ModelValidationTestScreen: { deviceId: string }
-	ConfigTransferScreen: { deviceId: string }
-	AiModelTransferScreen: { deviceId: string; modelId?: string }
 	FirmwareStatusScreen: { deviceId: string; restrictToLatest?: boolean }
 	DeviceResetScreen: { deviceId: string }
 	DevDeploymentTestScreen: { deviceId: string; bleDeviceId: string }

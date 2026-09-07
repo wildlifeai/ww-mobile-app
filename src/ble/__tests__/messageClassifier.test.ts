@@ -2,8 +2,6 @@ import {
   classifyMessage,
   MessageType,
   isWakeMessage,
-  isErrorBitsMessage,
-  extractErrorBits,
   isAiNackError,
 } from '../messageClassifier'
 
@@ -125,35 +123,6 @@ describe('Message Classifier', () => {
     it('should be case insensitive', () => {
       expect(isWakeMessage('wake')).toBe(true)
       expect(isWakeMessage('WAKE')).toBe(true)
-    })
-  })
-
-  describe('isErrorBitsMessage', () => {
-    it('should return true for Error bits message', () => {
-      expect(isErrorBitsMessage('Error bits = 0x0000')).toBe(true)
-      expect(isErrorBitsMessage('Error bits = 0xABCD')).toBe(true)
-    })
-
-    it('should return false for other messages', () => {
-      expect(isErrorBitsMessage('Wake')).toBe(false)
-      expect(isErrorBitsMessage('Error bits')).toBe(false)
-    })
-  })
-
-  describe('extractErrorBits', () => {
-    it('should extract error bits value', () => {
-      expect(extractErrorBits('Error bits = 0x0000')).toBe('0x0000')
-      expect(extractErrorBits('Error bits = 0xABCD')).toBe('0xABCD')
-      expect(extractErrorBits('Error bits = 0x1234')).toBe('0x1234')
-    })
-
-    it('should return null for non-error-bits messages', () => {
-      expect(extractErrorBits('Wake')).toBeNull()
-      expect(extractErrorBits('Battery = 100%')).toBeNull()
-    })
-
-    it('should be case insensitive', () => {
-      expect(extractErrorBits('error bits = 0x0000')).toBe('0x0000')
     })
   })
 

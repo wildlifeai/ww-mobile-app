@@ -154,8 +154,11 @@ EAS submits to App Store Connect. Review takes 1-3 days.
 | "Forbidden / Permission Denied" | Add service account to Play Console Users & Permissions |
 | EAS build fails | Check `eas build:list` for logs; verify `EXPO_TOKEN` secret |
 | iOS submission rejected | Check App Store Connect for specific rejection reasons |
+| **Submission shows `ERRORED` with `error: null`, `logFiles: []`, `completedAt: null`** | It failed before uploading, so the web console has nothing to show. Re-run the same submission from the CLI, `eas submit --platform ios --profile production --id <buildId>`, which prints Apple's actual response. A month-old mystery turned out to be one wrong number this way |
+| **`There is no resource of type 'apps' with id '…'` on every iOS submission** | A stale `ascAppId` in `eas.json`. Store identifiers must match EAS's credential records, not memory: `remoteAppStoreConnectApps` on the EAS GraphQL API lists what the stored App Store Connect key can see. The web console ignores `eas.json` and uses stored credentials, so a wrong value there hides until CI submits |
+| Dispatching a build submits it too | `eas.json` has five profiles, not three, and `production` in the GitHub workflow also submits to the stores. Check the profile before dispatching |
 | Keystore issues | Run `eas credentials` → Android → Keystore → manage |
 
 ---
 
-**Last Updated**: 2026-02-19
+**Last Updated**: 2026-09-04 (troubleshooting rows moved here from the agent skill)

@@ -172,12 +172,33 @@ The app queries `AI slots` to learn the running variant, then flashes **the othe
 | Stage | Phase | Detail |
 |-------|-------|--------|
 | Download | `downloading` | Cloud source only. Skipped when flashing from the SD card. |
+| Check the card | `sending` | SD-card source only. `AI crc <file>` reads the CRC16-CCITT and size of the file already on the card, and the app compares them with the release's `firmware.crc_checksum` and `file_size_bytes` before anything touches flash. See below. |
 | Transfer | `transferring` | `runFileTransferPipeline` stages the `.IMG` into `/MANIFEST/`. The pipeline's whole-file CRC16 is reused as the `AI firmware` CRC argument. |
 | Flash | `sending` → `flashing` | `AI firmware <file> <0xCRC>`. The phase advances to `flashing` on an 8-second timer because the HX goes silent during erase/write. |
 | Reboot | `rebooting` | `AI reset` |
 | Boundary | — | Between passes: `waitForAiReady(25000)` — waits for the device to answer again rather than racing the reboot. |
 
 A pass that fails with a transient error (`Session Reset`, `DEVICE_DISCONNECTED`, or a timeout — the `AI reset` routinely drops the session) is **retried once** after contact is re-established.
+
+### Flashing a file already on the card
+
+The screen offers any image whose 8.3 name is already in `/MANIFEST/`, labelled "· on SD
+card", and preselects that source because it skips minutes of BLE transfer. The match is on
+the filename, so the file's contents have to be established separately: a name is not a
+checksum, and an image truncated by an interrupted transfer or left by an older build carries
+the right name perfectly well.
+
+Two layers do that, and they are not redundant. The device's own
+`AI firmware <file> 0xCRC` recomputes the file's CRC and refuses to touch flash on a mismatch,
+which is the one that actually protects the device: `"Error: CRC mismatch - file 0x%04X,
+expected 0x%04X. Flash NOT modified."` The app additionally reads `AI crc <file>` first and
+compares against the release's `crc_checksum` and `file_size_bytes`, which is what lets it say
+*which* file is wrong and by how much, rather than surfacing a bare failure, and it is the only
+check available at all when the record carries no CRC.
+
+When there is nothing to check against — an SD-card-only file with no matching release row, or
+a row whose `crc_checksum` is null, as every nRF row currently is — the app says so in the log
+rather than letting an unverified flash look checked.
 
 ### Verification (`verifyAndComplete`)
 

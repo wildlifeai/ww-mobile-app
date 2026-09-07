@@ -116,7 +116,9 @@ export const useDeploymentMonitor = (device: ExtendedPeripheral | null, deployme
                 })
             }
 
-            // Update stats based on category
+            // Update stats based on category. A line flagged skipStats is a
+            // second report of an event another line already counted.
+            if (classified.skipStats) return
             setStats(prev => {
                 const nextStats = { ...prev }
                 

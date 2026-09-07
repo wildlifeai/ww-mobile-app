@@ -84,8 +84,11 @@ const OP_NAMES: Record<number, string> = {
     [OP_PARAMETER.CAM_AE_ENABLE]: 'Camera Auto-Exposure',
     [OP_PARAMETER.CAM_AE_TARGET]: 'AE Target Luma',
     [OP_PARAMETER.CAM_WB_MODE]: 'White Balance Mode',
-    [OP_PARAMETER.CAM_RESOLUTION]: 'Capture Resolution',
-    [OP_PARAMETER.MD_BLOCK_NUM_MAX]: 'MD Global-Motion Max',
+    [OP_PARAMETER.RFU_1]: 'Reserved (op32)',
+    [OP_PARAMETER.RFU_2]: 'Reserved (op33)',
+    [OP_PARAMETER.FLASH_MODE]: 'Capture Flash Mode',
+    [OP_PARAMETER.FLASH_TOD_START]: 'Flash Time-of-Day Start (min UTC)',
+    [OP_PARAMETER.FLASH_TOD_DURATION]: 'Flash Time-of-Day Duration (min)',
 }
 
 // Single source of truth from the reset workflow itself; SEQUENCE_NUMBER is
@@ -155,6 +158,17 @@ export const DeviceResetScreen = () => {
                         <WWText variant="bodyMedium" style={{ color: colors.onSurfaceVariant, marginBottom: 12 }}>
                             This will reset the following parameters to their default values, clear deployment ID and zero the GPS coordinates.
                         </WWText>
+                        {/* The erase was happening all along and was the one
+                            destructive step the warning did not mention.
+                            executeResetToDefaults runs `erasemodel` whenever a
+                            model is loaded, and this screen passes no
+                            preserveModel, so it always applies here. */}
+                        <View style={[styles.banner, { backgroundColor: colors.errorContainer, marginBottom: 12 }]}>
+                            <WWText style={{ color: colors.onErrorContainer }}>
+                                It also erases the AI model from the device. Putting one back is a
+                                slow Bluetooth transfer, and a deployment re-sends it automatically.
+                            </WWText>
+                        </View>
                         {!isConnected && (
                             <View style={[styles.banner, { backgroundColor: colors.errorContainer }]}>
                                 <WWText style={{ color: colors.onErrorContainer }}>

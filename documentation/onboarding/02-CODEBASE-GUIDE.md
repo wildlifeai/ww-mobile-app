@@ -115,10 +115,10 @@ screens/                                  navigation/screens/
 │   ├── DeviceDiscoveryScreen / EngineerConsoleScreen
 │   ├── DevDeploymentTestScreen / DeviceResetScreen
 │   ├── DfuScreen / FirmwareUpdateScreen / FirmwareStatusScreen
-│   ├── AiModelTransferScreen / ConfigTransferScreen
+│   ├── AiModelTransferScreen  (defined and routed, but absent from the Flows modal)
 │   ├── FileTransferTestScreen / ModelValidationTestScreen
-│   ├── CameraSettingsTestScreen / LightSensorScreen
-│   ├── StandaloneCapturePreviewScreen / StandaloneMotionDetectionScreen
+│   ├── CapturePictureScreen / LightSensorScreen
+│   ├── StandaloneMotionDetectionScreen
 │   ├── DeviceMonitoringSummaryScreen
 │   ├── components/
 │   │   └── ScannerRoutingDialog.tsx      # Post-scan routing
@@ -212,18 +212,17 @@ hooks/
 ├── useBluetoothStatus.ts      # Bluetooth adapter state
 ├── useEngineerConnect.ts      # Console connection management
 ├── useScanLoop.ts             # Shared 3s burst scan loop + cache flush
-├── useDeviceSelfTest.ts       # selftest bitmask parsing
+├── useDeviceSelfTest.ts       # Device health from the self-test cache (Capture Picture banner)
 ├── useReconnectDevice.tsx     # Reconnection helper
 ├── useSelectDevice.tsx        # Device selection helper
-├── useDeploymentConfiguration.ts # Capture method → OP mapping
+├── useDeploymentConfiguration.ts # Capture method and capture flash → OP mapping
 ├── useDeploymentProgress.ts   # Deployment progress tracking
 ├── useDevicePreDeploymentChecks.ts # Battery/firmware/SD validation
 ├── useMonitoringActions.ts    # Deployment monitoring commands
 ├── useCapturePreview.ts       # Image capture flow
 ├── useDeviceSettings.ts       # OP_PARAMETER enum, FACTORY_DEFAULTS, quiesce
 ├── useCameraSwitch.ts         # Camera variant switching
-├── useResolutionSwitch.ts     # Capture resolution selection
-├── useLightSensor.ts          # Day/night decision: AI light, AE regs, op23/24/25
+├── useLightSensor.ts          # Light readings: AI light, the AE register block, op23/24/25, and the flash mode op34
 ├── useCameraReadiness.ts      # Is the camera usable: self-test bits + op10
 ├── useOfflineSync.ts          # Offline sync triggers
 ├── useOptimisticUpdate.ts     # UI responses before outbox confirms
@@ -257,6 +256,7 @@ ble/
 │   ├── protocolConstants.ts    # Timing constants (MTU, timeouts)
 │   ├── deviceSignals.ts        # Sleep/Wake/Busy signals
 │   ├── textStreamScope.ts      # Text stream scoping for responses
+│   ├── selfTestCache.ts        # Latest `Error bits` per connection, from the wake broadcast
 │   └── fileTransfer/           # Chunked file transfer protocol
 │       ├── runFileTransferPipeline.ts
 │       ├── fileTransferPackets.ts
@@ -264,7 +264,9 @@ ble/
 │       ├── crc16ccitt.ts
 │       └── filenameValidator.ts
 ├── session/                    # Deterministic workflow API
-│   └── createBleSession.ts     # Session factory
+│   ├── createBleSession.ts     # Session factory
+│   ├── keepAwake.ts            # Hold a device awake for a screen visit (op8 raised, restored on exit or next connection)
+│   └── flashHold.ts            # Hold the capture flash armed for a screen visit (op34 always-on, restored the same way)
 └── workflows/                  # Reusable BLE workflow functions
     ├── deploymentPipeline.ts   # Shared deployment pipeline
     ├── resetToDefaults.ts      # executeResetToDefaults — shared OP factory reset

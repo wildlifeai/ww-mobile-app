@@ -54,6 +54,12 @@ npm run docs:validate    # every path/link in documentation/ resolves
 - **OP parameter indices mirror the firmware** (`OP_PARAMETER` here ↔ `OP_PARAMETERS_E`
   in the Seeed repo). A cross-repo contract — never renumber unilaterally. So are the
   self-test bit numbers and the `AE light check` line's fields.
+- **The project owns the camera's settings, the device is where they land.** Capture method,
+  sensitivity, model, GPS and, since #282, the capture flash all live on the `projects` row and
+  are written to the device after the deployment reset. A setting with no home in the project is
+  a setting that no deployment will ever carry. Beware the two halves of that contract in
+  `SupabaseSyncService.syncProjects` and ww-backend's `push_changes`: both name their columns by
+  hand, and both have silently dropped some (#285, ww-backend #170).
 - **The device tells you things you didn't ask for.** Self-test bits after every wake, the
   light decision after every check, motion grids while monitoring. Check for an existing
   broadcast before adding a command that polls — one already cost us a stale banner that
@@ -82,8 +88,8 @@ npm run docs:validate    # every path/link in documentation/ resolves
 | Start here as a human | `documentation/onboarding/00-GETTING-STARTED.md` (six guides, in order) |
 | Structure, hooks, services | `documentation/onboarding/02-CODEBASE-GUIDE.md` — the maintained inventory |
 | BLE engine | `src/ble/` — protocol/, session/, workflows/; deep dive in `documentation/resources/BLE_Architecture.md` |
-| Day/night light sensor | `documentation/resources/Light-Sensor.md` — op23/24/25/26, `AI light`, and why op25 reads stale |
+| Day/night light sensor | `documentation/resources/Light-Sensor.md` — op23/24/25/26, `AI light`, why op25 reads stale, and the flash mode op34 that decides whether any of it reaches the LED |
+| Capture Picture | `documentation/resources/Capture-Picture.md` — the capture in order, the 3 s hold, what applies at wake, and the flash hold that arms the LED for the visit |
 | Device flows | `documentation/onboarding/05-DEVICE-FLOWS.md`, `06-BLE-CONNECTIONS.md` |
 | Offline/sync | `documentation/onboarding/03-DATA-AND-SYNC.md` |
 | How the code got this way | `documentation/development reports/` |
-| Known doc drift | `documentation/DOCUMENTATION-AUDIT.md` |

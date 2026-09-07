@@ -1,0 +1,1085 @@
+# Capture Picture retest on the transport fix (18:32): three rounds of leave, re-enter, capture; Back pressed mid-run in round three. Then (18:54) the same on the fix for that: Back mid-run, re-enter, camera switch. App feat/capture-keep-awake (uncommitted) on firmware ae_review e8b7feb5
+# Started 2026-09-03 18:27:23. Times are MM:SS.mmm from the start of the capture.
+# himax = COM6 @ 921600 (known adapter FTFAERNNA)
+# nrf   = COM5 @ 115200 (known adapter FTH0BZPJA)
+#
+# Filtered to app writes and hook logs (minus hex dumps, heartbeats and the empty self-test lines), the device's Sleep/Wake/Captured/Finished/slot replies, and, on the nRF and Himax, the command arrivals, the packet numbers around each restart, the sleep entries, the state changes of the image task and the resets.
+[05:04.357] app   | Extracting services and characteristics.
+[05:04.357] app   | Available services: ["1800","1801","6e400001-b5a3-f393-e0a9-e50e24dcca9e"]
+[05:04.392] app   | Notifications started for 6e400003-b5a3-f393-e0a9-e50e24dcca9e
+[05:04.402] app   | Connection priority: High
+[05:04.402] app   | MTU negotiated to 512 bytes
+[05:04.402] app   | Device WILD-CNKW connected
+[05:04.504] app   | [EngineerConnect] Connected, navigating to EngineerConsoleScreen
+[05:23.045] app   | Written AI slots to the device WILD-CNKW (18:32:47-328)
+[05:23.091] nrf   | BLE in: Received   8 bytes 'AI slots'
+[05:23.091] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[05:23.392] himax | Inactivity period set at 1000ms
+[05:23.635] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[05:23.707] himax | MKL62BA command received: 'selftest'
+[05:23.925] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[05:24.009] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[05:24.009] himax | MKL62BA command received: 'slots'
+[05:24.018] app   | Written AI getop -1 to the device WILD-CNKW (18:32:48-297)
+[05:24.309] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[05:24.309] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[05:24.309] himax | MKL62BA command received: 'getop -1'
+[05:24.392] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 18 0 0 5 47 1 500 0 1000 80 1 0 100 0 0 0 18 1 0 12 0 2 50 65 15 0 0 286 326 1 110 1 
+[05:24.492] app   | [Resolution] firmware exposes 32 ops, no op32: hi-res unavailable
+[05:24.518] app   | Written AI getop -1 to the device WILD-CNKW (18:32:48-799)
+[05:24.624] himax | MKL62BA command received: 'getop -1'
+[05:24.783] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 18 0 0 5 47 1 500 0 1000 80 1 0 100 0 0 0 18 1 0 12 0 2 50 65 15 0 0 286 326 1 110 1 
+[05:24.892] app   | Written selftest to the device WILD-CNKW (18:32:49-178)
+[05:24.924] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[05:24.924] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[05:25.225] nrf   | BLE in: Received   8 bytes 'selftest'
+[05:25.292] app   | [SelfTest] bits=0x0000
+[05:25.311] app   | Written AI getop -1 to the device WILD-CNKW (18:32:49-591)
+[05:25.525] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[05:25.525] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[05:25.525] himax | MKL62BA command received: 'getop -1'
+[05:25.575] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 18 0 0 5 47 1 500 0 1000 80 1 0 100 0 0 0 18 1 0 12 0 2 50 65 15 0 0 286 326 1 110 1 
+[05:25.708] app   | Written AI getop -1 to the device WILD-CNKW (18:32:49-987)
+[05:25.827] himax | MKL62BA command received: 'getop -1'
+[05:25.959] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 18 0 0 5 47 1 500 0 1000 80 1 0 100 0 0 0 18 1 0 12 0 2 50 65 15 0 0 286 326 1 110 1 
+[05:26.125] app   | Written AI setop 8 3000 to the device WILD-CNKW (18:32:50-412)
+[05:26.140] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[05:26.140] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[05:26.355] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 8 = 3000
+[05:26.442] nrf   | BLE in: Received  15 bytes 'AI setop 8 3000'
+[05:26.442] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[05:26.442] himax | MKL62BA command received: 'setop 8 3000'
+[05:26.554] app   | [KeepAwake] holding D6:47:9B:89:E7:23 awake: op8 1000 -> 3000
+[05:27.358] himax | Inactive for 1000ms
+[05:27.358] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[05:27.358] himax | Image task ready to sleep.
+[05:27.358] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[05:27.358] himax | >>> Entering DPD at 2024:01:01 00:01:09
+[05:27.525] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[05:33.367] app   | [BleSession] Device already asleep — proceeding immediately.
+[05:33.367] app   | [useCapturePreview] startCapture called (count=1, interval=500)
+[05:33.367] app   | [useCapturePreview] Phase 1: Setup — checking device state
+[05:33.367] app   | [useCapturePreview] Phase 1 complete — waiting for device to sleep
+[05:33.367] app   | [BleSession] Device already asleep — proceeding immediately.
+[05:33.367] app   | [useCapturePreview] Phase 2: Capture — sending AI capture 1 500
+[05:33.478] app   | Written AI capture 1 500 to the device WILD-CNKW (18:32:57-762)
+[05:33.757] nrf   | BLE in: Received  16 bytes 'AI capture 1 500'
+[05:33.757] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[05:34.057] himax | Inactivity period set at 3000ms
+[05:34.340] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[05:34.344] app   | [OpCache] dropped on wake for D6:47:9B:89:E7:23
+[05:34.357] himax | MKL62BA command received: 'selftest'
+[05:34.541] himax | MKL62BA command received: 'capture 1 500'
+[05:34.541] himax | IMAGE Task state changed from 'Init' (1) to 'Capturing' (2)
+[05:34.608] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: About to capture 1 image with an interval of '500' milliseconds
+[05:34.658] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[05:34.744] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 AE regs:
+[05:34.746] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Integration time = 376 lines
+[05:34.746] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Analog gain = 0
+[05:34.748] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Digital gain = 120
+[05:34.749] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AE Mean = 75
+[05:34.751] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AEConverged?: Y
+[05:34.842] himax | SW JPEG 25723 bytes in 187ms
+[05:34.842] himax | IMAGE Task state changed from 'Capturing' (2) to 'NN Processing' (3)
+[05:34.895] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 motion in 2 blocks:
+[05:34.895] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 80 00 00 00 80 00 00 00 00 00 00 00 00 00 00 00 00 
+[05:35.108] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Captured 1 images. Last is 59200C60.JPG (File write 50ms avg.)
+[05:35.142] himax | Sending 68 bytes: Header 4, payload 62, checksum 2 'Captured 1 images. Last is 59200C60.JPG (File write 50ms avg.)'
+[05:35.142] himax | IMAGE Task state changed from 'NN Processing' (3) to 'Init' (1)
+[05:35.308] app   | [useCapturePreview] Phase 2 complete — captured: 59200C60.JPG
+[05:35.308] app   | [useCapturePreview] Device held awake; sending txfile without waiting for sleep
+[05:35.308] app   | [useCapturePreview] Phase 3: Transfer — requesting txfile 59200C60.JPG
+[05:35.364] app   | Written AI txfile 59200C60.JPG to the device WILD-CNKW (18:32:59-643)
+[05:35.625] himax | MKL62BA command received: 'txfile 59200C60.JPG'
+[05:35.625] himax | 26233 bytes in 59200C60.JPG
+[05:35.625] himax | Sending 33 bytes: Header 4, payload 27, checksum 2 '26233 bytes in 59200C60.JPG'
+[05:35.708] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 26233 bytes in 59200C60.JPG
+[05:35.708] app   | [useBleListeners] Detected image transfer start: 59200C60.JPG (26233 bytes)
+[05:35.708] app   | ImageReassembler: Initializing transfer for 26233 bytes
+[05:36.174] nrf   | BLE in: Received  22 bytes 'AI txfile 59200C60.JPG'
+[05:36.174] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[05:36.174] nrf   | BLE binary: Sending 241 byte binary payload (packet type 6, packet num 1): 
+[05:36.475] nrf   | BLE binary: Sending 241 byte binary payload (packet type 6, packet num 2): 
+[05:46.241] nrf   | BLE binary: Sending 241 byte binary payload (packet type 6, packet num 50): 
+[05:46.541] nrf   | BLE binary: Sending 241 byte binary payload (packet type 6, packet num 51): 
+[05:46.841] nrf   | BLE binary: Sending 241 byte binary payload (packet type 6, packet num 52): 
+[05:59.140] himax | Finished sending 26233 bytes (109 packets)
+[05:59.140] himax | Sending 48 bytes: Header 4, payload 42, checksum 2 'Finished sending 26233 bytes (109 packets)'
+[05:59.490] app   | ImageReassembler: Transfer complete! Received 26233/26233 (0 gaps)
+[05:59.550] app   | ImageReassembler: Image saved to file:///data/user/0/com.wildlife.wildlifewatcher.expo/cache/capture_1788417203778.jpg [SUCCESS] (26233/26233 bytes)
+[05:59.550] app   | '[useCapturePreview] Image download complete, URI:', 'file:///data/user/0/com.wildlife.wildlifewatcher.expo/cache/capture_1788417203778.jpg'
+[05:59.674] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Finished sending 26233 bytes (109 packets)
+[06:01.641] app   | Written AI setop 8 1000 to the device WILD-CNKW (18:33:25-926)
+[06:01.890] himax | MKL62BA command received: 'setop 8 1000'
+[06:02.025] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 8 = 1000
+[06:02.090] nrf   | BLE in: Received  15 bytes 'AI setop 8 1000'
+[06:02.090] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[06:02.291] app   | [KeepAwake] op8 on D6:47:9B:89:E7:23 restored to 1000 (release)
+[06:04.640] himax | MKL62BA command received: 'slots'
+[06:04.724] app   | Written AI slots to the device WILD-CNKW (18:33:29-010)
+[06:04.757] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[06:04.840] nrf   | BLE in: Received   8 bytes 'AI slots'
+[06:04.840] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[06:05.009] app   | Written AI getop -1 to the device WILD-CNKW (18:33:29-288)
+[06:05.241] himax | MKL62BA command received: 'getop -1'
+[06:05.358] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 19 0 0 5 48 1 500 0 1000 80 1 0 100 0 0 0 18 1 0 13 0 2 50 65 15 0 0 286 326 1 110 1 
+[06:05.441] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[06:05.441] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[06:05.591] app   | [Resolution] firmware exposes 32 ops, no op32: hi-res unavailable
+[06:05.608] app   | Written AI getop -1 to the device WILD-CNKW (18:33:29-899)
+[06:05.841] himax | MKL62BA command received: 'getop -1'
+[06:05.932] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 19 0 0 5 48 1 500 0 1000 80 1 0 100 0 0 0 18 1 0 13 0 2 50 65 15 0 0 286 326 1 110 1 
+[06:06.057] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[06:06.057] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[06:06.141] app   | Written selftest to the device WILD-CNKW (18:33:30-420)
+[06:06.358] nrf   | BLE in: Received   8 bytes 'selftest'
+[06:07.091] app   | [SelfTest] bits=0x0000
+[06:07.108] app   | Written AI getop -1 to the device WILD-CNKW (18:33:31-391)
+[06:07.374] himax | MKL62BA command received: 'getop -1'
+[06:07.494] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 19 0 0 5 48 1 500 0 1000 80 1 0 100 0 0 0 18 1 0 13 0 2 50 65 15 0 0 286 326 1 110 1 
+[06:07.574] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[06:07.574] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[06:07.691] app   | Written AI getop -1 to the device WILD-CNKW (18:33:31-970)
+[06:07.986] himax | MKL62BA command received: 'getop -1'
+[06:08.091] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 19 0 0 5 48 1 500 0 1000 80 1 0 100 0 0 0 18 1 0 13 0 2 50 65 15 0 0 286 326 1 110 1 
+[06:08.175] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[06:08.175] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[06:08.388] app   | Written AI setop 8 3000 to the device WILD-CNKW (18:33:32-669)
+[06:08.590] himax | MKL62BA command received: 'setop 8 3000'
+[06:08.659] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 8 = 3000
+[06:08.807] nrf   | BLE in: Received  15 bytes 'AI setop 8 3000'
+[06:08.807] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[06:08.941] app   | [KeepAwake] holding D6:47:9B:89:E7:23 awake: op8 1000 -> 3000
+[06:11.625] himax | Inactive for 3000ms
+[06:11.625] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[06:11.625] himax | Image task ready to sleep.
+[06:11.774] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[06:11.791] app   | [BleSession] SLEEP signal detected — proceeding.
+[06:11.925] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[06:11.925] himax | >>> Entering DPD at 2024:01:01 00:01:48
+[06:11.925] app   | [useCapturePreview] startCapture called (count=1, interval=500)
+[06:11.925] app   | [useCapturePreview] Phase 1: Setup — checking device state
+[06:11.925] app   | [useCapturePreview] Phase 1 complete — waiting for device to sleep
+[06:11.925] app   | [BleSession] Device already asleep — proceeding immediately.
+[06:11.925] app   | [useCapturePreview] Phase 2: Capture — sending AI capture 1 500
+[06:12.041] app   | Written AI capture 1 500 to the device WILD-CNKW (18:33:36-328)
+[06:12.158] nrf   | BLE in: Received  16 bytes 'AI capture 1 500'
+[06:12.158] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[06:12.540] himax | Inactivity period set at 3000ms
+[06:12.741] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[06:12.758] app   | [OpCache] dropped on wake for D6:47:9B:89:E7:23
+[06:12.824] himax | MKL62BA command received: 'selftest'
+[06:12.824] himax | MKL62BA command received: 'capture 1 500'
+[06:13.074] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[06:13.091] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: About to capture 1 image with an interval of '500' milliseconds
+[06:13.140] himax | IMAGE Task state changed from 'Init' (1) to 'Capturing' (2)
+[06:13.274] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 AE regs:
+[06:13.274] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Integration time = 376 lines
+[06:13.274] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Analog gain = 0
+[06:13.274] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Digital gain = 120
+[06:13.274] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AE Mean = 74
+[06:13.291] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AEConverged?: Y
+[06:13.441] himax | SW JPEG 25453 bytes in 187ms
+[06:13.441] himax | IMAGE Task state changed from 'Capturing' (2) to 'NN Processing' (3)
+[06:13.441] himax | Sending 68 bytes: Header 4, payload 62, checksum 2 'Captured 1 images. Last is 59200EE0.JPG (File write 50ms avg.)'
+[06:13.441] himax | IMAGE Task state changed from 'NN Processing' (3) to 'Init' (1)
+[06:13.490] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 motion in 0 blocks:
+[06:13.491] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[06:13.658] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Captured 1 images. Last is 59200EE0.JPG (File write 50ms avg.)
+[06:13.891] app   | [useCapturePreview] Phase 2 complete — captured: 59200EE0.JPG
+[06:13.891] app   | [useCapturePreview] Device held awake; sending txfile without waiting for sleep
+[06:13.891] app   | [useCapturePreview] Phase 3: Transfer — requesting txfile 59200EE0.JPG
+[06:13.941] app   | Written AI txfile 59200EE0.JPG to the device WILD-CNKW (18:33:38-225)
+[06:14.042] himax | MKL62BA command received: 'txfile 59200EE0.JPG'
+[06:14.042] himax | 25963 bytes in 59200EE0.JPG
+[06:14.042] himax | Sending 33 bytes: Header 4, payload 27, checksum 2 '25963 bytes in 59200EE0.JPG'
+[06:14.108] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 25963 bytes in 59200EE0.JPG
+[06:14.108] app   | [useBleListeners] Detected image transfer start: 59200EE0.JPG (25963 bytes)
+[06:14.108] app   | ImageReassembler: Initializing transfer for 25963 bytes
+[06:14.590] nrf   | BLE in: Received  22 bytes 'AI txfile 59200EE0.JPG'
+[06:14.590] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[06:14.590] nrf   | BLE binary: Sending 241 byte binary payload (packet type 6, packet num 1): 
+[06:14.891] nrf   | BLE binary: Sending 241 byte binary payload (packet type 6, packet num 2): 
+[06:24.391] nrf   | BLE binary: Sending 241 byte binary payload (packet type 6, packet num 50): 
+[06:24.692] nrf   | BLE binary: Sending 241 byte binary payload (packet type 6, packet num 51): 
+[06:24.692] nrf   | BLE binary: Sending 241 byte binary payload (packet type 6, packet num 52): 
+[06:36.656] himax | Finished sending 25963 bytes (108 packets)
+[06:36.656] himax | Sending 48 bytes: Header 4, payload 42, checksum 2 'Finished sending 25963 bytes (108 packets)'
+[06:37.128] app   | ImageReassembler: Transfer complete! Received 25963/25963 (0 gaps)
+[06:37.202] app   | ImageReassembler: Image saved to file:///data/user/0/com.wildlife.wildlifewatcher.expo/cache/capture_1788417241421.jpg [SUCCESS] (25963/25963 bytes)
+[06:37.202] app   | '[useCapturePreview] Image download complete, URI:', 'file:///data/user/0/com.wildlife.wildlifewatcher.expo/cache/capture_1788417241421.jpg'
+[06:37.320] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Finished sending 25963 bytes (108 packets)
+[06:40.006] himax | Inactive for 3000ms
+[06:40.006] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[06:40.006] himax | Image task ready to sleep.
+[06:40.006] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[06:40.006] himax | >>> Entering DPD at 2024:01:01 00:02:17
+[06:40.050] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[06:40.374] app   | Written AI slots to the device WILD-CNKW (18:34:04-665)
+[06:40.541] nrf   | BLE in: Received   8 bytes 'AI slots'
+[06:40.541] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[06:40.907] himax | Inactivity period set at 3000ms
+[06:41.223] himax | MKL62BA command received: 'selftest'
+[06:41.224] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[06:41.450] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[06:41.524] himax | MKL62BA command received: 'slots'
+[06:41.607] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[06:41.813] app   | [useCameraSwitch] switching from RP3 to HM0360
+[06:41.850] app   | Written AI switchslot to the device WILD-CNKW (18:34:06-131)
+[06:42.057] nrf   | BLE in: Received  13 bytes 'AI switchslot'
+[06:42.057] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[06:42.139] himax | MKL62BA command received: 'switchslot'
+[06:42.139] himax | Switched to slot 0 ('HM0360 (night/IR)'). Reset scheduled.
+[06:42.139] himax | Sending 64 bytes: Header 4, payload 58, checksum 2 'Switched to slot 0 ('HM0360 (night/IR)'). Reset scheduled.'
+[06:42.200] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Switched to slot 0 ('HM0360 (night/IR)'). Reset scheduled.
+[06:45.174] himax | Inactive for 3000ms
+[06:45.174] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[06:45.174] himax | Image task ready to sleep.
+[06:45.174] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[06:45.320] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[06:45.325] app   | [BleSession] SLEEP signal detected — proceeding.
+[06:45.489] himax | >>> Reset by watchdog
+[06:47.623] himax | Inactivity period set at 1000ms
+[06:49.027] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[06:49.027] app   | [BleSession] WAKE signal detected — proceeding.
+[06:49.125] himax | MKL62BA command received: 'selftest'
+[06:49.434] app   | Written AI slots to the device WILD-CNKW (18:34:13-718)
+[06:49.440] himax | MKL62BA command received: 'slots'
+[06:49.657] nrf   | BLE in: Received   8 bytes 'AI slots'
+[06:49.657] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[06:49.815] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[06:50.047] app   | [useCameraSwitch] now running HM0360
+[06:50.657] himax | Inactive for 1000ms
+[06:50.657] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[06:50.657] himax | Image task ready to sleep.
+[06:50.657] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[06:50.657] himax | >>> Entering DPD at 2024:01:01 00:00:04
+[06:50.790] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[06:52.795] app   | Written AI getop -1 to the device WILD-CNKW (18:34:17-076)
+[06:53.008] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[06:53.008] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[06:53.091] himax | Inactivity period set at 3000ms
+[06:53.308] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[06:53.406] himax | MKL62BA command received: 'selftest'
+[06:53.406] himax | MKL62BA command received: 'getop -1'
+[06:53.624] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[06:53.724] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 20 0 0 6 51 1 500 0 3000 80 1 0 100 0 0 0 18 1 0 14 0 2 50 65 15 0 0 286 326 1 110 1 
+[06:54.041] app   | Written AI setop 13 1 to the device WILD-CNKW (18:34:18-326)
+[06:54.240] nrf   | BLE in: Received  13 bytes 'AI setop 13 1'
+[06:54.240] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[06:54.291] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 13 = 1
+[06:54.324] himax | MKL62BA command received: 'setop 13 1'
+[06:54.524] app   | Written AI setop 25 1 to the device WILD-CNKW (18:34:18-817)
+[06:54.841] nrf   | BLE in: Received  13 bytes 'AI setop 25 1'
+[06:54.841] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[06:54.872] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 25 = 1
+[06:54.940] himax | MKL62BA command received: 'setop 25 1'
+[06:57.991] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[06:57.991] app   | [BleSession] SLEEP signal detected — proceeding.
+[06:58.007] himax | Inactive for 3000ms
+[06:58.007] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[06:58.007] himax | Image task ready to sleep.
+[06:58.007] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[06:58.007] himax | >>> Entering DPD at 2024:01:01 00:00:09
+[06:58.207] app   | [useCapturePreview] startCapture called (count=1, interval=500)
+[06:58.207] app   | [useCapturePreview] Phase 1: Setup — checking device state
+[06:58.207] app   | [useCapturePreview] Phase 1 complete — waiting for device to sleep
+[06:58.207] app   | [BleSession] Device already asleep — proceeding immediately.
+[06:58.207] app   | [useCapturePreview] Phase 2: Capture — sending AI capture 1 500
+[06:58.207] app   | Written AI capture 1 500 to the device WILD-CNKW (18:34:22-491)
+[06:58.506] nrf   | BLE in: Received  16 bytes 'AI capture 1 500'
+[06:58.506] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[06:58.907] himax | Inactivity period set at 3000ms
+[06:58.907] himax | MKL62BA command received: 'selftest'
+[06:58.907] himax | MKL62BA command received: 'capture 1 500'
+[06:58.969] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[06:58.974] app   | [OpCache] dropped on wake for D6:47:9B:89:E7:23
+[06:59.106] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[06:59.210] himax | IMAGE Task state changed from 'Init' (1) to 'Capturing' (2)
+[06:59.378] himax | IMAGE Task state changed from 'Capturing' (2) to 'NN Processing' (3)
+[06:59.378] himax | Sending 68 bytes: Header 4, payload 62, checksum 2 'Captured 1 images. Last is 592008A0.JPG (File write 47ms avg.)'
+[06:59.441] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: About to capture 1 image with an interval of '500' milliseconds
+[06:59.690] himax | IMAGE Task state changed from 'NN Processing' (3) to 'Init' (1)
+[06:59.721] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AE light check: AGain = 2, conv=Y -> BRIGHT (change)
+[06:59.990] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 AE regs:
+[06:59.990] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Integration time = 376 lines
+[06:59.990] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Analog gain = 2
+[06:59.990] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Digital gain = 127
+[06:59.990] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AE Mean = 69
+[06:59.990] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AEConverged?: Y
+[07:00.274] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 motion in 0 blocks:
+[07:00.274] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[07:00.507] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Captured 1 images. Last is 592008A0.JPG (File write 47ms avg.)
+[07:00.841] app   | [useCapturePreview] Phase 2 complete — captured: 592008A0.JPG
+[07:00.841] app   | [useCapturePreview] Device held awake; sending txfile without waiting for sleep
+[07:00.841] app   | [useCapturePreview] Phase 3: Transfer — requesting txfile 592008A0.JPG
+[07:00.891] app   | Written AI txfile 592008A0.JPG to the device WILD-CNKW (18:34:25-179)
+[07:01.041] himax | MKL62BA command received: 'txfile 592008A0.JPG'
+[07:01.041] himax | 13034 bytes in 592008A0.JPG
+[07:01.041] himax | Sending 33 bytes: Header 4, payload 27, checksum 2 '13034 bytes in 592008A0.JPG'
+[07:01.107] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 13034 bytes in 592008A0.JPG
+[07:01.107] app   | [useBleListeners] Detected image transfer start: 592008A0.JPG (13034 bytes)
+[07:01.107] app   | ImageReassembler: Initializing transfer for 13034 bytes
+[07:01.540] nrf   | BLE in: Received  22 bytes 'AI txfile 592008A0.JPG'
+[07:01.540] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[07:01.540] nrf   | BLE binary: Sending 241 byte binary payload (packet type 6, packet num 1): 
+[07:01.841] nrf   | BLE binary: Sending 241 byte binary payload (packet type 6, packet num 2): 
+[07:11.264] nrf   | BLE binary: Sending 241 byte binary payload (packet type 6, packet num 50): 
+[07:11.264] nrf   | BLE binary: Sending 241 byte binary payload (packet type 6, packet num 51): 
+[07:11.572] nrf   | BLE binary: Sending 241 byte binary payload (packet type 6, packet num 52): 
+[07:12.056] himax | Finished sending 13034 bytes (55 packets)
+[07:12.056] himax | Sending 47 bytes: Header 4, payload 41, checksum 2 'Finished sending 13034 bytes (55 packets)'
+[07:12.624] app   | ImageReassembler: Transfer complete! Received 13034/13034 (0 gaps)
+[07:12.693] app   | ImageReassembler: Image saved to file:///data/user/0/com.wildlife.wildlifewatcher.expo/cache/capture_1788417276907.jpg [SUCCESS] (13034/13034 bytes)
+[07:12.693] app   | '[useCapturePreview] Image download complete, URI:', 'file:///data/user/0/com.wildlife.wildlifewatcher.expo/cache/capture_1788417276907.jpg'
+[07:12.807] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Finished sending 13034 bytes (55 packets)
+[07:14.473] app   | Written AI setop 8 1000 to the device WILD-CNKW (18:34:38-755)
+[07:14.757] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 8 = 1000
+[07:14.806] himax | MKL62BA command received: 'setop 8 1000'
+[07:14.922] nrf   | BLE in: Received  15 bytes 'AI setop 8 1000'
+[07:14.922] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[07:15.200] app   | [KeepAwake] op8 on D6:47:9B:89:E7:23 restored to 1000 (release)
+[07:17.840] himax | Inactive for 3000ms
+[07:17.840] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[07:17.840] himax | Image task ready to sleep.
+[07:17.840] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[07:17.840] himax | >>> Entering DPD at 2024:01:01 00:00:29
+[07:17.883] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[07:22.767] app   | Written AI slots to the device WILD-CNKW (18:34:47-049)
+[07:22.806] nrf   | BLE in: Received   8 bytes 'AI slots'
+[07:22.806] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[07:23.023] himax | Inactivity period set at 1000ms
+[07:23.023] himax | MKL62BA command received: 'selftest'
+[07:23.140] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[07:23.324] himax | MKL62BA command received: 'slots'
+[07:23.408] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[07:23.674] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[07:23.982] app   | Written AI getop -1 to the device WILD-CNKW (18:34:48-262)
+[07:24.224] himax | Inactive for 1000ms
+[07:24.224] himax | MKL62BA command received: 'getop -1'
+[07:24.224] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[07:24.224] himax | Image task ready to sleep.
+[07:24.224] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[07:24.325] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 21 0 0 6 53 1 500 0 1000 80 1 0 100 1 0 0 18 1 0 15 0 2 50 65 15 0 0 286 326 1 110 1 
+[07:24.539] himax | >>> Entering DPD at 2024:01:01 00:00:36
+[07:24.607] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[07:24.639] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[07:24.639] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[07:24.871] app   | [Resolution] firmware exposes 32 ops, no op32: hi-res unavailable
+[07:25.128] app   | Written AI getop -1 to the device WILD-CNKW (18:34:49-411)
+[07:25.540] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[07:25.540] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[07:25.757] himax | Inactivity period set at 1000ms
+[07:25.757] himax | MKL62BA command received: 'selftest'
+[07:25.874] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[07:25.889] app   | [OpCache] dropped on wake for D6:47:9B:89:E7:23
+[07:26.072] himax | MKL62BA command received: 'getop -1'
+[07:26.156] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[07:26.458] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 21 0 0 6 54 1 500 0 1000 80 1 0 100 1 0 0 18 1 0 15 0 2 50 65 15 0 0 286 326 1 110 1 
+[07:26.879] app   | Written selftest to the device WILD-CNKW (18:34:51-163)
+[07:26.974] himax | Inactive for 1000ms
+[07:26.974] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[07:26.974] himax | Image task ready to sleep.
+[07:26.974] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[07:26.974] himax | >>> Entering DPD at 2024:01:01 00:00:39
+[07:27.040] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[07:27.072] nrf   | BLE in: Received   8 bytes 'selftest'
+[07:27.624] app   | [SelfTest] bits=0x0000
+[07:27.657] app   | Written AI getop -1 to the device WILD-CNKW (18:34:51-949)
+[07:27.974] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[07:27.974] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[07:28.206] himax | Inactivity period set at 1000ms
+[07:28.407] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[07:28.407] app   | [OpCache] dropped on wake for D6:47:9B:89:E7:23
+[07:28.506] himax | MKL62BA command received: 'selftest'
+[07:28.506] himax | MKL62BA command received: 'getop -1'
+[07:28.589] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[07:28.974] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 21 0 0 6 55 1 500 0 1000 80 1 0 100 1 0 0 18 1 0 15 0 2 50 65 15 0 0 286 326 1 110 1 
+[07:29.290] app   | Written AI getop -1 to the device WILD-CNKW (18:34:53-582)
+[07:29.407] himax | Inactive for 1000ms
+[07:29.407] himax | MKL62BA command received: 'getop -1'
+[07:29.589] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 21 0 0 6 55 1 500 0 1000 80 1 0 100 1 0 0 18 1 0 15 0 2 50 65 15 0 0 286 326 1 110 1 
+[07:29.722] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[07:29.722] himax | Image task ready to sleep.
+[07:29.722] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[07:29.722] himax | >>> Entering DPD at 2024:01:01 00:00:41
+[07:29.822] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[07:29.822] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[07:29.891] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[07:30.424] app   | Written AI slots to the device WILD-CNKW (18:34:54-701)
+[07:30.740] nrf   | BLE in: Received   8 bytes 'AI slots'
+[07:30.740] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[07:30.940] himax | Inactivity period set at 1000ms
+[07:31.146] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[07:31.149] app   | [OpCache] dropped on wake for D6:47:9B:89:E7:23
+[07:31.240] himax | MKL62BA command received: 'selftest'
+[07:31.240] himax | MKL62BA command received: 'slots'
+[07:31.341] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[07:31.768] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[07:32.090] app   | [useCameraSwitch] switching from HM0360 to RP3
+[07:32.121] app   | Written AI setop 8 3000 to the device WILD-CNKW (18:34:56-403)
+[07:32.157] himax | Inactive for 1000ms
+[07:32.157] himax | MKL62BA command received: 'setop 8 3000'
+[07:32.257] nrf   | BLE in: Received  15 bytes 'AI setop 8 3000'
+[07:32.257] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[07:32.307] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 8 = 3000
+[07:32.457] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[07:32.457] himax | Image task ready to sleep.
+[07:32.457] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[07:32.457] himax | >>> Entering DPD at 2024:01:01 00:00:44
+[07:32.625] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[07:32.935] app   | [KeepAwake] holding D6:47:9B:89:E7:23 awake: op8 1000 -> 3000
+[07:33.140] app   | Written AI switchslot to the device WILD-CNKW (18:34:57-431)
+[07:33.472] nrf   | BLE in: Received  13 bytes 'AI switchslot'
+[07:33.472] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[07:33.673] himax | Inactivity period set at 3000ms
+[07:33.873] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[07:33.974] himax | MKL62BA command received: 'selftest'
+[07:33.974] himax | MKL62BA command received: 'switchslot'
+[07:33.974] himax | Switched to slot 1 ('RP3 (day/colour)'). Reset scheduled.
+[07:33.974] himax | Sending 63 bytes: Header 4, payload 57, checksum 2 'Switched to slot 1 ('RP3 (day/colour)'). Reset scheduled.'
+[07:34.074] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[07:34.557] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Switched to slot 1 ('RP3 (day/colour)'). Reset scheduled.
+[07:37.040] himax | Inactive for 3000ms
+[07:37.040] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[07:37.040] himax | Image task ready to sleep.
+[07:37.040] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[07:37.040] himax | >>> Reset by watchdog
+[07:37.190] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[07:37.190] app   | [BleSession] SLEEP signal detected — proceeding.
+[07:40.707] himax | Inactivity period set at 1000ms
+[07:42.057] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[07:42.066] app   | [BleSession] WAKE signal detected — proceeding.
+[07:42.224] himax | MKL62BA command received: 'selftest'
+[07:42.539] himax | MKL62BA command received: 'slots'
+[07:42.639] nrf   | BLE in: Received   8 bytes 'AI slots'
+[07:42.639] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[07:42.741] app   | Written AI slots to the device WILD-CNKW (18:35:07-030)
+[07:42.741] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[07:43.090] app   | [useCameraSwitch] now running RP3
+[07:43.116] app   | Written AI getop -1 to the device WILD-CNKW (18:35:07-398)
+[07:43.440] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 21 0 0 7 57 1 500 0 3000 80 1 0 100 1 0 0 18 1 0 15 0 2 50 65 15 0 0 286 326 1 110 1 
+[07:43.441] himax | MKL62BA command received: 'getop -1'
+[07:43.542] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[07:43.542] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[07:43.825] app   | [Resolution] firmware exposes 32 ops, no op32: hi-res unavailable
+[07:44.372] himax | Inactive for 1000ms
+[07:44.372] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[07:44.372] himax | Image task ready to sleep.
+[07:44.372] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[07:44.608] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[07:44.673] himax | >>> Entering DPD at 2024:01:01 00:00:05
+[07:45.890] app   | Written AI setop 25 1 to the device WILD-CNKW (18:35:10-173)
+[07:45.991] nrf   | BLE in: Received  13 bytes 'AI setop 25 1'
+[07:45.991] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[07:46.205] himax | Inactivity period set at 3000ms
+[07:46.549] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[07:46.557] app   | [OpCache] dropped on wake for D6:47:9B:89:E7:23
+[07:46.807] himax | MKL62BA command received: 'selftest'
+[07:46.807] himax | MKL62BA command received: 'setop 25 1'
+[07:46.907] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[07:47.214] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 25 = 1
+[07:49.889] himax | Inactive for 3000ms
+[07:49.889] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[07:49.889] himax | Image task ready to sleep.
+[07:49.889] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[07:49.889] himax | >>> Entering DPD at 2024:01:01 00:00:10
+[07:50.056] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[07:50.056] app   | [BleSession] SLEEP signal detected — proceeding.
+[07:50.390] app   | [useCapturePreview] startCapture called (count=1, interval=500)
+[07:50.390] app   | [useCapturePreview] Phase 1: Setup — checking device state
+[07:50.408] app   | Written AI getop -1 to the device WILD-CNKW (18:35:14-690)
+[07:50.556] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[07:50.556] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[07:51.106] himax | Inactivity period set at 3000ms
+[07:51.224] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[07:51.406] himax | MKL62BA command received: 'selftest'
+[07:51.406] himax | MKL62BA command received: 'getop -1'
+[07:51.472] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[07:51.956] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 21 0 0 7 59 1 500 0 3000 80 1 0 100 1 0 0 18 1 0 15 0 2 50 65 15 1 0 286 326 1 110 1 
+[07:52.306] app   | [useCapturePreview] Phase 1 complete — waiting for device to sleep
+[07:52.306] app   | Written AI setop 8 1000 to the device WILD-CNKW (18:35:16-597)
+[07:52.596] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 8 = 1000
+[07:52.640] himax | MKL62BA command received: 'setop 8 1000'
+[07:52.690] nrf   | BLE in: Received  15 bytes 'AI setop 8 1000'
+[07:52.690] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[07:53.224] app   | [KeepAwake] op8 on D6:47:9B:89:E7:23 restored to 1000 (release)
+[07:55.690] himax | Inactive for 3000ms
+[07:55.690] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[07:55.690] himax | Image task ready to sleep.
+[07:55.690] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[07:55.690] himax | >>> Entering DPD at 2024:01:01 00:00:16
+[07:55.723] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[07:55.723] app   | [BleSession] SLEEP signal detected — proceeding.
+[07:56.073] app   | [useCapturePreview] Phase 2: Capture — sending AI capture 1 500
+[07:56.090] app   | Written AI capture 1 500 to the device WILD-CNKW (18:35:20-375)
+[07:56.357] nrf   | BLE in: Received  16 bytes 'AI capture 1 500'
+[07:56.357] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[07:56.922] himax | Inactivity period set at 1000ms
+[07:57.074] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[07:57.074] app   | [OpCache] dropped on wake for D6:47:9B:89:E7:23
+[07:57.156] himax | MKL62BA command received: 'selftest'
+[07:57.156] himax | MKL62BA command received: 'capture 1 500'
+[07:57.341] himax | IMAGE Task state changed from 'Init' (1) to 'Capturing' (2)
+[07:57.540] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[07:57.656] himax | SW JPEG 25929 bytes in 187ms
+[07:57.656] himax | IMAGE Task state changed from 'Capturing' (2) to 'NN Processing' (3)
+[07:57.780] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: About to capture 1 image with an interval of '500' milliseconds
+[07:57.957] himax | Sending 68 bytes: Header 4, payload 62, checksum 2 'Captured 1 images. Last is 59200920.JPG (File write 65ms avg.)'
+[07:57.957] himax | IMAGE Task state changed from 'NN Processing' (3) to 'Init' (1)
+[07:58.123] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AE light check: AGain = 2, conv=Y -> BRIGHT (change)
+[07:58.524] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 AE regs:
+[07:58.524] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Integration time = 376 lines
+[07:58.524] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Analog gain = 2
+[07:58.524] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Digital gain = 118
+[07:58.524] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AE Mean = 61
+[07:58.524] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AEConverged?: Y
+[07:58.873] himax | Inactive for 1000ms
+[07:58.873] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[07:58.873] himax | Image task ready to sleep.
+[07:58.873] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[07:58.873] himax | >>> Entering DPD at 2024:01:01 00:00:20
+[07:58.906] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 motion in 0 blocks:
+[07:58.906] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[07:59.290] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Captured 1 images. Last is 59200920.JPG (File write 65ms avg.)
+[07:59.673] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[08:00.056] app   | [useCapturePreview] Phase 2 complete — captured: 59200920.JPG
+[08:00.056] app   | [useCapturePreview] Waiting for device to sleep after capture (Save State + DPD)
+[08:00.056] app   | [BleSession] Device already asleep — proceeding immediately.
+[08:00.057] app   | [useCapturePreview] Phase 3: Transfer — requesting txfile 59200920.JPG
+[08:00.057] app   | Written AI txfile 59200920.JPG to the device WILD-CNKW (18:35:24-341)
+[08:00.306] nrf   | BLE in: Received  22 bytes 'AI txfile 59200920.JPG'
+[08:00.306] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[08:00.706] himax | Inactivity period set at 1000ms
+[08:00.990] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[08:01.006] himax | MKL62BA command received: 'selftest'
+[08:01.156] himax | MKL62BA command received: 'txfile 59200920.JPG'
+[08:01.156] himax | 26439 bytes in 59200920.JPG
+[08:01.156] himax | Sending 33 bytes: Header 4, payload 27, checksum 2 '26439 bytes in 59200920.JPG'
+[08:01.523] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[08:01.739] nrf   | BLE binary: Sending 241 byte binary payload (packet type 6, packet num 1): 
+[08:01.739] nrf   | BLE binary: Sending 241 byte binary payload (packet type 6, packet num 2): 
+[08:01.856] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 26439 bytes in 59200920.JPG
+[08:01.856] app   | [useBleListeners] Detected image transfer start: 59200920.JPG (26439 bytes)
+[08:01.856] app   | ImageReassembler: Initializing transfer for 26439 bytes
+[08:11.505] nrf   | BLE binary: Sending 241 byte binary payload (packet type 6, packet num 50): 
+[08:12.039] app   | Written AI slots to the device WILD-CNKW (18:35:36-326)
+[08:12.107] nrf   | BLE binary: Sending 241 byte binary payload (packet type 6, packet num 51): 
+[08:12.422] nrf   | BLE in: Received   8 bytes 'AI slots'
+[08:12.422] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[08:12.422] nrf   | BLE binary: Sending 241 byte binary payload (packet type 6, packet num 1): 
+[08:12.422] nrf   | BLE binary: Sending 241 byte binary payload (packet type 6, packet num 2): 
+[08:12.673] app   | ImageReassembler: Sequence gap — expected 52, got 1 (205 total gaps)
+[08:19.769] app   | Written AI slots to the device WILD-CNKW (18:35:44-050)
+[08:20.357] nrf   | BLE in: Received   8 bytes 'AI slots'
+[08:20.357] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: PROCESSING)
+[08:22.190] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[08:22.505] nrf   | BLE binary: Sending 241 byte binary payload (packet type 6, packet num 1): 
+[08:22.505] nrf   | BLE binary: Sending 241 byte binary payload (packet type 6, packet num 2): 
+[08:22.823] app   | ImageReassembler: Sequence gap — expected 50, got 1 (412 total gaps)
+[08:24.323] himax | Finished sending 26439 bytes (110 packets)
+[08:24.323] himax | Sending 48 bytes: Header 4, payload 42, checksum 2 'Finished sending 26439 bytes (110 packets)'
+[08:24.639] himax | MKL62BA command received: 'slots'
+[08:24.940] nrf   | BLE out: Failed to send  28 bytes: 'AI processor not responding'
+[08:24.940] nrf   | BLE out: Failed to send  28 bytes: 'AI processor not responding'
+[08:24.940] nrf   | BLE out: Failed to send  28 bytes: 'AI processor not responding'
+[08:24.940] nrf   | BLE out: Failed to send  28 bytes: 'AI processor not responding'
+[08:25.160] app   | ImageReassembler: Transfer complete! Received 26439/26439 (412 gaps)
+[08:25.160] app   | ImageReassembler: Image has 412 sequence gaps — may be corrupt
+[08:25.207] app   | ImageReassembler: Image saved to file:///data/user/0/com.wildlife.wildlifewatcher.expo/cache/capture_1788417349449.jpg [SUCCESS] [412 gaps] (26439/26439 bytes)
+[08:25.207] app   | '[useCapturePreview] Image download complete, URI:', 'file:///data/user/0/com.wildlife.wildlifewatcher.expo/cache/capture_1788417349449.jpg'
+[08:25.255] nrf   | BLE out: Sent  28 bytes: 'AI processor not responding'
+[08:25.341] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AI processor not responding
+[08:25.756] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Finished sending 26439 bytes (110 packets)
+[08:25.856] himax | Inactive for 1000ms
+[08:25.856] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[08:25.856] himax | Image task ready to sleep.
+[08:25.856] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[08:25.856] himax | >>> Entering DPD at 2024:01:01 00:00:47
+[08:26.156] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[08:26.579] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[08:27.090] app   | Written AI getop -1 to the device WILD-CNKW (18:35:51-374)
+[08:27.405] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[08:27.405] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[08:28.005] himax | Inactivity period set at 1000ms
+[08:28.090] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[08:28.307] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[08:28.307] himax | MKL62BA command received: 'selftest'
+[08:28.307] himax | MKL62BA command received: 'getop -1'
+[08:28.957] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 22 0 0 7 62 1 500 0 1000 80 1 0 100 1 0 0 18 1 0 16 0 2 50 65 15 0 0 286 326 1 110 1 
+[08:29.223] himax | Inactive for 1000ms
+[08:29.223] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[08:29.392] app   | [Resolution] firmware exposes 32 ops, no op32: hi-res unavailable
+[08:29.406] app   | Written AI getop -1 to the device WILD-CNKW (18:35:53-702)
+[08:29.440] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[08:29.524] himax | Image task ready to sleep.
+[08:29.524] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[08:29.524] himax | >>> Entering DPD at 2024:01:01 00:00:51
+[08:29.524] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[08:29.524] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[08:30.075] app   | [useCapturePreview] Download timed out (30s inactivity). Force finalizing.
+[08:30.085] app   | ImageReassembler: Received force_finalize signal
+[08:30.139] himax | Inactivity period set at 1000ms
+[08:30.216] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[08:30.224] app   | [OpCache] dropped on wake for D6:47:9B:89:E7:23
+[08:30.440] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[08:30.440] himax | MKL62BA command received: 'selftest'
+[08:30.440] himax | MKL62BA command received: 'getop -1'
+[08:31.090] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 22 0 0 7 63 1 500 0 1000 80 1 0 100 1 0 0 18 1 0 16 0 2 50 65 15 0 0 286 326 1 110 1 
+[08:31.356] himax | Inactive for 1000ms
+[08:31.356] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[08:31.590] app   | Written selftest to the device WILD-CNKW (18:35:55-878)
+[08:31.613] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[08:31.656] himax | Image task ready to sleep.
+[08:31.656] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[08:31.656] himax | >>> Entering DPD at 2024:01:01 00:00:53
+[08:31.972] nrf   | BLE in: Received   8 bytes 'selftest'
+[08:32.490] app   | [SelfTest] bits=0x0000
+[08:32.506] app   | Written AI getop -1 to the device WILD-CNKW (18:35:56-800)
+[08:32.890] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[08:32.890] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[08:33.173] himax | Inactivity period set at 1000ms
+[08:33.363] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[08:33.373] app   | [OpCache] dropped on wake for D6:47:9B:89:E7:23
+[08:33.423] himax | MKL62BA command received: 'selftest'
+[08:33.423] himax | MKL62BA command received: 'getop -1'
+[08:33.807] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[08:34.223] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 22 0 0 7 64 1 500 0 1000 80 1 0 100 1 0 0 18 1 0 16 0 2 50 65 15 0 0 286 326 1 110 1 
+[08:34.655] himax | Inactive for 1000ms
+[08:34.655] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[08:34.655] himax | Image task ready to sleep.
+[08:34.655] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[08:34.655] himax | >>> Entering DPD at 2024:01:01 00:00:57
+[08:34.756] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[08:35.273] app   | Written AI getop -1 to the device WILD-CNKW (18:35:59-565)
+[08:35.640] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[08:35.640] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[08:36.188] himax | Inactivity period set at 1000ms
+[08:36.288] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[08:36.290] app   | [OpCache] dropped on wake for D6:47:9B:89:E7:23
+[08:36.492] himax | MKL62BA command received: 'selftest'
+[08:36.492] himax | MKL62BA command received: 'getop -1'
+[08:36.572] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[08:37.173] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 22 0 0 7 65 1 500 0 1000 80 1 0 100 1 0 0 18 1 0 16 0 2 50 65 15 0 0 286 326 1 110 1 
+[08:37.422] himax | Inactive for 1000ms
+[08:37.422] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[08:37.633] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[08:37.723] himax | Image task ready to sleep.
+[08:37.723] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[08:37.723] himax | >>> Entering DPD at 2024:01:01 00:01:00
+[08:38.140] app   | Written AI setop 8 3000 to the device WILD-CNKW (18:36:02-431)
+[08:38.405] nrf   | BLE in: Received  15 bytes 'AI setop 8 3000'
+[08:38.405] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[08:38.655] himax | Inactivity period set at 1000ms
+[08:39.006] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[08:39.023] app   | [OpCache] dropped on wake for D6:47:9B:89:E7:23
+[08:39.271] himax | MKL62BA command received: 'selftest'
+[08:39.271] himax | MKL62BA command received: 'setop 8 3000'
+[08:39.321] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[08:39.944] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 8 = 3000
+[08:40.390] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[08:40.473] himax | Inactive for 1000ms
+[08:40.473] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[08:40.473] himax | Image task ready to sleep.
+[08:40.473] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[08:40.473] himax | >>> Entering DPD at 2024:01:01 00:01:02
+[08:41.057] app   | [KeepAwake] holding D6:47:9B:89:E7:23 awake: op8 1000 -> 3000
+#
+# ---- Second window, 18:54: the fix for round three under test, then the camera switch that never reset. The Himax's 'IMAGE task unhandled event ... in Uninitialised' line repeats every second from 27:38 on; shown once below, the logger counted 948 of them by 19:02. ----
+#
+[26:38.814] app   | [ScanLoop] Flushed stale BLE state
+[26:39.214] app   | [ScanLoop] Starting scan burst
+[26:39.383] app   | [EngineerConnect] Device found during scan, auto-connecting: D6:47:9B:89:E7:23
+[26:39.507] app   | [EngineerConnect] Connecting to WILD-CNKW
+[26:40.579] app   | Extracting services and characteristics.
+[26:40.582] app   | Available services: ["1800","1801","6e400001-b5a3-f393-e0a9-e50e24dcca9e"]
+[26:40.618] app   | Notifications started for 6e400003-b5a3-f393-e0a9-e50e24dcca9e
+[26:40.621] app   | Connection priority: High
+[26:40.632] app   | MTU negotiated to 512 bytes
+[26:40.638] app   | Device WILD-CNKW connected
+[26:40.727] app   | [EngineerConnect] Connected, navigating to EngineerConsoleScreen
+[27:10.877] app   | Written AI slots to the device WILD-CNKW (18:54:35-178)
+[27:11.208] nrf   | BLE in: Received   8 bytes 'AI slots'
+[27:11.208] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[27:11.509] himax | Inactivity period set at 1000ms
+[27:11.710] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[27:11.772] himax | MKL62BA command received: 'selftest'
+[27:11.772] himax | MKL62BA command received: 'slots'
+[27:12.074] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[27:12.124] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[27:12.190] app   | Written AI getop -1 to the device WILD-CNKW (18:54:36-492)
+[27:12.391] himax | MKL62BA command received: 'getop -1'
+[27:12.426] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[27:12.426] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[27:12.465] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 22 0 0 7 68 1 500 0 1000 80 1 0 100 1 0 0 18 1 0 16 0 2 50 65 15 0 0 286 326 1 110 1 
+[27:12.561] app   | [Resolution] firmware exposes 32 ops, no op32: hi-res unavailable
+[27:12.589] app   | Written AI getop -1 to the device WILD-CNKW (18:54:36-892)
+[27:12.694] himax | MKL62BA command received: 'getop -1'
+[27:12.872] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 22 0 0 7 68 1 500 0 1000 80 1 0 100 1 0 0 18 1 0 16 0 2 50 65 15 0 0 286 326 1 110 1 
+[27:13.008] app   | Written selftest to the device WILD-CNKW (18:54:37-311)
+[27:13.027] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[27:13.027] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[27:13.342] nrf   | BLE in: Received   8 bytes 'selftest'
+[27:13.357] app   | [SelfTest] bits=0x0000
+[27:13.380] app   | Written AI getop -1 to the device WILD-CNKW (18:54:37-683)
+[27:13.609] himax | MKL62BA command received: 'getop -1'
+[27:13.637] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 22 0 0 7 68 1 500 0 1000 80 1 0 100 1 0 0 18 1 0 16 0 2 50 65 15 0 0 286 326 1 110 1 
+[27:13.642] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[27:13.642] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[27:13.765] app   | Written AI getop -1 to the device WILD-CNKW (18:54:38-067)
+[27:13.909] himax | MKL62BA command received: 'getop -1'
+[27:14.042] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 22 0 0 7 68 1 500 0 1000 80 1 0 100 1 0 0 18 1 0 16 0 2 50 65 15 0 0 286 326 1 110 1 
+[27:14.201] app   | Written AI setop 8 3000 to the device WILD-CNKW (18:54:38-505)
+[27:14.258] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[27:14.258] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[27:14.415] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 8 = 3000
+[27:14.525] himax | MKL62BA command received: 'setop 8 3000'
+[27:14.559] nrf   | BLE in: Received  15 bytes 'AI setop 8 3000'
+[27:14.559] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[27:14.606] app   | [KeepAwake] holding D6:47:9B:89:E7:23 awake: op8 1000 -> 3000
+[27:15.441] himax | Inactive for 1000ms
+[27:15.441] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[27:15.441] himax | Image task ready to sleep.
+[27:15.441] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[27:15.441] himax | >>> Entering DPD at 2024:01:01 00:20:18
+[27:15.602] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[27:16.500] app   | Written AI setop 25 1 to the device WILD-CNKW (18:54:40-803)
+[27:16.676] nrf   | BLE in: Received  13 bytes 'AI setop 25 1'
+[27:16.676] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[27:17.275] himax | Inactivity period set at 3000ms
+[27:17.338] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[27:17.338] app   | [OpCache] dropped on wake for D6:47:9B:89:E7:23
+[27:17.576] himax | MKL62BA command received: 'selftest'
+[27:17.576] himax | MKL62BA command received: 'setop 25 1'
+[27:17.592] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[27:17.632] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 25 = 1
+[27:20.624] himax | Inactive for 3000ms
+[27:20.624] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[27:20.624] himax | Image task ready to sleep.
+[27:20.624] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[27:20.624] himax | >>> Entering DPD at 2024:01:01 00:20:24
+[27:20.845] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[27:20.849] app   | [BleSession] SLEEP signal detected — proceeding.
+[27:20.996] app   | [useCapturePreview] startCapture called (count=1, interval=500)
+[27:20.998] app   | [useCapturePreview] Phase 1: Setup — checking device state
+[27:21.071] app   | Written AI getop -1 to the device WILD-CNKW (18:54:45-374)
+[27:21.226] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[27:21.226] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[27:21.527] himax | Inactivity period set at 3000ms
+[27:21.840] himax | MKL62BA command received: 'selftest'
+[27:21.842] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[27:22.140] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[27:22.140] himax | MKL62BA command received: 'getop -1'
+[27:22.215] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 22 0 0 7 70 1 500 0 3000 80 1 0 100 1 0 0 18 1 0 16 0 2 50 65 15 1 0 286 326 1 110 1 
+[27:22.362] app   | [useCapturePreview] Screen left; not sending the capture
+[27:22.368] app   | Written AI setop 8 1000 to the device WILD-CNKW (18:54:46-670)
+[27:22.443] himax | MKL62BA command received: 'setop 8 1000'
+[27:22.610] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 8 = 1000
+[27:22.743] nrf   | BLE in: Received  15 bytes 'AI setop 8 1000'
+[27:22.743] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[27:22.820] app   | [KeepAwake] op8 on D6:47:9B:89:E7:23 restored to 1000 (release)
+[27:25.743] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[27:25.809] himax | Inactive for 3000ms
+[27:25.809] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[27:25.809] himax | Image task ready to sleep.
+[27:25.809] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[27:25.809] himax | >>> Entering DPD at 2024:01:01 00:20:29
+[27:34.551] app   | [Resolution] firmware exposes 32 ops, no op32: hi-res unavailable
+[27:34.606] app   | Written AI slots to the device WILD-CNKW (18:54:58-910)
+[27:34.659] nrf   | BLE in: Received   8 bytes 'AI slots'
+[27:34.659] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: SLEEP)
+[27:34.960] himax | Inactivity period set at 1000ms
+[27:35.260] himax | MKL62BA command received: 'selftest'
+[27:35.280] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[27:35.284] app   | [OpCache] dropped on wake for D6:47:9B:89:E7:23
+[27:35.575] himax | MKL62BA command received: 'slots'
+[27:35.575] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[27:35.670] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[27:35.818] app   | Written selftest to the device WILD-CNKW (18:55:00-121)
+[27:36.176] nrf   | BLE in: Received   8 bytes 'selftest'
+[27:36.401] app   | [SelfTest] bits=0x0000
+[27:36.420] app   | Written AI setop 8 3000 to the device WILD-CNKW (18:55:00-724)
+[27:36.490] himax | Inactive for 1000ms
+[27:36.490] himax | IMAGE Task state changed from 'Init' (1) to 'Save State' (5)
+[27:36.490] himax | MKL62BA command received: 'setop 8 3000'
+[27:36.490] himax | Error 12 saving config
+[27:36.490] himax | Image task ready to sleep.
+[27:36.490] himax | IMAGE Task state changed from 'Save State' (5) to 'Uninitialised' (0)
+[27:36.490] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[27:36.652] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 8 = 3000
+[27:36.791] nrf   | BLE in: Received  15 bytes 'AI setop 8 3000'
+[27:36.791] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[27:36.812] app   | Written AI getop -1 to the device WILD-CNKW (18:55:01-114)
+[27:36.814] app   | [KeepAwake] holding D6:47:9B:89:E7:23 awake: op8 1000 -> 3000
+[27:37.046] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 22 0 0 7 71 1 500 0 3000 80 1 0 100 1 0 0 18 1 0 16 0 2 50 65 15 1 0 286 326 1 110 1 
+[27:37.092] himax | MKL62BA command received: 'getop -1'
+[27:37.092] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[27:37.092] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[27:38.009] himax | Inactive for 1000ms
+[27:38.009] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[27:38.009] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[27:38.009] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[27:38.919] app   | Written AI slots to the device WILD-CNKW (18:55:03-223)
+[27:39.225] nrf   | BLE in: Received   8 bytes 'AI slots'
+[27:39.225] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[27:39.225] himax | Inactive for 1000ms
+[27:39.225] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[27:39.225] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[27:39.225] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[27:39.225] himax | MKL62BA command received: 'slots'
+[27:39.314] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Active slot 1 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[27:39.465] app   | [useCameraSwitch] switching from RP3 to HM0360
+[27:39.495] app   | Written AI switchslot to the device WILD-CNKW (18:55:03-798)
+[27:39.764] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Switched to slot 0 ('HM0360 (night/IR)'). Reset scheduled.
+[27:39.826] nrf   | BLE in: Received  13 bytes 'AI switchslot'
+[27:39.826] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[27:39.826] himax | MKL62BA command received: 'switchslot'
+[27:39.826] himax | Switched to slot 0 ('HM0360 (night/IR)'). Reset scheduled.
+[27:39.826] himax | Sending 64 bytes: Header 4, payload 58, checksum 2 'Switched to slot 0 ('HM0360 (night/IR)'). Reset scheduled.'
+[27:40.743] himax | Inactive for 1000ms
+[27:40.743] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[27:40.743] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[27:40.743] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[27:41.958] himax | Inactive for 1000ms
+[27:41.958] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[27:41.958] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[27:41.958] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[27:42.875] himax | Inactive for 1000ms
+[27:42.875] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[27:42.875] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[27:42.875] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[27:44.090] himax | Inactive for 1000ms
+[27:44.090] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[27:44.090] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[27:44.090] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[27:44.993] himax | Inactive for 1000ms
+[27:44.993] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[27:44.993] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[27:44.993] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[27:45.922] himax | Inactive for 1000ms
+[27:45.922] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[27:45.922] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[27:45.922] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[27:47.157] himax | Inactive for 1000ms
+[27:47.157] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[27:47.157] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[27:47.157] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[27:48.074] himax | Inactive for 1000ms
+[27:48.074] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[27:48.074] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[27:48.074] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[27:49.292] himax | Inactive for 1000ms
+[27:49.292] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[27:49.292] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[27:49.292] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[27:50.209] himax | Inactive for 1000ms
+[27:50.209] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[27:50.209] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[27:50.209] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[27:51.126] himax | Inactive for 1000ms
+[27:51.126] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[27:51.126] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[27:51.126] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[27:52.342] himax | Inactive for 1000ms
+[27:52.342] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[27:52.342] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[27:52.342] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[27:53.258] himax | Inactive for 1000ms
+[27:53.258] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[27:53.258] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[27:53.258] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[27:54.475] himax | Inactive for 1000ms
+[27:54.475] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[27:54.475] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[27:54.475] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[27:55.392] himax | Inactive for 1000ms
+[27:55.392] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[27:55.392] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[27:55.392] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[27:56.308] himax | Inactive for 1000ms
+[27:56.308] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[27:56.308] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[27:56.609] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[27:57.525] himax | Inactive for 1000ms
+[27:57.525] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[27:57.525] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[27:57.525] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[27:58.441] himax | Inactive for 1000ms
+[27:58.441] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[27:58.441] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[27:58.441] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[27:59.657] himax | Inactive for 1000ms
+[27:59.657] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[27:59.657] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[27:59.657] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:00.574] himax | Inactive for 1000ms
+[28:00.574] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:00.574] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:00.574] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:01.776] himax | Inactive for 1000ms
+[28:01.776] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:01.776] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:01.776] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:02.692] himax | Inactive for 1000ms
+[28:02.692] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:02.692] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:02.693] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:03.609] himax | Inactive for 1000ms
+[28:03.609] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:03.609] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:03.609] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:04.825] himax | Inactive for 1000ms
+[28:04.826] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:04.826] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:04.826] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:05.742] himax | Inactive for 1000ms
+[28:05.742] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:05.742] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:05.742] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:06.959] himax | Inactive for 1000ms
+[28:06.959] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:06.959] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:06.959] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:07.874] himax | Inactive for 1000ms
+[28:07.874] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:07.874] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:07.874] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:08.806] himax | Inactive for 1000ms
+[28:08.806] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:08.806] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:09.107] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:09.931] app   | [BleSession] Timed out waiting for SLEEP signal after 30000ms.
+[28:09.933] app   | [useCameraSwitch] no Sleep within 30000ms; polling instead
+[28:10.025] himax | Inactive for 1000ms
+[28:10.025] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:10.025] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:10.025] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:10.941] himax | Inactive for 1000ms
+[28:10.941] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:10.941] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:10.941] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:12.142] himax | Inactive for 1000ms
+[28:12.142] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:12.142] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:12.142] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:13.073] himax | Inactive for 1000ms
+[28:13.073] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:13.073] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:13.073] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:14.291] himax | Inactive for 1000ms
+[28:14.291] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:14.291] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:14.291] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:15.111] app   | Written AI slots to the device WILD-CNKW (18:55:39-415)
+[28:15.209] himax | Inactive for 1000ms
+[28:15.209] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:15.209] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:15.209] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:15.209] himax | MKL62BA command received: 'slots'
+[28:15.466] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Active slot 0 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[28:15.509] nrf   | BLE in: Received   8 bytes 'AI slots'
+[28:15.509] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[28:16.425] himax | Inactive for 1000ms
+[28:16.425] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:16.425] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:16.425] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:17.341] himax | Inactive for 1000ms
+[28:17.341] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:17.341] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:17.341] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:18.558] himax | Inactive for 1000ms
+[28:18.558] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:18.558] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:18.558] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:19.477] himax | Inactive for 1000ms
+[28:19.477] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:19.477] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:19.477] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:20.392] himax | Inactive for 1000ms
+[28:20.392] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:20.392] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:20.392] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:20.899] app   | Written AI slots to the device WILD-CNKW (18:55:45-203)
+[28:20.993] himax | MKL62BA command received: 'slots'
+[28:21.101] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Active slot 0 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[28:21.307] nrf   | BLE in: Received   8 bytes 'AI slots'
+[28:21.307] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[28:22.224] himax | Inactive for 1000ms
+[28:22.224] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:22.224] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:22.224] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:23.141] himax | Inactive for 1000ms
+[28:23.141] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:23.141] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:23.141] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:24.358] himax | Inactive for 1000ms
+[28:24.358] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:24.358] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:24.358] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:25.276] himax | Inactive for 1000ms
+[28:25.276] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:25.276] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:25.276] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:26.207] himax | Inactive for 1000ms
+[28:26.207] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:26.207] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:26.207] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:26.776] app   | Written AI slots to the device WILD-CNKW (18:55:51-081)
+[28:26.824] himax | MKL62BA command received: 'slots'
+[28:26.954] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Active slot 0 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[28:27.125] nrf   | BLE in: Received   8 bytes 'AI slots'
+[28:27.125] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[28:28.041] himax | Inactive for 1000ms
+[28:28.041] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:28.041] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:28.041] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:28.942] himax | Inactive for 1000ms
+[28:28.942] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:28.942] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:28.942] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:30.175] himax | Inactive for 1000ms
+[28:30.175] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:30.175] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:30.175] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:31.091] himax | Inactive for 1000ms
+[28:31.091] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:31.091] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:31.091] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:32.008] himax | Inactive for 1000ms
+[28:32.008] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:32.008] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:32.008] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:32.623] himax | MKL62BA command received: 'slots'
+[28:32.642] app   | Written AI slots to the device WILD-CNKW (18:55:56-946)
+[28:32.809] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Active slot 0 running 'RP3 (day/colour)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[28:32.924] nrf   | BLE in: Received   8 bytes 'AI slots'
+[28:32.924] nrf   | <info> app: AI state machine bumped with 'Msg to AI' (Current state: IDLE)
+[28:33.093] app   | '[useCameraSwitch] switch failed:', [Error: Device did not come back running HM0360. It may have booted the other image - check with 'AI slots' and switch again if needed.]
+[28:33.841] himax | Inactive for 1000ms
+[28:33.841] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:33.841] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:33.841] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:34.757] himax | Inactive for 1000ms
+[28:34.757] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:34.757] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:34.757] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:35.975] himax | Inactive for 1000ms
+[28:35.975] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:35.975] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:35.975] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:36.891] himax | Inactive for 1000ms
+[28:36.891] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:36.891] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:36.891] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:38.109] himax | Inactive for 1000ms
+[28:38.109] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:38.109] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:38.109] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:39.024] himax | Inactive for 1000ms
+[28:39.024] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:39.024] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:39.024] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'
+[28:39.941] himax | Inactive for 1000ms
+[28:39.941] himax | IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised'
+[28:39.941] himax | Sending 76 bytes: Header 4, payload 70, checksum 2 'IMAGE task unhandled event 'Image Event Inactivity' in 'Uninitialised''
+[28:39.941] himax | IF Task unhandled event 'Inactivity' in 'I2C TX State'

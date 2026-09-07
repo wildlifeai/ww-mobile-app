@@ -124,14 +124,9 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
             }
 
             try {
-                // Wake up AI processor by querying aiinfo first (wakes from Deep Power Down)
-                try {
-                    await session.execute(() => commandRegistry.aiinfo())
-                } catch (wakeError) {
-                    logWarn('[FirmwareStatus] Failed to wake AI processor via aiinfo:', wakeError)
-                }
-
-                // Query Himax version
+                // Query Himax version. The nRF wakes the Himax for any `AI` command,
+                // so no separate wake is needed; `aiver` already allows for the
+                // DPD wake in its timeout.
                 const rawHimaxVer = await session.execute(() => commandRegistry.aiver()) as string
                 // Himax sometimes returns things like "AI ver: 1.0.0" or "Firmware version: V1.2.0"
                 // Extracting just the version string cleanly.
@@ -213,17 +208,12 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
 
                         if (!isMounted.current) return
 
-                        // The initial versions are a connect-time snapshot — stale
-                        // right after a firmware update. Never declare "outdated"
-                        // from the snapshot alone: escalate to the active check
-                        // (live `version`/`AI ver` queries) and let the device
-                        // decide. Up-to-date verdicts stay silent and BLE-quiet.
-                        if (bleOutdated || himaxOutdated) {
-                            logWarn('[FirmwareStatus] Snapshot looks outdated — verifying against the live device')
-                            await checkStatus()
-                            return
-                        }
-
+                        // The snapshot was read by this connection seconds ago, so
+                        // it is the device's answer. Re-querying "to be sure" sent
+                        // ver, AI info and AI ver a second time on every connect
+                        // and woke the Himax again (#268). The screen re-checks
+                        // actively on focus return after a firmware update, which
+                        // is the one case where the snapshot is stale.
                         setStatuses({
                             ble: {
                                 type: 'ble',

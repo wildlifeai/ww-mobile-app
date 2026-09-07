@@ -341,12 +341,12 @@ SELECT
 
   -- Deployment statistics
   COUNT(DISTINCT d.id) FILTER (WHERE d.deleted_at IS null) AS deployment_count,
-  -- NOTE: deployment_statuses has no 'active' row (values: planned/started/ended), so this
-  -- count is always 0 — pre-existing behaviour, kept as-is pending an owner decision.
+  -- 'started' is the running state. deployment_statuses holds only planned/started/ended;
+  -- this filtered on a non-existent 'active' row until 2026-09 and so was always 0.
   COUNT(DISTINCT d.id) FILTER (
     WHERE d.deleted_at IS null
     AND d.deployment_status_id = (SELECT deployment_statuses.id FROM deployment_statuses
-WHERE deployment_statuses.value = 'active'
+WHERE deployment_statuses.value = 'started'
 ORDER BY deployment_statuses.id LIMIT 1)
   ) AS active_deployment_count,
   COUNT(DISTINCT dev.id) FILTER (WHERE dev.deleted_at IS null) AS device_count,
@@ -953,9 +953,10 @@ BEGIN
   CROSS JOIN LATERAL (
     SELECT
       COUNT(*) as total_deployments,
+      -- 'started' is the running state; see the note in project_summary above.
       COUNT(*) FILTER (
         WHERE d.deployment_status_id = (
-          SELECT id FROM public.deployment_statuses WHERE value = 'active' LIMIT 1
+          SELECT id FROM public.deployment_statuses WHERE value = 'started' LIMIT 1
         )
       ) as active_deployments,
       MAX(d.created_at) as last_deployment

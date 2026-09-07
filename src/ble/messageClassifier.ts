@@ -7,7 +7,7 @@
  * - ERROR: Error messages (AI NACK, I2C errors, timeouts)
  */
 
-import { parseLightCheck } from './protocol/lightCheck'
+import { parseLightCheck, summariseLightCheck } from './protocol/lightCheck'
 
 export enum MessageType {
   RESPONSE = 'RESPONSE',
@@ -201,21 +201,6 @@ export function isWakeMessage(message: string): boolean {
 }
 
 /**
- * Check if a message is an Error bits message
- */
-export function isErrorBitsMessage(message: string): boolean {
-  return /^Error bits = 0x[0-9A-Fa-f]+$/i.test(message.trim())
-}
-
-/**
- * Extract error bits value from message
- */
-export function extractErrorBits(message: string): string | null {
-  const match = message.match(/Error bits = (0x[0-9A-Fa-f]+)/i)
-  return match ? match[1] : null
-}
-
-/**
  * Check if a message indicates AI NACK error
  */
 export function isAiNackError(message: string): boolean {
@@ -244,14 +229,18 @@ export function extractOpParamFromSleep(message: string, opIndex: number): strin
   return null
 }
 
-export type MonitorCategory = 'motion' | 'motion_rejected' | 'timelapse' | 'capture' | 'nn_positive' | 'nn_negative' | 'sleep' | 'wake' | 'selftest_ok' | 'selftest_warn' | 'info'
+export type MonitorCategory = 'motion' | 'timelapse' | 'capture' | 'nn_positive' | 'nn_negative' | 'sleep' | 'wake' | 'selftest_ok' | 'selftest_warn' | 'info'
 
 export interface MonitorEvent {
   category: MonitorCategory
   label: string
   icon: string
   details?: string
+  /** Counted in the stats bar but not listed in the activity log. */
   isHidden?: boolean
+  /** Listed in the activity log but not counted: the same event is already
+   *  counted by another line the device sends for it. */
+  skipStats?: boolean
 }
 
 /**
@@ -261,30 +250,21 @@ export interface MonitorEvent {
 export function classifyForMonitor(rawMessage: string): MonitorEvent | null {
   const content = rawMessage.replace(/\0/g, '').trim()
 
-  // --- MD GLOBAL-MOTION REJECTION (op33) ---
-  // The firmware skipped the capture: the whole scene moved (camera knock/pan
-  // or a lighting change), not an animal. Must precede the generic /^MD[\s.]/
-  // motion match below, which would otherwise mislabel this "Motion detected".
-  const mdRejected = content.match(/^MD wake rejected: motion in (\d+) blocks > max (\d+)/i)
-  if (mdRejected) {
-    return { category: 'motion_rejected', label: `Motion rejected — whole scene moved (${mdRejected[1]} blocks, max ${mdRejected[2]})`, icon: 'motion-sensor-off', details: content }
-  }
-  // Companion accept message (only emitted when op33 is armed) — a real motion
-  // wake, with the block count the rejection filter measured.
-  const mdAccepted = content.match(/^MD wake accepted: motion in (\d+) blocks/i)
-  if (mdAccepted) {
-    return { category: 'motion', label: `Motion detected (${mdAccepted[1]} blocks)`, icon: 'run', details: content }
-  }
-
   // --- WAKE & MOTION EVENTS ---
-  if (/^MD[\s.]/i.test(content) || /^Wake\s*\(MD\)/i.test(content)) return { category: 'motion', label: 'Motion detected', icon: 'run', details: content }
-  
+  // One motion wake reaches the app as up to four lines: "Wake (MD)", the NN
+  // verdict, "HM0360 motion in N blocks:" and "Captured ...". The wake line is
+  // the event and is what the stats count; the blocks line is the one worth
+  // reading, so it is the one listed. Listing both showed "Motion detected"
+  // twice per wake and counted it twice (bench, 5 Sep 2026).
+  if (/^Wake\s*\(MD\)/i.test(content)) return { category: 'motion', label: 'Motion detected', icon: 'run', details: content, isHidden: true }
+  if (/^MD[\s.]/i.test(content)) return { category: 'motion', label: 'Motion detected', icon: 'run', details: content }
+
   // Himax WW500 hardware outputs block counts dynamically
   const motionMatch = content.match(/^HM0360 motion in (\d+) blocks:/i)
   if (motionMatch) {
     const blocks = parseInt(motionMatch[1], 10)
     if (blocks > 0) {
-      return { category: 'motion', label: `Motion detected (${blocks} blocks)`, icon: 'run', details: content }
+      return { category: 'motion', label: `Motion detected (${blocks} blocks)`, icon: 'run', details: content, skipStats: true }
     } else {
       return null // Safely ignore 0 block updates to prevent UI noise
     }
@@ -314,16 +294,20 @@ export function classifyForMonitor(rawMessage: string): MonitorEvent | null {
   if (/^Error bits = 0x/i.test(content) && !/^Error bits = 0x0000/i.test(content)) return { category: 'selftest_warn', label: 'Self-test warning', icon: 'alert', details: content }
 
   // --- LIGHT SENSOR DECISION ---
-  // The day/night verdict, sent after every light check. Surfaced with its margin
-  // rather than hidden as noise: it is the one line that explains why the device
-  // decided to switch camera or arm the flash. Raw AE registers stay filtered below.
+  // The day/night verdict, sent after every light check: one per capture and one
+  // per periodic re-check (every 15 minutes by default). It explains a camera
+  // switch or an armed flash, but at that rate it crowded the motion rows out of
+  // the monitor (bench, 5 Sep 2026), so it is classified and kept off the log.
+  // The Light Sensor screen shows the same verdicts with their inputs. Raw AE
+  // registers stay filtered below.
   const lightCheck = parseLightCheck(content)
   if (lightCheck) {
     return {
       category: 'info',
-      label: `Light check: ${lightCheck.dark ? 'DARK' : 'BRIGHT'} — AE ${lightCheck.meanAE} vs threshold ${lightCheck.threshold}${lightCheck.changed ? ', changed' : ''}`,
+      label: `Light check: ${summariseLightCheck(lightCheck)}`,
       icon: lightCheck.dark ? 'weather-night' : 'white-balance-sunny',
       details: content,
+      isHidden: true,
     }
   }
 

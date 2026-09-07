@@ -3079,6 +3079,10 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           description: string | null
+          flash_led: string
+          flash_mode: string
+          flash_window_minutes: number | null
+          flash_window_start_minutes_utc: number | null
           id: string
           is_active: boolean
           is_archived: boolean
@@ -3103,6 +3107,10 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           description?: string | null
+          flash_led?: string
+          flash_mode?: string
+          flash_window_minutes?: number | null
+          flash_window_start_minutes_utc?: number | null
           id?: string
           is_active?: boolean
           is_archived?: boolean
@@ -3127,6 +3135,10 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           description?: string | null
+          flash_led?: string
+          flash_mode?: string
+          flash_window_minutes?: number | null
+          flash_window_start_minutes_utc?: number | null
           id?: string
           is_active?: boolean
           is_archived?: boolean
@@ -3690,6 +3702,10 @@ export type Database = {
           deleted_at: string | null
           deployment_count: number | null
           description: string | null
+          flash_led: string | null
+          flash_mode: string | null
+          flash_window_minutes: number | null
+          flash_window_start_minutes_utc: number | null
           id: string | null
           is_active: boolean | null
           is_archived: boolean | null
@@ -3719,6 +3735,10 @@ export type Database = {
           deleted_at?: string | null
           deployment_count?: never
           description?: string | null
+          flash_led?: string | null
+          flash_mode?: string | null
+          flash_window_minutes?: number | null
+          flash_window_start_minutes_utc?: number | null
           id?: string | null
           is_active?: boolean | null
           is_archived?: boolean | null
@@ -3748,6 +3768,10 @@ export type Database = {
           deleted_at?: string | null
           deployment_count?: never
           description?: string | null
+          flash_led?: string | null
+          flash_mode?: string | null
+          flash_window_minutes?: number | null
+          flash_window_start_minutes_utc?: number | null
           id?: string | null
           is_active?: boolean | null
           is_archived?: boolean | null
@@ -5037,12 +5061,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5066,11 +5090,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5091,11 +5115,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5116,11 +5140,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5133,11 +5157,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

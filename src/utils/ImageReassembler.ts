@@ -65,6 +65,10 @@ export class ImageReassembler {
         this.isReceiving = true
         this.lastPacketTime = Date.now()
         this.startWatchdog()
+        // The BLE transport holds its queue from here until onImageComplete or
+        // onImageError: a command sent into the stream corrupts its packet
+        // numbering and is only answered once the file has finished.
+        this.emitter.emit('onImageStart', totalBytes)
     }
 
     public finalizePartial(): void {

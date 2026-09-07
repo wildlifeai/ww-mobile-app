@@ -24,6 +24,7 @@ import { DeploymentMonitorView } from './components/DeploymentMonitorView'
 import { useStartDeployment } from './hooks/useStartDeployment'
 import { useFirmwareStatus } from '../Devices/hooks/useFirmwareStatus'
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
+import { resolveProjectFlash, shortFlashLabel } from '../../utils/projectFlash'
 
 
 type StartMonitoringDetailsRouteProp = RouteProp<RootStackParamList, 'StartMonitoringDetailsStep'>;
@@ -54,7 +55,6 @@ export const StartMonitoringDetailsStep = () => {
         batteryLevel, sdCardStatus,
         handleBatteryCheck, handleSdCardCheck,
         recordJpegOnly, setRecordJpegOnly,
-        hiResPhotos, setHiResPhotos,
         isMonitoring, handleMonitorDisconnect, handleStopMonitoring, isStoppingMonitoring,
         deploymentStartTime,
         // DFU control
@@ -148,7 +148,7 @@ export const StartMonitoringDetailsStep = () => {
     }, [initErrors.deviceHealth])
 
     const renderProjectSettingsRight = useCallback((props: any) => (
-        <Button {...props} icon="help-circle-outline" onPress={() => showHelp('Associated Project', 'This section shows the project linked to this device and its active features.\n\n🔄 Motion icon: Activity detection is enabled\n⏱ Clock icon: Time-lapse capture is enabled\n📡 Waves icon: LoRaWAN connectivity is enabled\n🛰 Satellite icon: GPS location is recorded in images\n🧠 Brain icon: An AI model is assigned for analysis')}>
+        <Button {...props} icon="help-circle-outline" onPress={() => showHelp('Associated Project', 'This section shows the project linked to this device and its active features.\n\n🔄 Motion icon: Activity detection is enabled\n⏱ Clock icon: Time-lapse capture is enabled\n📡 Waves icon: LoRaWAN connectivity is enabled\n🛰 Satellite icon: GPS location is recorded in images\n🧠 Brain icon: An AI model is assigned for analysis\n⚡ Flash icon: The capture flash this project deploys, which also lights motion frames at night')}>
             <Text>Help</Text>
         </Button>
     ), [showHelp])
@@ -317,6 +317,18 @@ export const StartMonitoringDetailsStep = () => {
                                     <Text variant="labelSmall" style={styles.featureLabel}>{aiModelName}</Text>
                                 </View>
                             )}
+                            {/* The flash the deployment will write (op13/op34): it also
+                                decides whether motion frames get IR light at night. */}
+                            {project && (
+                            <View style={styles.featureIcon}>
+                                <WWIcon
+                                    source={resolveProjectFlash(project).mode === 'off' ? 'flash-off' : 'flash'}
+                                    size={22}
+                                    color={theme.colors.onSurfaceVariant}
+                                />
+                                <Text variant="labelSmall" style={styles.featureLabel}>{shortFlashLabel(project)}</Text>
+                            </View>
+                            )}
                         </View>
 
                     </Card.Content>
@@ -361,8 +373,6 @@ export const StartMonitoringDetailsStep = () => {
                     handleSdCardCheck={handleSdCardCheck}
                     recordJpegOnly={recordJpegOnly}
                     setRecordJpegOnly={setRecordJpegOnly}
-                    hiResPhotos={hiResPhotos}
-                    setHiResPhotos={setHiResPhotos}
                     isInitializing={isInitializing}
                     bleDeviceConnected={!!bleDevice?.connected}
                     theme={theme}

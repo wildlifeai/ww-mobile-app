@@ -669,7 +669,11 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
 
         const session = createBleSession(device)
 
-        if (source === 'download') {
+        // Download the release image from the cloud and stream it to the SD
+        // card, returning the CRC the app computed over the bytes it sent. Used
+        // both for an explicit 'download' and as the fallback when the card
+        // already holds a file of the right name but the wrong bytes.
+        const downloadTransferAndGetCrc = async (): Promise<string | undefined> => {
             if (!fwToFlash) throw new Error('No firmware available for download. Sync reference data first.')
 
             // 1. Download firmware
@@ -723,43 +727,106 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                 throw new Error('Failed to read firmware bytes')
             }
 
-            advancePhase('sending')
-            appendLog(`${passLabel}Sending firmware flash command...`)
+            return computedCrc
+        }
 
-            // The device reports nothing over BLE while it erases/writes flash
-            // (its progress prints go to the local UART console only); the next
-            // line we receive is the final "Firmware update OK/FAILED", minutes
-            // later. Start the elapsed clock and advance to 'flashing' after a
-            // short grace so the UI never sits frozen on "waking up".
-            flashStartRef.current = Date.now()
-            setFlashElapsedSec(0)
-            const flashPhaseTimer = setTimeout(() => advancePhase('flashing'), 8000)
-            try {
-                await session.execute(() => commandRegistry.aifirmware(imgName, computedCrc))
-            } finally {
-                clearTimeout(flashPhaseTimer)
-                flashStartRef.current = null
-            }
+        // CRC to hand the device's `AI firmware` command: the one the app
+        // computed over a fresh transfer, or the release's recorded CRC when we
+        // flash a file that is already on the card.
+        let crcForFlash: string | undefined
+
+        if (source === 'download') {
+            crcForFlash = await downloadTransferAndGetCrc()
         } else {
-            // Source is 'sdcard'
-            advancePhase('sending')
-            appendLog(`${passLabel}Sending firmware flash command...`)
-
+            // Source is 'sdcard' — verify the file already on the card before
+            // anything touches flash.
+            //
+            // The card copy is trusted on filename alone: `dir` finds
+            // R6905142.IMG and the screen offers it as "on SD card". A file of
+            // that name whose bytes are wrong, truncated by an interrupted
+            // transfer, or left by an older build, would otherwise be flashed
+            // as if it were the real image. The transfer path has a whole-file
+            // CRC; this path reads the device's `crc` and compares.
             const targetCrc = fwToFlash?.crcChecksum || undefined
-            if (targetCrc) {
-                appendLog(`${passLabel}Using database CRC for flash: ${targetCrc}`)
+            let onCard: { crc: string; sizeBytes: number } | null = null
+            try {
+                onCard = await session.execute(() => commandRegistry.crc(filenameToFlash))
+                appendLog(`${passLabel}File on card: ${onCard.crc}, ${onCard.sizeBytes.toLocaleString()} bytes`)
+            } catch (e: any) {
+                // Older firmware has no `crc` command. Not fatal: the device
+                // still checks the CRC itself when we pass one below.
+                logWarn('[FW Update] could not read the card file CRC:', e)
+                appendLog(`${passLabel}Could not read the file's CRC from the card`)
             }
 
-            // Same silent-flash window as the download path (see above).
-            flashStartRef.current = Date.now()
-            setFlashElapsedSec(0)
-            const flashPhaseTimer = setTimeout(() => advancePhase('flashing'), 8000)
-            try {
-                await session.execute(() => commandRegistry.aifirmware(filenameToFlash, targetCrc))
-            } finally {
-                clearTimeout(flashPhaseTimer)
-                flashStartRef.current = null
+            // A matching name is not matching bytes. Compare what is on the card
+            // against the release; a difference is recoverable, not fatal.
+            let mismatchReason: string | null = null
+            if (targetCrc && onCard) {
+                const expected = targetCrc.toUpperCase().startsWith('0X')
+                    ? `0X${targetCrc.slice(2).toUpperCase().padStart(4, '0')}`
+                    : `0X${targetCrc.toUpperCase().padStart(4, '0')}`
+                const actual = onCard.crc.toUpperCase()
+                if (actual !== expected) {
+                    mismatchReason = `it is ${onCard.crc}, the release is ${targetCrc}`
+                } else {
+                    const expectedSize = fwToFlash?.fileSizeBytes
+                    if (expectedSize && onCard.sizeBytes !== expectedSize) {
+                        mismatchReason = `it is ${onCard.sizeBytes.toLocaleString()} bytes, the release is ${expectedSize.toLocaleString()} bytes`
+                    }
+                }
             }
+
+            if (mismatchReason) {
+                // The card holds a file of the right name but the wrong bytes
+                // (an interrupted transfer, or an older build's image). Rather
+                // than refuse the update, overwrite it with the correct copy
+                // from the cloud — but only when we have a release record to
+                // download (a bare SD-card filename has nothing to fetch).
+                if (fwToFlash) {
+                    appendLog(`${passLabel}The file on the SD card does not match the release (${mismatchReason}). Replacing it with the cloud copy.`)
+                    // The phase machine is forward-only; rewind so the download
+                    // and transfer phases show correctly (as the retry path does).
+                    phaseRef.current = 'preflight'
+                    if (!unmountedRef.current) setPhase('preflight')
+                    crcForFlash = await downloadTransferAndGetCrc()
+                } else {
+                    const msg = `The file on the SD card does not match the release: ${mismatchReason}. Nothing was written, and there is no cloud copy to send — sync reference data and try again.`
+                    appendLog(`${passLabel}${msg}`)
+                    throw new Error(msg)
+                }
+            } else {
+                if (targetCrc && onCard) {
+                    appendLog(`${passLabel}Card file matches the release (${targetCrc}). Flashing.`)
+                } else if (!targetCrc) {
+                    // An SD-only file, or a release row with no CRC recorded. The
+                    // device cannot verify what it is about to flash, and neither
+                    // can we, so say so plainly rather than let it look checked.
+                    appendLog(`${passLabel}No CRC to check this file against, so it is being flashed unverified`)
+                }
+                crcForFlash = targetCrc
+            }
+        }
+
+        // Flash the image now on the card (freshly transferred, or verified in
+        // place). The device's `AI firmware <name> 0xCRC` refuses to touch flash
+        // on a CRC mismatch — the last line of defence.
+        advancePhase('sending')
+        appendLog(`${passLabel}Sending firmware flash command...`)
+
+        // The device reports nothing over BLE while it erases/writes flash
+        // (its progress prints go to the local UART console only); the next
+        // line we receive is the final "Firmware update OK/FAILED", minutes
+        // later. Start the elapsed clock and advance to 'flashing' after a
+        // short grace so the UI never sits frozen on "waking up".
+        flashStartRef.current = Date.now()
+        setFlashElapsedSec(0)
+        const flashPhaseTimer = setTimeout(() => advancePhase('flashing'), 8000)
+        try {
+            await session.execute(() => commandRegistry.aifirmware(filenameToFlash, crcForFlash))
+        } finally {
+            clearTimeout(flashPhaseTimer)
+            flashStartRef.current = null
         }
 
         if (unmountedRef.current) return

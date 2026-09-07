@@ -244,6 +244,8 @@ private async uploadOutbox() {
 }
 ```
 
+The outbox is uploaded in a fixed foreign-key order — `projects`, then `devices`, then `deployments` — so a parent row always lands before the child that references it. Because of this, `DeploymentService.createDeployment` queues an idempotent device `CREATE` alongside the deployment (the server's devices insert is `ON CONFLICT DO NOTHING`), guaranteeing the device is in the same push and reaches the server first. Without it, a deployment whose device was never synced fails with `23503` (foreign key) and only a self-healing retry in `SupabaseSyncService` recovers it a cycle later, which the operator sees as a transient sync error (#294). A bare "touch" of the device to trigger UI reactivity records no outbox operation, so it does not count.
+
 ### Pull
 
 ```typescript
@@ -257,6 +259,17 @@ private async pullRemoteChanges() {
   // RLS has already filtered to allowed data only
 }
 ```
+
+> [!WARNING]
+> **Both directions name their columns by hand, and both have dropped some.** `syncProjects`
+> assigns each field of a project row one line at a time, and ww-backend's `push_changes` lists
+> the columns it accepts in an `INSERT` and an `UPDATE`. A column missing from either list is
+> not an error: the pull leaves the local record at its model default, and the push writes the
+> row without that value and still reports success. `lorawan_required`, `record_gps_in_images`
+> and `is_archived` were missing from both for months (#285, ww-backend #170), so a project set
+> to record GPS on the website deployed with GPS zeroed and nothing said why. When you add a
+> column, add it to both lists in the same change, and check the round trip rather than the
+> save dialog.
 
 ### Retry Logic
 
@@ -407,6 +420,48 @@ npm run schema:validate:live:cloud-dev
 # 4. Increment the `version:` field at the top of src/database/schema.ts
 # 5. Add migration in src/database/migrations.ts (or database reset for dev)
 ```
+
+### What the validator actually checks, and what it cannot
+
+Ground-truthed on 5 September 2026 against `qegeovogqxiouqbrxmnh` (Dev_Wildlife_Watcher).
+Read this before trusting a green run.
+
+The counts below come from a branch whose `database.types.ts` was current. Run it on a
+branch whose types are stale and it stops at step 1 instead, which is the tool doing its
+job: on `dev` that day it refused to go further because the live database had the four
+`projects` flash columns and the committed types did not.
+
+**It compared nothing at all until that date.** `parseSupabaseTypes` used a regex to find the
+`Tables` block, and a regex cannot match balanced braces more than one level deep. Against a
+real generated types file it captured nothing, found **zero** tables, downgraded every
+WatermelonDB table to a *warning* ("exists in WatermelonDB but not in Supabase types"), and
+then reported `✅ Schema validation PASSED (with warnings)` because there were no errors. A
+validator that passes vacuously is worse than one that fails, because layer 4 of the defence
+above reads as green while checking nothing. It now walks the braces explicitly and finds 43
+tables.
+
+**A reported difference is not automatically a bug.** The first honest run found 83, and the
+shape matters more than the number:
+
+| Column | Count | What it is |
+|---|---|---|
+| `modified_by`, `deleted_at`, `updated_at`, `created_at` | 76 | audit columns the app defines on tables that genuinely lack them in Supabase (verified: `account_deletion_requests` has none of the three) |
+| `deployment_comments`, `camera_location_description`, `camera_location_image_path` | 3 | **legacy**, and labelled as such in `models/Deployment.ts`. The backend split the first into `start_`/`end_deployment_comments` and pluralised the third to `camera_location_image_paths`; the app uses the new names everywhere |
+| `remote_id` on `project_invitations` | 1 | confirmed absent upstream. An empty table defeats reading columns from a row, so ask for the one column: `GET /rest/v1/<table>?select=<column>&limit=1` returns 400 when it does not exist, and 200 when it does |
+
+So the validator cannot tell deliberate legacy from real drift, and never will be able to.
+Treat its output as a list to explain, not a list to fix.
+
+**Two traps that stop it running at all on Windows.** `check-types-cloud.ps1` must be saved as
+**UTF-8 with a BOM**: it contains emoji, and Windows PowerShell 5.1 reads a BOM-less `.ps1` as
+ANSI, then fails to tokenise and reports a syntax error on an innocent line. And if
+PowerShell's execution policy blocks `npx.ps1`, use `npx.cmd` rather than changing the policy.
+
+**The environment label is not the project ref.** `validate-watermelon-schema-live.js` takes
+the ref from `EXPO_PUBLIC_SUPABASE_URL` in `.env.development` at runtime. Its `cloud-dev`
+description used to hardcode `nuhwmubvygxyddkycmpa`, which is Stag_Wildlife_Watcher, while
+validating against dev all along. Confirmed with `npx supabase projects list`: dev is
+`qegeovogqxiouqbrxmnh`, staging is `nuhwmubvygxyddkycmpa`.
 
 > [!WARNING]
 > **Never make schema changes directly in this repo.** All schema changes originate from the `wildlife-watcher-backend` repository. See the README for the full database workflow.

@@ -2,20 +2,21 @@ import React, { useRef } from 'react'
 import { View, StyleSheet, ScrollView } from 'react-native'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useTheme, Text } from 'react-native-paper'
-import { useDeploymentMonitor, ActivityLogEntry } from '../hooks/useDeploymentMonitor'
-import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
+import { ActivityLogEntry } from '../hooks/useDeploymentMonitor'
 
 interface LiveActivityLogProps {
-    device: ExtendedPeripheral | null
+    // Owned by the parent's single useDeploymentMonitor instance. This component
+    // used to run its own instance, which doubled the image-count poll and woke
+    // the Himax twice a minute (#268).
+    activityLog: ActivityLogEntry[]
     maxItems?: number
 }
 
-export const LiveActivityLog: React.FC<LiveActivityLogProps> = ({ 
-    device,
+export const LiveActivityLog: React.FC<LiveActivityLogProps> = ({
+    activityLog,
     maxItems = 50
 }) => {
     const theme = useTheme()
-    const { activityLog } = useDeploymentMonitor(device)
     const scrollViewRef = useRef<ScrollView>(null)
 
     // Auto-scroll logic removed since we reverse render logic with newest at top, 
@@ -82,7 +83,6 @@ function getEventColor(category: string, theme: any) {
         case 'sleep':
             return theme.colors.onSurfaceVariant
         case 'selftest_warn':
-        case 'motion_rejected':
             return theme.colors.error
         case 'motion':
             return theme.colors.tertiary || '#FF9800'

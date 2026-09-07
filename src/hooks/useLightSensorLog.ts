@@ -8,29 +8,48 @@ const LOG_DIR = FileSystem.documentDirectory + 'light-sensor/'
 const LOG_FILE = LOG_DIR + 'readings.json'
 const CSV_FILE = LOG_DIR + 'light-sensor-readings.csv'
 
-/** One bench measurement: the AE registers plus the context needed to interpret them. */
+/**
+ * One bench measurement: the AE registers, the app's own verdict by each rule,
+ * and the device's verdict when it sent one.
+ *
+ * The registers are the record; the verdicts are interpretations of them. A
+ * row carries every rule's answer so a run can be re-scored without going back
+ * to the bench, and so two rules can be compared on identical inputs.
+ */
 export interface LightReading {
     /** ISO 8601, device-local clock */
     timestamp: string
-    /** AE mean 0-255 — the light level */
+    /** AE mean 0-255, the sensor's own average scene brightness */
     aeMean: number
     integration: string
     analogGain: string
     digitalGain: string
     /** 'Y' once the sensor's auto-exposure has settled; readings before that drift */
     aeConverged: string
-    /** op23 at the time of the reading, so an exported row can be re-scored later */
+    /**
+     * The mean-rule threshold this row was scored against. The app's own value,
+     * seeded from op23 but not written back, so it can differ from the device's.
+     */
     darkThreshold: number
     deviceName: string
+    /** Which rule the operator had selected when this row was taken */
+    approach?: 'mean' | 'gain' | 'compare'
+    /** The mean rule's verdict from these registers, at `darkThreshold` */
+    meanRuleDark?: boolean
+    /** Hysteresis band the mean rule used, 0 when off */
+    hysteresis?: number
+    /** The gain rule's verdict from these registers; absent when gain or convergence was not reported */
+    gainRuleDark?: boolean
     /**
      * The firmware's own verdict, when it sent one. Absent on a plain capture
      * with the flash and auto-switch both off, because no light check runs.
      */
     dark?: boolean
+    /** The decision line as received, so the verdict can be re-read whatever the wording */
+    deviceLine?: string
     /**
-     * Both gains at their ceiling. Worth its own column: it forces DARK whatever
-     * the mean says, so a row where it is true cannot be re-scored on the mean
-     * alone.
+     * Both gains at their ceiling, from the decision line. Forces DARK whatever
+     * the mean says in the mean-based firmware; not sent by the gain-based one.
      */
     gainRailed?: boolean
     /** Local file path of the frame this reading came from, when one was captured */
@@ -39,9 +58,12 @@ export interface LightReading {
     note?: string
 }
 
+// Existing columns keep their names and order, so a CSV from before the rules
+// were added still lines up with a new one in the same spreadsheet.
 const CSV_COLUMNS: (keyof LightReading)[] = [
     'timestamp', 'aeMean', 'darkThreshold', 'dark', 'gainRailed', 'integration',
     'analogGain', 'digitalGain', 'aeConverged', 'deviceName', 'note', 'imageUri',
+    'approach', 'meanRuleDark', 'hysteresis', 'gainRuleDark', 'deviceLine',
 ]
 
 /** RFC 4180: quote every field, double any embedded quote. Keeps notes with commas safe. */

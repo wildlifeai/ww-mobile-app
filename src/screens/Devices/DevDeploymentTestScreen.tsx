@@ -5,7 +5,8 @@
  * Accessible from Engineer Console → Flows → "Dev Deployment Test".
  *
  * All settings are visible on a single scrollable page (no accordion).
- * Includes flash controls (Off/Visible/IR + brightness) from CameraSettingsTestSection.
+ * Flash controls (op13 type + op9 brightness) come from the shared
+ * FlashSelector, the same component the Capture Picture flow uses.
  * Project settings changes persist to the database.
  *
  * Uses the existing end-monitoring flow (same as production).
@@ -24,12 +25,12 @@ import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWButton } from '../../components/ui/WWButton'
 import { WWSelect } from '../../components/ui/WWSelect'
 import { WWText } from '../../components/ui/WWText'
-import { WWTextInput } from '../../components/ui/WWTextInput'
 import { WWIcon } from '../../components/ui/WWIcon'
 import { WWBleDisconnectedBanner } from '../../components/ui/WWBleDisconnectedBanner'
 import { RootStackParamList, AppParams } from '../../navigation/types'
 import { DeploymentMonitorView } from '../Deployments/components/DeploymentMonitorView'
 import { FinishProgressDialog } from './components/FinishProgressDialog'
+import { FlashSelector } from '../../components/device/FlashSelector'
 import { BatteryLevelCard } from '../Deployments/components/BatteryLevelCard'
 import { SdCardStatusCard } from '../Deployments/components/SdCardStatusCard'
 import { useDevDeployment } from './hooks/useDevDeployment'
@@ -292,31 +293,12 @@ export const DevDeploymentTestScreen = () => {
                 <Card style={styles.card}>
                     <Card.Title title="Flash Settings" subtitle="Op 13 (LED type) + Op 9 (brightness)" />
                     <Card.Content style={styles.cardContent}>
-                        <WWText variant="labelLarge">Flash LED Type</WWText>
-                        <SegmentedButtons
-                            value={flashParams.flashLed.toString()}
-                            onValueChange={(val) => setFlashParams(prev => ({ ...prev, flashLed: parseInt(val, 10) }))}
-                            buttons={[
-                                { value: '0', label: 'Off' },
-                                { value: '1', label: 'White' },
-                                { value: '2', label: 'IR' },
-                            ]}
-                            style={styles.segmented}
-                        />
-
-                        <View style={styles.spacer} />
-
-                        <WWTextInput
-                            label="LED Brightness (0-100%)"
-                            value={flashParams.ledBrightness.toString()}
-                            keyboardType="numeric"
+                        <FlashSelector
+                            flashLed={flashParams.flashLed}
+                            onFlashLedChange={(v) => setFlashParams(prev => ({ ...prev, flashLed: v }))}
+                            ledBrightness={flashParams.ledBrightness}
+                            onLedBrightnessChange={(v) => setFlashParams(prev => ({ ...prev, ledBrightness: v }))}
                             disabled={submitting}
-                            onChange={(t: string) => {
-                                let v = parseInt(t.replace(/[^0-9]/g, ''), 10)
-                                if (isNaN(v)) v = 0
-                                if (v > 100) v = 100
-                                setFlashParams(prev => ({ ...prev, ledBrightness: v }))
-                            }}
                         />
                     </Card.Content>
                 </Card>

@@ -100,7 +100,8 @@ Commands prefixed with `AI` — routed via BLE to the Himax chip. These interact
 | `AI info` | `30515200 K total... 30511056 K available.` | SD card space (total / available KB) |
 | `AI camera` | `HM0360` / `RP2` / `RP3` | Connected camera sensor type |
 | `AI inithm0360` | `OK` / `Error` | Reinitialise HM0360 sensor (recovery from black images) |
-| `AI firmware <filename> [crc]` | `Firmware update OK/FAILED` | Update Himax firmware from SD card image (supports optional CRC validation) |
+| `AI firmware <filename> [crc]` | `Firmware update OK/FAILED` | Update Himax firmware from SD card image. With a CRC the device recomputes the file's own and refuses to touch flash on a mismatch |
+| `AI crc <filename>` | `CRC 0x4569 (487424 bytes)` | CRC16-CCITT and size of a file in `/MANIFEST/`. The same algorithm the file transfer uses, so a file already on the card can be checked against a release or a model without sending it again |
 
 #### Operational Parameters
 
@@ -151,20 +152,23 @@ The following subset is directly used during deployment:
 
 | Index | Constant | Role |
 |-------|----------|------|
-| 5 | `NUM_PICTURES` | Images per trigger (factory default 1; the Dev Deployment screen defaults its own control to 2 for JPG+BMP pairs) |
+| 5 | `NUM_PICTURES` | Images per trigger. Start Monitoring writes 1 (JPEG only, the default since 5 September 2026) or 2 when the advanced BMP toggle is off; the Dev Deployment screen defaults its own control to 2 for JPG+BMP pairs |
 | 7 | `TIMELAPSE_INTERVAL` | 0 for activity, N seconds for timelapse/mixed |
 | 8 | `INTERVAL_BEFORE_DPD` | Always 1000ms |
 | 9 | `LED_BRIGHTNESS` | Flash brightness 0–100% |
 | 10 | `CAMERA_ENABLED` | 1 = on, 0 = off (always sent last) |
 | 11 | `MD_INTERVAL` | 1000ms for activity/mixed, 0 for timelapse |
 | 12 | `FLASH_DURATION` | Flash pulse duration in ms |
-| 13 | `FLASH_LED` | Flash type: 0 = off, 1 = visible, 2 = IR |
+| 13 | `FLASH_LED` | Which LED the capture flash uses: 0 = none, 1 = visible, 2 = IR. Written from the project's `flash_led` at deployment |
 | 14 | `MODEL_PROJECT` | Currently loaded AI model ID |
 | 15 | `MODEL_VERSION` | Currently loaded AI model version |
 | 17 | `MD_SENSITIVITY` | 1 for activity/mixed, 0 for timelapse |
 | 18 | `TEST_MODE_BITS` | Diagnostic bitmask (bit 1 = `TEST_BIT_SAVE_BMP`, bit 3 = `TEST_BIT_SKIP_FILE_CREATION`) |
 | 19 | `IMAGES_COUNT` | Total images captured (reset on new deployment) |
 | 20 | `IMAGES_FILE_INDEX` | Image subdirectory counter (reset on new deployment) |
+| 34 | `FLASH_MODE` | When the flash is armed: 0 = off, 1 = light sensor, 2 = always on, 3 = time of day. Written from the project's `flash_mode`. With op13 it is the gate the firmware's `ledFlashIsActive()` tests, so it also decides whether motion frames get IR light at night |
+| 35 | `FLASH_TOD_START` | Time-of-day mode only: minutes after midnight UTC when the flash turns on |
+| 36 | `FLASH_TOD_DURATION` | Time-of-day mode only: how many minutes it stays on, wrapping past midnight |
 
 ### OP Bulk Fetch Optimization (`AI getop -1`)
 
@@ -204,56 +208,57 @@ The Engineer Console provides two reference modals:
 
 ## Flows & Processes Reference
 
-All flows are accessible from the Engineer Console → **Flows** button. They are grouped by category.
+All flows are accessible from the Engineer Console → **Flows** button, grouped by what you are
+trying to do rather than by the mechanism underneath.
 
-### 📷 Camera & Capture
+> [!NOTE]
+> The modal's group arrays set the display order. It used to filter `COMMANDS`, so the order came
+> from the declaration order in `types.ts` and editing the modal changed nothing on screen. See
+> `pick()` in [FlowsReferenceModal.tsx](../../src/components/FlowsReferenceModal.tsx).
 
-| Flow | What It Does |
-|------|-------------|
-| `CAPTURE_PREVIEW` | Runs a `getops` pre-flight to verify `CAMERA_ENABLED` (OP 10 = 1) and `TEST_MODE_BITS` (OP 18 = 0), fixing either if needed. Then sends `AI capture 1 500`, receives the image via BLE binary transfer, and displays it in the console. Quick visual check without navigating to a dedicated screen. |
-| `CAMERA_SETTINGS_TEST` | Navigates to the [Camera Settings Test Screen](#camera-settings-test-screen). Full flash/AE testing environment with gallery. |
-
-### 🔲 Motion Detection
-
-| Flow | What It Does |
-|------|-------------|
-| `MOTION_DETECTION_PREVIEW` | Navigates to the [Standalone Motion Detection Screen](#motion-detection-screen). Real-time 16×16 grid visualization. |
-
-### ⚙️ Device Configuration
+### 📷 Camera & Sensors
 
 | Flow | What It Does |
 |------|-------------|
-| `RESET_TO_DEFAULTS` | Full factory reset: diffs all operational parameters against `FACTORY_DEFAULTS` and writes those that differ, erases the AI model (`erasemodel`), and clears the deployment ID and GPS. Calls the same `executeResetToDefaults` as the deployment pipeline, but **without** `skipIdentityReset` — so unlike `pipeline.resetOps()` it also wipes identity. |
+| `CAPTURE_PICTURE` | The single camera flow: camera mode, flash, one capture with a step list, the picture and a gallery. Holds the device awake for the visit and forces a chosen flash on; like every flow, it writes to the device only once the user has opened it. Everything about it is in [Capture-Picture.md](../resources/Capture-Picture.md). |
+| `MOTION_DETECTION_PREVIEW` | Real-time 16×16 grid. The best-behaved multi-step flow: reads the op array once and restores op18/op8 on the way out. |
+| `LIGHT_SENSOR` | The AE registers via `AI light`, about 2 s and no photo. Single shot, or streamed every few seconds from Settings. The screen shows the level and registers; every row is logged with the app's mean and gain verdicts beside the device's own, and exportable. Turns automatic camera switching (op26) off on entry. See [Light-Sensor.md](../resources/Light-Sensor.md). |
 
 ### 📲 Firmware Updates
 
 | Flow | What It Does |
 |------|-------------|
-| `UPDATE_BLE_FIRMWARE` | Navigates to the DFU screen for Nordic nRF52 OTA update (ZIP format). |
-| `UPDATE_HIMAX_FIRMWARE` | Triggers the Himax AI processor firmware update (`AI firmware <file> <0xCRC>` + `AI reset`). Normally flashes **both** camera-variant images — see [Himax-Firmware-Update.md](../resources/Himax-Firmware-Update.md#dual-image-update-camera-variant-pair). |
-| `FIRMWARE_STATUS` | Navigates to the Firmware Status screen — compares installed BLE + Himax versions against cloud, offers version selection, and provides updates. |
+| `UPDATE_BLE_FIRMWARE` | Nordic nRF52 OTA update (ZIP) via the DFU screen. |
+| `UPDATE_HIMAX_FIRMWARE` | Himax AI processor update (`AI firmware <file> <0xCRC>` + `AI reset`). Normally flashes **both** camera-variant images, see [Himax-Firmware-Update.md](../resources/Himax-Firmware-Update.md#dual-image-update-camera-variant-pair). |
+| `FIRMWARE_STATUS` | Compares installed BLE + Himax versions against cloud and offers updates. Also reached from Start Monitoring with `restrictToLatest`, so the screen is production code, not only a bench tool. |
+| `MODEL_VALIDATION` | Full AI model lifecycle: validate metadata → download → transfer to SD → `erasemodel` → `loadmodel`. Grouped here rather than under file transfer because the transfer is how it works, not what it is for. |
 
-### 📁 File Transfer
-
-| Flow | What It Does |
-|------|-------------|
-| `TX_FILE` | Sends `AI txfile .` to request the last captured file from the AI module. The binary response is received via the BLE file transfer pipeline. |
-| `FILE_TRANSFER_TEST` | Sends a test file to the device SD card via BLE to validate the file transfer pipeline end-to-end. |
-| `MODEL_VALIDATION_TEST` | Full AI model lifecycle test: validates model metadata → downloads model files from cloud → transfers to SD card via BLE → erases old model (`erasemodel`) → loads new model (`loadmodel <id> <ver>`). |
-
-### 🧪 Deployment Testing
+### ⚙️ Device Configuration
 
 | Flow | What It Does |
 |------|-------------|
-| `DEV_DEPLOYMENT_TEST` | Navigates to the [Dev Deployment Test Screen](../resources/Dev-Deployment-Guide.md). Full deployment with manual control over capture method, flash, diagnostics, and AI model. |
+| `RESET_TO_DEFAULTS` | Diffs every op against `FACTORY_DEFAULTS` and writes those that differ, clears the deployment ID and zeroes GPS. **It also erases the AI model**, which the screen now warns about. Counters in `RESET_PRESERVED_OPS` survive, and ops the connected firmware does not report are skipped. |
 
-### 🖥️ Console
+### 🧪 Tests
 
 | Flow | What It Does |
 |------|-------------|
-| `CLEAR_CONSOLE` | Local-only action (`type: 'local'`). Clears the console log output. No BLE command sent. |
+| `DEV_DEPLOYMENT_TEST` | Full deployment with manual control over capture method, flash, diagnostics and AI model. See [Dev-Deployment-Guide.md](../resources/Dev-Deployment-Guide.md). |
+| `FILE_TRANSFER_TEST` | Sends a test file to the SD card to exercise the `ftx` pipeline end to end. |
 
----
+### Removed, and why
+
+| Flow | Fate |
+|------|------|
+| `CAPTURE_PREVIEW` | Folded into `CAPTURE_PICTURE`. Measured on the bench, the two were identical on the wire except that Capture Preview sent one extra `AI slots`: 7 commands against 6, for less function. |
+| `TX_FILE` | Deleted. It was the only `process` entry with no navigation handler, so it fell through to `writeRaw` and bypassed the command registry: its `Failed to open ''. (6)` never reached the operator, while `commandRegistry.txfile` handles that case and `useCapturePreview` already calls it properly. |
+| `CLEAR_CONSOLE` | Deleted as a flow, since it sent nothing to the device. Clearing the output is now a **Clear** button on the console header. |
+| `TRANSFER_CONFIG` | Deleted with its screen and hook, 455 lines reachable from nowhere. The deployment pipeline transfers config as part of a real deployment. |
+
+> [!WARNING]
+> `TRANSFER_AI_MODEL` is still defined and routed but **absent from the Flows modal**, so there is
+> no way to run it. The modal is a hand-maintained allowlist with no coverage test, unlike
+> `CommandReferenceModal`, so an entry can be fully wired and still invisible.
 
 ## Hardware Testing Tools (Detailed)
 
@@ -271,13 +276,30 @@ The following screens are accessed from the Engineer Console → Flows modal. Th
 - Renders the 16×16 grid as a precomputed text string — visual feedback loop helps understand environmental threshold behaviour
 - **On completion/stop**, automatically resets `TEST_MODE_BITS` to 0 so subsequent captures (e.g., photo preview) save JPEG files normally
 
+**The flash on this screen, and how it differs from the field.** A test frame is lit through the
+awake path, which takes the LED from op13 and the brightness from op9. A deployed camera lights
+its motion frames through the STROBE path armed just before it sleeps, which takes them from
+op21 `MD_FLASH_LED` and op22 `MD_FLASH_BRIGHTNESS_PERCENT`, infrared at 50 percent by default.
+Same gate, different LED and brightness. The screen's two controls therefore open on the
+device's own op21 and op22 rather than on Off and 5 percent, so a night test predicts the
+deployment instead of a dimmer version of it.
+
+The gate itself is op34 with op13: since `ae_review` the LED fires only when the flash mode arms
+it, so the screen holds op34 at always-on for a test that asks for an LED and puts the previous
+mode back when the test ends ([`flashHold.ts`](../../src/ble/session/flashHold.ts)).
+
 ### Camera Settings Test Screen
 
-**Screen:** `CameraSettingsTestScreen.tsx`
+**Screen:** `CapturePictureScreen.tsx`
 **Purpose:** Capture test images with configurable flash parameters to validate LED hardware and exposure settings.
 
 **Features:**
-- **Flash Configuration:** Live adjustment of `Flash Duration`, `Flash LED Type` (visible/IR/none), and `LED Brightness` (0–100%)
+- **Flash:** Off / White / IR (op13) and `LED Brightness` (op9, 0-100%), via the shared
+  [`FlashSelector`](../../src/components/device/FlashSelector.tsx). Brightness only appears once a
+  flash is chosen, and picking one while op9 reads 0 raises it to 50%: the bench found op13 written
+  and the LED selected while the device reported `Flash brightness: 0%`, so the flash lit nothing
+  and nothing on screen said why. White balance was removed from this flow; op27/op28 remain in
+  `OP_PARAMETER` and are still covered by the factory reset.
 - **Direct Capture:** Triggers via `AI capture 1 1000` (direct command)
 - **DPD Synchronisation:** Before capture, writes `MD_INTERVAL=0` and `TIMELAPSE_INTERVAL=0` alongside flash OPs (9, 12, 13), then waits for Deep Power Down (`Sleep` message). This ensures CONFIG.TXT is committed with new flash parameters and zeroed background triggers.
 - **Post-Capture Cleanup:** Sends `CAMERA_ENABLED=0` (`setop 10 0`) and waits for the resulting sleep cycle — returns device to clean idle state.
@@ -322,7 +344,9 @@ HM0360 AE regs:
   AEConverged?: Y
 ```
 
-These values are captured by the Camera Settings Test Screen and displayed in the AE Data panel with a visual AE Mean bar (0–255).
+These values are captured per image by the Capture Picture flow. The standing AE panel was replaced
+by the picture itself; the numbers now appear beside the shot they describe, in the preview modal,
+rather than beside whichever shot came next.
 
 **Used as the light sensor.** The AE registers *are* the day/night sensor: the firmware averages them over several frames and turns them into one dark/bright decision that drives the flash (OP 13) and automatic camera switching (OP 26). The Light Sensor flow exposes this, and `AI light` measures on demand without taking a photo. See [Light-Sensor.md](../resources/Light-Sensor.md).
 

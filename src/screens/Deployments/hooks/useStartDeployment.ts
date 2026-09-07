@@ -15,7 +15,8 @@ import FirmwareService from '../../../services/FirmwareService'
 import { useBleSession } from '../../../hooks/useBleSession'
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { checkSdCard } from '../../../ble/workflows/checkSdCard'
-import { extractErrorBits } from '../../../ble/messageClassifier'
+import { selfTestCache } from '../../../ble/protocol/selfTestCache'
+import { parseSelfTestBits, SelfTestBit } from '../../../utils/deviceSelfTest'
 import { useBleActions } from '../../../providers/BleEngineProvider'
 import { useDeploymentConfiguration } from '../../../hooks/useDeploymentConfiguration'
 import { useBle } from '../../../hooks/useBle'
@@ -85,17 +86,11 @@ export const useStartDeployment = ({
     // Phone photos of the deployment site (local file:// paths until uploaded)
     const [deploymentPhotoPaths, setDeploymentPhotoPaths] = useState<string[]>([])
 
-    // Capture format (dev/testing quality trial): JPG+BMP by default; the advanced
-    // "Record JPEG only" toggle opts out. See bmp-ingestion-analysis.md.
-    const [recordJpegOnly, setRecordJpegOnly] = useState(false)
-
-    // Hi-res photos (op32): one 1216x960 JPEG per trigger instead of 640x480.
-    // Requires no on-device AI model (the raw frame occupies the NN arena), so
-    // the toggle is blocked for projects with a model. Written after resetOps
-    // so the factory-reset diff does not clobber it. The firmware picks the
-    // datapath at sensor init, so hi-res starts from the first wake after the
-    // device next sleeps. See firmware _Documentation/hires-capture.md.
-    const [hiResPhotos, setHiResPhotos] = useState(false)
+    // Capture format: JPEG only by default (Victor, 5 September 2026). The raw
+    // BMP was a quality trial (bmp-ingestion-analysis.md) and costs a second
+    // picture per trigger, so it is now opt-in from the advanced settings
+    // rather than what every deployment writes.
+    const [recordJpegOnly, setRecordJpegOnly] = useState(true)
 
     const [submitting, setSubmitting] = useState(false)
     const [project, setProject] = useState<any>(null)
@@ -311,11 +306,6 @@ export const useStartDeployment = ({
 
         log('[DeploymentDetails] Project changed by user:', projectId)
         setProject(newProject);
-
-        if (newProject.model_id) {
-            // Hi-res requires the NN off — not available for AI-model projects
-            setHiResPhotos(false)
-        }
 
         if (newProject.capture_method_id) {
             const methods = await ReferenceDataService.getCaptureMethods()
@@ -552,12 +542,21 @@ export const useStartDeployment = ({
                     .catch((e) => logWarn('[Deployment] Photo upload deferred:', e))
             }
 
-            // 6. Reset OPs to factory defaults before applying deployment config
+            // 6. Reset OPs to factory defaults before applying deployment config.
+            // The only reset this deployment gets (connecting is read-only, #268):
+            // a device that cannot be reset must not be deployed with whatever a
+            // previous deployment or an Engineer Console session left on it.
+            let opsAfterReset: string[] = currentOps
             try {
-                await pipeline.resetOps(bleSession, cb, currentOps)
+                // The reset returns the op table as it now stands. Configuring
+                // against the pre-reset snapshot instead would skip every write
+                // whose old value happened to match, leaving the device on the
+                // factory default the reset had just written (#282).
+                opsAfterReset = (await pipeline.resetOps(bleSession, cb, currentOps)) ?? currentOps
             } catch (resetError) {
-                logWarn('[Deployment] OP reset failed, continuing with configuration:', resetError)
-                progress.addLog('OP reset failed — continuing with configuration')
+                logError('[Deployment] OP reset failed, aborting deployment:', resetError)
+                progress.addLog('OP reset failed — aborting deployment')
+                throw new Error('The device could not be reset to defaults. Reconnect and try again.')
             }
 
             // 7. Configure device OPs for this specific deployment (shared pipeline)
@@ -568,43 +567,32 @@ export const useStartDeployment = ({
                     timelapseInterval: project.timelapse_interval_seconds || 300,
                     recordGpsInImages: project.record_gps_in_images || false,
                     gpsLocation,
-                }, cb, currentOps)
+                    flash: project,
+                }, cb, opsAfterReset)
             } catch (configError) {
                 logError('[Deployment] Configuration failed:', configError)
                 progress.addLog('Configuration failed — aborting deployment')
                 throw configError
             }
 
-            // 7b. Capture format.
-            // Hi-res (op32=1): one 1216x960 JPEG per trigger via the CPU pipeline.
-            // Forces JPEG-only single-shot (BMP alternation and multi-shot are
-            // untested on the hi-res path, and single-shot also avoids the
-            // back-to-back delivery-contention caveat in hires-capture.md).
-            // Requires no AI model — guarded in the UI and re-checked here;
-            // resetOps/syncAiModel already erased any stale model when the
-            // project has none.
-            // Otherwise: JPG+BMP by default (quality trial); the advanced
-            // "Record JPEG only" toggle disables BMP. TEST_BIT_SAVE_BMP makes the
-            // firmware alternate JPG/BMP, so 2 pics/trigger yields one of each.
-            // Non-fatal: on failure the firmware keeps its clean-slate defaults
-            // (JPEG only, 640x480). See bmp-ingestion-analysis.md.
-            const hiRes = hiResPhotos && !project.model_id
+            // 7b. Capture format: one JPEG per trigger by default. Turning the
+            // advanced "Record JPEG only" toggle off adds the raw BMP, which
+            // TEST_BIT_SAVE_BMP produces by alternating file types, so it needs
+            // 2 pics/trigger to yield one of each. The BMP was a quality trial
+            // (bmp-ingestion-analysis.md) and was the default until 5 September
+            // 2026; it doubles the captures and the card usage, so it is now
+            // opt-in. Non-fatal: on failure the firmware keeps its clean-slate
+            // defaults, which are JPEG only anyway. The hi-res option that used
+            // to sit here (op32) went with the firmware's ae_review build,
+            // which reserves that parameter.
             try {
-                const testModeBits = (recordJpegOnly || hiRes) ? 0 : TEST_BIT_SAVE_BMP
-                const numPictures = (recordJpegOnly || hiRes) ? 1 : 2
+                const testModeBits = recordJpegOnly ? 0 : TEST_BIT_SAVE_BMP
+                const numPictures = recordJpegOnly ? 1 : 2
                 await bleSession?.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TEST_MODE_BITS, value: testModeBits }))
                 await bleSession?.execute(() => commandRegistry.setop({ index: OP_PARAMETER.NUM_PICTURES, value: numPictures }))
-                if (hiRes) {
-                    await bleSession?.execute(() => commandRegistry.setop({ index: OP_PARAMETER.CAM_RESOLUTION, value: 1 }))
-                    progress.addLog('Capture format: high-res JPEG (1216×960), 1 pic/trigger — starts from the first wake after the device sleeps')
-                } else {
-                    progress.addLog(`Capture format: ${recordJpegOnly ? 'JPEG only' : 'JPG + BMP'} (${numPictures} pic${numPictures > 1 ? 's' : ''}/trigger)`)
-                }
+                progress.addLog(`Capture format: ${recordJpegOnly ? 'JPEG only' : 'JPG + BMP'} (${numPictures} pic${numPictures > 1 ? 's' : ''}/trigger)`)
             } catch (formatError) {
                 logWarn('[Deployment] Failed to set capture format (non-fatal):', formatError)
-                if (hiRes) {
-                    progress.addLog('⚠️ Could not enable high-res — the deployment will record 640×480')
-                }
             }
 
             // 7c. One-shot light check: take a single reference photo (every capture
@@ -711,7 +699,7 @@ export const useStartDeployment = ({
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false
         }
-    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total, aiProcessorFailed, initPayload?.deviceFirmwareVersion, initErrors.deviceHealth, deploymentPhotoPaths, recordJpegOnly, hiResPhotos])
+    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total, aiProcessorFailed, initPayload?.deviceFirmwareVersion, initErrors.deviceHealth, deploymentPhotoPaths, recordJpegOnly])
 
     const handleFinishDismiss = useCallback(() => {
         progress.setIsFinishing(false)
@@ -757,12 +745,17 @@ export const useStartDeployment = ({
                     setSdCardStatus({ total: sdStatus.totalSpaceMb, free: sdStatus.freeSpaceMb })
                     return
                 } catch (err: any) {
-                    // Try to determine the exact cause by reading selftest status
+                    // Try to determine the exact cause from the self-test bits. The
+                    // `AI info` that just failed woke the device, and the wake's
+                    // broadcast is usually already in the cache; only ask if not.
                     try {
-                        const statusStr = await bleSession?.execute<string>(commandRegistry.selftest)
-                        const hexBits = statusStr ? extractErrorBits(statusStr) : null
+                        let bits: number | null = selfTestCache.getFresh(bleDevice.id, Date.now() - 10_000)?.bits ?? null
+                        if (bits === null) {
+                            const statusStr = await bleSession?.execute<string>(commandRegistry.selftest)
+                            bits = parseSelfTestBits(statusStr)
+                        }
                         // eslint-disable-next-line no-bitwise
-                        if (hexBits && (parseInt(hexBits, 16) & 0x0800)) {
+                        if (bits !== null && (bits & (1 << SelfTestBit.AI_NO_SD_CARD))) {
                             Alert.alert('No SD Card Detected', 'The device reports no SD card is inserted.', [{ text: 'OK' }])
                             setSdCardStatus(null)
                             return
@@ -813,8 +806,6 @@ export const useStartDeployment = ({
         handleBatteryCheck, handleSdCardCheck,
         // Capture format (advanced): JPG+BMP default, opt out to JPEG only
         recordJpegOnly, setRecordJpegOnly,
-        // Hi-res photos (advanced): op32 = one 1216x960 JPEG per trigger; needs no AI model
-        hiResPhotos, setHiResPhotos,
         // DFU control
         isDfuInProgress,
     }

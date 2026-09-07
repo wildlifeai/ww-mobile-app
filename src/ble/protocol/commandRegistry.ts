@@ -367,7 +367,17 @@ export const commandRegistry = {
     /^Op(?:Param)?(?:\s+|\[)\d+\]?\s*=\s*(.*)$/i,
     (match) => match[1].trim(),
     // 8s: AI processor may need DPD wake cycle (3-5s)
-    { timeoutMs: 8000 }
+    //
+    // failureRegex: the app and the firmware do not always agree on how many
+    // op indices exist (the app once carried op32 before any build shipped
+    // it), so asking for one the running build does not have is an expected
+    // outcome, not a fault. Without this the rejection matches
+    // neither success nor failure and the command sits for the full 8s,
+    // then retries for another 8. Measured on the bench, 2 September:
+    // 16s of dead time and two DPD wakes on entering Capture Preview,
+    // which blocked the capture behind it for long enough that the flow
+    // looked like it had simply done nothing.
+    { timeoutMs: 8000, failureRegex: /^Error:\s*index\s*\(-?\d+\)\s*must be between/i }
   ),
 
   capture: createSingleLineCommand<string | boolean>(
@@ -544,6 +554,23 @@ export const commandRegistry = {
     /End of directory|\d+\s+dirs?,\s+\d+\s+files?\.?/i,
     (lines) => lines,
     { timeoutMs: 10000 }
+  ),
+  /**
+   * CRC16-CCITT and size of a file in the device's config directory.
+   *
+   * The same algorithm the file transfer uses, so a file already on the card
+   * can be checked against `firmware.crc_checksum` without sending it again.
+   * Device replies `CRC 0x1234 (487424 bytes)`.
+   */
+  crc: createSingleLineCommand<{ crc: string; sizeBytes: number }>(
+    'crc',
+    (filename: string) => `AI crc ${filename}`,
+    /CRC\s+0x([0-9a-fA-F]{1,4})\s+\((\d+)\s+bytes\)/i,
+    (match) => ({
+      crc: `0x${match[1].toUpperCase().padStart(4, '0')}`,
+      sizeBytes: parseInt(match[2], 10),
+    }),
+    { timeoutMs: 30000, failureRegex: /Error:/i }
   ),
   inithm0360: createSingleLineCommand<boolean>(
     'inithm0360',

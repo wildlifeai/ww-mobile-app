@@ -24,6 +24,7 @@ import type { CreateProjectInput } from "../../types/project"
 import { log, logError } from '../../utils/logger'
 import { NewProjectBasicInfoSection } from './components/NewProjectBasicInfoSection'
 import { NewProjectSettingsSection } from './components/NewProjectSettingsSection'
+import { parseUtcMinutes } from '../../utils/projectFlash'
 
 
 interface ProjectFormData {
@@ -39,6 +40,10 @@ interface ProjectFormData {
 	model_id: string
 	record_gps_in_images: boolean
 	lorawan_required: boolean
+	flash_mode: string
+	flash_led: string
+	flash_window_start_minutes_utc: string
+	flash_window_minutes: string
 }
 
 export const NewProjectScreen = () => {
@@ -83,11 +88,19 @@ export const NewProjectScreen = () => {
 			model_id: "",
 			record_gps_in_images: false,
 			lorawan_required: false,
+			// Off, not the light-sensor mode the column defaults to: that mode
+			// depends on the firmware's AE light check, which is still being
+			// worked on (5 September 2026). A project says what it wants.
+			flash_mode: "off",
+			flash_led: "ir",
+			flash_window_start_minutes_utc: "",
+			flash_window_minutes: "",
 		},
 	})
 
 	// Watch for capture method selection
 	const selectedCaptureMethodId = watch("capture_method_id")
+	const selectedFlashMode = watch("flash_mode")
 
 	// Set defaults when reference data loads
 	useEffect(() => {
@@ -208,6 +221,16 @@ export const NewProjectScreen = () => {
 					: undefined,
 				record_gps_in_images: data.record_gps_in_images,
 				lorawan_required: data.lorawan_required,
+				flash_mode: data.flash_mode,
+				flash_led: data.flash_led,
+				// The window belongs to the time-of-day mode alone; in the other
+				// modes the camera ignores it, so the column stays null.
+				flash_window_start_minutes_utc: data.flash_mode === 'time_of_day'
+					? parseUtcMinutes(data.flash_window_start_minutes_utc)
+					: null,
+				flash_window_minutes: data.flash_mode === 'time_of_day' && data.flash_window_minutes
+					? Number(data.flash_window_minutes)
+					: null,
 			}
 
 			await createProject(input).unwrap()
@@ -244,6 +267,7 @@ export const NewProjectScreen = () => {
 					isTimeLapse={isTimeLapse}
 					isLoadingModels={isLoadingModels}
 					modelsError={modelsError}
+					flashMode={selectedFlashMode}
 				/>
 
 				{/* Submit Button */}

@@ -26,8 +26,8 @@ Developers **must** use the correct write path for each use case. Misuse causes 
 | Motion detection `md` sensitivity | direct `writeToDevice()` | Must bypass the transport controller to avoid blocking `setop`/`capture`. |
 | Motion detection `setop`/`capture` | `bleSession.execute()` | Queued commands that follow the md sensitivity write. |
 | Motion detection grid events | passive `textLine` subscription | Async text lines parsed via `useMotionDetectionStream`. |
-| Light sensor decision (`AE light check`) | passive `textLine` subscription | Sent after every light check, including ones the app did not request. Parsed by `lightCheck.ts`, surfaced through `useLightSensor`. See [Light-Sensor.md](./Light-Sensor.md). |
-| Self-test result (`Error bits = 0x…`) | passive `textLine` subscription | The device announces this after **every wake**, unprompted. `useCameraReadiness` listens rather than polling `selftest`. |
+| Light sensor registers (`HM0360 AE regs`) and decision (`AE light check`) | passive `textLine` subscription | Both sent after every capture and every light check, including ones the app did not request. The register block is the measurement; the decision line is parsed by `lightCheck.ts` as optional metadata. Surfaced through `useLightSensor`. See [Light-Sensor.md](./Light-Sensor.md). |
+| Self-test result (`Error bits = 0x…`) | passive `textLine` subscription | The device announces this after **every wake**, unprompted. `ble/protocol/selfTestCache.ts` keeps the latest reading per connection; the pre-deployment checks, the Capture Picture health card and `useCameraReadiness` read it and send `selftest` only when nothing has been heard since the wake they care about. |
 
 > [!TIP]
 > Before adding a command that polls for device state, check whether the device already
@@ -124,64 +124,7 @@ sequenceDiagram
 
 ### Binary Image Pipeline
 
-The capture preview uses a **three-phase flow** separated by device sleep cycles. Each phase allows the device to fully complete its inactivity → Save State → DPD cycle before the next command wakes it fresh. This prevents the FatFS race condition where `txfile`'s open file handle was invalidated by a concurrent `save_configuration()`.
-
-```mermaid
-sequenceDiagram
-    participant UI as useCapturePreview
-    participant Sess as BleSession
-    participant Dev as Device (nRF52/Himax)
-    participant Router as rxRouter
-    participant Bus as bleEventBus
-    participant IR as ImageReassembler
-    participant FS as FileSystem
-
-    rect rgb(240, 248, 255)
-    Note over UI,Dev: Phase 1: SETUP
-    UI->>Sess: execute(getops)
-    Sess-->>UI: OpParams (check OP 10, 18)
-    opt Camera not enabled or test bits set
-        UI->>Sess: execute(setop 10 1)
-        UI->>Sess: execute(setop 18 0)
-    end
-    UI->>Sess: waitForSleep(5000)
-    Dev-->>Bus: DEVICE_SIGNAL(SLEEP)
-    Bus-->>UI: resolve
-    end
-
-    rect rgb(255, 248, 240)
-    Note over UI,Dev: Phase 2: CAPTURE
-    UI->>Sess: execute(capture 1 500)
-    Sess-->>UI: "Captured 1 images. Last is 59200A60.JPG"
-    UI->>Sess: waitForSleep(5000)
-    Note over Dev: Inactivity → Save State → DPD
-    Dev-->>Bus: DEVICE_SIGNAL(SLEEP)
-    Bus-->>UI: resolve
-    end
-
-    rect rgb(240, 255, 240)
-    Note over UI,Dev: Phase 3: TRANSFER
-    UI->>Sess: execute(txfile 59200A60.JPG)
-    Note over Dev: Wakes fresh — FatFS clean
-    Note over Router: "14242 bytes in 59200A60.JPG"
-    Router->>Bus: textLine (announces byte count)
-    Bus->>IR: initialize(14242)
-
-    loop For each BLE notification
-        Note over Router: value[0] == 0x06? → binary
-        Router->>Bus: binaryPacket event
-        Bus->>IR: processPacket(data)
-        IR-->>UI: emit onImageProgress
-    end
-
-    Note over IR: totalBytesReceived >= 14242
-    IR->>FS: writeAsStringAsync(base64)
-    IR-->>UI: emit onImageComplete fileUri
-
-    Note over Router: "Finished sending 14242 bytes"
-    Router-->>UI: force_finalize safety net
-    end
-```
+An image capture is three commands (`getop -1`, `capture`, `txfile`) with the device's sleep cycles between them, then a stream of binary packets that `rxRouter` hands to `ImageReassembler`. The phases and their waits are described once, in [§12 Image capture](#12-image-capture-usecapturepreview) below; what Capture Picture does around them, with measured timings, is in [Capture-Picture.md](Capture-Picture.md). A sequence diagram used to sit here as well and drifted from the prose; it was removed on 3 September 2026.
 
 > [!NOTE]
 > Image packets are **intercepted in `rxRouter` before any string conversion** to avoid JS thread congestion. They are routed directly to the `ImageReassembler` via `bleEventBus.binaryPacket` and never logged.
@@ -556,7 +499,9 @@ stateDiagram-v2
     Rejected --> [*]
 ```
 
-**Transport states:** `IDLE` → `RUNNING` → `PAUSED_SLEEP` / `PAUSED_BUSY` (driven by device signals)
+**Transport states:** `IDLE` → `RUNNING` → `PAUSED_SLEEP` / `PAUSED_BUSY` (driven by device signals). A sleep pause lifts on a Wake or after `SLEEP_SETTLE_MS` (500 ms), whichever comes first: the Himax is woken only by a command, so a pause that waited for a Wake alone stranded everything queued behind it (found 3 September 2026).
+
+**Image stream gate:** beside those states, the queue sends nothing from the reassembler's `onImageStart` (the `N bytes in` line) to its `onImageComplete` or `onImageError` (`bleTransport.isStreaming`), with `IMAGE_STREAM_STALL_MS` (10 s of silence) as the backstop. A command sent into a stream is forwarded to the Himax at once, restarts the nRF's packet counter, and is answered only once the file has finished (found 3 September 2026: `slots` on re-entry, `AI processor not responding`, 412 phantom gaps, reply 14 s late).
 
 **Key features:**
 - **No echo dependency:** Unlike the legacy manager, there is no echo-waiting phase. The command matches against `successMatcher` / `failureMatcher` directly.
@@ -603,7 +548,11 @@ const gpsSet = await session.execute(() => commandRegistry.setgps(gpsString))
 
 **Guard:** `execute()` checks `peripheral.connected` before enqueuing. If the device is disconnected, it rejects immediately with `DEVICE_DISCONNECTED` — preventing dead commands from entering the queue.
 
-**File:** [createBleSession.ts](../../src/ble/session/createBleSession.ts)
+**Waiting on the device's own signals:** `waitForSleep(timeoutMs)` resolves on the next Sleep broadcast (at once when the device is already known to be asleep) and `waitForWake(timeoutMs)` on the next Wake; both return whether the signal came. A flow that needs the device to sleep, such as the camera switch whose reset happens on the way into DPD, must send nothing while it waits, since every command restarts the inactivity timer, and must budget for the timer the device woke with (op8 is read at wake, so a `setop 8` only changes the next window).
+
+**Holding the device awake:** a screen that sends several commands per visit can raise the device's inactivity timeout (op8) for the visit with `keepAwake.acquire(session, deviceId)` and put it back with `release`. The original value is kept on disk as well as in memory; if the link dropped before the release, it is written back the next time a flow takes a hold on that device, because op8 is a persisted field setting, not a session one. Nothing is written at connect time: connecting, and the Engineer Console, must change nothing on the device. While a hold is active, `keepAwake.holds(deviceId)` lets a flow skip its waits for sleep. Capture Picture is the first user.
+
+**Files:** [createBleSession.ts](../../src/ble/session/createBleSession.ts), [keepAwake.ts](../../src/ble/session/keepAwake.ts)
 
 ---
 
@@ -692,6 +641,7 @@ byte[3..] = payload          // actual JPEG image data
 - **Sequence tracking:** Monitors packet numbers and detects gaps (lost packets) and duplicates
 - **Completion:** Finalizes when `totalBytesReceived >= totalExpectedBytes`
 - **Watchdog:** 3-second inter-packet timeout triggers `finalizePartial()`
+- **Stream announcement:** `initialize()` emits `onImageStart`; the transport holds its queue until `onImageComplete` / `onImageError` (section 7)
 - **Force finalize:** Firmware sends `"Finished sending X bytes."` — `useCapturePreview` catches this and emits `force_finalize`
 - **Integrity checks on finalize:** Validates JPEG magic bytes (`0xFF 0xD8`), rejects images below 90% completeness
 - **Storage:** Converts binary buffer to base64, writes via `FileSystem.writeAsStringAsync()`
@@ -703,13 +653,31 @@ byte[3..] = payload          // actual JPEG image data
 
 ---
 
-### 12. Capture Preview (`useCapturePreview`)
+### 12. Image capture (`useCapturePreview`)
 
-Orchestrates the full capture-preview flow using a **three-phase architecture** separated by device sleep cycles. Each phase lets the Himax complete its full lifecycle (inactivity timer → Save State → DPD) before the next command wakes it fresh, preventing the FatFS race condition where `txfile` and `save_configuration()` competed for the same filesystem.
+The capture path used by Capture Picture, the deployment camera view and the Light Sensor screen (the hook keeps its old name for now). Orchestrates the capture using a **three-phase architecture** separated by device sleep cycles. Each phase lets the Himax complete its full lifecycle (inactivity timer → Save State → DPD) before the next command wakes it fresh, preventing the FatFS race condition where `txfile` and `save_configuration()` competed for the same filesystem.
 
 **Phase 1 — Setup:**
-1. `getops` to verify `CAMERA_ENABLED` (OP 10 = 1) and `TEST_MODE_BITS` (OP 18 = 0). Fixes either if needed.
-2. `waitForSleep(5000)` — device enters DPD.
+1. `session.getOps()` to verify `CAMERA_ENABLED` (OP 10 = 1) and `TEST_MODE_BITS` (OP 18 = 0). Fixes either if needed. Served from the per-wake op cache, so on a repeat capture this sends nothing.
+2. `waitForSleep(5000)` — returns immediately when the device is already down, which it usually is once the cached read stops waking it.
+
+> [!NOTE]
+> Those two changed together on 2 September 2026 and had to. Caching the read alone removed the
+> thing that *woke* the device, so `waitForSleep` then waited out its full timeout for a Sleep
+> signal that had already been sent: `startCapture` to `capture` measured 2.03s → 5.03s → **0.13s**
+> across the two changes. See [opCache.ts](../../src/ble/protocol/opCache.ts) and
+> [sleepState.ts](../../src/ble/protocol/sleepState.ts).
+
+> [!NOTE]
+> The wait in Phase 1 always runs, because the wake that follows it is what applies any parameter
+> written since the last wake: the firmware selects the flash LED and brightness (op13, op9) in
+> `setupLEDFlash()` at wake, not on `setop`, and a camera switch resets at the next sleep. The wait
+> in Phase 2 exists only to keep `txfile` clear of the Save State that precedes sleep, and is
+> skipped while the screen holds the device awake (`keepAwake.holds`, op8 raised to 3 s for the
+> visit), since `txfile` follows `Captured` within a second. Measured 3 September 2026: 22 s tap to
+> picture with op8 at 3000 and both waits, 13 s with the hold, the transfer 10 to 11 s in both. A
+> 20 s hold was tried first and withdrawn the same day: it kept a camera switch from ever resetting
+> while the app polled for it. See [keepAwake.ts](../../src/ble/session/keepAwake.ts).
 
 **Phase 2 — Capture:**
 3. `AI capture 1 500` — captures a single image (500ms interval allows AE settling).
@@ -720,6 +688,8 @@ Orchestrates the full capture-preview flow using a **three-phase architecture** 
 6. `AI txfile <filename>` — device wakes fresh from DPD, FatFS is clean, no competing operations.
 7. `ImageReassembler` processes binary packets via `bleEventBus.binaryPacket`.
 8. Normal completion or `force_finalize` fallback (30-second inactivity timeout).
+
+**Leaving the screen** stops the chain at its next step: a mounted ref is checked before the capture and before `txfile`, so nothing goes out for a screen that is gone. A stream already running finishes under the transport's gate, and a completion for a transfer this hook did not request is ignored (the file stays in the cache). Found 3 September 2026: a Back press mid-run let the capture and `txfile` go out 4 and 8 s later, and the picture turned up on the next visit.
 
 > [!NOTE]
 > The `waitForSleep()` method on `BleSession` listens for the `DEVICE_SIGNAL(SLEEP)` event from `bleEventBus`. It uses **static imports** for `DeviceSignal` — dynamic imports would defer the event handler to a microtask, causing the synchronously-emitted signal to be missed.
@@ -966,7 +936,7 @@ loops reported in field testing (CGP, April 2026).
 | StopMonitoringScreen        | Owner  | ✅          | ✅             |
 | EngineerConsoleScreen       | Child  | ❌          | ❌             |
 | HimaxFirmwareUpdateScreen   | Child  | ❌          | ❌             |
-| CameraSettingsTestScreen    | Child  | ❌          | ❌             |
+| CapturePictureScreen        | Child  | ❌          | ❌             |
 | StandaloneMotionDetection   | Child  | ❌          | ❌             |
 | AdvancedSettingsSection      | Child  | ❌          | ❌             |
 

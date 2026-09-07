@@ -87,6 +87,12 @@ export interface CreateProjectInput {
 	capture_method_id?: number
 	record_gps_in_images?: boolean
 	lorawan_required?: boolean
+	// Capture flash (op34/op13/op35/op36). Omitted means the table defaults:
+	// light_sensor with the IR LED.
+	flash_mode?: string
+	flash_led?: string
+	flash_window_start_minutes_utc?: number | null
+	flash_window_minutes?: number | null
 }
 
 // LoRaWAN device status (mock for now)

@@ -1,4 +1,4 @@
-# Type alignment validation for Supabase cloud environments
+﻿# Type alignment validation for Supabase cloud environments
 # PowerShell version of check-types-cloud.sh
 # Checks if committed types match the schema of a cloud Supabase instance
 #
@@ -84,8 +84,10 @@ try {
     # Generate types from cloud instance
     Write-Host "📡 Generating types from $Environment (this may take a few seconds)..." -ForegroundColor Cyan
     
-    $output = npx supabase gen types typescript --project-id $ProjectRef --schema public 2>&1
-    
+    # stdout only: merging stderr here put npm's own notices into the "fresh
+    # types" and made every comparison fail.
+    $output = npx supabase gen types typescript --project-id $ProjectRef --schema public
+
     if ($LASTEXITCODE -ne 0) {
         Write-Host ""
         Write-Host "❌ Error: Failed to generate types from $Environment" -ForegroundColor Red
@@ -100,19 +102,29 @@ try {
         exit 1
     }
     
-    # Save output to temp file
-    $output | Out-File -FilePath $TempTypes -Encoding UTF8
-    
+    # Save output to temp file. Out-File in PowerShell 5.1 writes a BOM and CRLF,
+    # and the committed file is LF without a BOM, so the two sides are also
+    # normalised below before they are compared. Without that this check said
+    # "out of sync" for identical content (5 Sep 2026), and the validator that
+    # wraps it stopped at step 1 every time.
+    [System.IO.File]::WriteAllText($TempTypes, (($output -join "`n") + "`n"))
+
     # Check if temp file has content
     if ((Get-Item $TempTypes).Length -eq 0) {
         Write-Host "❌ Error: Generated types file is empty" -ForegroundColor Red
         exit 1
     }
-    
+
+    function Normalize-Types([string]$text) {
+        $text = $text.TrimStart([char]0xFEFF)
+        $text = $text -replace "`r`n", "`n"
+        return $text.TrimEnd("`n") + "`n"
+    }
+
     # Compare with committed types
-    $committedTypes = Get-Content "src/types/database.types.ts" -Raw
-    $freshTypes = Get-Content $TempTypes -Raw
-    
+    $committedTypes = Normalize-Types (Get-Content "src/types/database.types.ts" -Raw)
+    $freshTypes = Normalize-Types (Get-Content $TempTypes -Raw)
+
     if ($committedTypes -eq $freshTypes) {
         Write-Host ""
         Write-Host "✅ Types are aligned with $Environment" -ForegroundColor Green

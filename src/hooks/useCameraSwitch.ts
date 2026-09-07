@@ -13,6 +13,22 @@ import { log, logError, logWarn } from '../utils/logger'
  */
 export type CameraVariant = 'RP3' | 'HM0360' | 'unknown'
 
+/**
+ * What each camera is called in the UI, named by the picture it produces rather
+ * than by its part number: an operator picking a camera is choosing between a
+ * colour image and a black and white one.
+ *
+ * Centralised because four screens had written their own version of this and all
+ * four disagreed ("Colour" / "Colour (day)" / "RP3 · day" / "Colour (RP3)").
+ * Screens that are genuinely choosing a *firmware image* rather than a picture,
+ * such as the firmware updater, legitimately want the part number and should say
+ * so explicitly rather than reusing these.
+ */
+export const CAMERA_VARIANT_LABELS: Record<Exclude<CameraVariant, 'unknown'>, string> = {
+    RP3: 'Colour',
+    HM0360: 'Black & White',
+}
+
 interface UseCameraSwitchOptions {
     device: ExtendedPeripheral | undefined
     onError?: (error: Error) => void
@@ -43,10 +59,21 @@ const parseVariant = (s: string | undefined): CameraVariant => {
     return 'unknown'
 }
 
-// After 'switchslot' the Himax resets when it next sleeps (~a few seconds),
-// then cold-boots the other image. Polling 'slots' both confirms the new
-// variant and wakes the device if needed. Verified switches typically
-// complete within 2 polls.
+// After 'switchslot' the Himax resets when it next sleeps, then cold-boots
+// the other image (about 4 s) and announces itself with Wake. The switch is
+// confirmed by one 'slots' query after that Wake.
+//
+// Nothing may be sent between 'switchslot' and the Sleep: every command is
+// activity that restarts the inactivity timer, so polling 'slots' before the
+// device has slept postpones the very reset being waited for. Twice on
+// 3 September 2026 the polls kept the device awake until the app gave up,
+// and it rebooted into the right image 20 s after the last poll, with the
+// screen showing failure. The inactivity timer for a wake window is whatever
+// op8 held when the device woke, so it can be 1 s (default), 3 s (a Capture
+// Picture hold) or a stale 20 s from an earlier build; the Sleep budget
+// covers all of them. Polling remains only as a fallback when no Sleep comes.
+const RESET_SLEEP_TIMEOUT_MS = 30000
+const BOOT_WAKE_TIMEOUT_MS = 15000
 const VERIFY_POLL_ATTEMPTS = 4
 const VERIFY_POLL_DELAY_MS = 5000
 
@@ -116,7 +143,7 @@ export const useCameraSwitch = ({ device, onError }: UseCameraSwitchOptions): Us
         // UI can warn that a manual selection may be reverted. Non-fatal.
         try {
             if (device) {
-                const ops = await createBleSession(device).execute(() => commandRegistry.getops())
+                const ops = await createBleSession(device).getOps()
                 if (!unmountedRef.current && ops && ops.length > OP_PARAMETER.SLOT_SWITCH) {
                     setAutoSwitchOn(parseInt(ops[OP_PARAMETER.SLOT_SWITCH], 10) === 1)
                 }
@@ -163,14 +190,29 @@ export const useCameraSwitch = ({ device, onError }: UseCameraSwitchOptions): Us
             // Flip the slot selector; the device resets at its next sleep
             if (!unmountedRef.current) setStage(`Switching to ${target}…`)
             log(`[useCameraSwitch] switching from ${running} to ${target}`)
-            await session_switch(device)
+            const session = createBleSession(device)
+            await session.execute(() => commandRegistry.switchslot())
 
-            // Wait out the reset, then poll until the new image reports in
+            // Send nothing until it has slept: the reset happens on the way
+            // into DPD, and any command before that only postpones it.
+            if (!unmountedRef.current) setStage('Waiting for the camera to sleep, then restart (up to 30 s)…')
+            const slept = await session.waitForSleep(RESET_SLEEP_TIMEOUT_MS)
+            let woke = false
+            if (slept) {
+                if (!unmountedRef.current) setStage('Camera restarting…')
+                woke = await session.waitForWake(BOOT_WAKE_TIMEOUT_MS)
+            } else {
+                logWarn(`[useCameraSwitch] no Sleep within ${RESET_SLEEP_TIMEOUT_MS}ms; polling instead`)
+            }
+
+            // Confirm the new image reports in. After a seen Wake the first
+            // query goes at once; the delay only applies when the signals were
+            // missed and the device may still be mid-reset.
             for (let attempt = 1; attempt <= VERIFY_POLL_ATTEMPTS; attempt++) {
                 // Stop polling if the screen went away mid-switch
                 if (unmountedRef.current) return false
-                setStage(`Restarting camera (${attempt}/${VERIFY_POLL_ATTEMPTS})…`)
-                await delay(VERIFY_POLL_DELAY_MS)
+                setStage(`Checking the camera (${attempt}/${VERIFY_POLL_ATTEMPTS})…`)
+                if (attempt > 1 || !woke) await delay(VERIFY_POLL_DELAY_MS)
                 try {
                     const check = await querySlots()
                     if (check.running === target) {
@@ -201,10 +243,4 @@ export const useCameraSwitch = ({ device, onError }: UseCameraSwitchOptions): Us
     }, [device, onError, querySlots])
 
     return { activeCamera, otherSlotCamera, autoSwitchOn, isBusy, stage, refresh, switchTo }
-}
-
-/** Send the switchslot command in its own session */
-const session_switch = async (device: ExtendedPeripheral) => {
-    const session = createBleSession(device)
-    return session.execute(() => commandRegistry.switchslot())
 }

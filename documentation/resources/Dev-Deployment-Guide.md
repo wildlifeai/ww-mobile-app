@@ -31,8 +31,8 @@ The Dev Deployment screen is only accessible from the Engineer Console's Flows m
 |--------|--------------------|----|
 | **Access** | Scanner tab → auto-connect → "Start Monitoring" | Engineer Console → Flows → "Dev Deployment Test" |
 | **Capture method** | Inherited from project settings | User selects directly on-screen (Activity / Timelapse / Mixed) |
-| **Flash settings** | Not configurable | Full control: LED type (Off / Visible / IR) + brightness (0-100%) |
-| **Capture diagnostics** | Not available | `NUM_PICTURES` and `TEST_MODE_BITS` (JPG+BMP alternating) |
+| **Flash settings** | Mode and LED inherited from the project (op34, op13) | LED type and brightness chosen on screen; the mode goes in as always-on so the choice actually fires |
+| **Capture diagnostics** | One JPEG per trigger by default; the advanced toggle adds the raw BMP | `NUM_PICTURES` and `TEST_MODE_BITS` (JPG+BMP alternating) |
 | **AI model** | Inherited from project | Overridable dropdown (including "None") |
 | **LoRaWAN / GPS** | Inherited from project | Toggleable switches |
 | **BLE init** | Upstream in Scanner flow | No BLE init — assumes connection from Engineer Console |
@@ -76,12 +76,12 @@ Both flows share these pipeline functions from `deploymentPipeline.ts`:
 | 3 | Persist project settings to DB |
 | 4 | Create DB Record |
 | 5 | Configure Device (capture method, deployment ID, GPS) |
-| 6 | Flash OPs (`LED_BRIGHTNESS`, `FLASH_LED`) |
+| 6 | Flash brightness (`LED_BRIGHTNESS`). The LED and the mode (`FLASH_LED`, `FLASH_MODE`) go in with step 5, so the reset cannot leave them at 0 |
 | 7 | Capture Diagnostics (`TEST_MODE_BITS`, `NUM_PICTURES`) |
 | 8 | Live Monitor |
 
 > [!NOTE]
-> Dev Deployment does **not** run `resetOps` — it assumes the developer wants full control over all parameters. If a clean slate is needed, the developer can run `resetToDefaults` from the Engineer Console first.
+> Dev Deployment runs the same `pipeline.resetOps` as Start Monitoring before it applies the dev configuration (step 4b in `useDevDeployment`), and since #268 a refused reset aborts the deployment. Connecting no longer resets anything, so this is the only clean slate the dev deployment gets; every parameter the cards do not set starts at its factory default.
 
 ---
 
@@ -102,7 +102,14 @@ The `DevDeploymentTestScreen` is a single scrollable page (no accordion) with th
 - **Record GPS in Images** — toggle switch
 
 ### 3. Flash Settings
-- **Flash LED Type** — segmented buttons: Off / White / IR (maps to OP 13)
+- **Flash** — segmented buttons: Off / White / IR (op13), plus brightness (op9) once a flash is
+  chosen. Shared with the Capture Picture flow via
+  [`FlashSelector`](../../src/components/device/FlashSelector.tsx); the labels come from
+  `FLASH_LED_LABELS` in `useDeviceSettings.ts`, which four screens used to spell differently.
+  The chosen LED is deployed as an always-on flash (op34 = 2), so it fires on every capture
+  whatever the light. Choosing Off deploys the mode as off, which also closes the gate on the
+  night-time motion illumination. A standard deployment takes both from the project instead.
+  See [Light-Sensor.md](Light-Sensor.md), "How the decision reaches the flash LED".
 - **LED Brightness** — numeric input 0-100% (maps to OP 9)
 
 ### 4. Capture Diagnostics

@@ -4,6 +4,7 @@ import { Card, Text, IconButton, useTheme, Divider, TouchableRipple } from 'reac
 import { WWIcon } from '../../../components/ui/WWIcon'
 import { ProjectWithDetails } from '../../../types/project'
 import { useAppNavigation } from '../../../hooks/useAppNavigation'
+import { describeProjectFlash } from '../../../utils/projectFlash'
 
 interface SelectOption {
     label: string
@@ -188,6 +189,21 @@ export const ProjectDetailsCard: React.FC<Props> = ({
                             </Text>
                         </View>
                     )}
+
+                    <View style={styles.settingRow}>
+                        <Text
+                            variant="bodyMedium"
+                            style={dynamicStyles.settingLabel}
+                        >
+                            Capture Flash:
+                        </Text>
+                        <Text
+                            variant="bodyMedium"
+                            style={dynamicStyles.settingValue}
+                        >
+                            {describeProjectFlash(project)}
+                        </Text>
+                    </View>
 
                     <View style={styles.settingRow}>
                         <Text

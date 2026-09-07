@@ -1,0 +1,1024 @@
+# Final run, 2 September 2026: app / nRF / Himax interleaved. Kept: every app line except heartbeats and TX echoes; nRF BLE in/out; Himax light-sensor, AE, capture, sleep and wake lines. Hex dumps and console noise stripped.
+[44:25.956] app   |  Initial sync complete  routing decisions are now valid
+[46:27.753] app   | [ScanLoop] Flushed stale BLE state
+[46:28.177] app   | [ScanLoop] Starting scan burst
+[46:30.662] app   | [EngineerConnect] Device found during scan, auto-connecting: D6:47:9B:89:E7:23
+[46:30.694] app   | [EngineerConnect] Connecting to WILD-CNKW
+[46:31.776] app   | Extracting services and characteristics.
+[46:31.776] app   | Available services: ["1800","1801","6e400001-b5a3-f393-e0a9-e50e24dcca9e"]
+[46:31.810] app   | Notifications started for 6e400003-b5a3-f393-e0a9-e50e24dcca9e
+[46:31.822] app   | Connection priority: High
+[46:31.825] app   | MTU negotiated to 512 bytes
+[46:31.836] app   | Device WILD-CNKW connected
+[46:31.943] app   | [EngineerConnect] Connected, navigating to EngineerConsoleScreen
+[46:32.061] nrf   | <info> app: Conn params applied: interval 36 units (45ms), timeout 5000ms
+[46:32.675] nrf   | <info> app: Conn params applied: interval 12 units (15ms), timeout 5000ms
+[46:51.564] nrf   | <info> app: Conn params applied: interval 156 units (195ms), timeout 4000ms
+[46:54.675] app   | Written AI setop 26 1 to the device WILD-CNKW (22:34:01-634)
+[46:54.943] nrf   | BLE in: Received  13 bytes 'AI setop 26 1'
+[46:54.943] nrf   | <info> app: AI processor is in DPD. Waking it. (setop 26 1)
+[46:54.943] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[46:55.252] himax | [LS] In ledFlashSetFlashModeFromOpParam with 0 Mode 0
+[46:55.252] himax |   Light is currently DARK.
+[46:55.252] himax | MKL62BA command received: 'selftest'
+[46:55.252] himax | 000: 80 01 0a 00 73 65 74 6f  70 20 32 36 20 31 d9 58 ....setop 26 1.X
+[46:55.252] himax | MKL62BA command received: 'setop 26 1'
+[46:55.309] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[46:55.371] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[46:55.499] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 26 = 1
+[46:55.561] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[46:55.561] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[46:55.561] nrf   | BLE out: Sent  19 bytes: 'Set OpParam 26 = 1'
+[46:56.477] himax |  No LED flashes.
+[46:56.477] himax | >>> Entering DPD at 2024:01:01 00:02:03
+[46:56.687] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[46:56.789] nrf   | <info> app: AI processor sends stats: '253 0 0 53 461 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 1 1 286 326 1 110 1 '
+[46:56.789] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[47:04.995] app   | Written AI getop -1 to the device WILD-CNKW (22:34:11-955)
+[47:05.110] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[47:05.110] nrf   | <info> app: AI processor is in DPD. Waking it. (getop -1)
+[47:05.110] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[47:05.395] himax | [LS] In ledFlashSetFlashModeFromOpParam with 0 Mode 0
+[47:05.395] himax |   Light is currently DARK.
+[47:05.395] himax | MKL62BA command received: 'selftest'
+[47:05.395] himax | MKL62BA command received: 'getop -1'
+[47:05.395] himax | OpParams 253 0 0 53 462 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 1 1 286 326 1 110 1 
+[47:05.395] himax | Sending 102 bytes: Header 4, payload 96, checksum 2 'OpParams 253 0 0 53 462 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 1 1 286 326 1 110 1 '
+[47:05.395] himax | 000: 80 04 60 00 4f 70 50 61  72 61 6d 73 20 32 35 33 ..`.OpParams 253
+[47:05.439] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[47:05.534] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[47:05.534] app   | [CameraReadiness] device reports 0x0000
+[47:05.636] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 253 0 0 53 462 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 1 1 286 326 1 110 1 
+[47:05.719] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[47:05.719] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[47:05.719] nrf   | BLE out: Sent  97 bytes: 'OpParams 253 0 0 53 462 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 1 1 286 326 1 110 1 '
+[47:05.731] app   | Written AI getop -1 to the device WILD-CNKW (22:34:12-692)
+[47:06.012] himax | MKL62BA command received: 'getop -1'
+[47:06.012] himax | OpParams 253 0 0 53 462 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 1 1 286 326 1 110 1 
+[47:06.012] himax | Sending 102 bytes: Header 4, payload 96, checksum 2 'OpParams 253 0 0 53 462 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 1 1 286 326 1 110 1 '
+[47:06.012] himax | 000: 80 04 60 00 4f 70 50 61  72 61 6d 73 20 32 35 33 ..`.OpParams 253
+[47:06.028] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[47:06.028] nrf   | BLE out: Sent  97 bytes: 'OpParams 253 0 0 53 462 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 1 1 286 326 1 110 1 '
+[47:06.045] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 253 0 0 53 462 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 1 1 286 326 1 110 1 
+[47:06.163] app   | [CameraReadiness] cameraOn=true
+[47:06.183] app   | Written AI setop 26 0 to the device WILD-CNKW (22:34:13-144)
+[47:06.320] himax | 000: 80 01 0a 00 73 65 74 6f  70 20 32 36 20 30 c9 79 ....setop 26 0.y
+[47:06.320] himax | MKL62BA command received: 'setop 26 0'
+[47:06.336] nrf   | BLE in: Received  13 bytes 'AI setop 26 0'
+[47:06.336] nrf   | BLE out: Sent  19 bytes: 'Set OpParam 26 = 0'
+[47:06.428] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 26 = 0
+[47:06.565] app   | [LightSensor] op26 was 1 on entry; set to 0 so a light check cannot reboot the device mid-session
+[47:07.558] himax |  No LED flashes.
+[47:07.558] himax | [LS] Will wake to check light level in 900 seconds. Currently it is DARK
+[47:07.558] himax | >>> Entering DPD at 2024:01:01 00:02:06
+[47:07.574] nrf   | <info> app: AI processor sends stats: '253 0 0 53 462 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 1 0 286 326 1 110 1 '
+[47:07.574] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[47:07.608] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[47:17.736] app   | Written AI light to the device WILD-CNKW (22:34:24-698)
+[47:17.766] nrf   | BLE in: Received   8 bytes 'AI light'
+[47:17.766] nrf   | <info> app: AI processor is in DPD. Waking it. (light)
+[47:18.012] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[47:18.266] himax | [LS] In ledFlashSetFlashModeFromOpParam with 0 Mode 0
+[47:18.266] himax |   Light is currently DARK.
+[47:18.266] himax | MKL62BA command received: 'selftest'
+[47:18.266] himax | MKL62BA command received: 'light'
+[47:18.266] himax | Checking light level...
+[47:18.266] himax | Sending 29 bytes: Header 4, payload 23, checksum 2 'Checking light level...'
+[47:18.316] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[47:18.390] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[47:18.390] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[47:18.390] nrf   | BLE out: Sent  24 bytes: 'Checking light level...'
+[47:18.436] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[47:18.527] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Checking light level...
+[47:18.579] himax | [LS] Skipping NN processing (AE light check).
+[47:18.637] app   | [LightSensor] light acked
+[47:18.879] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT (change)
+[47:18.879] himax | Sending 58 bytes: Header 4, payload 52, checksum 2 'AE light check: AGain = 0, conv=Y -> BRIGHT (change)'
+[47:18.879] himax | HM0360 AE regs:
+[47:18.879] himax |   Integration time = 376 lines
+[47:18.879] himax |   Analog gain = 0
+[47:18.879] himax |   Digital gain = 123
+[47:18.879] himax |   AE Mean = 78
+[47:18.879] himax |   AEConverged?: Y
+[47:18.879] himax | Sending 124 bytes: Header 4, payload 118, checksum 2 'HM0360 AE regs:
+[47:18.879] himax |   Integration time = 376 lines
+[47:18.879] himax |   Analog gain = 0
+[47:18.879] himax |   Digital gain = 123
+[47:18.879] himax |   AE Mean = 78
+[47:18.879] himax |   AEConverged?: Y'
+[47:18.879] himax | 030: 65 73 0a 20 20 41 6e 61  6c 6f 67 20 67 61 69 6e es.  Analog gain
+[47:19.095] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AE light check: AGain = 0, conv=Y -> BRIGHT (change)
+[47:19.191] himax | Sending 55 bytes: Header 4, payload 49, checksum 2 'Captured 1 images. Last is  (File write 0ms avg.)'
+[47:19.191] himax | 000: 80 04 31 00 43 61 70 74  75 72 65 64 20 31 20 69 ..1.Captured 1 i
+[47:19.217] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 AE regs:
+[47:19.218] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Integration time = 376 lines
+[47:19.219] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Analog gain = 0
+[47:19.220] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Digital gain = 123
+[47:19.221] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AE Mean = 78
+[47:19.222] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AEConverged?: Y
+[47:19.222] app   | [LightSensor] registers complete
+[47:19.317] nrf   | BLE out: Sent  53 bytes: 'AE light check: AGain = 0, conv=Y -> BRIGHT (change)'
+[47:19.317] nrf   | BLE out: Sent 119 bytes: 'HM0360 AE regs:
+[47:19.317] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[47:19.317] nrf   | BLE out: Sent  50 bytes: 'Captured 1 images. Last is  (File write 0ms avg.)'
+[47:19.366] app   | [LightSensor] AE mean 78, gain 0, digital 123, integration 376, converged Y
+[47:19.369] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 motion in 0 blocks:
+[47:19.370] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[47:19.469] app   | [LightSensorLog] reading #8: aeMean=78
+[47:19.544] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Captured 1 images. Last is  (File write 0ms avg.)
+[47:20.425] himax |  No LED flashes.
+[47:20.425] himax | >>> Entering DPD at 2024:01:01 00:02:19
+[47:20.478] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[47:20.565] nrf   | <info> app: AI processor sends stats: '254 0 0 53 463 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 0 0 286 326 1 110 1 '
+[47:20.565] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[47:40.269] app   | Written AI light to the device WILD-CNKW (22:34:47-232)
+[47:40.350] nrf   | BLE in: Received   8 bytes 'AI light'
+[47:40.350] nrf   | <info> app: AI processor is in DPD. Waking it. (light)
+[47:40.513] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[47:40.513] himax | [LS] In ledFlashSetFlashModeFromOpParam with 0 Mode 0
+[47:40.513] himax |   Light is currently LIGHT.
+[47:40.735] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[47:40.821] himax | MKL62BA command received: 'selftest'
+[47:40.821] himax | MKL62BA command received: 'light'
+[47:40.821] himax | Checking light level...
+[47:40.821] himax | Sending 29 bytes: Header 4, payload 23, checksum 2 'Checking light level...'
+[47:40.821] himax | [LS] Skipping NN processing (AE light check).
+[47:40.892] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[47:40.963] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[47:40.963] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[47:40.963] nrf   | BLE out: Sent  24 bytes: 'Checking light level...'
+[47:41.017] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Checking light level...
+[47:41.166] app   | [LightSensor] light acked
+[47:41.354] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT
+[47:41.354] himax | Sending 49 bytes: Header 4, payload 43, checksum 2 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[47:41.354] himax | HM0360 AE regs:
+[47:41.354] himax |   Integration time = 376 lines
+[47:41.354] himax |   Analog gain = 0
+[47:41.354] himax |   Digital gain = 123
+[47:41.354] himax |   AE Mean = 78
+[47:41.354] himax |   AEConverged?: Y
+[47:41.354] himax | Sending 124 bytes: Header 4, payload 118, checksum 2 'HM0360 AE regs:
+[47:41.354] himax |   Integration time = 376 lines
+[47:41.354] himax |   Analog gain = 0
+[47:41.354] himax |   Digital gain = 123
+[47:41.354] himax |   AE Mean = 78
+[47:41.354] himax |   AEConverged?: Y'
+[47:41.354] himax | 030: 65 73 0a 20 20 41 6e 61  6c 6f 67 20 67 61 69 6e es.  Analog gain
+[47:41.517] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AE light check: AGain = 0, conv=Y -> BRIGHT
+[47:41.668] himax | Sending 55 bytes: Header 4, payload 49, checksum 2 'Captured 1 images. Last is  (File write 0ms avg.)'
+[47:41.668] himax | 000: 80 04 31 00 43 61 70 74  75 72 65 64 20 31 20 69 ..1.Captured 1 i
+[47:41.679] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 AE regs:
+[47:41.679] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Integration time = 376 lines
+[47:41.681] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Analog gain = 0
+[47:41.682] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Digital gain = 123
+[47:41.683] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AE Mean = 78
+[47:41.684] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AEConverged?: Y
+[47:41.686] app   | [LightSensor] registers complete
+[47:41.854] app   | [LightSensor] AE mean 78, gain 0, digital 123, integration 376, converged Y
+[47:41.856] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 motion in 0 blocks:
+[47:41.858] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[47:41.892] nrf   | BLE out: Sent  44 bytes: 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[47:41.892] nrf   | BLE out: Sent 119 bytes: 'HM0360 AE regs:
+[47:41.892] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[47:41.892] nrf   | BLE out: Sent  50 bytes: 'Captured 1 images. Last is  (File write 0ms avg.)'
+[47:41.982] app   | [LightSensorLog] reading #9: aeMean=78
+[47:42.039] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Captured 1 images. Last is  (File write 0ms avg.)
+[47:42.826] nrf   | <info> app: AI processor sends stats: '255 0 0 53 464 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 0 0 286 326 1 110 1 '
+[47:42.826] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[47:42.886] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[47:42.906] himax |  No LED flashes.
+[47:42.906] himax | >>> Entering DPD at 2024:01:01 00:02:21
+[47:49.558] app   | Written AI slots to the device WILD-CNKW (22:34:56-520)
+[47:49.609] nrf   | BLE in: Received   8 bytes 'AI slots'
+[47:49.609] nrf   | <info> app: AI processor is in DPD. Waking it. (slots)
+[47:49.706] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[47:50.017] himax | [LS] In ledFlashSetFlashModeFromOpParam with 0 Mode 0
+[47:50.017] himax |   Light is currently LIGHT.
+[47:50.017] himax | MKL62BA command received: 'selftest'
+[47:50.107] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[47:50.229] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[47:50.229] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[47:50.229] nrf   | BLE out: Sent 117 bytes: 'Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off'
+[47:50.268] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[47:50.323] himax | MKL62BA command received: 'slots'
+[47:50.428] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Active slot 0 running 'HM0360 (night/IR)'. Slot A: 'HM0360 (night/IR)', Slot B: 'RP3 (day/colour)'. Auto-switch: off
+[47:50.655] app   | Written AI getop -1 to the device WILD-CNKW (22:34:57-617)
+[47:50.845] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[47:50.845] nrf   | BLE out: Sent  97 bytes: 'OpParams 255 0 0 53 465 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 0 0 286 326 1 110 1 '
+[47:50.893] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 255 0 0 53 465 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 0 0 286 326 1 110 1 
+[47:50.939] himax | MKL62BA command received: 'getop -1'
+[47:50.939] himax | OpParams 255 0 0 53 465 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 0 0 286 326 1 110 1 
+[47:50.939] himax | Sending 102 bytes: Header 4, payload 96, checksum 2 'OpParams 255 0 0 53 465 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 0 0 286 326 1 110 1 '
+[47:50.939] himax | 000: 80 04 60 00 4f 70 50 61  72 61 6d 73 20 32 35 35 ..`.OpParams 255
+[47:51.857] himax |  No LED flashes.
+[47:51.857] himax | >>> Entering DPD at 2024:01:01 00:02:24
+[47:52.077] nrf   | <info> app: AI processor sends stats: '255 0 0 53 465 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 0 0 286 326 1 110 1 '
+[47:52.077] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[47:52.103] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[48:50.457] nrf   | BLE in: Received  13 bytes 'get heartbeat'
+[48:50.457] nrf   | BLE out: Sent  17 bytes: 'heartbeat is 12h'
+[49:08.610] app   | Written AI light to the device WILD-CNKW (22:36:15-574)
+[49:08.697] nrf   | BLE in: Received   8 bytes 'AI light'
+[49:08.697] nrf   | <info> app: AI processor is in DPD. Waking it. (light)
+[49:08.852] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[49:08.852] himax | [LS] In ledFlashSetFlashModeFromOpParam with 0 Mode 0
+[49:08.852] himax |   Light is currently LIGHT.
+[49:09.080] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[49:09.081] app   | [OpCache] dropped on wake for D6:47:9B:89:E7:23
+[49:09.153] himax | MKL62BA command received: 'selftest'
+[49:09.153] himax | MKL62BA command received: 'light'
+[49:09.153] himax | Checking light level...
+[49:09.153] himax | Sending 29 bytes: Header 4, payload 23, checksum 2 'Checking light level...'
+[49:09.153] himax | [LS] Skipping NN processing (AE light check).
+[49:09.269] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[49:09.322] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[49:09.322] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[49:09.322] nrf   | BLE out: Sent  24 bytes: 'Checking light level...'
+[49:09.444] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Checking light level...
+[49:09.651] app   | [LightSensor] light acked
+[49:09.689] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT
+[49:09.689] himax | Sending 49 bytes: Header 4, payload 43, checksum 2 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[49:09.689] himax | HM0360 AE regs:
+[49:09.689] himax |   Integration time = 376 lines
+[49:09.689] himax |   Analog gain = 0
+[49:09.689] himax |   Digital gain = 123
+[49:09.689] himax |   AE Mean = 78
+[49:09.689] himax |   AEConverged?: Y
+[49:09.689] himax | Sending 124 bytes: Header 4, payload 118, checksum 2 'HM0360 AE regs:
+[49:09.689] himax |   Integration time = 376 lines
+[49:09.689] himax |   Analog gain = 0
+[49:09.689] himax |   Digital gain = 123
+[49:09.689] himax |   AE Mean = 78
+[49:09.689] himax |   AEConverged?: Y'
+[49:09.689] himax | 030: 65 73 0a 20 20 41 6e 61  6c 6f 67 20 67 61 69 6e es.  Analog gain
+[49:09.862] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AE light check: AGain = 0, conv=Y -> BRIGHT
+[49:09.995] himax | Sending 55 bytes: Header 4, payload 49, checksum 2 'Captured 1 images. Last is  (File write 0ms avg.)'
+[49:09.995] himax | 000: 80 04 31 00 43 61 70 74  75 72 65 64 20 31 20 69 ..1.Captured 1 i
+[49:10.070] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 AE regs:
+[49:10.071] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Integration time = 376 lines
+[49:10.072] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Analog gain = 0
+[49:10.073] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Digital gain = 123
+[49:10.078] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AE Mean = 78
+[49:10.078] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AEConverged?: Y
+[49:10.080] app   | [LightSensor] registers complete
+[49:10.246] nrf   | BLE out: Sent  44 bytes: 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[49:10.246] nrf   | BLE out: Sent 119 bytes: 'HM0360 AE regs:
+[49:10.246] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[49:10.246] nrf   | BLE out: Sent  50 bytes: 'Captured 1 images. Last is  (File write 0ms avg.)'
+[49:10.299] app   | [LightSensor] AE mean 78, gain 0, digital 123, integration 376, converged Y
+[49:10.300] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 motion in 0 blocks:
+[49:10.301] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[49:10.483] app   | [LightSensorLog] reading #10: aeMean=78
+[49:10.563] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Captured 1 images. Last is  (File write 0ms avg.)
+[49:11.183] nrf   | <info> app: AI processor sends stats: '256 0 0 53 466 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 0 0 286 326 1 110 1 '
+[49:11.183] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[49:11.220] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[49:11.230] himax |  No LED flashes.
+[49:11.230] himax | >>> Entering DPD at 2024:01:01 00:02:26
+[49:13.528] app   | Written AI light to the device WILD-CNKW (22:36:20-491)
+[49:13.642] nrf   | BLE in: Received   8 bytes 'AI light'
+[49:13.642] nrf   | <info> app: AI processor is in DPD. Waking it. (light)
+[49:13.720] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[49:13.720] himax | [LS] In ledFlashSetFlashModeFromOpParam with 0 Mode 0
+[49:13.720] himax |   Light is currently LIGHT.
+[49:13.961] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[49:14.032] himax | MKL62BA command received: 'selftest'
+[49:14.032] himax | MKL62BA command received: 'light'
+[49:14.032] himax | Checking light level...
+[49:14.032] himax | Sending 29 bytes: Header 4, payload 23, checksum 2 'Checking light level...'
+[49:14.032] himax | [LS] Skipping NN processing (AE light check).
+[49:14.175] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[49:14.263] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[49:14.263] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[49:14.263] nrf   | BLE out: Sent  24 bytes: 'Checking light level...'
+[49:14.388] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Checking light level...
+[49:14.568] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT
+[49:14.568] himax | Sending 49 bytes: Header 4, payload 43, checksum 2 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[49:14.568] himax | HM0360 AE regs:
+[49:14.568] himax |   Integration time = 376 lines
+[49:14.568] himax |   Analog gain = 0
+[49:14.568] himax |   Digital gain = 123
+[49:14.568] himax |   AE Mean = 78
+[49:14.568] himax |   AEConverged?: Y
+[49:14.568] himax | Sending 124 bytes: Header 4, payload 118, checksum 2 'HM0360 AE regs:
+[49:14.568] himax |   Integration time = 376 lines
+[49:14.568] himax |   Analog gain = 0
+[49:14.568] himax |   Digital gain = 123
+[49:14.568] himax |   AE Mean = 78
+[49:14.568] himax |   AEConverged?: Y'
+[49:14.568] himax | 030: 65 73 0a 20 20 41 6e 61  6c 6f 67 20 67 61 69 6e es.  Analog gain
+[49:14.638] app   | [LightSensor] light acked
+[49:14.754] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AE light check: AGain = 0, conv=Y -> BRIGHT
+[49:14.873] himax | Sending 55 bytes: Header 4, payload 49, checksum 2 'Captured 1 images. Last is  (File write 0ms avg.)'
+[49:14.873] himax | 000: 80 04 31 00 43 61 70 74  75 72 65 64 20 31 20 69 ..1.Captured 1 i
+[49:14.889] nrf   | BLE out: Sent  44 bytes: 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[49:14.889] nrf   | BLE out: Sent 119 bytes: 'HM0360 AE regs:
+[49:14.889] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[49:14.889] nrf   | BLE out: Sent  50 bytes: 'Captured 1 images. Last is  (File write 0ms avg.)'
+[49:14.989] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 AE regs:
+[49:14.990] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Integration time = 376 lines
+[49:14.991] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Analog gain = 0
+[49:14.992] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Digital gain = 123
+[49:14.994] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AE Mean = 78
+[49:14.995] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AEConverged?: Y
+[49:14.996] app   | [LightSensor] registers complete
+[49:15.254] app   | [LightSensor] AE mean 78, gain 0, digital 123, integration 376, converged Y
+[49:15.255] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 motion in 0 blocks:
+[49:15.258] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[49:15.522] app   | [LightSensorLog] reading #11: aeMean=78
+[49:15.609] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Captured 1 images. Last is  (File write 0ms avg.)
+[49:16.098] himax |  No LED flashes.
+[49:16.098] himax | >>> Entering DPD at 2024:01:01 00:02:29
+[49:16.113] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[49:16.115] nrf   | <info> app: AI processor sends stats: '257 0 0 53 467 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 0 0 286 326 1 110 1 '
+[49:16.115] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[49:18.738] app   | Written AI light to the device WILD-CNKW (22:36:25-701)
+[49:18.883] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[49:18.898] nrf   | BLE in: Received   8 bytes 'AI light'
+[49:18.898] nrf   | <info> app: AI processor is in DPD. Waking it. (light)
+[49:19.168] himax | [LS] In ledFlashSetFlashModeFromOpParam with 0 Mode 0
+[49:19.168] himax |   Light is currently LIGHT.
+[49:19.168] himax | MKL62BA command received: 'selftest'
+[49:19.168] himax | MKL62BA command received: 'light'
+[49:19.168] himax | Checking light level...
+[49:19.168] himax | Sending 29 bytes: Header 4, payload 23, checksum 2 'Checking light level...'
+[49:19.233] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[49:19.472] himax | [LS] Skipping NN processing (AE light check).
+[49:19.481] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[49:19.520] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[49:19.520] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[49:19.520] nrf   | BLE out: Sent  24 bytes: 'Checking light level...'
+[49:19.730] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Checking light level...
+[49:19.778] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT
+[49:19.778] himax | Sending 49 bytes: Header 4, payload 43, checksum 2 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[49:19.778] himax | HM0360 AE regs:
+[49:19.778] himax |   Integration time = 376 lines
+[49:19.778] himax |   Analog gain = 0
+[49:19.778] himax |   Digital gain = 123
+[49:19.778] himax |   AE Mean = 77
+[49:19.778] himax |   AEConverged?: Y
+[49:19.778] himax | Sending 124 bytes: Header 4, payload 118, checksum 2 'HM0360 AE regs:
+[49:19.778] himax |   Integration time = 376 lines
+[49:19.778] himax |   Analog gain = 0
+[49:19.778] himax |   Digital gain = 123
+[49:19.778] himax |   AE Mean = 77
+[49:19.778] himax |   AEConverged?: Y'
+[49:19.778] himax | 030: 65 73 0a 20 20 41 6e 61  6c 6f 67 20 67 61 69 6e es.  Analog gain
+[49:19.991] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AE light check: AGain = 0, conv=Y -> BRIGHT
+[49:20.091] himax | Sending 55 bytes: Header 4, payload 49, checksum 2 'Captured 1 images. Last is  (File write 0ms avg.)'
+[49:20.091] himax | 000: 80 04 31 00 43 61 70 74  75 72 65 64 20 31 20 69 ..1.Captured 1 i
+[49:20.137] nrf   | BLE out: Sent  44 bytes: 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[49:20.137] nrf   | BLE out: Sent 119 bytes: 'HM0360 AE regs:
+[49:20.137] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[49:20.137] nrf   | BLE out: Sent  50 bytes: 'Captured 1 images. Last is  (File write 0ms avg.)'
+[49:20.267] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 AE regs:
+[49:20.268] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Integration time = 376 lines
+[49:20.269] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Analog gain = 0
+[49:20.271] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Digital gain = 123
+[49:20.273] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AE Mean = 77
+[49:20.273] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AEConverged?: Y
+[49:20.274] app   | [LightSensor] registers complete
+[49:20.632] app   | [LightSensor] AE mean 77, gain 0, digital 123, integration 376, converged Y
+[49:20.633] app   | [LightSensor] light acked
+[49:20.634] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 motion in 0 blocks:
+[49:20.635] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[49:20.877] app   | [LightSensorLog] reading #12: aeMean=77
+[49:20.965] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Captured 1 images. Last is  (File write 0ms avg.)
+[49:21.311] himax |  No LED flashes.
+[49:21.311] himax | >>> Entering DPD at 2024:01:01 00:02:32
+[49:21.358] nrf   | <info> app: AI processor sends stats: '258 0 0 53 468 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 0 0 286 326 1 110 1 '
+[49:21.358] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[49:21.362] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[49:24.029] app   | Written AI light to the device WILD-CNKW (22:36:30-993)
+[49:24.062] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[49:24.110] nrf   | BLE in: Received   8 bytes 'AI light'
+[49:24.110] nrf   | <info> app: AI processor is in DPD. Waking it. (light)
+[49:24.367] himax | [LS] In ledFlashSetFlashModeFromOpParam with 0 Mode 0
+[49:24.367] himax |   Light is currently LIGHT.
+[49:24.367] himax | MKL62BA command received: 'selftest'
+[49:24.494] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[49:24.675] himax | MKL62BA command received: 'light'
+[49:24.675] himax | Checking light level...
+[49:24.675] himax | Sending 29 bytes: Header 4, payload 23, checksum 2 'Checking light level...'
+[49:24.675] himax | [LS] Skipping NN processing (AE light check).
+[49:24.723] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[49:24.723] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[49:24.723] nrf   | BLE out: Sent  24 bytes: 'Checking light level...'
+[49:24.776] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[49:25.064] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Checking light level...
+[49:25.097] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT
+[49:25.097] himax | Sending 49 bytes: Header 4, payload 43, checksum 2 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[49:25.097] himax | HM0360 AE regs:
+[49:25.097] himax |   Integration time = 376 lines
+[49:25.097] himax |   Analog gain = 0
+[49:25.097] himax |   Digital gain = 123
+[49:25.097] himax |   AE Mean = 77
+[49:25.097] himax |   AEConverged?: Y
+[49:25.097] himax | Sending 124 bytes: Header 4, payload 118, checksum 2 'HM0360 AE regs:
+[49:25.097] himax |   Integration time = 376 lines
+[49:25.097] himax |   Analog gain = 0
+[49:25.097] himax |   Digital gain = 123
+[49:25.097] himax |   AE Mean = 77
+[49:25.097] himax |   AEConverged?: Y'
+[49:25.097] himax | 030: 65 73 0a 20 20 41 6e 61  6c 6f 67 20 67 61 69 6e es.  Analog gain
+[49:25.345] nrf   | BLE out: Sent  44 bytes: 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[49:25.345] nrf   | BLE out: Sent 119 bytes: 'HM0360 AE regs:
+[49:25.345] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[49:25.345] nrf   | BLE out: Sent  50 bytes: 'Captured 1 images. Last is  (File write 0ms avg.)'
+[49:25.388] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AE light check: AGain = 0, conv=Y -> BRIGHT
+[49:25.407] himax | Sending 55 bytes: Header 4, payload 49, checksum 2 'Captured 1 images. Last is  (File write 0ms avg.)'
+[49:25.407] himax | 000: 80 04 31 00 43 61 70 74  75 72 65 64 20 31 20 69 ..1.Captured 1 i
+[49:25.723] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 AE regs:
+[49:25.724] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Integration time = 376 lines
+[49:25.725] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Analog gain = 0
+[49:25.726] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Digital gain = 123
+[49:25.728] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AE Mean = 77
+[49:25.729] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AEConverged?: Y
+[49:25.730] app   | [LightSensor] registers complete
+[49:26.050] app   | [LightSensor] AE mean 77, gain 0, digital 123, integration 376, converged Y
+[49:26.050] app   | [LightSensor] light acked
+[49:26.053] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 motion in 0 blocks:
+[49:26.059] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[49:26.328] app   | [LightSensorLog] reading #13: aeMean=77
+[49:26.425] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Captured 1 images. Last is  (File write 0ms avg.)
+[49:26.583] nrf   | <info> app: AI processor sends stats: '259 0 0 53 469 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 0 0 286 326 1 110 1 '
+[49:26.583] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[49:26.661] himax |  No LED flashes.
+[49:26.661] himax | >>> Entering DPD at 2024:01:01 00:02:34
+[49:26.740] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[49:29.453] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[49:29.537] app   | Written AI light to the device WILD-CNKW (22:36:36-504)
+[49:29.687] nrf   | BLE in: Received   8 bytes 'AI light'
+[49:29.687] nrf   | <info> app: AI processor is in DPD. Waking it. (light)
+[49:29.765] himax | [LS] In ledFlashSetFlashModeFromOpParam with 0 Mode 0
+[49:29.765] himax |   Light is currently LIGHT.
+[49:29.959] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[49:29.991] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[49:29.991] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[49:29.991] nrf   | BLE out: Sent  24 bytes: 'Checking light level...'
+[49:30.069] himax | MKL62BA command received: 'selftest'
+[49:30.069] himax | MKL62BA command received: 'light'
+[49:30.069] himax | Checking light level...
+[49:30.069] himax | Sending 29 bytes: Header 4, payload 23, checksum 2 'Checking light level...'
+[49:30.069] himax | [LS] Skipping NN processing (AE light check).
+[49:30.287] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[49:30.557] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT
+[49:30.557] himax | Sending 49 bytes: Header 4, payload 43, checksum 2 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[49:30.557] himax | HM0360 AE regs:
+[49:30.557] himax |   Integration time = 376 lines
+[49:30.557] himax |   Analog gain = 0
+[49:30.557] himax |   Digital gain = 123
+[49:30.557] himax |   AE Mean = 78
+[49:30.557] himax |   AEConverged?: Y
+[49:30.557] himax | Sending 124 bytes: Header 4, payload 118, checksum 2 'HM0360 AE regs:
+[49:30.557] himax |   Integration time = 376 lines
+[49:30.557] himax |   Analog gain = 0
+[49:30.557] himax |   Digital gain = 123
+[49:30.557] himax |   AE Mean = 78
+[49:30.557] himax |   AEConverged?: Y'
+[49:30.557] himax | 030: 65 73 0a 20 20 41 6e 61  6c 6f 67 20 67 61 69 6e es.  Analog gain
+[49:30.608] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Checking light level...
+[49:30.866] himax | Sending 55 bytes: Header 4, payload 49, checksum 2 'Captured 1 images. Last is  (File write 0ms avg.)'
+[49:30.866] himax | 000: 80 04 31 00 43 61 70 74  75 72 65 64 20 31 20 69 ..1.Captured 1 i
+[49:30.913] nrf   | BLE out: Sent  44 bytes: 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[49:30.913] nrf   | BLE out: Sent 119 bytes: 'HM0360 AE regs:
+[49:30.913] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[49:30.913] nrf   | BLE out: Sent  50 bytes: 'Captured 1 images. Last is  (File write 0ms avg.)'
+[49:30.935] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AE light check: AGain = 0, conv=Y -> BRIGHT
+[49:31.280] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 AE regs:
+[49:31.281] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Integration time = 376 lines
+[49:31.282] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Analog gain = 0
+[49:31.284] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Digital gain = 123
+[49:31.285] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AE Mean = 78
+[49:31.286] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AEConverged?: Y
+[49:31.287] app   | [LightSensor] registers complete
+[49:31.665] app   | [LightSensor] AE mean 78, gain 0, digital 123, integration 376, converged Y
+[49:31.667] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 motion in 0 blocks:
+[49:31.669] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[49:32.000] app   | [LightSensorLog] reading #14: aeMean=78
+[49:32.106] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Captured 1 images. Last is  (File write 0ms avg.)
+[49:32.115] himax |  No LED flashes.
+[49:32.115] himax | >>> Entering DPD at 2024:01:01 00:02:37
+[49:32.146] nrf   | <info> app: AI processor sends stats: '260 0 0 53 470 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 0 0 286 326 1 110 1 '
+[49:32.146] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[49:32.461] app   | [LightSensor] light acked
+[49:32.465] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[49:34.919] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[49:34.951] nrf   | BLE in: Received   8 bytes 'AI light'
+[49:34.951] nrf   | <info> app: AI processor is in DPD. Waking it. (light)
+[49:34.980] app   | Written AI light to the device WILD-CNKW (22:36:41-944)
+[49:35.219] himax | [LS] In ledFlashSetFlashModeFromOpParam with 0 Mode 0
+[49:35.219] himax |   Light is currently LIGHT.
+[49:35.405] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[49:35.531] himax | MKL62BA command received: 'selftest'
+[49:35.531] himax | MKL62BA command received: 'light'
+[49:35.531] himax | Checking light level...
+[49:35.531] himax | Sending 29 bytes: Header 4, payload 23, checksum 2 'Checking light level...'
+[49:35.531] himax | [LS] Skipping NN processing (AE light check).
+[49:35.578] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[49:35.578] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[49:35.578] nrf   | BLE out: Sent  24 bytes: 'Checking light level...'
+[49:35.762] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[49:36.018] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT
+[49:36.018] himax | Sending 49 bytes: Header 4, payload 43, checksum 2 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[49:36.018] himax | HM0360 AE regs:
+[49:36.018] himax |   Integration time = 376 lines
+[49:36.018] himax |   Analog gain = 0
+[49:36.018] himax |   Digital gain = 123
+[49:36.018] himax |   AE Mean = 78
+[49:36.018] himax |   AEConverged?: Y
+[49:36.018] himax | Sending 124 bytes: Header 4, payload 118, checksum 2 'HM0360 AE regs:
+[49:36.018] himax |   Integration time = 376 lines
+[49:36.018] himax |   Analog gain = 0
+[49:36.018] himax |   Digital gain = 123
+[49:36.018] himax |   AE Mean = 78
+[49:36.018] himax |   AEConverged?: Y'
+[49:36.018] himax | 030: 65 73 0a 20 20 41 6e 61  6c 6f 67 20 67 61 69 6e es.  Analog gain
+[49:36.116] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Checking light level...
+[49:36.322] himax | Sending 55 bytes: Header 4, payload 49, checksum 2 'Captured 1 images. Last is  (File write 0ms avg.)'
+[49:36.322] himax | 000: 80 04 31 00 43 61 70 74  75 72 65 64 20 31 20 69 ..1.Captured 1 i
+[49:36.502] nrf   | BLE out: Sent  44 bytes: 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[49:36.502] nrf   | BLE out: Sent 119 bytes: 'HM0360 AE regs:
+[49:36.502] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[49:36.502] nrf   | BLE out: Sent  50 bytes: 'Captured 1 images. Last is  (File write 0ms avg.)'
+[49:36.532] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AE light check: AGain = 0, conv=Y -> BRIGHT
+[49:36.913] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 AE regs:
+[49:36.914] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Integration time = 376 lines
+[49:36.915] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Analog gain = 0
+[49:36.916] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Digital gain = 123
+[49:36.917] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AE Mean = 78
+[49:36.921] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AEConverged?: Y
+[49:36.922] app   | [LightSensor] registers complete
+[49:37.324] app   | [LightSensor] AE mean 78, gain 0, digital 123, integration 376, converged Y
+[49:37.324] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 motion in 0 blocks:
+[49:37.325] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[49:37.439] nrf   | <info> app: AI processor sends stats: '261 0 0 53 471 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 0 0 286 326 1 110 1 '
+[49:37.439] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[49:37.546] himax |  No LED flashes.
+[49:37.546] himax | >>> Entering DPD at 2024:01:01 00:02:39
+[49:37.657] app   | [LightSensorLog] reading #15: aeMean=78
+[49:37.765] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Captured 1 images. Last is  (File write 0ms avg.)
+[49:38.149] app   | [LightSensor] light acked
+[49:38.152] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[49:56.480] app   | [useCapturePreview] startCapture called (count=1, interval=500)
+[49:56.481] app   | [useCapturePreview] Phase 1: Setup  checking device state
+[49:56.807] app   | Written AI getop -1 to the device WILD-CNKW (22:37:03-772)
+[49:56.887] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[49:56.887] nrf   | <info> app: AI processor is in DPD. Waking it. (getop -1)
+[49:56.982] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[49:57.243] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[49:57.292] himax | [LS] In ledFlashSetFlashModeFromOpParam with 0 Mode 0
+[49:57.292] himax |   Light is currently LIGHT.
+[49:57.292] himax | MKL62BA command received: 'selftest'
+[49:57.292] himax | MKL62BA command received: 'getop -1'
+[49:57.292] himax | OpParams 261 0 0 53 472 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 0 0 286 326 1 110 1 
+[49:57.292] himax | Sending 102 bytes: Header 4, payload 96, checksum 2 'OpParams 261 0 0 53 472 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 0 0 286 326 1 110 1 '
+[49:57.292] himax | 000: 80 04 60 00 4f 70 50 61  72 61 6d 73 20 32 36 31 ..`.OpParams 261
+[49:57.514] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[49:57.514] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[49:57.514] nrf   | BLE out: Sent  97 bytes: 'OpParams 261 0 0 53 472 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 0 0 286 326 1 110 1 '
+[49:57.652] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[49:58.056] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 261 0 0 53 472 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 0 0 286 326 1 110 1 
+[49:58.436] nrf   | <info> app: AI processor sends stats: '261 0 0 53 472 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 2 1 2 50 65 15 0 0 286 326 1 110 1 '
+[49:58.436] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[49:58.468] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[49:58.531] himax |  No LED flashes.
+[49:58.531] himax | >>> Entering DPD at 2024:01:01 00:02:41
+[49:58.872] app   | [useCapturePreview] Phase 1 complete  waiting for device to sleep
+[49:58.873] app   | [BleSession] Device already asleep  proceeding immediately.
+[49:58.873] app   | [useCapturePreview] Phase 2: Capture  sending AI capture 1 500
+[49:58.878] app   | Written AI capture 1 500 to the device WILD-CNKW (22:37:05-843)
+[49:59.056] nrf   | BLE in: Received  16 bytes 'AI capture 1 500'
+[49:59.056] nrf   | <info> app: AI processor is in DPD. Waking it. (capture 1 500)
+[49:59.150] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[49:59.455] himax | [LS] In ledFlashSetFlashModeFromOpParam with 0 Mode 0
+[49:59.455] himax |   Light is currently LIGHT.
+[49:59.455] himax | MKL62BA command received: 'selftest'
+[49:59.579] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[49:59.581] app   | [OpCache] dropped on wake for D6:47:9B:89:E7:23
+[49:59.655] himax | MKL62BA command received: 'capture 1 500'
+[49:59.655] himax | HM0360 AE regs:
+[49:59.655] himax |   Integration time = 376 lines
+[49:59.655] himax |   Analog gain = 0
+[49:59.655] himax |   Digital gain = 123
+[49:59.655] himax |   AE Mean = 78
+[49:59.655] himax |   AEConverged?: Y
+[49:59.655] himax | Sending 124 bytes: Header 4, payload 118, checksum 2 'HM0360 AE regs:
+[49:59.655] himax |   Integration time = 376 lines
+[49:59.655] himax |   Analog gain = 0
+[49:59.655] himax |   Digital gain = 123
+[49:59.655] himax |   AE Mean = 78
+[49:59.655] himax |   AEConverged?: Y'
+[49:59.655] himax | 030: 65 73 0a 20 20 41 6e 61  6c 6f 67 20 67 61 69 6e es.  Analog gain
+[49:59.926] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[49:59.926] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[49:59.926] nrf   | BLE out: Sent  64 bytes: 'About to capture 1 image with an interval of '500' milliseconds'
+[49:59.926] nrf   | BLE out: Sent 119 bytes: 'HM0360 AE regs:
+[49:59.967] himax | Sending 68 bytes: Header 4, payload 62, checksum 2 'Captured 1 images. Last is 59201220.JPG (File write 49ms avg.)'
+[49:59.967] himax | 000: 80 04 3e 00 43 61 70 74  75 72 65 64 20 31 20 69 ..>.Captured 1 i
+[50:00.083] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[50:00.238] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[50:00.238] nrf   | BLE out: Sent  63 bytes: 'Captured 1 images. Last is 59201220.JPG (File write 49ms avg.)'
+[50:00.503] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: About to capture 1 image with an interval of '500' milliseconds
+[50:00.920] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 AE regs:
+[50:00.922] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Integration time = 376 lines
+[50:00.924] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Analog gain = 0
+[50:00.928] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Digital gain = 123
+[50:00.929] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AE Mean = 78
+[50:00.931] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AEConverged?: Y
+[50:01.159] nrf   | <info> app: AI processor sends stats: '262 0 0 53 473 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 3 1 2 50 65 15 0 0 286 326 1 110 1 '
+[50:01.159] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[50:01.190] himax |  No LED flashes.
+[50:01.190] himax | >>> Entering DPD at 2024:01:01 00:02:43
+[50:01.411] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 motion in 0 blocks:
+[50:01.417] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[50:01.873] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Captured 1 images. Last is 59201220.JPG (File write 49ms avg.)
+[50:02.404] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[50:02.863] app   | [useCapturePreview] Phase 2 complete  captured: 59201220.JPG
+[50:02.864] app   | [useCapturePreview] Waiting for device to sleep after capture (Save State + DPD)
+[50:02.864] app   | [BleSession] Device already asleep  proceeding immediately.
+[50:02.864] app   | [useCapturePreview] Phase 3: Transfer  requesting txfile 59201220.JPG
+[50:02.917] app   | Written AI txfile 59201220.JPG to the device WILD-CNKW (22:37:09-882)
+[50:03.315] nrf   | BLE in: Received  22 bytes 'AI txfile 59201220.JPG'
+[50:03.315] nrf   | <info> app: AI processor is in DPD. Waking it. (txfile 59201220.JPG)
+[50:03.345] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[50:03.647] himax | [LS] In ledFlashSetFlashModeFromOpParam with 0 Mode 0
+[50:03.647] himax |   Light is currently LIGHT.
+[50:03.647] himax | MKL62BA command received: 'selftest'
+[50:03.647] himax | MKL62BA command received: 'txfile 59201220.JPG'
+[50:03.676] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[50:03.915] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[50:03.915] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[50:03.915] nrf   | BLE out: Sent  28 bytes: '12830 bytes in 59201220.JPG'
+[50:04.125] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[50:04.531] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:04.531] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:04.531] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:04.570] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 12830 bytes in 59201220.JPG
+[50:04.571] app   | [useBleListeners] Detected image transfer start: 59201220.JPG (12830 bytes)
+[50:04.571] app   | ImageReassembler: Initializing transfer for 12830 bytes
+[50:04.806] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:04.806] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:04.806] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:04.806] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:04.806] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:05.109] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:05.109] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:05.109] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:05.421] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:05.421] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:05.421] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:05.421] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:05.729] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:05.729] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:06.037] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:06.037] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:06.037] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:06.037] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:06.351] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:06.351] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:06.658] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:06.658] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:06.658] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:06.658] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:06.972] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:06.972] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:06.972] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:06.972] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:07.285] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:07.285] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:07.596] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:07.596] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:07.596] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:07.596] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:07.898] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:07.898] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:08.209] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:08.209] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:08.209] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:08.209] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:08.523] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:08.523] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:08.523] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:08.523] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:08.838] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:08.838] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:09.139] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:09.139] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:09.139] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:09.139] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:09.439] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:09.439] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:09.741] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:09.741] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:09.741] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:09.741] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:10.046] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:10.046] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:10.361] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:10.361] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:10.675] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:10.675] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:10.675] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:10.675] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:10.977] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:10.977] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:11.292] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:11.292] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:11.292] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:11.292] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:11.604] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:11.604] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:11.919] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:11.919] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:11.919] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:11.919] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:12.227] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:12.227] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:12.227] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:12.227] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:12.538] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:12.538] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:12.843] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:12.843] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:12.843] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:12.843] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:13.157] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:13.157] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:13.468] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:13.468] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:13.468] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:13.468] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:13.769] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:13.769] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:14.083] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:14.083] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:14.083] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:14.083] nrf   | BLE out: Failed to send 244 bytes: '[binary]'
+[50:14.083] nrf   | BLE out: Sent 244 bytes: '[binary]'
+[50:14.083] nrf   | BLE out: Failed to send  60 bytes: '[binary]'
+[50:14.389] nrf   | BLE out: Sent  60 bytes: '[binary]'
+[50:14.389] nrf   | BLE out: Failed to send  42 bytes: 'Finished sending 12830 bytes (54 packets)'
+[50:14.389] nrf   | BLE out: Failed to send  42 bytes: 'Finished sending 12830 bytes (54 packets)'
+[50:14.597] app   | ImageReassembler: Transfer complete! Received 12830/12830 (0 gaps)
+[50:14.663] app   | ImageReassembler: Image saved to file:///data/user/0/com.wildlife.wildlifewatcher/cache/capture_1788345441570.jpg [SUCCESS] (12830/12830 bytes)
+[50:14.664] app   | '[useCapturePreview] Image download complete, URI:', 'file:///data/user/0/com.wildlife.wildlifewatcher/cache/capture_1788345441570.jpg'
+[50:14.696] nrf   | BLE out: Sent  42 bytes: 'Finished sending 12830 bytes (54 packets)'
+[50:14.704] app   | [LightSensorLog] reading #16: aeMean=78
+[50:14.784] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Finished sending 12830 bytes (54 packets)
+[50:15.317] himax |  No LED flashes.
+[50:15.317] himax | >>> Entering DPD at 2024:01:01 00:02:56
+[50:15.574] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[50:15.621] nrf   | <info> app: AI processor sends stats: '262 0 0 53 474 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 3 1 2 50 65 15 0 0 286 326 1 110 1 '
+[50:15.621] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[50:37.283] nrf   | BLE in: Received   8 bytes 'AI light'
+[50:37.283] nrf   | <info> app: AI processor is in DPD. Waking it. (light)
+[50:37.283] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[50:37.284] app   | Written AI light to the device WILD-CNKW (22:37:44-250)
+[50:37.557] himax | [LS] In ledFlashSetFlashModeFromOpParam with 0 Mode 0
+[50:37.557] himax |   Light is currently LIGHT.
+[50:37.557] himax | MKL62BA command received: 'selftest'
+[50:37.557] himax | MKL62BA command received: 'light'
+[50:37.557] himax | Checking light level...
+[50:37.557] himax | Sending 29 bytes: Header 4, payload 23, checksum 2 'Checking light level...'
+[50:37.605] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[50:37.871] himax | [LS] Skipping NN processing (AE light check).
+[50:37.903] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[50:37.903] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[50:37.903] nrf   | BLE out: Sent  24 bytes: 'Checking light level...'
+[50:38.057] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[50:38.182] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT
+[50:38.182] himax | Sending 49 bytes: Header 4, payload 43, checksum 2 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[50:38.182] himax | HM0360 AE regs:
+[50:38.182] himax |   Integration time = 376 lines
+[50:38.182] himax |   Analog gain = 0
+[50:38.182] himax |   Digital gain = 123
+[50:38.182] himax |   AE Mean = 78
+[50:38.182] himax |   AEConverged?: Y
+[50:38.182] himax | Sending 124 bytes: Header 4, payload 118, checksum 2 'HM0360 AE regs:
+[50:38.182] himax |   Integration time = 376 lines
+[50:38.182] himax |   Analog gain = 0
+[50:38.182] himax |   Digital gain = 123
+[50:38.182] himax |   AE Mean = 78
+[50:38.182] himax |   AEConverged?: Y'
+[50:38.182] himax | 030: 65 73 0a 20 20 41 6e 61  6c 6f 67 20 67 61 69 6e es.  Analog gain
+[50:38.484] himax | Sending 55 bytes: Header 4, payload 49, checksum 2 'Captured 1 images. Last is  (File write 0ms avg.)'
+[50:38.484] himax | 000: 80 04 31 00 43 61 70 74  75 72 65 64 20 31 20 69 ..1.Captured 1 i
+[50:38.515] nrf   | BLE out: Sent  44 bytes: 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[50:38.515] nrf   | BLE out: Sent 119 bytes: 'HM0360 AE regs:
+[50:38.515] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[50:38.515] nrf   | BLE out: Sent  50 bytes: 'Captured 1 images. Last is  (File write 0ms avg.)'
+[50:38.605] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Checking light level...
+[50:39.070] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AE light check: AGain = 0, conv=Y -> BRIGHT
+[50:39.559] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 AE regs:
+[50:39.560] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Integration time = 376 lines
+[50:39.571] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Analog gain = 0
+[50:39.572] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Digital gain = 123
+[50:39.573] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AE Mean = 78
+[50:39.579] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AEConverged?: Y
+[50:39.579] app   | [LightSensor] registers complete
+[50:39.724] himax |  No LED flashes.
+[50:39.724] himax | >>> Entering DPD at 2024:01:01 00:02:58
+[50:39.755] nrf   | <info> app: AI processor sends stats: '263 0 0 53 475 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 3 1 2 50 65 15 0 0 286 326 1 110 1 '
+[50:39.755] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[50:40.068] app   | [LightSensor] AE mean 78, gain 0, digital 123, integration 376, converged Y
+[50:40.070] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 motion in 0 blocks:
+[50:40.073] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[50:40.478] app   | [LightSensorLog] reading #17: aeMean=78
+[50:40.606] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Captured 1 images. Last is  (File write 0ms avg.)
+[50:41.124] app   | [LightSensor] light acked
+[50:41.377] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[50:43.430] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[50:43.467] nrf   | BLE in: Received   8 bytes 'AI light'
+[50:43.467] nrf   | <info> app: AI processor is in DPD. Waking it. (light)
+[50:43.515] app   | Written AI light to the device WILD-CNKW (22:37:50-480)
+[50:43.730] himax | [LS] In ledFlashSetFlashModeFromOpParam with 0 Mode 0
+[50:43.730] himax |   Light is currently LIGHT.
+[50:43.730] himax | MKL62BA command received: 'selftest'
+[50:43.855] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[50:44.042] himax | MKL62BA command received: 'light'
+[50:44.042] himax | Checking light level...
+[50:44.042] himax | Sending 29 bytes: Header 4, payload 23, checksum 2 'Checking light level...'
+[50:44.042] himax | [LS] Skipping NN processing (AE light check).
+[50:44.088] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[50:44.088] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[50:44.088] nrf   | BLE out: Sent  24 bytes: 'Checking light level...'
+[50:44.347] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[50:44.462] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT
+[50:44.463] himax | Sending 49 bytes: Header 4, payload 43, checksum 2 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[50:44.463] himax | HM0360 AE regs:
+[50:44.463] himax |   Integration time = 376 lines
+[50:44.463] himax |   Analog gain = 0
+[50:44.463] himax |   Digital gain = 123
+[50:44.463] himax |   AE Mean = 78
+[50:44.463] himax |   AEConverged?: Y
+[50:44.463] himax | Sending 124 bytes: Header 4, payload 118, checksum 2 'HM0360 AE regs:
+[50:44.463] himax |   Integration time = 376 lines
+[50:44.463] himax |   Analog gain = 0
+[50:44.463] himax |   Digital gain = 123
+[50:44.463] himax |   AE Mean = 78
+[50:44.463] himax |   AEConverged?: Y'
+[50:44.463] himax | 030: 65 73 0a 20 20 41 6e 61  6c 6f 67 20 67 61 69 6e es.  Analog gain
+[50:44.771] himax | Sending 55 bytes: Header 4, payload 49, checksum 2 'Captured 1 images. Last is  (File write 0ms avg.)'
+[50:44.771] himax | 000: 80 04 31 00 43 61 70 74  75 72 65 64 20 31 20 69 ..1.Captured 1 i
+[50:44.838] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Checking light level...
+[50:45.005] nrf   | BLE out: Sent  44 bytes: 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[50:45.005] nrf   | BLE out: Sent 119 bytes: 'HM0360 AE regs:
+[50:45.005] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[50:45.005] nrf   | BLE out: Sent  50 bytes: 'Captured 1 images. Last is  (File write 0ms avg.)'
+[50:45.431] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AE light check: AGain = 0, conv=Y -> BRIGHT
+[50:45.922] nrf   | <info> app: AI processor sends stats: '264 0 0 53 476 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 3 1 2 50 65 15 0 0 286 326 1 110 1 '
+[50:45.922] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[50:45.949] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 AE regs:
+[50:45.950] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Integration time = 376 lines
+[50:45.951] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Analog gain = 0
+[50:45.956] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Digital gain = 123
+[50:45.958] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AE Mean = 78
+[50:45.959] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AEConverged?: Y
+[50:45.961] app   | [LightSensor] registers complete
+[50:46.014] himax |  No LED flashes.
+[50:46.014] himax | >>> Entering DPD at 2024:01:01 00:03:01
+[50:46.489] app   | [LightSensor] AE mean 78, gain 0, digital 123, integration 376, converged Y
+[50:46.492] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 motion in 0 blocks:
+[50:46.497] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[50:46.933] app   | [LightSensorLog] reading #18: aeMean=78
+[50:47.065] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Captured 1 images. Last is  (File write 0ms avg.)
+[50:47.613] app   | [LightSensor] light acked
+[50:47.617] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[50:49.926] nrf   | BLE in: Received   8 bytes 'AI light'
+[50:49.926] nrf   | <info> app: AI processor is in DPD. Waking it. (light)
+[50:50.020] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[50:50.126] app   | Written AI light to the device WILD-CNKW (22:37:57-092)
+[50:50.322] himax | [LS] In ledFlashSetFlashModeFromOpParam with 0 Mode 0
+[50:50.322] himax |   Light is currently LIGHT.
+[50:50.322] himax | MKL62BA command received: 'selftest'
+[50:50.491] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[50:50.548] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[50:50.548] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[50:50.548] nrf   | BLE out: Sent  24 bytes: 'Checking light level...'
+[50:50.626] himax | MKL62BA command received: 'light'
+[50:50.626] himax | Checking light level...
+[50:50.626] himax | Sending 29 bytes: Header 4, payload 23, checksum 2 'Checking light level...'
+[50:50.626] himax | [LS] Skipping NN processing (AE light check).
+[50:51.025] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[50:51.092] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT
+[50:51.092] himax | Sending 49 bytes: Header 4, payload 43, checksum 2 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[50:51.092] himax | HM0360 AE regs:
+[50:51.092] himax |   Integration time = 376 lines
+[50:51.092] himax |   Analog gain = 0
+[50:51.092] himax |   Digital gain = 123
+[50:51.092] himax |   AE Mean = 78
+[50:51.092] himax |   AEConverged?: Y
+[50:51.092] himax | Sending 124 bytes: Header 4, payload 118, checksum 2 'HM0360 AE regs:
+[50:51.092] himax |   Integration time = 376 lines
+[50:51.092] himax |   Analog gain = 0
+[50:51.092] himax |   Digital gain = 123
+[50:51.092] himax |   AE Mean = 78
+[50:51.092] himax |   AEConverged?: Y'
+[50:51.092] himax | 030: 65 73 0a 20 20 41 6e 61  6c 6f 67 20 67 61 69 6e es.  Analog gain
+[50:51.395] himax | Sending 55 bytes: Header 4, payload 49, checksum 2 'Captured 1 images. Last is  (File write 0ms avg.)'
+[50:51.395] himax | 000: 80 04 31 00 43 61 70 74  75 72 65 64 20 31 20 69 ..1.Captured 1 i
+[50:51.474] nrf   | BLE out: Sent  44 bytes: 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[50:51.474] nrf   | BLE out: Sent 119 bytes: 'HM0360 AE regs:
+[50:51.474] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[50:51.474] nrf   | BLE out: Sent  50 bytes: 'Captured 1 images. Last is  (File write 0ms avg.)'
+[50:51.555] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Checking light level...
+[50:52.120] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AE light check: AGain = 0, conv=Y -> BRIGHT
+[50:52.625] himax |  No LED flashes.
+[50:52.625] himax | >>> Entering DPD at 2024:01:01 00:03:03
+[50:52.683] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 AE regs:
+[50:52.685] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Integration time = 376 lines
+[50:52.690] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Analog gain = 0
+[50:52.691] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Digital gain = 123
+[50:52.692] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AE Mean = 78
+[50:52.693] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AEConverged?: Y
+[50:52.696] app   | [LightSensor] registers complete
+[50:52.704] nrf   | <info> app: AI processor sends stats: '265 0 0 53 477 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 3 1 2 50 65 15 0 0 286 326 1 110 1 '
+[50:52.704] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[50:53.265] app   | [LightSensor] AE mean 78, gain 0, digital 123, integration 376, converged Y
+[50:53.265] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 motion in 0 blocks:
+[50:53.265] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[50:53.745] app   | [LightSensorLog] reading #19: aeMean=78
+[50:53.888] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Captured 1 images. Last is  (File write 0ms avg.)
+[50:54.441] app   | [LightSensor] light acked
+[50:54.444] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[50:56.668] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[50:56.730] nrf   | BLE in: Received   8 bytes 'AI light'
+[50:56.730] nrf   | <info> app: AI processor is in DPD. Waking it. (light)
+[50:56.796] app   | Written AI light to the device WILD-CNKW (22:38:03-762)
+[50:56.982] himax | [LS] In ledFlashSetFlashModeFromOpParam with 0 Mode 0
+[50:56.982] himax |   Light is currently LIGHT.
+[50:56.982] himax | MKL62BA command received: 'selftest'
+[50:57.099] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[50:57.292] himax | MKL62BA command received: 'light'
+[50:57.292] himax | Checking light level...
+[50:57.292] himax | Sending 29 bytes: Header 4, payload 23, checksum 2 'Checking light level...'
+[50:57.292] himax | [LS] Skipping NN processing (AE light check).
+[50:57.354] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[50:57.354] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[50:57.354] nrf   | BLE out: Sent  24 bytes: 'Checking light level...'
+[50:57.699] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[50:57.721] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT
+[50:57.721] himax | Sending 49 bytes: Header 4, payload 43, checksum 2 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[50:57.722] himax | HM0360 AE regs:
+[50:57.722] himax |   Integration time = 376 lines
+[50:57.722] himax |   Analog gain = 0
+[50:57.722] himax |   Digital gain = 123
+[50:57.722] himax |   AE Mean = 78
+[50:57.722] himax |   AEConverged?: Y
+[50:57.722] himax | Sending 124 bytes: Header 4, payload 118, checksum 2 'HM0360 AE regs:
+[50:57.722] himax |   Integration time = 376 lines
+[50:57.722] himax |   Analog gain = 0
+[50:57.722] himax |   Digital gain = 123
+[50:57.722] himax |   AE Mean = 78
+[50:57.722] himax |   AEConverged?: Y'
+[50:57.722] himax | 030: 65 73 0a 20 20 41 6e 61  6c 6f 67 20 67 61 69 6e es.  Analog gain
+[50:57.978] nrf   | BLE out: Sent  44 bytes: 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[50:57.978] nrf   | BLE out: Sent 119 bytes: 'HM0360 AE regs:
+[50:57.978] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[50:57.978] nrf   | BLE out: Sent  50 bytes: 'Captured 1 images. Last is  (File write 0ms avg.)'
+[50:58.025] himax | Sending 55 bytes: Header 4, payload 49, checksum 2 'Captured 1 images. Last is  (File write 0ms avg.)'
+[50:58.025] himax | 000: 80 04 31 00 43 61 70 74  75 72 65 64 20 31 20 69 ..1.Captured 1 i
+[50:58.275] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Checking light level...
+[50:58.865] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AE light check: AGain = 0, conv=Y -> BRIGHT
+[50:59.227] nrf   | <info> app: AI processor sends stats: '266 0 0 53 478 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 3 1 2 50 65 15 0 0 286 326 1 110 1 '
+[50:59.227] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[50:59.274] himax |  No LED flashes.
+[50:59.274] himax | >>> Entering DPD at 2024:01:01 00:03:06
+[50:59.502] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 AE regs:
+[50:59.504] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Integration time = 376 lines
+[50:59.506] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Analog gain = 0
+[50:59.507] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   Digital gain = 123
+[50:59.508] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AE Mean = 78
+[50:59.511] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   AEConverged?: Y
+[50:59.513] app   | [LightSensor] registers complete
+[51:00.108] app   | [LightSensor] AE mean 78, gain 0, digital 123, integration 376, converged Y
+[51:00.109] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 motion in 0 blocks:
+[51:00.112] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[51:00.719] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Captured 1 images. Last is  (File write 0ms avg.)
+[51:01.333] app   | [LightSensor] light acked
+[51:01.333] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[51:07.310] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[51:07.476] app   | Written AI getop -1 to the device WILD-CNKW (22:38:14-442)
+[51:07.547] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[51:07.547] nrf   | <info> app: AI processor is in DPD. Waking it. (getop -1)
+[51:07.624] himax | [LS] In ledFlashSetFlashModeFromOpParam with 0 Mode 0
+[51:07.624] himax |   Light is currently LIGHT.
+[51:07.931] himax | MKL62BA command received: 'selftest'
+[51:07.931] himax | MKL62BA command received: 'getop -1'
+[51:07.931] himax | OpParams 266 0 0 53 479 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 3 1 2 50 65 15 0 0 286 326 1 110 1 
+[51:07.931] himax | Sending 102 bytes: Header 4, payload 96, checksum 2 'OpParams 266 0 0 53 479 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 3 1 2 50 65 15 0 0 286 326 1 110 1 '
+[51:07.931] himax | 000: 80 04 60 00 4f 70 50 61  72 61 6d 73 20 32 36 36 ..`.OpParams 266
+[51:08.021] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[51:08.162] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[51:08.162] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[51:08.162] nrf   | BLE out: Sent  97 bytes: 'OpParams 266 0 0 53 479 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 3 1 2 50 65 15 0 0 286 326 1 110 1 '
+[51:08.678] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[51:08.681] app   | [CameraReadiness] device reports 0x0000
+[51:09.093] nrf   | <info> app: AI processor sends stats: '266 0 0 53 479 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 3 1 2 50 65 15 0 0 286 326 1 110 1 '
+[51:09.093] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[51:09.154] himax |  No LED flashes.
+[51:09.154] himax | >>> Entering DPD at 2024:01:01 00:03:08
+[51:09.332] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 266 0 0 53 479 1 500 0 1000 50 1 0 100 0 0 0 18 1 0 3 1 2 50 65 15 0 0 286 326 1 110 1 
+[51:09.971] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[51:16.264] app   | [LightSensorLog] CSV written to file:///data/user/0/com.wildlife.wildlifewatcher/files/light-sensor/light-sensor-readings.csv

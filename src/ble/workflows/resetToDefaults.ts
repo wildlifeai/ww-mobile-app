@@ -26,11 +26,17 @@ export interface ResetToDefaultsOptions {
  *
  * Each setop/setgps command receives a confirmation response from the
  * firmware, so no verification pass is needed.
+ *
+ * Returns the op table as it stands after the reset - the snapshot it read,
+ * with every value it wrote applied - or null when the ops could not be read.
+ * Callers that keep configuring the device must use this rather than their own
+ * pre-reset snapshot: a diff-write against stale values skips exactly the
+ * parameters the reset has just changed underneath it.
  */
 export async function executeResetToDefaults(
     session: BleSession,
     options?: ResetToDefaultsOptions
-): Promise<void> {
+): Promise<string[] | null> {
     const { onProgress, isCancelled } = options || {}
 
     // Step 1: Read current OPs (this also wakes the device from DPD)
@@ -90,10 +96,25 @@ export async function executeResetToDefaults(
         opsToWrite.push({ index, value: defaultValue })
     }
 
-    // Check if model needs erasing
-    const hasModel = !currentOps ||
-        (currentOps.length > OP_PARAMETER.MODEL_PROJECT && currentOps[OP_PARAMETER.MODEL_PROJECT] !== '0') ||
-        (currentOps.length > OP_PARAMETER.MODEL_VERSION && currentOps[OP_PARAMETER.MODEL_VERSION] !== '0')
+    // Check if model needs erasing.
+    //
+    // A failed read is NOT taken as "a model is loaded". This used to read
+    // `!currentOps || ...`, so a flaky getops erased the on-device neural
+    // network: the most destructive thing this workflow does, triggered by the
+    // least reliable input to it. Everything else here degrades safely when the
+    // read fails (it writes all defaults, which is recoverable), and erasing a
+    // model is not, since getting it back is a slow BLE transfer.
+    //
+    // The cost of the safer default is a stale model surviving a reset when the
+    // read failed. That is visible in the op table afterwards and the operator
+    // can run it again; an erase cannot be undone from this screen.
+    const hasModel = !!currentOps &&
+        ((currentOps.length > OP_PARAMETER.MODEL_PROJECT && currentOps[OP_PARAMETER.MODEL_PROJECT] !== '0') ||
+         (currentOps.length > OP_PARAMETER.MODEL_VERSION && currentOps[OP_PARAMETER.MODEL_VERSION] !== '0'))
+
+    if (!currentOps) {
+        logWarn('[ResetDefaults] Parameters unreadable, so the AI model is left alone. Re-run once the device responds if it needs erasing.')
+    }
 
     log(`[ResetDefaults] ${opsToWrite.length} OPs need writing, model loaded: ${hasModel}`)
 
@@ -152,4 +173,15 @@ export async function executeResetToDefaults(
 
     onProgress?.('Reset complete', 1.0)
     log(`[ResetDefaults] Factory reset complete. ${opsWritten} OPs written.`)
+
+    if (!currentOps) return null
+
+    // The op table as the device now holds it: the snapshot plus what was
+    // written. Nothing here re-reads the device - every setop above was
+    // confirmed by the firmware, and a getops costs a full BLE round trip.
+    const resultingOps = [...currentOps]
+    for (const { index, value } of opsToWrite) {
+        if (index < resultingOps.length) resultingOps[index] = value.toString()
+    }
+    return resultingOps
 }

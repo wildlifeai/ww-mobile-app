@@ -71,36 +71,34 @@ flowchart TD
 
 ### BLE Initialization
 
-BLE initialization happens **upstream** in the Scanner connection flow, and the results reach this screen via the `initPayload` navigation parameter. Measured on hardware, Sep 2026, connecting sends 16 commands:
+BLE initialization happens **upstream** in the Scanner connection flow, and the results reach this screen via the `initPayload` navigation parameter. Connecting is **read-only**: it sends six commands and writes nothing (since #268, Sep 2026; it used to send thirteen, including a factory reset):
 
 | Step | Commands | Notes |
 |---|---|---|
 | `useBleInitialization` | `selftest`, `setutc`, `battery` | There is **no SD card command**: SD status is bit 11 of the self-test bitmask, and battery level is bit 0 plus the `battery` command |
-| AI wake | `AI info` | Up to 3 attempts; the Himax is asleep until something addresses it |
-| Post-wake health | `selftest` **again** | See the warning below. Not a duplicate |
-| Silent OP reset | `AI getop -1`, then one `setop` per drifted parameter | Runs here, during connect, not on this screen's mount. Typically 5 writes |
-| Version checks | `ver`, `AI ver`, `AI info` | Currently issued twice each, which is redundant |
+| AI wake | `AI info` | Up to 3 attempts; the Himax is asleep until something addresses it. The only Himax wake on connect |
+| Post-wake health | none sent | The Himax broadcasts `Error bits = 0x....` on every wake (on the bench, 60 ms after `Wake`). The shared `selfTestCache` (`src/ble/protocol/selfTestCache.ts`) hears every such line; `useDevicePreDeploymentChecks` waits up to 1.5 s for the one that follows its `AI info` wake and only sends `selftest` if none came. The Capture Picture and camera-readiness checks read the same cache, so a console flow entered after a wake sends no `selftest` either |
+| Version checks | `ver`, `AI ver` | Once each. The screen trusts this snapshot; it re-queries only on focus return after a firmware update or on pull-to-refresh |
 
 > [!WARNING]
-> **The two `selftest` calls answer different questions and neither is removable.** The
+> **The pre-wake `selftest` and the post-wake broadcast answer different questions.** The
 > first runs before the Himax is awake, and at that point the BLE processor still has every
 > AI-processor bit (8-15) preset to 1; `useBleInitialization` masks the whole range as
-> stale. Only the second, after `AI info` wakes the Himax, can see real camera or SD card
+> stale. Only the bits after `AI info` wakes the Himax can show real camera or SD card
 > faults. Anything reading self-test bits must know which of the two it is looking at.
 
 > [!NOTE]
 > **A deployed device never reaches any of this.** `useDeviceDiscovery` checks
 > `getActiveDeploymentForDeviceId` first and routes an active deployment straight to Stop
-> Monitoring, so the OP reset cannot disturb a camera that is out working.
+> Monitoring.
 
-The reset writes `FACTORY_DEFAULTS`, which includes `SLOT_SWITCH` (OP 26) = 1, so **connecting enables automatic day/night camera switching** on any device where it was off. See [Light-Sensor.md](../resources/Light-Sensor.md).
+**The factory reset happens once, in the Start Monitoring pipeline** (`pipeline.resetOps`, step 5 below), after the user has decided to deploy. It is the guarantee that nothing leaks from a previous deployment or an Engineer Console session (test-mode bits, extended inactivity timeout, flash overrides, intervals). A refused write there aborts the deployment; it is not a warning. The reset writes `FACTORY_DEFAULTS`, which includes `SLOT_SWITCH` (OP 26) = 1, so **every deployment starts with automatic day/night camera switching** on. See [Light-Sensor.md](../resources/Light-Sensor.md).
 
 On this screen:
 - `isInitializing` is hardcoded to `false` (initialization is already complete)
-- `initErrors` displays any warnings from the upstream selftest (e.g., LoRaWAN connectivity)
-- A silent `resetOps` runs on mount to clear leftover state from previous sessions
+- `initErrors` displays any warnings from the upstream checks (e.g., LoRaWAN connectivity)
 - `useBleSession` + `useBleActions` maintain the BLE heartbeat during form entry
-- **BLE query optimization:** On screen mount, the firmware versions are resolved silently from `initPayload` rather than actively querying the connected device over BLE. This prevents BLE command queue collisions during screen initialization.
+- **BLE query optimization:** On screen mount, the firmware versions are resolved silently from `initPayload` rather than actively querying the connected device over BLE. Before #268 the hook re-queried the device whenever the snapshot looked outdated, which on a bench build was every time.
 - **Focus state recheck:** When the screen regains focus (e.g., after the operator navigates back from a successful firmware update), the active BLE query `checkStatus()` is run to refresh the firmware status and clear the outdated firmware warning banner automatically.
 
 ### User Form
@@ -153,16 +151,16 @@ When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeplo
 | Step | Action | Detail |
 |------|--------|--------|
 | 1 | AI Model Sync | Checks SD card (`dir`) for existing model files before downloading. Only transfers missing files via BLE. Always issues `erasemodel` → `loadmodel` if OPs mismatch. Retries reference data sync if model not found locally. Runs **before** time sync to stay within the firmware's 1000ms IMAGE task inactivity window. |
-| 2 | Time Sync | `setutc` — see [BLE Command Reference](./04-ENGINEER-CONSOLE.md#key-commands). Handled by BLE module (not AI processor). |
+| 2 | Time Sync | `setutc` — see [BLE Command Reference](./04-ENGINEER-CONSOLE.md#ble-command-reference). Handled by BLE module (not AI processor). |
 | 3 | Snapshot Data | Reads `battery`, `network` (if LoRaWAN required), `ver` for deployment record metadata |
 | 4 | Create DB Record | `DeploymentService.createDeployment()` → `OutboxService` → `SupabaseSyncService` |
 | 5 | Reset to Defaults | `pipeline.resetOps()` calls `executeResetToDefaults()` — shared workflow that intelligently resets parameters, skips tracking counters, and clears AI models. |
-| 6 | Configure Device | `pipeline.configureDevice()` — applies [capture method OPs](./04-ENGINEER-CONSOLE.md#capture-method-op-mapping), deployment ID, and GPS |
+| 6 | Configure Device | `pipeline.configureDevice()` — applies [capture method OPs](./04-ENGINEER-CONSOLE.md#capture-method-op-mapping), deployment ID, GPS, and the project's [capture flash](#c-configure-capture-flash). It configures against the op table **`resetOps` returned**, not the pre-reset snapshot |
 | 7 | Live Monitor | Transitions to `DeploymentMonitorView` (remains connected) |
 | 8 | Disconnect | User initiates manual disconnect (`dis`) |
 
 > [!NOTE]
-> **On initial screen mount**, `resetOps` also runs silently once to clear any leftover MD test state (`TEST_MODE_BITS`, extended DPD, etc.) before the user even fills the form.
+> Live monitoring after step 7 polls `AI getop 19` once a minute for the stored-image count; the poll is owned by `DeploymentMonitorView`'s single `useDeploymentMonitor` instance, which also feeds the activity log. Each poll wakes the Himax.
 
 ### OP Factory Reset (`pipeline.resetOps` / `executeResetToDefaults`)
 
@@ -174,9 +172,10 @@ The shared steps:
 
 1. `AI getop -1` — [bulk fetch](./04-ENGINEER-CONSOLE.md#op-bulk-fetch-optimization-ai-getop--1) current OPs (also wakes device from DPD)
 2. **Skips Tracking Counters** — ignores OPs like `NUM_PICTURES`, `NUM_NN_ANALYSES`, etc., so device lifetime history is preserved
-3. **Erases AI Model** — automatically sends `erasemodel` if a model is currently loaded
+3. **Keeps the AI model** — the pipeline passes `preserveModel: true`, so no `erasemodel` is sent and op14/op15 are left alone; model state belongs to the AI Model Sync step. The Engineer Console's reset omits the flag and does erase a loaded model
 4. Diff against `FACTORY_DEFAULTS` — only writes values that differ to save BLE round trips
 5. Clears Deployment ID and zeroizes GPS natively
+6. **Returns the resulting op table** — the snapshot with every write applied, so the configure step that follows diffs against what the device now holds rather than what it held before the reset
 
 ### Device Configuration (`useDeploymentConfiguration`)
 
@@ -195,6 +194,28 @@ setgps 0,0,0               (if recordGpsInImages is disabled / privacy mode)
 > The legacy OP-based deployment ID approach (`setop 20..27` with UUID chunks) has been removed — firmware no longer supports those parameters. OP 19 and OP 20 are now image directory counters.
 
 **B. Configure Capture Method:** See [Capture Method OP Mapping](./04-ENGINEER-CONSOLE.md#capture-method-op-mapping).
+
+**C. Configure Capture Flash:** the project's four flash columns, written as ops:
+
+```
+AI setop 13 <0 none | 1 white | 2 IR>       (FLASH_LED, from projects.flash_led)
+AI setop 34 <0 off | 1 light sensor | 2 always on | 3 time of day>   (FLASH_MODE, from projects.flash_mode)
+AI setop 35 <minutes after midnight UTC>    (time-of-day window start; 0 in every other mode)
+AI setop 36 <minutes>                       (time-of-day window length; 0 in every other mode)
+```
+
+The mapping between column values and op values lives in one place,
+[`src/utils/projectFlash.ts`](../../src/utils/projectFlash.ts). Mode `off` writes
+op13 = 0 as well, because the firmware's `ledFlashIsActive()` gate also arms the
+STROBE-driven IR that lights motion frames at night: a project that wants no
+flash wants that closed too. Firmware that reports fewer than 37 parameters has
+no flash mode, so only op13 is written there.
+
+Until #282 no step wrote either parameter, so every deployment ran with the
+flash off and no night IR. The reset before this step writes op13 = 0 and
+op34 = 0, which is why step 6 must diff against the post-reset table: against
+the older snapshot, a device that already held the project's flash before the
+reset would have had both writes skipped and stayed dark.
 
 ---
 
