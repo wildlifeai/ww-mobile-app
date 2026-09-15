@@ -185,6 +185,15 @@ export const LightSensorScreen = () => {
                 'No reading arrived',
                 'The device acknowledged the request but sent no AE registers within 15 seconds. Check the banner at the top for a hardware problem, or try again.',
             )
+        } else if (result === 'failed') {
+            // The command was refused or went unanswered, so nothing was ever
+            // awaited. Said plainly: until 15 September 2026 this case shared the
+            // wording above and claimed an acknowledgement that never happened.
+            await recheckHealth()
+            Alert.alert(
+                'No answer from the device',
+                'The light request was not answered. The device may be asleep or mid-task; check the banner at the top, then try again.',
+            )
         }
     }, [withPhoto, resetReadings, clearImage, startCapture, measureNow, recheckHealth])
 
@@ -221,7 +230,8 @@ export const LightSensorScreen = () => {
                 )
                 break
             }
-            if (result === 'timeout') {
+            // A refused or unanswered request is a missed row too, not a reading.
+            if (result === 'timeout' || result === 'failed') {
                 misses += 1
                 if (misses >= STREAM_MISS_LIMIT) {
                     await recheckHealth()

@@ -42,6 +42,12 @@ export type MeasureResult =
     | 'unsupported'
     /** Acknowledged, but no register block followed. See the note on measureNow. */
     | 'timeout'
+    /**
+     * The command itself was refused or never answered, so no block was ever
+     * pending. Distinct from `timeout` so the screen does not claim an
+     * acknowledgement the device never sent.
+     */
+    | 'failed'
 
 // The AE register block and its parser live in utils/aeRegisters.ts, shared
 // with Capture Picture so the two screens cannot read the same block differently.
@@ -326,24 +332,38 @@ export const useLightSensor = ({ device }: { device: ExtendedPeripheral | undefi
                 .then(() => { log('[LightSensor] light acked'); return null })
                 .catch((e: any) => (e instanceof Error ? e : new Error(String(e?.message ?? e))))
 
-            const outcome = await Promise.race([
-                pending.promise,
-                commandFailure.then(err => {
-                    if (!err) return pending.promise
-                    pending.cancel()
-                    throw err
-                }),
-            ]).catch((e: Error) => {
-                if (/unrecognised/i.test(e.message)) {
+            // The listener is torn down in `finally`, once the race has settled,
+            // and never inside the losing branch. `pending.cancel()` resolves
+            // `pending.promise` (to null), and a resolution queued before the
+            // `throw` wins the race. On 15 September 2026 that turned the
+            // `Unrecognised` reply from a Himax built without `AI light` into a
+            // "timeout" 157 ms after the reply arrived: the alert claimed an
+            // acknowledgement that never happened and the capture fallback below
+            // never ran.
+            let outcome: AEData | null | 'unsupported' | 'failed'
+            try {
+                outcome = await Promise.race([
+                    pending.promise,
+                    commandFailure.then(err => {
+                        if (!err) return pending.promise
+                        throw err
+                    }),
+                ])
+            } catch (e: any) {
+                const message = e instanceof Error ? e.message : String(e?.message ?? e)
+                if (/unrecognised/i.test(message)) {
                     log('[LightSensor] device has no `AI light`; caller should fall back to a capture')
-                    return 'unsupported' as const
+                    outcome = 'unsupported'
+                } else {
+                    logError('[LightSensor] measure failed:', e)
+                    outcome = 'failed'
                 }
-                logError('[LightSensor] measure failed:', e)
-                return 'failed' as const
-            })
+            } finally {
+                pending.cancel()
+            }
 
             if (outcome === 'unsupported') return 'unsupported'
-            if (outcome === 'failed') return 'timeout'
+            if (outcome === 'failed') return 'failed'
             const regs = outcome
             if (!regs) {
                 logError('[LightSensor] no register block within timeout')
