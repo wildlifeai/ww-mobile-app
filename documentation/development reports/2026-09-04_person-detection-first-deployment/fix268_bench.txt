@@ -1,0 +1,1486 @@
+# fix268_connect_sequence_and_reset_guarantee
+# Started 2026-09-04 13:03:45. Times are MM:SS.mmm from the start of the capture.
+# himax = COM6 @ 921600 (given)
+# nrf   = COM5 @ 115200 (given)
+#
+# Trimmed 19 September 2026. Full log: branch docs/person-detection-first-deployment, commit e3b989e9.
+# Trimmed from 2865 lines. Plumbing, boot and sensor chatter removed, and
+# repeated lines capped at the first 3 and the last of each kind. Runs of three or
+# more removed lines are marked in place; 221 further lines went in runs of one or two.
+#
+[01:29.090] app   | Require cycle: src/providers/BleEngineProvider.tsx -> src/hooks/useBle.ts -> src/hooks/useScanLoop.ts -> src/providers/BleEngineProvider.tsx
+[01:29.090] app   | Require cycles are allowed, but can result in uninitialized values. Consider refactoring to remove the need for a cycle.
+[01:29.180] app   | Require cycle: src/hooks/useDeviceSettings.ts -> src/ble/workflows/resetToDefaults.ts -> src/hooks/useDeviceSettings.ts
+[01:29.180] app   | Require cycles are allowed, but can result in uninitialized values. Consider refactoring to remove the need for a cycle.
+[01:29.441] app   | 'Linking prefix:', 'wildlifewatcher:///'
+[01:29.445] app   | Running "main" with {"rootTag":1,"initialProps":{},"fabric":true}
+[01:29.680] app   | 'Initial URL:', 'wildlifewatcher://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081'
+[01:29.680] app   | 'Deep link received:', 'expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081'
+[01:29.680] app   | 'Full URL being processed:', 'expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081'
+[01:29.687] app   | Setting up deep link listener...
+[01:29.762] app   | 🔧 Initializing Supabase client...
+[01:29.770] app   | BLE library initialized
+[01:29.777] app   | BLE is currently: PoweredOn
+[01:29.781] app   | 'DEBUG: initializeSupabaseClient config:', { supabaseUrl: 'https://qegeovogqxiouqbrxmnh.supabase.co',
+[01:29.802] app   | 'DEBUG: initializeSupabaseClient client:', { supabaseUrl: 'https://qegeovogqxiouqbrxmnh.supabase.co',
+[01:29.802] app   | '✅ Supabase client initialized:', { environment: 'Cloud Development',
+[01:29.809] app   | ✅ Supabase client initialized successfully
+[01:29.809] app   | 📚 Syncing reference data...
+[01:29.900] app   | useDeepLinking hook initialized
+[01:29.900] app   | Setting up deep link listener in useDeepLinking...
+[01:29.900] app   | 🔄 Starting Supabase Sync Service...
+[01:29.900] app   | 🔄 Resetting sync state...
+[01:29.924] app   | 'App opened with URL:', 'wildlifewatcher://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081'
+[01:29.924] app   | 'Processing deep link:', 'wildlifewatcher://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081'
+[01:29.924] app   | 'Parsed URL:', { path: '', queryParams: { url: 'http://localhost:8081' } }
+[01:29.929] app   | 'Checking if path includes auth routes:', ''
+[01:29.932] app   | No connected devices found when checking cached peripherals
+[01:29.932] app   | No connected devices found when checking cached peripherals
+[01:29.951] app   | ✅ Sync state reset complete
+[01:29.960] app   | 📡 Realtime subscription started (debounced)
+[01:31.580] app   | [RefData] Syncing firmware...
+[01:31.591] app   | 'Auth state changed:', 'INITIAL_SESSION', 'tama@ww.org'
+[01:31.609] app   | '🔍 JWT DEBUG (using passed session):', { hasSession: true,
+[01:31.609] app   | '📋 Querying user_roles for userId:', 'a0000000-0000-0000-0000-000000000002'
+[01:31.815] app   | '🔔 Setting up realtime invitation subscription for:', 'tama@ww.org'
+[01:31.822] app   | 👤 User authenticated - triggering data sync...
+[01:31.860] app   | ✅ Found 0 pending invitations in local DB
+[01:32.340] app   | '📡 Realtime subscription status:', 'SUBSCRIBED'
+[01:33.202] app   | '✅ Found', 7, 'user roles'
+[01:33.202] app   | '📋 Querying organisations table for IDs:', [ 'b0000000-0000-0000-0000-000000000001',
+[01:33.210] app   | [RefData] Received 4 firmware records from server (Types: himax, himax, himax, ble)
+[01:33.210] app   | [RefData] Himax records: 3
+[01:33.270] app   | [RefData] Firmware sync complete.
+[01:33.270] app   | ✅ Reference data sync complete
+[01:33.772] app   | [RefData] Syncing firmware...
+[01:34.890] app   | '✅ Found', 2, 'organisations'
+[01:34.890] app   | '✅ Fetched user organisations:', { organisations: 
+[01:35.150] app   | [RefData] Received 4 firmware records from server (Types: himax, himax, himax, ble)
+[01:35.150] app   | [RefData] Himax records: 3
+[01:35.170] app   | [RefData] Firmware sync complete.
+[01:35.170] app   | ✅ Post-login reference data sync complete
+[01:35.190] app   | 📦 Found 0 pending operations in outbox:
+[01:35.190] app   | ✅ No pending changes, applying all server updates
+[01:35.205] app   | '👥 Syncing user roles since', '2026-09-04T00:15:01.285Z'
+[01:35.673] app   | 📥 Received 1 user role updates
+[01:35.721] app   | 👤 Fetching 1 missing user profiles...
+[01:36.053] app   | ✅ User roles sync complete
+[01:36.070] app   | '📂 Syncing projects since', '2026-09-04T00:14:58.115Z'
+[01:37.360] app   | ✅ No new project changes
+[01:37.381] app   | '📷 Syncing devices since', '2026-08-30T04:35:56.499Z'
+[01:37.730] app   | ✅ No new device changes
+[01:37.744] app   | '⛺ Syncing deployments since', '2026-09-04T00:27:07.605Z'
+[01:38.050] app   | ✅ No new deployment changes
+[01:38.730] app   | 🎯 Initial sync complete — routing decisions are now valid
+[02:09.750] app   | [ScanLoop] Flushed stale BLE state
+[02:10.168] app   | [ScanLoop] Starting scan burst
+[02:10.682] app   | '📡 Realtime subscription status:', 'CHANNEL_ERROR'
+[02:10.682] app   | '📡 Realtime subscription status:', 'CHANNEL_ERROR'
+[02:11.307] app   | [EngineerConnect] Device found during scan, auto-connecting: D6:47:9B:89:E7:23
+[02:11.328] nrf   | <info> app: Advertising Fast.
+[02:11.328] nrf   | <info> app: Starting advertising
+[02:11.491] app   | [EngineerConnect] Connecting to WILD-CNKW
+[02:12.243] nrf   | <info> app: Connected
+[02:12.243] nrf   | <info> app: Requesting DLE to 251 bytes
+[02:12.243] nrf   | <info> app: ATT MTU exchange completed. MTU set to 247 bytes.
+[... 5 lines elided: plumbing and repeats ...]
+[02:12.549] nrf   | <info> app: GATT data length updated to 251 bytes.
+[02:12.549] nrf   | <info> app: Data length updated: TX = 251, RX = 27
+[02:12.630] app   | Extracting services and characteristics.
+[02:12.630] app   | Available services: ["1800","1801","6e400001-b5a3-f393-e0a9-e50e24dcca9e"]
+[02:12.670] app   | Notifications started for 6e400003-b5a3-f393-e0a9-e50e24dcca9e
+[02:12.679] app   | Connection priority: High
+[02:12.681] app   | MTU negotiated to 512 bytes
+[02:12.695] app   | Device WILD-CNKW connected
+[02:12.763] app   | [BLE Heartbeat] ✓ Active for WILD-CNKW
+[02:12.790] app   | [EngineerConnect] Connected, navigating to EngineerConsoleScreen
+[02:12.864] nrf   | <info> app: NUS start
+[02:12.864] nrf   | <info> app: Conn params applied: interval 36 units (45ms), timeout 5000ms
+[... 7 lines elided: plumbing and repeats ...]
+[02:13.167] nrf   | <info> app: GATT data length updated to 247 bytes.
+[02:13.167] nrf   | <info> app: Data length updated: TX = 247, RX = 247
+[02:13.469] nrf   | <info> app: Conn params applied: interval 12 units (15ms), timeout 5000ms
+[02:18.899] app   | '📡 Realtime subscription status:', 'SUBSCRIBED'
+[02:29.341] app   | Written AI setop 18 8 to the device WILD-CNKW (13:06:15-102)
+[02:29.341] app   | [useBleListeners] RAW_TX received for D6:47:9B:89:E7:23: AI setop 18 8
+[... 7 lines elided: plumbing and repeats ...]
+[02:29.399] himax | **** WW500 MD. (WW500_C02) Built: 13:32:59 Sep  3 2026 ****
+[02:29.399] himax | Git branch: 'nogit' nogit-dirty
+[02:29.399] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[02:29.399] himax | Camera: RP v3 (IMX708)
+[02:29.399] nrf   | BLE in: Received  13 bytes 'AI setop 18 8'
+[02:29.399] nrf   | <info> app: AI processor is in DPD. Waking it. (setop 18 8)
+[02:29.701] himax | PCA9574 present at 0x20
+[02:29.701] himax | Initialised LED Flash
+[02:29.701] himax | HM0360 present at 0x24
+[02:29.701] himax | Main camera present at 0x1a
+[02:29.701] himax | Disabling RP SENSOR_ENABLE
+[02:29.701] himax | ### Warm Boot ###
+[02:29.701] himax | Woke at 2026:09:04 01:06:35 
+[02:29.701] himax | BLE wake
+[02:29.701] himax | Initialising FreeRTOS tasks
+[02:29.701] himax | Created task 'CLI' Priority 4
+[02:29.701] himax | Created task 'IFTask' Priority 3
+[02:29.701] himax | Created task 'FAT' Priority 2
+[02:29.701] himax | Created task 'IMAGE' Priority 1
+[02:29.701] himax | FreeRTOS scheduler started.
+[02:29.701] himax | Starting CLI Task
+[02:29.701] himax | Enter 'help' to view a list of available commands.
+[02:29.701] himax | I2C slave instance 0 configured at address 0x62
+[02:29.701] himax | I2C buffers have 256 bytes, payload is 244
+[02:29.701] himax | Starting FatFS Task
+[02:30.009] himax | Mounting FatFS on SD card OK
+[02:30.009] himax | SD card initialised. CWD is '0:/'
+[02:30.009] himax | Loading configuration: CWD is '0:/MANIFEST'
+[02:30.009] himax | 'CONFIG.TXT' found. (Next image #39), camera enabled. Flash brightness 5
+[02:30.009] himax | Retaining existing images directory (36 <= 100) '/MEDIA/00000000/IMAGES.000'
+[02:30.009] himax | FatFs setup took 249ms
+[02:30.009] himax | Starting Image Task
+[02:30.009] himax | Image 2304 x 1296. Raw buffer 460800. JPEG buffer 115860. JPEG compression x4
+[02:30.009] himax | Initialising IMX708 at 0x1a (p.u. delay 100ms)
+[02:30.009] himax | Memory allocated: 460800 for raw buffer, 115860 for JPEG, 100 for JPEG header
+[02:30.009] himax | IMX708 Init by app (IMX708_common_setting)
+[02:30.009] himax | Get IMX708_REG_BASE_SPC_GAINS_L = 0x40
+[02:30.009] himax | Init IMX708 Default PDAF pixel correction gains 
+[02:30.009] himax | IMX708 Init by app (IMX708_2304x1296_setting)
+[02:30.009] himax | IMX708 EXPOSURE(0x0940) by app (IMX708_exposure_setting)
+[02:30.009] himax | IMX708 Init by app (IMX708_link_450Mhz_regs)
+[02:30.009] himax | Quad Bayer re-mosaic adjustments ON
+[02:30.009] himax | IMX708 Init by app (IMX708_mirror_setting)
+[02:30.009] himax | Error opening '0:/RPV3_EX.BIN': 4
+[... 10 lines elided: plumbing and repeats ...]
+[02:30.009] himax | [LS] In ledFlashSetFlashModeFromOpParam with 0 Mode 0
+[02:30.009] himax | Initialising NN with 2412/ETHOS-U 2411 library. Arena size 524288
+[02:30.009] himax | Ethos-U55 device initialised
+[02:30.009] himax | Looking for model '20V1.TFL' in flash or SD card
+[02:30.009] himax | Flash ID 0xEF initialised
+[02:30.009] himax | Model file name in flash is '20V1.TFL'
+[02:30.009] himax | Flash already contains model '20V1.TFL'; loading from flash.
+[02:30.009] himax | There are 2 classes (1)
+[02:30.009] himax | WARNING: Number of classes and labels unmatched
+[02:30.009] himax | Initialised neural network.
+[02:30.009] himax | NN Initialisation took 23ms TODO - consider doing this after taking the picture!
+[02:30.009] himax | Image sensor and data path initialised for camera RP v3
+[02:30.009] himax |   Camera system enabled.
+[02:30.009] himax |   Neural network enabled.
+[02:30.009] himax |   Flash LED(s) in use: 0
+[02:30.009] himax |   Flash brightness: 5%
+[02:30.009] himax |   Light is currently LIGHT.
+[02:30.009] himax |   Flash duration 100ms
+[02:30.009] himax |   MD disabled.
+[02:30.009] himax |   Timelapse disabled.
+[02:30.082] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[02:30.190] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[02:30.269] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 18 = 8
+[... 3 lines elided: plumbing and repeats ...]
+[02:30.319] nrf   | <info> app: BLE and AI time differ by 21s
+[02:30.319] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[02:30.319] nrf   | 000: 80 01 08 00 73 65 6C 66  74 65 73 74 38 A9 36 2D  ....selftest8.6-
+[... 3 lines elided: plumbing and repeats ...]
+[02:30.319] nrf   | <info> app: AI self test bits = 0x0000 (all bits now 0x0000)
+[02:30.319] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[... 6 lines elided: plumbing and repeats ...]
+[02:30.319] nrf   | <info> app: AI processor replies: 'Set OpParam 18 = 8'
+[02:30.319] nrf   | BLE out: Sent  19 bytes: 'Set OpParam 18 = 8'
+[02:30.319] himax | MKL62BA command received: 'selftest'
+[02:30.319] himax | selfTest 0000
+[02:30.319] himax | MKL62BA command received: 'setop 18 8'
+[02:30.319] himax | Set OpParam 18 = 8
+[02:30.319] himax | Config saved (op params persisted).
+[02:31.431] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[02:31.549] himax | Inactive for 1000ms
+[02:31.549] himax | Saved state to SD card. Image sequence number = 39
+[02:31.549] himax | Image task ready to sleep.
+[02:31.549] himax | IF task ready to sleep.
+[02:31.549] himax | Preparing HM0360 for MD:   HM0360 Motion Detection off.
+[02:31.549] himax |    Inhibiting MD
+[02:31.549] himax |    Changing mode from 2 to 2 with nFrames=1, sleepTime=0 sleepCount = 0xffff
+[02:31.549] himax |  No LED flashes.
+[02:31.549] himax | [LS] Will wake to check light level in 900 seconds. Currently it is LIGHT
+[02:31.549] himax | >>> Entering DPD at 2026:09:04 01:06:37
+[02:31.549] himax | Will wake at 2026:09:04 01:21:37
+[... 8 lines elided: plumbing and repeats ...]
+[02:31.549] nrf   | <info> app: AI processor sends stats: '39 36 9 7 29 2 500 0 1000 5 1 0 100 0 20 1 18 1 8 36 0 2 50 65 15 0 1 286 326 1 110 1 '
+[02:31.549] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[02:32.469] nrf   | <info> app: Conn params applied: interval 156 units (195ms), timeout 4000ms
+[02:45.691] app   | Written AI setop 8 5000 to the device WILD-CNKW (13:06:31-455)
+[02:45.694] app   | [useBleListeners] RAW_TX received for D6:47:9B:89:E7:23: AI setop 8 5000
+[02:45.929] nrf   | BLE in: Received  15 bytes 'AI setop 8 5000'
+[02:45.929] nrf   | <info> app: AI processor is in DPD. Waking it. (setop 8 5000)
+[... 7 lines elided: plumbing and repeats ...]
+[02:45.929] himax | **** WW500 MD. (WW500_C02) Built: 13:32:59 Sep  3 2026 ****
+[02:45.929] himax | Git branch: 'nogit' nogit-dirty
+[02:45.929] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[02:45.929] himax | Camera: RP v3 (IMX708)
+[02:46.244] himax | PCA9574 present at 0x20
+[02:46.244] himax | Initialised LED Flash
+[02:46.244] himax | HM0360 present at 0x24
+[02:46.244] himax | Main camera present at 0x1a
+[02:46.244] himax | Disabling RP SENSOR_ENABLE
+[02:46.244] himax | ### Warm Boot ###
+[02:46.244] himax | Woke at 2026:09:04 01:06:52 
+[02:46.244] himax | BLE wake
+[02:46.244] himax | Initialising FreeRTOS tasks
+[02:46.244] himax | Created task 'CLI' Priority 4
+[02:46.244] himax | Created task 'IFTask' Priority 3
+[02:46.244] himax | Created task 'FAT' Priority 2
+[02:46.244] himax | Created task 'IMAGE' Priority 1
+[02:46.244] himax | FreeRTOS scheduler started.
+[02:46.244] himax | Starting CLI Task
+[02:46.244] himax | Enter 'help' to view a list of available commands.
+[02:46.244] himax | I2C slave instance 0 configured at address 0x62
+[02:46.244] himax | I2C buffers have 256 bytes, payload is 244
+[02:46.244] himax | Starting FatFS Task
+[02:46.244] himax | Mounting FatFS on SD card OK
+[02:46.244] himax | SD card initialised. CWD is '0:/'
+[02:46.244] himax | Loading configuration: CWD is '0:/MANIFEST'
+[02:46.244] himax | 'CONFIG.TXT' found. (Next image #39), camera enabled. Flash brightness 5
+[02:46.244] himax | Retaining existing images directory (36 <= 100) '/MEDIA/00000000/IMAGES.000'
+[02:46.244] himax | FatFs setup took 249ms
+[02:46.244] himax | Starting Image Task
+[02:46.244] himax | Image 2304 x 1296. Raw buffer 460800. JPEG buffer 115860. JPEG compression x4
+[02:46.552] himax | Initialising IMX708 at 0x1a (p.u. delay 100ms)
+[02:46.552] himax | Memory allocated: 460800 for raw buffer, 115860 for JPEG, 100 for JPEG header
+[02:46.552] himax | IMX708 Init by app (IMX708_common_setting)
+[02:46.552] himax | Get IMX708_REG_BASE_SPC_GAINS_L = 0x40
+[02:46.552] himax | Init IMX708 Default PDAF pixel correction gains 
+[02:46.552] himax | IMX708 Init by app (IMX708_2304x1296_setting)
+[02:46.552] himax | IMX708 EXPOSURE(0x0940) by app (IMX708_exposure_setting)
+[02:46.552] himax | IMX708 Init by app (IMX708_link_450Mhz_regs)
+[02:46.552] himax | Quad Bayer re-mosaic adjustments ON
+[02:46.552] himax | IMX708 Init by app (IMX708_mirror_setting)
+[02:46.552] himax | Error opening '0:/RPV3_EX.BIN': 4
+[... 10 lines elided: plumbing and repeats ...]
+[02:46.552] himax | [LS] In ledFlashSetFlashModeFromOpParam with 0 Mode 0
+[02:46.552] himax | Initialising NN with 2412/ETHOS-U 2411 library. Arena size 524288
+[02:46.552] himax | Ethos-U55 device initialised
+[02:46.552] himax | Looking for model '20V1.TFL' in flash or SD card
+[02:46.552] himax | Flash ID 0xEF initialised
+[02:46.552] himax | Model file name in flash is '20V1.TFL'
+[02:46.552] himax | Flash already contains model '20V1.TFL'; loading from flash.
+[02:46.552] himax | There are 2 classes (1)
+[02:46.552] himax | WARNING: Number of classes and labels unmatched
+[02:46.552] himax | Initialised neural network.
+[02:46.552] himax | NN Initialisation took 23ms TODO - consider doing this after taking the picture!
+[02:46.552] himax | Image sensor and data path initialised for camera RP v3
+[02:46.552] himax |   Camera system enabled.
+[02:46.552] himax |   Neural network enabled.
+[02:46.552] himax |   Flash LED(s) in use: 0
+[02:46.552] himax |   Flash brightness: 5%
+[02:46.552] himax |   Light is currently LIGHT.
+[02:46.552] himax |   Flash duration 100ms
+[02:46.552] himax |   MD disabled.
+[02:46.552] himax |   Timelapse disabled.
+[02:46.590] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[02:46.780] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[... 3 lines elided: plumbing and repeats ...]
+[02:46.860] nrf   | <info> app: BLE and AI time differ by 22s
+[02:46.860] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[02:46.860] nrf   | 000: 80 01 08 00 73 65 6C 66  74 65 73 74 38 A9 C8 AC  ....selftest8...
+[... 3 lines elided: plumbing and repeats ...]
+[02:46.860] nrf   | <info> app: AI self test bits = 0x0000 (all bits now 0x0000)
+[02:46.860] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[... 7 lines elided: plumbing and repeats ...]
+[02:46.860] nrf   | <info> app: AI processor replies: 'Set OpParam 8 = 5000'
+[02:46.860] nrf   | BLE out: Sent  21 bytes: 'Set OpParam 8 = 5000'
+[02:46.860] himax | MKL62BA command received: 'selftest'
+[02:46.860] himax | selfTest 0000
+[02:46.860] himax | MKL62BA command received: 'setop 8 5000'
+[02:46.860] himax | Set OpParam 8 = 5000
+[02:46.860] himax | Config saved (op params persisted).
+[02:46.884] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 8 = 5000
+[02:47.783] himax | Inactive for 1000ms
+[02:47.960] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[02:48.091] himax | Saved state to SD card. Image sequence number = 39
+[02:48.091] himax | Image task ready to sleep.
+[02:48.091] himax | IF task ready to sleep.
+[02:48.091] himax | Preparing HM0360 for MD:   HM0360 Motion Detection off.
+[02:48.091] himax |    Inhibiting MD
+[02:48.091] himax |    Changing mode from 2 to 2 with nFrames=1, sleepTime=0 sleepCount = 0xffff
+[02:48.091] himax |  No LED flashes.
+[02:48.091] himax | [LS] Will wake to check light level in 900 seconds. Currently it is LIGHT
+[02:48.091] himax | >>> Entering DPD at 2026:09:04 01:06:54
+[02:48.091] himax | Will wake at 2026:09:04 01:21:54
+[... 8 lines elided: plumbing and repeats ...]
+[02:48.091] nrf   | <info> app: AI processor sends stats: '39 36 9 7 30 2 500 0 5000 5 1 0 100 0 20 1 18 1 8 36 0 2 50 65 15 0 1 286 326 1 110 1 '
+[02:48.091] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[03:10.140] app   | Disconnecting device on back press...
+[03:10.156] app   | Peripheral disconnect event triggered. Disconnecting: D6:47:9B:89:E7:23
+[03:14.765] nrf   | <info> app: Disconnected. Conn_handle: 0x0, reason: 0x13
+[03:14.765] nrf   | <info> app:   remote
+[03:19.358] nrf   | <info> app: Advertising Fast.
+[03:19.358] nrf   | <info> app: Starting advertising
+[03:20.461] app   | [ScanLoop] Flushed stale BLE state
+[03:20.465] app   | [Scanner] New scan session started (15s), session ID: 1
+[03:20.821] app   | [ScanLoop] Starting scan burst
+[03:21.009] app   | [DeviceDiscovery] Auto-connecting to discovered device: D6:47:9B:89:E7:23
+[03:21.010] app   | [AutoConnect] D6:47:9B: DISCOVERED → ROUTING_PENDING
+[03:21.020] app   | Device selected: D6:47:9B:89:E7:23, mode: auto
+[03:22.175] app   | Connecting to device D6:47:9B:89:E7:23...
+[03:23.319] nrf   | <info> app: Connected
+[03:23.319] nrf   | <info> app: Requesting DLE to 251 bytes
+[03:23.635] nrf   | <info> app: ATT MTU exchange completed. MTU set to 247 bytes.
+[... 5 lines elided: plumbing and repeats ...]
+[03:23.635] nrf   | <info> app: GATT data length updated to 251 bytes.
+[03:23.635] nrf   | <info> app: Data length updated: TX = 251, RX = 27
+[03:23.705] app   | Extracting services and characteristics.
+[03:23.710] app   | Available services: ["1800","1801","6e400001-b5a3-f393-e0a9-e50e24dcca9e"]
+[03:23.742] app   | Notifications started for 6e400003-b5a3-f393-e0a9-e50e24dcca9e
+[03:23.747] app   | Connection priority: High
+[03:23.754] app   | MTU negotiated to 512 bytes
+[03:23.769] app   | Device WILD-CNKW connected
+[03:23.853] app   | [BLE Heartbeat] ✓ Active for WILD-CNKW
+[03:23.861] app   | Connect result: true
+[03:23.861] app   | Proceeding with mode: auto
+[03:23.861] app   | Checking DB for device D6:47:9B:89:E7:23...
+[03:23.935] nrf   | <info> app: NUS start
+[03:23.935] nrf   | <info> app: Conn params applied: interval 36 units (45ms), timeout 5000ms
+[... 7 lines elided: plumbing and repeats ...]
+[03:24.238] nrf   | <info> app: GATT data length updated to 247 bytes.
+[03:24.238] nrf   | <info> app: Data length updated: TX = 247, RX = 247
+[03:24.284] app   | DB Device found: true
+[03:24.539] nrf   | <info> app: Conn params applied: interval 12 units (15ms), timeout 5000ms
+[03:25.119] app   | 📂 Fetching projects for user a0000000-0000-0000-0000-000000000002 in org b0000000-0000-0000-0000-000000000001
+[03:25.141] app   | ✅ Found 1 locally created projects
+[03:25.152] app   | ✅ Total accessible projects (Roles + Created): 4
+[03:25.158] app   | [ProjectService] Enriching project: Person detection example (97446bed-24f1-4d50-ba49-31e32b47a966)
+[03:25.166] app   | [ProjectService] Enriching project: Sinbad Skink Survey (c0000000-0000-0000-0000-000000000005)
+[03:25.166] app   | [ProjectService] Enriching project: Global Testing Project (c0000000-0000-0000-0000-000000000099)
+[03:25.166] app   | [ProjectService] Enriching project: Access Test — Valid (c0a11111-0000-4000-8000-000000000001)
+[03:25.183] app   | [ProjectService] Enrichment complete for 97446bed-24f1-4d50-ba49-31e32b47a966: 0 active out of 1 deployments, 1 members
+[03:25.183] app   | [ProjectService] Enrichment complete for c0000000-0000-0000-0000-000000000005: 7 active out of 9 deployments, 1 members
+[03:25.183] app   | [ProjectService] Enrichment complete for c0000000-0000-0000-0000-000000000099: 0 active out of 0 deployments, 1 members
+[03:25.183] app   | [ProjectService] Enrichment complete for c0a11111-0000-4000-8000-000000000001: 0 active out of 3 deployments, 1 members
+[03:25.201] app   | [Pre-Deployment] Running standard BLE initialization...
+[03:25.209] app   | [BLE Init] Checking hardware status prior to time sync...
+[03:25.530] app   | Written selftest to the device WILD-CNKW (13:07:11-293)
+[03:25.601] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[03:25.612] app   | '[BLE Init] Self-test result:', 'Error bits = 0x0000'
+[03:25.621] app   | [BLE Init] Setting UTC time...
+[03:25.697] app   | Written [REDACTED] to the device WILD-CNKW (13:07:11-462)
+[03:25.700] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: UTC is: 2026-09-04T01:07:11Z
+[03:25.726] app   | [BLE Init] UTC time synchronized successfully
+[03:25.767] app   | Written battery to the device WILD-CNKW (13:07:11-532)
+[03:25.769] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Battery = 3114mV 3%
+[03:25.779] nrf   | BLE in: Received   8 bytes 'selftest'
+[03:25.779] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[03:25.779] nrf   | BLE in: Received  27 bytes 'setutc 2026-09-04T01:07:11Z'
+[03:25.779] nrf   | <info> app: System time set successfully
+[03:25.779] nrf   | BLE out: Sent  29 bytes: 'UTC is: 2026-09-04T01:07:11Z'
+[03:25.779] nrf   | BLE in: Received   7 bytes 'battery'
+[03:25.779] nrf   | BLE out: Sent  20 bytes: 'Battery = 3114mV 3%'
+[03:25.792] app   | [Pre-Deployment] AI wake attempt 1/3...
+[03:25.829] app   | Written AI info to the device WILD-CNKW (13:07:11-593)
+[03:26.089] nrf   | BLE in: Received   7 bytes 'AI info'
+[03:26.089] nrf   | <info> app: AI processor is in DPD. Waking it. (info)
+[... 7 lines elided: plumbing and repeats ...]
+[03:26.089] himax | **** WW500 MD. (WW500_C02) Built: 13:32:59 Sep  3 2026 ****
+[03:26.089] himax | Git branch: 'nogit' nogit-dirty
+[03:26.089] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[03:26.089] himax | Camera: RP v3 (IMX708)
+[03:26.089] himax | PCA9574 present at 0x20
+[03:26.089] himax | Initialised LED Flash
+[03:26.089] himax | HM0360 present at 0x24
+[03:26.089] himax | Main camera present at 0x1a
+[03:26.089] himax | Disabling RP SENSOR_ENABLE
+[03:26.089] himax | ### Warm Boot ###
+[03:26.089] himax | Woke at 2026:09:04 01:06:54 
+[03:26.089] himax | BLE wake
+[03:26.089] himax | Initialising FreeRTOS tasks
+[03:26.089] himax | Created task 'CLI' Priority 4
+[03:26.089] himax | Created task 'IFTask' Priority 3
+[03:26.089] himax | Created task 'FAT' Priority 2
+[03:26.089] himax | Created task 'IMAGE' Priority 1
+[03:26.089] himax | FreeRTOS scheduler started.
+[03:26.089] himax | Starting CLI Task
+[03:26.089] himax | Enter 'help' to view a list of available commands.
+[03:26.089] himax | I2C slave instance 0 configured at address 0x62
+[03:26.089] himax | I2C buffers have 256 bytes, payload is 244
+[03:26.089] himax | Starting FatFS Task
+[03:26.389] himax | Mounting FatFS on SD card OK
+[03:26.389] himax | SD card initialised. CWD is '0:/'
+[03:26.389] himax | Loading configuration: CWD is '0:/MANIFEST'
+[03:26.389] himax | 'CONFIG.TXT' found. (Next image #39), camera enabled. Flash brightness 5
+[03:26.389] himax | Retaining existing images directory (36 <= 100) '/MEDIA/00000000/IMAGES.000'
+[03:26.389] himax | FatFs setup took 249ms
+[03:26.389] himax | Starting Image Task
+[03:26.389] himax | Image 2304 x 1296. Raw buffer 460800. JPEG buffer 115860. JPEG compression x4
+[03:26.389] himax | Initialising IMX708 at 0x1a (p.u. delay 100ms)
+[03:26.389] himax | Memory allocated: 460800 for raw buffer, 115860 for JPEG, 100 for JPEG header
+[03:26.389] himax | IMX708 Init by app (IMX708_common_setting)
+[03:26.389] himax | Get IMX708_REG_BASE_SPC_GAINS_L = 0x40
+[03:26.389] himax | Init IMX708 Default PDAF pixel correction gains 
+[03:26.570] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[03:26.671] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[03:26.680] himax | IMX708 Init by app (IMX708_2304x1296_setting)
+[03:26.680] himax | IMX708 EXPOSURE(0x0940) by app (IMX708_exposure_setting)
+[03:26.680] himax | IMX708 Init by app (IMX708_link_450Mhz_regs)
+[03:26.680] himax | Quad Bayer re-mosaic adjustments ON
+[03:26.680] himax | IMX708 Init by app (IMX708_mirror_setting)
+[03:26.680] himax | Error opening '0:/RPV3_EX.BIN': 4
+[... 10 lines elided: plumbing and repeats ...]
+[03:26.680] himax | [LS] In ledFlashSetFlashModeFromOpParam with 0 Mode 0
+[03:26.680] himax | Initialising NN with 2412/ETHOS-U 2411 library. Arena size 524288
+[03:26.680] himax | Ethos-U55 device initialised
+[03:26.680] himax | Looking for model '20V1.TFL' in flash or SD card
+[03:26.680] himax | Flash ID 0xEF initialised
+[03:26.680] himax | Model file name in flash is '20V1.TFL'
+[03:26.680] himax | Flash already contains model '20V1.TFL'; loading from flash.
+[03:26.680] himax | There are 2 classes (1)
+[03:26.680] himax | WARNING: Number of classes and labels unmatched
+[03:26.680] himax | Initialised neural network.
+[03:26.680] himax | NN Initialisation took 23ms TODO - consider doing this after taking the picture!
+[03:26.680] himax | Image sensor and data path initialised for camera RP v3
+[03:26.680] himax |   Camera system enabled.
+[03:26.680] himax |   Neural network enabled.
+[03:26.680] himax |   Flash LED(s) in use: 0
+[03:26.680] himax |   Flash brightness: 5%
+[03:26.680] himax |   Light is currently LIGHT.
+[03:26.680] himax |   Flash duration 100ms
+[03:26.680] himax |   MD disabled.
+[03:26.680] himax |   Timelapse disabled.
+[03:26.680] himax | MKL62BA command received: 'selftest'
+[03:26.680] himax | selfTest 0000
+[03:26.680] himax | MKL62BA command received: 'info'
+[03:26.680] himax | Label: WW-L
+[03:26.680] himax | Serial No: 0xe6b72dac
+[03:26.680] himax |   15259648 K total drive space.
+[03:26.680] himax |   15252672 K available.
+[03:26.680] himax | Cluster size: 64 sectors (32768 bytes).
+[03:26.680] himax | Serial No: 0xe6b72dac
+[03:26.680] himax |   15259648 K total drive space.
+[03:26.680] himax |   15252672 K available.
+[03:26.680] himax | Cluster size: 64 sectors (32768 bytes).'
+[03:26.841] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Label: WW-L
+[03:26.850] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Serial No: 0xe6b72dac
+[03:26.850] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   15259648 K total drive space.
+[03:26.860] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23:   15252672 K available.
+[03:26.862] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Cluster size: 64 sectors (32768 bytes).
+[03:26.881] app   | '[Pre-Deployment] Post-wake self-test from broadcast:', '0x0000'
+[03:26.956] app   | Written ver to the device WILD-CNKW (13:07:12-719)
+[03:26.956] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: WW500-C02 V 00.30.48 21:58:30 Jul 21 2026
+[... 3 lines elided: plumbing and repeats ...]
+[03:27.000] nrf   | <info> app: BLE and AI time differ by 17s
+[03:27.000] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[03:27.000] nrf   | 000: 80 01 08 00 73 65 6C 66  74 65 73 74 38 A9 30 30  ....selftest8.00
+[... 3 lines elided: plumbing and repeats ...]
+[03:27.000] nrf   | <info> app: AI self test bits = 0x0000 (all bits now 0x0000)
+[03:27.000] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[... 13 lines elided: plumbing and repeats ...]
+[03:27.000] nrf   | <info> app: AI processor replies: 'Label: WW-L
+[03:27.000] nrf   | Serial No: 0xe6b72dac
+[03:27.000] nrf   |   15259648 K total drive space.
+[03:27.000] nrf   |   15252672 K available.
+[03:27.000] nrf   | Cluster size: 64 sectors (32768 bytes).'
+[03:27.000] nrf   | BLE out: Sent 132 bytes: 'Label: WW-L
+[03:27.000] nrf   | Serial No: 0xe6b72dac
+[03:27.000] nrf   |   15259648 K total drive space.
+[03:27.000] nrf   |   15252672 K available.
+[03:27.000] nrf   | Cluster size: 64 sectors (32768 bytes).'
+[03:27.000] nrf   | BLE in: Received   3 bytes 'ver'
+[03:27.000] nrf   | BLE out: Sent  42 bytes: 'WW500-C02 V 00.30.48 21:58:30 Jul 21 2026'
+[03:27.029] app   | Written AI ver to the device WILD-CNKW (13:07:12-792)
+[03:27.111] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: WW500_C02 13:32:59 Sep  3 2026
+[03:27.121] app   | [Pre-Deployment] Himax firmware: WW500_C02 13:32:59 Sep  3 2026
+[03:27.295] himax | MKL62BA command received: 'ver'
+[03:27.295] himax | WW500_C02 13:32:59 Sep  3 2026
+[03:27.309] nrf   | BLE in: Received   6 bytes 'AI ver'
+[... 6 lines elided: plumbing and repeats ...]
+[03:27.309] nrf   | <info> app: AI processor replies: 'WW500_C02 13:32:59 Sep  3 2026'
+[03:27.309] nrf   | BLE out: Sent  31 bytes: 'WW500_C02 13:32:59 Sep  3 2026'
+[03:27.552] app   | [AutoConnect] D6:47:9B: ROUTING_PENDING → ACCEPTED
+[03:27.780] app   | [Scanner] Scan session stopped — user left the Scanner page
+[03:27.800] app   | '[DeploymentDetails] Loading project:', '97446bed-24f1-4d50-ba49-31e32b47a966'
+[03:27.803] app   | [GPS] Starting location request...
+[03:27.803] app   | [GPS] Checking existing permissions...
+[03:27.980] app   | '📂 Reading project from WatermelonDB:', '97446bed-24f1-4d50-ba49-31e32b47a966'
+[03:27.980] app   | '✅ Found project in WatermelonDB:', 'Person detection example'
+[03:27.980] app   | [ProjectService] Enriching project: Person detection example (97446bed-24f1-4d50-ba49-31e32b47a966)
+[03:28.069] app   | '[GPS] Existing permission status:', 'granted'
+[03:28.169] app   | [GPS] Getting current position...
+[03:28.170] app   | [ProjectService] Enrichment complete for 97446bed-24f1-4d50-ba49-31e32b47a966: 0 active out of 1 deployments, 1 members
+[03:28.261] app   | ✅ User role for project 97446bed-24f1-4d50-ba49-31e32b47a966: project_admin
+[03:28.261] app   | '[DeploymentDetails] Project loaded:', 'Person detection example', 'capture_method_id:', 1
+[03:28.261] app   | 📂 Fetching projects for user a0000000-0000-0000-0000-000000000002 in org b0000000-0000-0000-0000-000000000001
+[03:28.423] app   | ✅ Found 1 locally created projects
+[03:28.429] app   | ✅ Total accessible projects (Roles + Created): 4
+[03:28.430] app   | [ProjectService] Enriching project: Person detection example (97446bed-24f1-4d50-ba49-31e32b47a966)
+[03:28.431] app   | [ProjectService] Enriching project: Sinbad Skink Survey (c0000000-0000-0000-0000-000000000005)
+[03:28.431] app   | [ProjectService] Enriching project: Global Testing Project (c0000000-0000-0000-0000-000000000099)
+[03:28.431] app   | [ProjectService] Enriching project: Access Test — Valid (c0a11111-0000-4000-8000-000000000001)
+[03:28.431] app   | [ProjectService] Enrichment complete for 97446bed-24f1-4d50-ba49-31e32b47a966: 0 active out of 1 deployments, 1 members
+[03:28.431] app   | [ProjectService] Enrichment complete for c0000000-0000-0000-0000-000000000005: 7 active out of 9 deployments, 1 members
+[03:28.431] app   | [ProjectService] Enrichment complete for c0000000-0000-0000-0000-000000000099: 0 active out of 0 deployments, 1 members
+[03:28.431] app   | [ProjectService] Enrichment complete for c0a11111-0000-4000-8000-000000000001: 0 active out of 3 deployments, 1 members
+[03:28.440] app   | '[DeploymentDetails] Resolving capture method name for ID:', 1
+[03:28.510] app   | '[DeploymentDetails] Method resolved:', 'activityDetection'
+[03:29.470] app   | '[GPS] Location received:', { accuracy: 26.148000717163086,
+[... 8 lines elided: plumbing and repeats ...]
+[03:32.218] nrf   | <info> app: AI processor sends stats: '39 36 9 7 31 2 500 0 5000 5 1 0 100 0 20 1 18 1 8 36 0 2 50 65 15 0 1 286 326 1 110 1 '
+[03:32.218] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[03:32.218] himax | Inactive for 5000ms
+[03:32.218] himax | Saved state to SD card. Image sequence number = 39
+[03:32.218] himax | Image task ready to sleep.
+[03:32.218] himax | IF task ready to sleep.
+[03:32.218] himax | Preparing HM0360 for MD:   HM0360 Motion Detection off.
+[03:32.218] himax |    Inhibiting MD
+[03:32.218] himax |    Changing mode from 2 to 2 with nFrames=1, sleepTime=0 sleepCount = 0xffff
+[03:32.218] himax |  No LED flashes.
+[03:32.218] himax | [LS] Will wake to check light level in 900 seconds. Currently it is LIGHT
+[03:32.218] himax | >>> Entering DPD at 2026:09:04 01:07:40
+[03:32.218] himax | Will wake at 2026:09:04 01:22:40
+[03:32.239] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[03:43.604] nrf   | <info> app: Conn params applied: interval 156 units (195ms), timeout 4000ms
+[04:10.342] app   | Written AI getop -1 to the device WILD-CNKW (13:07:56-110)
+[04:10.493] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[04:10.493] nrf   | <info> app: AI processor is in DPD. Waking it. (getop -1)
+[... 20 lines elided: plumbing and repeats ...]
+[04:10.493] himax | BLE wake
+[... 7 lines elided: plumbing and repeats ...]
+[04:10.493] himax | Enter 'help' to view a list of available commands.
+[... 6 lines elided: plumbing and repeats ...]
+[04:10.805] himax | Loading configuration: CWD is '0:/MANIFEST'
+[04:10.805] himax | 'CONFIG.TXT' found. (Next image #39), camera enabled. Flash brightness 5
+[04:10.805] himax | Retaining existing images directory (36 <= 100) '/MEDIA/00000000/IMAGES.000'
+[... 8 lines elided: plumbing and repeats ...]
+[04:11.032] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[... 8 lines elided: plumbing and repeats ...]
+[04:11.110] himax | Error opening '0:/RPV3_EX.BIN': 4
+[... 13 lines elided: plumbing and repeats ...]
+[04:11.110] himax | Looking for model '20V1.TFL' in flash or SD card
+[04:11.110] himax | Model file name in flash is '20V1.TFL'
+[04:11.110] himax | Flash already contains model '20V1.TFL'; loading from flash.
+[04:11.110] himax | WARNING: Number of classes and labels unmatched
+[04:11.110] himax | Image sensor and data path initialised for camera RP v3
+[... 6 lines elided: plumbing and repeats ...]
+[04:11.110] himax |   MD disabled.
+[04:11.110] himax | MKL62BA command received: 'selftest'
+[04:11.110] himax | MKL62BA command received: 'getop -1'
+[04:11.110] himax | OpParams 39 36 9 7 32 2 500 0 5000 5 1 0 100 0 20 1 18 1 8 36 0 2 50 65 15 0 1 286 326 1 110 1 
+[04:11.224] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[04:11.421] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 39 36 9 7 32 2 500 0 5000 5 1 0 100 0 20 1 18 1 8 36 0 2 50 65 15 0 1 286 326 1 110 1 
+[... 3 lines elided: plumbing and repeats ...]
+[04:11.429] nrf   | <info> app: BLE and AI time differ by 16s
+[... 3 lines elided: plumbing and repeats ...]
+[04:11.429] nrf   | 000: 80 01 08 00 73 65 6C 66  74 65 73 74 38 A9 30 30  ....selftest8.00
+[... 4 lines elided: plumbing and repeats ...]
+[04:11.429] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[04:11.429] nrf   | 000: 80 01 08 00 67 65 74 6F  70 20 2D 31 BC B7 30 30  ....getop -1..00
+[... 8 lines elided: plumbing and repeats ...]
+[04:11.429] nrf   | <info> app: AI processor replies: 'OpParams 39 36 9 7 32 2 500 0 5000 5 1 0 100 0 20 1 18 1 8 36 0 2 50 65 15 0 1 286 326 1 110 1 '
+[04:11.429] nrf   | BLE out: Sent  96 bytes: 'OpParams 39 36 9 7 32 2 500 0 5000 5 1 0 100 0 20 1 18 1 8 36 0 2 50 65 15 0 1 286 326 1 110 1 '
+[04:11.443] app   | [Deployment] Pre-flight OPs: 39 36 9 7 32 2 500 0 5000 5 1 0 100 0 20 1 18 1 8 36 0 2 50 65 15 0 1 286 326 1 110 1
+[04:11.599] app   | Written [REDACTED] to the device WILD-CNKW (13:07:57-364)
+[04:12.049] nrf   | BLE in: Received  27 bytes 'setutc 2026-09-04T01:07:57Z'
+[04:12.049] nrf   | <info> app: System time set successfully
+[04:12.049] nrf   | BLE out: Sent  29 bytes: 'UTC is: 2026-09-04T01:07:57Z'
+[04:12.201] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: UTC is: 2026-09-04T01:07:57Z
+[04:12.362] app   | '[DeploymentService] Creating deployment:', 'Automated Deployment'
+[04:12.362] app   | '📂 Reading project from WatermelonDB:', '97446bed-24f1-4d50-ba49-31e32b47a966'
+[04:12.362] app   | '✅ Found project in WatermelonDB:', 'Person detection example'
+[04:12.362] app   | [ProjectService] Enriching project: Person detection example (97446bed-24f1-4d50-ba49-31e32b47a966)
+[04:12.463] app   | [ProjectService] Enrichment complete for 97446bed-24f1-4d50-ba49-31e32b47a966: 0 active out of 1 deployments, 1 members
+[04:12.463] app   | ✅ User role for project 97446bed-24f1-4d50-ba49-31e32b47a966: project_admin
+[04:12.469] app   | [DeploymentService] Step 1: Preparing deployment record
+[04:12.471] app   | [DeploymentService] Preparation function complete
+[04:12.471] app   | '[DeploymentService] Step 1 complete: Record prepared with ID:', '58443d28-7811-4de4-b2c4-25a89e60c8ef'
+[04:12.471] app   | [DeploymentService] Step 2: Mapping payload
+[04:12.471] app   | [DeploymentService] Payload mapped successfully
+[04:12.471] app   | [DeploymentService] Step 3: Recording operation
+[04:12.471] app   | 📦 Prepared CREATE operation for deployments:58443d28-7811-4de4-b2c4-25a89e60c8ef (clock: 1788484078238)
+[04:12.471] app   | [DeploymentService] Step 3 complete: Outbox op prepared
+[04:12.471] app   | [DeploymentService] Step 4: Batching operations
+[04:12.478] app   | '[DeploymentService] Created deployment and outbox record:', '58443d28-7811-4de4-b2c4-25a89e60c8ef'
+[04:12.480] app   | '[DeploymentService] Touched device:', '9f0c1d0a-3245-4f97-8c61-dc6635b4ad3e'
+[04:12.480] app   | [ResetOps] Reading current parameters...
+[04:12.480] app   | [ResetDefaults] Reading current operational parameters...
+[04:12.480] app   | [ResetDefaults] Using provided current OPs: 39 36 9 7 32 2 500 0 5000 5 1 0 100 0 20 1 18 1 8 36 0 2 50 65 15 0 1 286 326 1 110 1
+[04:12.480] app   | [ResetDefaults] 2 OPs need writing, model loaded: true
+[04:12.480] app   | [ResetDefaults] Setting OP 8 = 1000
+[04:12.570] app   | Written AI setop 8 1000 to the device WILD-CNKW (13:07:58-343)
+[04:12.649] himax | MKL62BA command received: 'setop 8 1000'
+[04:12.649] himax | Set OpParam 8 = 1000
+[04:12.649] himax | IF Task received event 'String Response' (0x0703). Rx data = 0x3000ea30
+[04:12.781] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 8 = 1000
+[04:12.795] app   | [ResetOps] Resetting parameter 8...
+[04:12.795] app   | [ResetDefaults] Setting OP 18 = 0
+[04:12.800] app   | Written AI setop 18 0 to the device WILD-CNKW (13:07:58-566)
+[04:12.962] himax | Config saved (op params persisted).
+[04:12.962] nrf   | BLE in: Received  15 bytes 'AI setop 8 1000'
+[04:12.962] nrf   | 000: 80 01 0C 00 73 65 74 6F  70 20 38 20 31 30 30 30  ....setop 8 1000
+[... 4 lines elided: plumbing and repeats ...]
+[04:12.962] nrf   | <info> app: AI processor replies: 'Set OpParam 8 = 1000'
+[04:12.962] nrf   | BLE out: Sent  21 bytes: 'Set OpParam 8 = 1000'
+[04:13.171] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 18 = 0
+[04:13.194] app   | [ResetOps] Resetting parameter 18...
+[04:13.194] app   | [ResetDefaults] Skipping clearing deployment ID (skipIdentityReset = true)
+[04:13.194] app   | [ResetDefaults] Skipping zeroing GPS (skipIdentityReset = true)
+[04:13.199] app   | [ResetOps] Reset complete
+[04:13.199] app   | [ResetDefaults] Factory reset complete. 2 OPs written.
+[04:13.202] app   | [Deployment] Configuring device via standardized hook...
+[04:13.202] app   | [DeployConfig] Starting deployment configuration sequence...
+[04:13.202] app   | '[DeployConfig] Setting deployment ID:', '58443d28-7811-4de4-b2c4-25a89e60c8ef'
+[04:13.269] himax | MKL62BA command received: 'setop 18 0'
+[04:13.269] himax | Set OpParam 18 = 0
+[04:13.269] nrf   | BLE in: Received  13 bytes 'AI setop 18 0'
+[04:13.269] nrf   | 000: 80 01 0A 00 73 65 74 6F  70 20 31 38 20 30 49 A4  ....setop 18 0I.
+[... 5 lines elided: plumbing and repeats ...]
+[04:13.416] app   | Written AI setdid 58443d28-7811-4de4-b2c4-25a89e60c8ef to the device WILD-CNKW (13:07:59-181)
+[04:13.561] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Deployment ID set to 58443d28-7811-4de4-b2c4-25a89e60c8ef
+[04:13.580] himax | MKL62BA command received: 'setdid 58443d28-7811-4de4-b2c4-25a89e60c8ef'
+[04:13.580] himax | Deployment ID set to 58443d28-7811-4de4-b2c4-25a89e60c8ef
+[04:13.580] nrf   | BLE in: Received  46 bytes 'AI setdid 58443d28-7811-4de4-b2c4-25a89e60c8ef'
+[... 10 lines elided: plumbing and repeats ...]
+[04:13.580] nrf   | <info> app: AI processor replies: 'Deployment ID set to 58443d28-7811-4de4-b2c4-25a89e60c8ef'
+[04:13.580] nrf   | BLE out: Sent  58 bytes: 'Deployment ID set to 58443d28-7811-4de4-b2c4-25a89e60c8ef'
+[04:13.588] app   | [DeployConfig] Deployment ID set successfully via AI setdid
+[04:13.589] app   | [DeployConfig] Skipping reset of Op 20 (already 0)
+[04:13.594] app   | Written AI setop 19 0 to the device WILD-CNKW (13:07:59-355)
+[04:13.888] himax | MKL62BA command received: 'setop 19 0'
+[... 3 lines elided: plumbing and repeats ...]
+[04:13.888] nrf   | BLE in: Received  13 bytes 'AI setop 19 0'
+[... 7 lines elided: plumbing and repeats ...]
+[04:13.950] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 19 = 0
+[04:13.970] app   | [DeployConfig] Image directory counters handled (Op 19+20)
+[04:13.986] app   | Written [REDACTED] to the device WILD-CNKW (13:07:59-752)
+[04:14.188] himax | MKL62BA command received: 'setgps 0,0,0'
+[04:14.188] himax | Parsed GPS string is '0,0,0'
+[04:14.188] himax | Device GPS set
+[04:14.340] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Device GPS set
+[04:14.360] app   | [DeployConfig] GPS zeroed out (Privacy mode or missing location)
+[04:14.360] app   | '[DeployConfig] Configuring capture method:', 'activity'
+[04:14.360] app   | [DeployConfig] Motion detection mode - interval 1000ms, timeout 30s
+[04:14.371] app   | [DeployConfig] Skipping parameter 17 (already 1)
+[04:14.371] app   | [DeployConfig] Setting parameter 11 to 1000
+[04:14.371] app   | Written AI setop 11 1000 to the device WILD-CNKW (13:08:00-136)
+[04:14.486] app   | ⏰ Debounce timer expired, triggering sync...
+[04:14.489] nrf   | BLE in: Received  15 bytes 'AI setgps 0,0,0'
+[04:14.489] nrf   | 000: 80 01 0C 00 73 65 74 67  70 73 20 30 2C 30 2C 30  ....setgps 0,0,0
+[... 4 lines elided: plumbing and repeats ...]
+[04:14.489] nrf   | <info> app: AI processor replies: 'Device GPS set'
+[04:14.489] nrf   | BLE out: Sent  15 bytes: 'Device GPS set'
+[04:14.799] himax | MKL62BA command received: 'setop 11 1000'
+[... 3 lines elided: plumbing and repeats ...]
+[04:14.799] nrf   | BLE in: Received  16 bytes 'AI setop 11 1000'
+[04:14.799] nrf   | 000: 80 01 0D 00 73 65 74 6F  70 20 31 31 20 31 30 30  ....setop 11 100
+[... 6 lines elided: plumbing and repeats ...]
+[04:14.922] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 11 = 1000
+[04:14.971] app   | [DeployConfig] Skipping parameter 7 (already 0)
+[04:14.971] app   | [DeployConfig] Setting parameter 8 to 1000
+[04:14.979] app   | Written AI setop 8 1000 to the device WILD-CNKW (13:08:00-745)
+[04:15.319] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 8 = 1000
+[04:15.341] app   | [DeployConfig] Skipping parameter 10 (already 1)
+[04:15.343] app   | [DeployConfig] Deployment configuration complete (Atomic)
+[04:15.343] app   | [Deployment] Device configuration successful
+[04:15.417] himax | MKL62BA command received: 'setop 8 1000'
+[04:15.417] himax | Set OpParam 8 = 1000
+[04:15.417] himax | IF Task received event 'String Response' (0x0703). Rx data = 0x3000ea30
+[04:15.417] himax | Config saved (op params persisted).
+[04:15.417] nrf   | BLE in: Received  15 bytes 'AI setop 8 1000'
+[04:15.417] nrf   | <info> app: I2C TX complete: 18 bytes.
+[04:15.417] nrf   | 000: 80 01 0C 00 73 65 74 6F  70 20 38 20 31 30 30 30  ....setop 8 1000
+[04:15.417] nrf   | 010: 59 1D 24 2D 37 38 31 31  2D 34 64 65 34 2D 62 32  Y.$-7811-4de4-b2
+[04:15.417] nrf   | <info> app: I2C RX payload 20/250 bytes. Response type is 4. CRC OK (0xF34E)
+[04:15.417] nrf   | 000: 80 04 14 00 53 65 74 20  4F 70 50 61 72 61 6D 20  ....Set OpParam 
+[04:15.417] nrf   | 010: 38 20 3D 20 31 30 30 30  00 4E FF FF FF FF FF FF  8 = 1000.N......
+[04:15.417] nrf   | <info> app: AI processor replies: 'Set OpParam 8 = 1000'
+[04:15.417] nrf   | BLE out: Sent  21 bytes: 'Set OpParam 8 = 1000'
+[04:15.495] app   | Written AI setop 18 2 to the device WILD-CNKW (13:08:01-262)
+[04:15.700] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 18 = 2
+[04:15.730] himax | MKL62BA command received: 'setop 18 2'
+[... 3 lines elided: plumbing and repeats ...]
+[04:15.730] nrf   | BLE in: Received  13 bytes 'AI setop 18 2'
+[04:15.730] nrf   | 000: 80 01 0A 00 73 65 74 6F  70 20 31 38 20 32 69 E6  ....setop 18 2i.
+[... 5 lines elided: plumbing and repeats ...]
+[04:15.740] app   | Written AI setop 5 2 to the device WILD-CNKW (13:08:01-507)
+[04:15.890] app   | 📤 Uploading batch for table: deployments (1 ops)
+[04:15.890] app   | 🔍 Processing deployments payload. Has modified_by: false
+[04:15.890] app   | ℹ️ No modified_by in payload for deployments. Keys: id, project_id, device_id, name, setup_by, deployment_start, ended_by, deployment_end, deployment_status_id, capture_method_id, activity_detection_sensitivity_id, timelapse_interval_seconds, start_deployment_comments, end_deployment_comments, location_name, location_description, altitude, accuracy, camera_location_image_paths, latitude, longitude, camera_model, lorawan_network, device_eui, lorawan_registration_completed, lorawan_last_verified_at, ai_model_id, ble_firmware_id, himax_firmware_id, battery_level_at_start, sd_card_total_kb_at_start, sd_card_available_kb_at_start, lorawan_rssi_at_start, lorawan_snr_at_start, created_at, updated_at, deleted_at, operation_id
+[04:16.030] nrf   | BLE in: Received  12 bytes 'AI setop 5 2'
+[04:16.030] nrf   | 000: 80 01 09 00 73 65 74 6F  70 20 35 20 32 0A 9E E6  ....setop 5 2...
+[... 5 lines elided: plumbing and repeats ...]
+[04:16.030] himax | MKL62BA command received: 'setop 5 2'
+[... 3 lines elided: plumbing and repeats ...]
+[04:16.092] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 5 = 2
+[04:16.273] app   | Written AI capture 1 500 to the device WILD-CNKW (13:08:02-039)
+[04:16.650] himax | MKL62BA command received: 'capture 1 500'
+[04:16.650] himax | About to capture 1 image with an interval of '500' milliseconds
+[04:16.650] himax | Images to capture: 1
+[04:16.650] himax | Interval: 500ms
+[... 10 lines elided: plumbing and repeats ...]
+[04:16.650] himax | IMX708 on by app done
+[04:16.650] himax | g_cursensorstream: 0
+[04:16.650] himax | Image capture 1/1 took 52ms
+[... 3 lines elided: plumbing and repeats ...]
+[04:16.650] himax | Class 'unknown': 56.0% (raw: 29)
+[04:16.650] himax | Class '': 44.4% (raw: -29)
+[04:16.650] himax | Class 0 'unknown' = logit 29
+[04:16.650] himax | Class 1 '' = logit -29
+[04:16.650] himax | Target object not detected.
+[04:16.650] himax | Score -29/128 (Threshold 18)
+[04:16.650] himax | NN processing took 15ms
+[04:16.650] himax | [LS] AE light check: AGain = 0, conv=N -> DARK (change)
+[04:16.683] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: About to capture 1 image with an interval of '500' milliseconds
+[04:16.689] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: NN-
+[04:16.820] app   | ✅ Server processed 1 operations for deployments
+[04:16.830] himax | write_slot_selector: slot 0 selector written OK
+[04:16.830] himax | switch_slot: selector now points at slot 0
+[04:16.830] himax | [LS] Auto camera switch: light is DARK -> slot 0 ('HM0360 (night/IR)'). Reset scheduled.
+[04:16.830] himax | HM0360 motion in 0 blocks:
+[04:16.870] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AE light check: AGain = 0, conv=N -> DARK (change)
+[04:16.963] nrf   | BLE in: Received  16 bytes 'AI capture 1 500'
+[... 9 lines elided: plumbing and repeats ...]
+[04:16.963] nrf   | <info> app: AI processor replies: 'About to capture 1 image with an interval of '500' milliseconds'
+[04:16.963] nrf   | BLE out: Sent  64 bytes: 'About to capture 1 image with an interval of '500' milliseconds'
+[04:16.963] nrf   | BLE out: Sent   4 bytes: 'NN-'
+[... 5 lines elided: plumbing and repeats ...]
+[04:16.963] nrf   | BLE out: Sent  51 bytes: 'AE light check: AGain = 0, conv=N -> DARK (change)'
+[... 9 lines elided: plumbing and repeats ...]
+[04:16.963] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[04:16.963] nrf   |   Integration time = 137 lines
+[04:16.963] nrf   |   Analog gain = 0
+[04:16.963] nrf   |   Digital gain = 64
+[04:16.963] nrf   |   AE Mean = 49
+[04:16.963] nrf   |   AEConverged?: N'
+[... 7 lines elided: plumbing and repeats ...]
+[04:17.087] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[04:17.137] himax | AE: p75=252 (target 110) exposure 2368->934 gain code 0->0
+[04:17.137] himax | WB auto: means R=204 G=238 B=225 -> gains R x316/256, B x255/256
+[04:17.137] himax | Colour correction: R x316/256, B x255/256 in 89ms
+[04:17.137] himax | SW JPEG 8644 bytes in 181ms
+[04:17.137] himax | EXIF: Adding DeploymentID: 58443d28-7811-4de4-b2c4-25a89e60c8ef
+[04:17.137] himax | Added 14 EXIF tags
+[04:17.137] himax | Writing 9668 bytes (8644 + 1024) to 'A9A1A0B0.JPG' from jpeg buffer of 115860 bytes
+[04:17.264] nrf   | BLE out: Sent  90 bytes: 'Auto camera switch: light level wants the night (HM0360) camera - switching at next sleep'
+[... 10 lines elided: plumbing and repeats ...]
+[04:17.264] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[... 7 lines elided: plumbing and repeats ...]
+[04:17.264] nrf   | BLE out: Sent  63 bytes: 'Captured 1 images. Last is A9A1A0B0.JPG (File write 46ms avg.)'
+[04:17.280] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Captured 1 images. Last is A9A1A0B0.JPG (File write 46ms avg.)
+[04:17.311] app   | Written AI getop -1 to the device WILD-CNKW (13:08:03-076)
+[04:17.449] himax | Wrote 9666 byte image to SD: A9A1A0B0.JPG at 1:8:27 4/9/2026
+[04:17.449] himax | File write took 46ms
+[04:17.449] himax | Current captures completed: 1
+[04:17.449] himax | Average file write time 46ms
+[04:17.449] himax | Total frames captured since last reset: 1
+[04:17.559] app   | 📦 Found 0 pending operations in outbox:
+[04:17.559] app   | ✅ No pending changes, applying all server updates
+[04:17.571] app   | '👥 Syncing user roles since', '2026-09-04T00:15:01.285Z'
+[04:17.661] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 40 37 9 7 32 2 500 0 1000 5 1 1000 100 0 20 1 18 1 2 1 0 2 50 65 15 1 1 286 326 1 110 1 
+[04:17.759] himax | MKL62BA command received: 'getop -1'
+[04:17.759] himax | OpParams 40 37 9 7 32 2 500 0 1000 5 1 1000 100 0 20 1 18 1 2 1 0 2 50 65 15 1 1 286 326 1 110 1 
+[04:17.840] app   | Written AI getop -1 to the device WILD-CNKW (13:08:03-611)
+[04:17.870] app   | 📥 Received 1 user role updates
+[04:17.873] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[04:17.873] nrf   | 000: 80 01 08 00 67 65 74 6F  70 20 2D 31 BC B7 35 30  ....getop -1..50
+[... 8 lines elided: plumbing and repeats ...]
+[04:17.873] nrf   | <info> app: AI processor replies: 'OpParams 40 37 9 7 32 2 500 0 1000 5 1 1000 100 0 20 1 18 1 2 1 0 2 50 65 15 1 1 286 326 1 110 1 '
+[04:17.873] nrf   | BLE out: Sent  98 bytes: 'OpParams 40 37 9 7 32 2 500 0 1000 5 1 1000 100 0 20 1 18 1 2 1 0 2 50 65 15 1 1 286 326 1 110 1 '
+[04:17.881] app   | 👤 Fetching 1 missing user profiles...
+[04:18.042] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 40 37 9 7 32 2 500 0 1000 5 1 1000 100 0 20 1 18 1 2 1 0 2 50 65 15 1 1 286 326 1 110 1 
+[04:18.060] himax | MKL62BA command received: 'getop -1'
+[04:18.060] himax | OpParams 40 37 9 7 32 2 500 0 1000 5 1 1000 100 0 20 1 18 1 2 1 0 2 50 65 15 1 1 286 326 1 110 1 
+[04:18.179] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[04:18.179] nrf   | 000: 80 01 08 00 67 65 74 6F  70 20 2D 31 BC B7 35 30  ....getop -1..50
+[... 8 lines elided: plumbing and repeats ...]
+[04:18.179] nrf   | <info> app: AI processor replies: 'OpParams 40 37 9 7 32 2 500 0 1000 5 1 1000 100 0 20 1 18 1 2 1 0 2 50 65 15 1 1 286 326 1 110 1 '
+[04:18.179] nrf   | BLE out: Sent  98 bytes: 'OpParams 40 37 9 7 32 2 500 0 1000 5 1 1000 100 0 20 1 18 1 2 1 0 2 50 65 15 1 1 286 326 1 110 1 '
+[04:18.231] app   | ✅ User roles sync complete
+[04:18.231] app   | '📂 Syncing projects since', '2026-09-04T00:14:58.115Z'
+[04:19.420] app   | ✅ No new project changes
+[04:19.421] app   | '📷 Syncing devices since', '2026-08-30T04:35:56.499Z'
+[04:19.777] app   | ✅ No new device changes
+[04:19.780] app   | '⛺ Syncing deployments since', '2026-09-04T00:27:07.605Z'
+[04:20.176] app   | 📥 Received 1 deployment updates
+[04:20.230] app   | ✅ Deployments sync complete
+[... 18 lines elided: plumbing and repeats ...]
+[04:23.134] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[04:23.277] himax | Preparing HM0360 for MD:   HM0360 Motion Detection on! 1000ms frame interval
+[04:23.277] himax |    Interval of 1000ms gives sleep count = 0x8030
+[04:23.277] himax |    Changing mode from 2 to 2 with nFrames=1, sleepTime=1000 sleepCount = 0x8030
+[04:23.277] himax | >>> Reset by watchdog
+[04:23.277] himax | Please input any key to enter X-Modem mode in 30 ms 
+[04:23.277] himax | waiting input key...
+[... 9 lines elided: plumbing and repeats ...]
+[04:23.277] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0000 Cold boot
+[04:23.277] himax | Camera: HM0360
+[... 4 lines elided: plumbing and repeats ...]
+[04:23.888] himax | ### Cold Boot ###
+[04:23.888] himax | FreeRTOS tickless idle is enabled. configMAX_PRIORITIES = 5
+[04:24.733] app   | Written AI getop 19 to the device WILD-CNKW (13:08:10-491)
+[04:24.940] nrf   | BLE in: Received  11 bytes 'AI getop 19'
+[04:24.940] nrf   | <info> app: AI processor is in DPD. Waking it. (getop 19)
+[... 7 lines elided: plumbing and repeats ...]
+[04:26.340] himax | Enter 'help' to view a list of available commands.
+[... 6 lines elided: plumbing and repeats ...]
+[04:26.646] himax | Loading configuration: CWD is '0:/MANIFEST'
+[04:26.646] himax | 'CONFIG.TXT' found. (Next image #40), camera enabled. Flash brightness 5
+[04:26.646] himax | Retaining existing images directory (1 <= 100) '/MEDIA/58443d28/IMAGES.000'
+[... 6 lines elided: plumbing and repeats ...]
+[04:27.869] himax | Initialising HM0360 at 0x24 (p.u. delay 1ms)
+[04:27.869] himax |    Changing mode from 2 to 0 with nFrames=0, sleepTime=0 sleepCount = 0xffff
+[04:28.169] himax | HM0360 Init 
+[04:28.169] himax | HM0360 Init Mirror Off
+[04:28.169] himax | HM0360 Init finished
+[04:28.169] himax | HM0360 MD sensitivity 1
+[04:28.169] himax | Error opening '0:/HM0360EX.BIN': 4
+[... 4 lines elided: plumbing and repeats ...]
+[04:28.169] himax | Looking for model '20V1.TFL' in flash or SD card
+[04:28.169] himax | Meta data found in flash
+[04:28.169] himax | Magic: 0x4c41424c Model '20V1.TFL' has 1 labels of 20 bytes:
+[04:28.169] himax | 0 = 'unknown'
+[04:28.169] himax | Model file name in flash is '20V1.TFL'
+[04:28.169] himax | Flash already contains model '20V1.TFL'; loading from flash.
+[04:28.169] himax | TFLM Ethos-U55 Model Fingerprint
+[04:28.169] himax | ---------------------------------
+[04:28.169] himax | Schema version : 3 (expected 3)
+[04:28.169] himax | Subgraphs      : 1
+[04:28.169] himax | Operators      : 1
+[04:28.169] himax |   Op 0: CUSTOM (ethos-u), weight bytes: 250576
+[04:28.169] himax | Input tensor   : i8 [1,96,96,1]
+[04:28.169] himax | Output tensor  : i8 [1,2]
+[04:28.169] himax | Total weight bytes : 250612
+[04:28.169] himax | ---------------------------------
+[04:28.169] himax | WARNING: Number of classes and labels unmatched
+[04:28.169] himax | Image sensor and data path initialised for camera HM0360
+[... 4 lines elided: plumbing and repeats ...]
+[04:28.169] himax |   Light is currently DARK.
+[04:28.169] himax |   MD sampling: 1000ms.
+[04:28.208] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[04:28.216] app   | [OpCache] dropped on wake for D6:47:9B:89:E7:23
+[... 3 lines elided: plumbing and repeats ...]
+[04:28.320] nrf   | <info> app: BLE and AI time differ by 84416891s - too much!
+[... 3 lines elided: plumbing and repeats ...]
+[04:28.320] nrf   | 000: 80 01 08 00 73 65 6C 66  74 65 73 74 38 A9 35 30  ....selftest8.50
+[... 4 lines elided: plumbing and repeats ...]
+[04:28.320] nrf   | <info> app: Send 'setutc 2026-09-04T01:08:13Z'
+[04:28.320] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[... 3 lines elided: plumbing and repeats ...]
+[04:28.470] himax | MKL62BA command received: 'selftest'
+[04:28.470] himax | MKL62BA command received: 'setutc 2026-09-04T01:08:13Z'
+[04:28.593] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[04:30.319] himax | RTC set to 2026-09-04T01:08:13Z (this took 1917ms)
+[04:30.319] himax | MKL62BA command received: 'getop 19'
+[04:30.319] himax | OpParam 19 = 1
+[04:30.351] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParam 19 = 1
+[... 11 lines elided: plumbing and repeats ...]
+[04:30.470] nrf   | <info> app: AI processor replies: 'OpParam 19 = 1'
+[04:30.470] nrf   | BLE out: Sent  15 bytes: 'OpParam 19 = 1'
+[04:31.521] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[... 9 lines elided: plumbing and repeats ...]
+[04:31.540] himax | Preparing HM0360 for MD:   HM0360 Motion Detection on! 1000ms frame interval
+[04:31.540] himax |    Interval of 1000ms gives sleep count = 0x8030
+[04:31.540] himax |    Changing mode from 0 to 2 with nFrames=1, sleepTime=1000 sleepCount = 0x8030
+[04:31.540] himax | [LS] Will wake to check light level in 900 seconds. Currently it is DARK
+[... 21 lines elided: plumbing and repeats ...]
+[05:09.028] himax | Camera: HM0360
+[... 6 lines elided: plumbing and repeats ...]
+[05:09.028] himax | Motion detected INT_INDIC = 0xc8
+[... 7 lines elided: plumbing and repeats ...]
+[05:09.028] himax | Enter 'help' to view a list of available commands.
+[... 6 lines elided: plumbing and repeats ...]
+[05:09.227] himax | Loading configuration: CWD is '0:/MANIFEST'
+[05:09.227] himax | 'CONFIG.TXT' found. (Next image #40), camera enabled. Flash brightness 5
+[05:09.227] himax | Retaining existing images directory (1 <= 100) '/MEDIA/58443d28/IMAGES.000'
+[... 4 lines elided: plumbing and repeats ...]
+[05:09.227] himax | Initialising HM0360 at 0x24 (p.u. delay 1ms)
+[05:09.227] himax |    Changing mode from 2 to 0 with nFrames=0, sleepTime=0 sleepCount = 0xffff
+[05:09.227] himax | HM0360 MD sensitivity 1
+[... 4 lines elided: plumbing and repeats ...]
+[05:09.227] himax | Looking for model '20V1.TFL' in flash or SD card
+[05:09.227] himax | Model file name in flash is '20V1.TFL'
+[05:09.227] himax | Flash already contains model '20V1.TFL'; loading from flash.
+[05:09.227] himax | WARNING: Number of classes and labels unmatched
+[05:09.227] himax | Image sensor and data path initialised for camera HM0360
+[... 4 lines elided: plumbing and repeats ...]
+[05:09.227] himax |   Light is currently DARK.
+[05:09.227] himax |   MD sampling: 1000ms.
+[... 3 lines elided: plumbing and repeats ...]
+[05:09.227] himax | Images to capture: 2
+[05:09.227] himax | Interval: 500ms
+[05:09.227] himax |    Interval of 500ms gives sleep count = 0x4018
+[05:09.227] himax |    Changing mode from 0 to 2 with nFrames=1, sleepTime=500 sl
+[05:09.227] himax | eepCount = 0x4018
+[05:09.227] himax | Image capture 1/2 took 49ms
+[05:09.227] himax | MKL62BA command received: 'selftest'
+[... 3 lines elided: plumbing and repeats ...]
+[05:09.227] himax | Class 'unknown': 59.1% (raw: 47)
+[05:09.227] himax | Class '': 41.0% (raw: -47)
+[05:09.227] himax | Class 0 'unknown' = logit 47
+[05:09.227] himax | Class 1 '' = logit -47
+[05:09.227] himax | Target object not detected.
+[05:09.339] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake (MD)
+[05:09.341] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[05:09.348] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: NN-
+[05:09.387] himax | Score -47/128 (Threshold 18)
+[05:09.387] himax | NN processing took 49ms
+[05:09.387] himax | HM0360 motion in 0 blocks:
+[05:09.387] himax | EXIF: Adding DeploymentID: 58443d28-7811-4de4-b2c4-25a89e60c8ef
+[05:09.387] himax | Added 14 EXIF tags
+[05:09.387] himax | Writing 14272 bytes (13248 + 1024) to 'A9A1A260.JPG' from jpeg buffer of 115860 bytes
+[05:09.387] himax | Wrote 14270 byte image to SD: A9A1A260.JPG at 1:8:54 4/9/2026
+[05:09.387] himax | File write took 46ms
+[05:09.566] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[... 6 lines elided: plumbing and repeats ...]
+[05:09.722] nrf   | <info> app: BLE and AI time differ by 0s
+[05:09.722] nrf   | BLE out: Sent  10 bytes: 'Wake (MD)'
+[05:09.722] nrf   | 000: 80 01 08 00 73 65 6C 66  74 65 73 74 38 A9 36 2D  ....selftest8.6-
+[... 4 lines elided: plumbing and repeats ...]
+[05:09.722] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[05:09.722] nrf   | BLE out: Sent   4 bytes: 'NN-'
+[... 9 lines elided: plumbing and repeats ...]
+[05:09.722] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[05:09.722] nrf   |   Integration time = 188 lines
+[05:09.722] nrf   |   Analog gain = 0
+[05:09.722] nrf   |   Digital gain = 86
+[05:09.722] nrf   |   AE Mean = 67
+[05:09.722] nrf   |   AEConverged?: Y'
+[... 10 lines elided: plumbing and repeats ...]
+[05:09.722] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[... 3 lines elided: plumbing and repeats ...]
+[05:09.989] himax |    Changing mode from 2 to 0 with nFrames=0, sleepTime=0 sleepCount = 0xffff
+[05:09.989] himax | Image capture 2/2 took 526ms
+[... 3 lines elided: plumbing and repeats ...]
+[05:09.989] himax | Class 'unknown': 62.0% (raw: 62)
+[05:09.989] himax | Class '': 38.1% (raw: -62)
+[05:09.989] himax | Class 0 'unknown' = logit 62
+[05:09.989] himax | Class 1 '' = logit -62
+[05:09.989] himax | Target object not detected.
+[05:09.989] himax | Score -62/128 (Threshold 18)
+[05:09.989] himax | NN processing took 15ms
+[05:09.989] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT (change)
+[... 3 lines elided: plumbing and repeats ...]
+[05:10.028] nrf   | BLE out: Sent   4 bytes: 'NN-'
+[05:10.124] himax | write_slot_selector: slot 1 selector written OK
+[05:10.124] himax | switch_slot: selector now points at slot 1
+[05:10.124] himax | [LS] Auto camera switch: light is BRIGHT -> slot 1 ('RP3 (day/colour)'). Reset scheduled.
+[05:10.124] himax | HM0360 motion in 10 blocks:
+[05:10.124] himax | ...............#
+[05:10.124] himax | .............#.#
+[05:10.124] himax | ............#...
+[05:10.124] himax | ............##..
+[05:10.124] himax | ............#...
+[05:10.124] himax | ............##..
+[05:10.124] himax | ............#...
+[05:10.124] himax | BMP header buffer (1078 bytes) begins:
+[05:10.133] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: NN-
+[05:10.139] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AE light check: AGain = 0, conv=Y -> BRIGHT (change)
+[05:10.310] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Auto camera switch: light level wants the colour (RP3) camera - switching at next sleep
+[05:10.310] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 80 00 00 00 a0 00 10 00 30 00 10 00 30 00 10 00 00 
+[... 5 lines elided: plumbing and repeats ...]
+[05:10.338] nrf   | BLE out: Sent  53 bytes: 'AE light check: AGain = 0, conv=Y -> BRIGHT (change)'
+[... 9 lines elided: plumbing and repeats ...]
+[05:10.338] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[05:10.338] nrf   |   Integration time = 133 lines
+[05:10.338] nrf   |   Analog gain = 0
+[05:10.338] nrf   |   Digital gain = 64
+[05:10.338] nrf   |   AE Mean = 65
+[05:10.338] nrf   |   AEConverged?: Y'
+[... 7 lines elided: plumbing and repeats ...]
+[05:10.338] nrf   | BLE out: Sent  88 bytes: 'Auto camera switch: light level wants the colour (RP3) camera - switching at next sleep'
+[... 10 lines elided: plumbing and repeats ...]
+[05:10.338] nrf   | BLE out: Sent 125 bytes: 'HM0360 motion in 10 blocks:
+[05:10.425] himax | Writing 308278 bytes (1078 + 307200) to 'A9A1A270.BMP'
+[05:10.425] himax | Wrote 308278 byte image to SD: A9A1A270.BMP at 1:8:55 4/9/2026
+[05:10.425] himax | File write took 181ms
+[05:10.425] himax | Current captures completed: 2
+[05:10.425] himax | Average file write time 113ms
+[05:10.425] himax | Total frames captured since last reset: 2
+[05:10.511] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Captured 2 images. Last is A9A1A270.BMP (File write 113ms avg.)
+[... 6 lines elided: plumbing and repeats ...]
+[05:10.649] nrf   | BLE out: Sent  64 bytes: 'Captured 2 images. Last is A9A1A270.BMP (File write 113ms avg.)'
+[... 19 lines elided: plumbing and repeats ...]
+[05:11.639] himax | Preparing HM0360 for MD:   HM0360 Motion Detection on! 1000ms frame interval
+[05:11.639] himax |    Changing mode from 0 to 2 with nFrames=1, sleepTime=1000 sleepCount = 0x8030
+[05:11.639] himax | >>> Reset by watchdog
+[05:11.691] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[05:11.947] himax | Please input any key to enter X-Modem mode in 30 ms 
+[05:11.947] himax | waiting input key...
+[... 9 lines elided: plumbing and repeats ...]
+[05:11.947] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0000 Cold boot
+[... 7 lines elided: plumbing and repeats ...]
+[05:12.563] himax | ### Cold Boot ###
+[05:12.563] himax | FreeRTOS tickless idle is enabled. configMAX_PRIORITIES = 5
+[... 7 lines elided: plumbing and repeats ...]
+[05:15.022] himax | Enter 'help' to view a list of available commands.
+[... 6 lines elided: plumbing and repeats ...]
+[05:15.022] himax | Loading configuration: CWD is '0:/MANIFEST'
+[05:15.022] himax | 'CONFIG.TXT' found. (Next image #42), camera enabled. Flash brightness 5
+[05:15.022] himax | Retaining existing images directory (3 <= 100) '/MEDIA/58443d28/IMAGES.000'
+[... 17 lines elided: plumbing and repeats ...]
+[05:16.252] himax | Error opening '0:/RPV3_EX.BIN': 4
+[... 11 lines elided: plumbing and repeats ...]
+[05:16.252] himax | Initialising HM0360 at 0x24 for MD only.
+[05:16.252] himax |    Changing mode from 2 to 0 with nFrames=0, sleepTime=0 sleepCount = 0xffff
+[05:16.506] himax | HM0360 registers initialised for MD.
+[05:16.506] himax | Looking for model '20V1.TFL' in flash or SD card
+[05:16.506] himax | Meta data found in flash
+[05:16.506] himax | Magic: 0x4c41424c Model '20V1.TFL' has 1 labels of 20 bytes:
+[05:16.506] himax | 0 = 'unknown'
+[05:16.506] himax | Model file name in flash is '20V1.TFL'
+[05:16.506] himax | Flash already contains model '20V1.TFL'; loading from flash.
+[05:16.506] himax | TFLM Ethos-U55 Model Fingerprint
+[05:16.506] himax | ---------------------------------
+[05:16.506] himax | Schema version : 3 (expected 3)
+[05:16.506] himax | Subgraphs      : 1
+[05:16.506] himax | Operators      : 1
+[05:16.506] himax |   Op 0: CUSTOM (ethos-u), weight bytes: 250576
+[05:16.506] himax | Input tensor   : i8 [1,96,96,1]
+[05:16.506] himax | Output tensor  : i8 [1,2]
+[05:16.506] himax | Total weight bytes : 250612
+[05:16.506] himax | ---------------------------------
+[05:16.506] himax | WARNING: Number of classes and labels unmatched
+[05:16.506] himax | Image sensor and data path initialised for camera RP v3
+[... 6 lines elided: plumbing and repeats ...]
+[05:16.506] himax |   MD sampling: 1000ms.
+[05:16.506] himax | MKL62BA command received: 'selftest'
+[05:16.560] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake
+[... 3 lines elided: plumbing and repeats ...]
+[05:16.791] nrf   | <info> app: BLE and AI time differ by 84416939s - too much!
+[05:16.791] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[05:16.791] nrf   | 000: 80 01 08 00 73 65 6C 66  74 65 73 74 38 A9 36 2D  ....selftest8.6-
+[... 4 lines elided: plumbing and repeats ...]
+[05:16.791] nrf   | <info> app: Send 'setutc 2026-09-04T01:09:01Z'
+[05:16.791] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[... 3 lines elided: plumbing and repeats ...]
+[05:16.808] himax | MKL62BA command received: 'setutc 2026-09-04T01:09:01Z'
+[05:16.954] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[05:18.025] himax | RTC set to 2026-09-04T01:09:01Z (this took 1198ms)
+[... 22 lines elided: plumbing and repeats ...]
+[05:19.102] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[... 10 lines elided: plumbing and repeats ...]
+[05:19.712] app   | Written AI getop 19 to the device WILD-CNKW (13:09:05-476)
+[... 20 lines elided: plumbing and repeats ...]
+[05:20.169] himax | Motion detected INT_INDIC = 0xc8
+[... 7 lines elided: plumbing and repeats ...]
+[05:20.169] himax | Enter 'help' to view a list of available commands.
+[... 4 lines elided: plumbing and repeats ...]
+[05:20.169] nrf   | BLE in: Received  11 bytes 'AI getop 19'
+[05:20.169] nrf   | <info> app: AI processor is in DPD. Waking it. (getop 19)
+[05:20.484] himax | Loading configuration: CWD is '0:/MANIFEST'
+[05:20.484] himax | 'CONFIG.TXT' found. (Next image #42), camera enabled. Flash brightness 5
+[... 17 lines elided: plumbing and repeats ...]
+[05:20.653] himax | Error opening '0:/RPV3_EX.BIN': 4
+[... 13 lines elided: plumbing and repeats ...]
+[05:20.653] himax | Looking for model '20V1.TFL' in flash or SD card
+[05:20.653] himax | Model file name in flash is '20V1.TFL'
+[05:20.653] himax | Flash already contains model '20V1.TFL'; loading from flash.
+[05:20.653] himax | WARNING: Number of classes and labels unmatched
+[05:20.653] himax | Image sensor and data path initialised for camera RP v3
+[... 10 lines elided: plumbing and repeats ...]
+[05:20.653] himax | Images to capture: 2
+[05:20.653] himax | Interval: 500ms
+[... 7 lines elided: plumbing and repeats ...]
+[05:20.653] himax | 0
+[... 3 lines elided: plumbing and repeats ...]
+[05:20.653] himax | IMX708 on by app done
+[05:20.653] himax | g_cursensorstream: 0
+[... 5 lines elided: plumbing and repeats ...]
+[05:20.653] himax | MKL62BA command received: 'selftest'
+[... 9 lines elided: plumbing and repeats ...]
+[05:20.653] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake (MD)
+[05:20.843] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[... 4 lines elided: plumbing and repeats ...]
+[05:20.884] himax | Deferring event 0x0700
+[05:20.884] himax | Issuing deferred event 0x0700 'I2C Rx'
+[05:20.884] himax | IFTask sending event 0x0700. Tx data = 0x00000000
+[05:20.884] himax | MKL62BA command received: 'getop 19'
+[05:20.884] himax | OpParam 19 = 3
+[... 5 lines elided: plumbing and repeats ...]
+[05:21.016] nrf   | <info> app: BLE and AI time differ by 1s
+[05:21.016] nrf   | BLE out: Sent  10 bytes: 'Wake (MD)'
+[05:21.016] nrf   | 000: 80 01 08 00 73 65 6C 66  74 65 73 74 38 A9 36 2D  ....selftest8.6-
+[... 4 lines elided: plumbing and repeats ...]
+[05:21.016] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[... 4 lines elided: plumbing and repeats ...]
+[05:21.016] nrf   | <info> app: UNHANDLED event NN- in PROCESSING
+[... 10 lines elided: plumbing and repeats ...]
+[05:21.016] nrf   | <info> app: UNHANDLED event Msg from AI in SLEEP
+[... 3 lines elided: plumbing and repeats ...]
+[05:21.016] nrf   | <info> app: UNHANDLED event Msg from AI in SLEEP
+[... 6 lines elided: plumbing and repeats ...]
+[05:21.186] himax | ...###..........
+[05:21.186] himax | ...#.#..........
+[05:21.186] himax | ....###.........
+[05:21.186] himax | .....##.#.......
+[05:21.186] himax | #.##...#.#......
+[05:21.186] himax | .###.#.#.#......
+[05:21.186] himax | .....##.........
+[05:21.186] himax | ..#..##...#.....
+[05:21.186] himax | ......#...#.....
+[05:21.186] himax | ......#...#.....
+[05:21.186] himax | .#.#.##...#.....
+[05:21.186] himax | .#.#..#...#.....
+[05:21.186] himax | ##....##..#.....
+[05:21.186] himax | .#..#..#..#.....
+[05:21.186] himax | AE: p75=252 (target 110) exposure 2368->934 gain code 0->0
+[05:21.186] himax | WB auto: means R=197 G=238 B=220 -> gains R x327/256, B x261/256
+[05:21.186] himax | Colour correction: R x327/256, B x261/256 in 89ms
+[05:21.186] himax | SW JPEG 8859 bytes in 179ms
+[05:21.186] himax | EXIF: Adding DeploymentID: 58443d28-7811-4de4-b2c4-25a89e60c8ef
+[05:21.186] himax | Added 14 EXIF tags
+[05:21.186] himax | Writing 9883 bytes (8859 + 1024) to 'A9A1A310.JPG' from jpeg buffer of 115860 bytes
+[... 5 lines elided: plumbing and repeats ...]
+[05:21.317] nrf   | <info> app: UNHANDLED event Msg from AI in SLEEP
+[05:21.487] himax | Wrote 9881 byte image to SD: A9A1A310.JPG at 1:9:5 4/9/2026
+[... 19 lines elided: plumbing and repeats ...]
+[05:21.789] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT
+[... 4 lines elided: plumbing and repeats ...]
+[05:22.093] himax | ...###..........
+[05:22.093] himax | .....#..........
+[05:22.093] himax | ....#.#.........
+[05:22.093] himax | ......#.#.......
+[05:22.093] himax | ..#...###.......
+[05:22.093] himax | ..##.#..#.......
+[05:22.093] himax | .......##.......
+[05:22.093] himax | ........##......
+[05:22.093] himax | ...#............
+[05:22.093] himax | ...###........#.
+[05:22.093] himax | .....#.......##.
+[05:22.093] himax | ....#.#.#....###
+[05:22.093] himax | AE: p75=220 (target 110) exposure 934->426 gain code 0->0
+[05:22.093] himax | WB auto: means R=119 G=201 B=141 -> gains R x457/256, B x344/256
+[05:22.093] himax | Colour correction: R x457/256, B x344/256 in 90ms
+[05:22.229] nrf   | <info> app: UNHANDLED event NN- in SLEEP
+[... 27 lines elided: plumbing and repeats ...]
+[05:22.409] himax | SW JPEG 14945 bytes in 183ms
+[05:22.409] himax | BMP header buffer (1078 bytes) begins:
+[05:22.409] himax | Writing 308278 bytes (1078 + 307200) to 'A9A1A320.BMP'
+[05:22.409] himax | Wrote 308278 byte image to SD: A9A1A320.BMP at 1:9:6 4/9/2026
+[05:22.409] himax | Current captures completed: 2
+[05:22.409] himax | Average file write time 112ms
+[05:22.409] himax | Total frames captured since last reset: 2
+[... 8 lines elided: plumbing and repeats ...]
+[05:22.530] nrf   | <info> app: UNHANDLED event Msg from AI in SLEEP
+[... 44 lines elided: plumbing and repeats ...]
+[05:24.879] himax | Motion detected INT_INDIC = 0x88
+[... 7 lines elided: plumbing and repeats ...]
+[05:24.879] himax | Enter 'help' to view a list of available commands.
+[... 6 lines elided: plumbing and repeats ...]
+[05:25.192] himax | Loading configuration: CWD is '0:/MANIFEST'
+[05:25.192] himax | 'CONFIG.TXT' found. (Next image #44), camera enabled. Flash brightness 5
+[... 17 lines elided: plumbing and repeats ...]
+[05:25.192] himax | Error opening '0:/RPV3_EX.BIN': 4
+[... 13 lines elided: plumbing and repeats ...]
+[05:25.192] himax | Looking for model '20V1.TFL' in flash or SD card
+[05:25.192] himax | Model file name in flash is '20V1.TFL'
+[05:25.192] himax | Flash already contains model '20V1.TFL'; loading from flash.
+[05:25.192] himax | WARNING: Number of classes and labels unmatched
+[05:25.192] himax | Image sensor and data path initialised for camera RP v3
+[... 19 lines elided: plumbing and repeats ...]
+[05:25.192] himax | 70
+[... 3 lines elided: plumbing and repeats ...]
+[05:25.192] himax | IMX708 on by app done
+[05:25.192] himax | g_cursensorstream: 0
+[05:25.342] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake (MD)
+[... 4 lines elided: plumbing and repeats ...]
+[05:25.360] himax | MKL62BA command received: 'selftest'
+[... 15 lines elided: plumbing and repeats ...]
+[05:25.524] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[05:25.527] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: NN-
+[... 3 lines elided: plumbing and repeats ...]
+[05:25.618] nrf   | <info> app: BLE and AI time differ by 1s
+[05:25.618] nrf   | BLE out: Sent  10 bytes: 'Wake (MD)'
+[05:25.618] nrf   | 000: 80 01 08 00 73 65 6C 66  74 65 73 74 38 A9 36 2D  ....selftest8.6-
+[... 4 lines elided: plumbing and repeats ...]
+[05:25.618] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[... 17 lines elided: plumbing and repeats ...]
+[05:25.618] nrf   |   AEConverged?: N'
+[... 11 lines elided: plumbing and repeats ...]
+[05:25.618] nrf   | 01 00 8e 00 86 01 10 00 81 01 a0 02 ca 01 92 07 62 06 60 05 e0 04 02 04 02 44 02 04 02 84 00 00 '
+[05:25.666] himax | #...............
+[05:25.666] himax | .###...#........
+[05:25.666] himax | .##....##.......
+[05:25.666] himax | ....#...........
+[05:25.666] himax | #......##.......
+[05:25.666] himax | .....#.#.#......
+[05:25.666] himax | .#.#..###.......
+[05:25.666] himax | .#..#..####.....
+[05:25.666] himax | .#...##..##.....
+[05:25.666] himax | .....##.#.#.....
+[05:25.666] himax | .....###..#.....
+[05:25.666] himax | .#........#.....
+[05:25.666] himax | .#........#...#.
+[05:25.666] himax | .#........#.....
+[05:25.666] himax | .#........#....#
+[... 6 lines elided: plumbing and repeats ...]
+[05:25.666] himax | Writing 12353 bytes (11329 + 1024) to 'A9A1A360.JPG' from jpeg buffer of 115860 bytes
+[05:25.720] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 01 00 8e 00 86 01 10 00 81 01 a0 02 ca 01 92 07 62 06 60 05 e0 04 02 04 02 44 02 04 02 84 00 00 
+[05:25.979] himax | Wrote 12351 byte image to SD: A9A1A360.JPG at 1:9:10 4/9/2026
+[... 19 lines elided: plumbing and repeats ...]
+[05:26.289] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT
+[05:26.313] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: NN-
+[05:26.490] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AE light check: AGain = 0, conv=Y -> BRIGHT
+[05:26.598] himax | #...#.##.#..##..
+[05:26.598] himax | .#..#..#........
+[05:26.598] himax | .#.....#...#....
+[05:26.598] himax | ....#.#.........
+[05:26.598] himax | #.#...#..#......
+[05:26.598] himax | ..#..#.#.#.#..#.
+[05:26.598] himax | ...#..##.##..#..
+[05:26.598] himax | .#.#..#...#...#.
+[05:26.598] himax | .#.#......#...#.
+[05:26.598] himax | ...#......#...#.
+[05:26.598] himax | ...#......#.....
+[05:26.598] himax | .#.#......#..#..
+[05:26.598] himax | .#........#..##.
+[05:26.598] himax | .#..#.....#..#..
+[05:26.598] himax | .#..#.....#.##..
+[... 3 lines elided: plumbing and repeats ...]
+[05:26.700] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: d1 32 92 00 82 08 50 00 45 02 a4 4a c8 26 4a 44 0a 44 08 44 08 04 0a 24 02 64 12 24 12 34 00 00 
+[... 8 lines elided: plumbing and repeats ...]
+[05:26.840] nrf   | BLE out: Sent  44 bytes: 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[... 14 lines elided: plumbing and repeats ...]
+[05:26.840] nrf   |   AEConverged?: Y'
+[... 11 lines elided: plumbing and repeats ...]
+[05:26.840] nrf   | d1 32 92 00 82 08 50 00 45 02 a4 4a c8 26 4a 44 0a 44 08 44 08 04 0a 24 02 64 12 24 12 34 00 00 '
+[05:26.904] himax | BMP header buffer (1078 bytes) begins:
+[05:26.904] himax | Writing 308278 bytes (1078 + 307200) to 'A9A1A370.BMP'
+[05:26.904] himax | Wrote 308278 byte image to SD: A9A1A370.BMP at 1:9:11 4/9/2026
+[... 7 lines elided: plumbing and repeats ...]
+[05:27.080] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Captured 2 images. Last is A9A1A370.BMP (File write 126ms avg.)
+[... 6 lines elided: plumbing and repeats ...]
+[05:27.148] nrf   | BLE out: Sent  64 bytes: 'Captured 2 images. Last is A9A1A370.BMP (File write 126ms avg.)'
+[05:27.732] app   | Written AI getop 19 to the device WILD-CNKW (13:09:13-494)
+[05:28.066] nrf   | BLE in: Received  11 bytes 'AI getop 19'
+[... 5 lines elided: plumbing and repeats ...]
+[05:28.066] nrf   | <info> app: AI processor replies: 'OpParam 19 = 7'
+[05:28.066] nrf   | BLE out: Sent  15 bytes: 'OpParam 19 = 7'
+[05:28.070] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParam 19 = 7
+[05:28.129] himax | MKL62BA command received: 'getop 19'
+[05:28.129] himax | OpParam 19 = 7
+[... 10 lines elided: plumbing and repeats ...]
+[05:29.049] himax | Preparing HM0360 for MD:   HM0360 Motion Detection on! 1000ms frame interval
+[05:29.049] himax |    Interval of 1000ms gives sleep count = 0x8030
+[... 5 lines elided: plumbing and repeats ...]
+[05:29.233] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Sleep
+[... 9 lines elided: plumbing and repeats ...]
+[05:29.289] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[... 7 lines elided: plumbing and repeats ...]
+[05:44.973] himax | **** WW500 MD. (WW500_C02) Built: 13:32:59 Sep  3 2026 ****
+[05:44.973] himax | Git branch: 'nogit' nogit-dirty
+[05:44.973] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[05:44.973] himax | Camera: RP v3 (IMX708)
+[05:44.973] himax | PCA9574 present at 0x20
+[05:44.973] himax | Initialised LED Flash
+[05:44.973] himax | HM0360 present at 0x24
+[05:44.973] himax | Main camera present at 0x1a
+[05:44.973] himax | Disabling RP SENSOR_ENABLE
+[05:44.973] himax | ### Warm Boot ###
+[05:44.973] himax | Woke at 2026:09:04 01:09:30 
+[05:44.973] himax | Motion detected INT_INDIC = 0x88
+[05:44.973] himax | Initialising FreeRTOS tasks
+[05:44.973] himax | Created task 'CLI' Priority 4
+[05:44.973] himax | Created task 'IFTask' Priority 3
+[05:44.973] himax | Created task 'FAT' Priority 2
+[05:44.973] himax | Created task 'IMAGE' Priority 1
+[05:44.973] himax | FreeRTOS scheduler started.
+[05:44.973] himax | Starting CLI Task
+[05:44.973] himax | Enter 'help' to view a list of available commands.
+[05:44.973] himax | I2C slave instance 0 configured at address 0x62
+[05:44.973] himax | I2C buffers have 256 bytes, payload is 244
+[05:44.973] himax | Starting FatFS Task
+[05:45.287] himax | Mounting FatFS on SD card OK
+[05:45.287] himax | SD card initialised. CWD is '0:/'
+[05:45.287] himax | Loading configuration: CWD is '0:/MANIFEST'
+[05:45.287] himax | 'CONFIG.TXT' found. (Next image #46), camera enabled. Flash brightness 5
+[05:45.287] himax | Retaining existing images directory (7 <= 100) '/MEDIA/58443d28/IMAGES.000'
+[05:45.287] himax | FatFs setup took 249ms
+[05:45.287] himax | Starting Image Task
+[05:45.287] himax | Image 2304 x 1296. Raw buffer 460800. JPEG buffer 115860. JPEG compression x4
+[05:45.287] himax | Initialising IMX708 at 0x1a (p.u. delay 100ms)
+[05:45.287] himax | Memory allocated: 460800 for raw buffer, 115860 for JPEG, 100 for JPEG header
+[05:45.499] himax | IMX708 Init by app (IMX708_common_setting)
+[05:45.500] himax | Get IMX708_REG_BASE_SPC_GAINS_L = 0x40
+[05:45.500] himax | Init IMX708 Default PDAF pixel correction gains 
+[05:45.500] himax | IMX708 Init by app (IMX708_2304x1296_setting)
+[05:45.500] himax | IMX708 EXPOSURE(0x0940) by app (IMX708_exposure_setting)
+[05:45.500] himax | IMX708 Init by app (IMX708_link_450Mhz_regs)
+[05:45.500] himax | Quad Bayer re-mosaic adjustments ON
+[05:45.500] himax | IMX708 Init by app (IMX708_mirror_setting)
+[05:45.500] himax | Error opening '0:/RPV3_EX.BIN': 4
+[... 10 lines elided: plumbing and repeats ...]
+[05:45.500] himax | [LS] In ledFlashSetFlashModeFromOpParam with 0 Mode 0
+[05:45.500] himax | Initialising NN with 2412/ETHOS-U 2411 library. Arena size 524288
+[05:45.500] himax | Ethos-U55 device initialised
+[05:45.500] himax | Looking for model '20V1.TFL' in flash or SD card
+[05:45.500] himax | Flash ID 0xEF initialised
+[05:45.500] himax | Model file name in flash is '20V1.TFL'
+[05:45.500] himax | Flash already contains model '20V1.TFL'; loading from flash.
+[05:45.500] himax | There are 2 classes (1)
+[05:45.500] himax | WARNING: Number of classes and labels unmatched
+[05:45.500] himax | Initialised neural network.
+[05:45.500] himax | NN Initialisation took 23ms TODO - consider doing this after taking the picture!
+[05:45.500] himax | Image sensor and data path initialised for camera RP v3
+[05:45.500] himax |   Camera system enabled.
+[05:45.500] himax |   Neural network enabled.
+[05:45.500] himax |   Flash LED(s) in use: 0
+[05:45.500] himax |   Flash brightness: 5%
+[05:45.500] himax |   Light is currently LIGHT.
+[05:45.500] himax |   Flash duration 100ms
+[05:45.500] himax |   MD sampling: 1000ms.
+[05:45.500] himax |   Timelapse disabled.
+[05:45.500] himax | Images to capture: 2
+[05:45.500] himax | Interval: 500ms
+[... 7 lines elided: plumbing and repeats ...]
+[05:45.500] himax | 70
+[... 3 lines elided: plumbing and repeats ...]
+[05:45.500] himax | IMX708 on by app done
+[05:45.500] himax | g_cursensorstream: 0
+[... 5 lines elided: plumbing and repeats ...]
+[05:45.500] himax | MKL62BA command received: 'selftest'
+[05:45.500] himax | selfTest 0000
+[... 6 lines elided: plumbing and repeats ...]
+[05:45.662] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake (MD)
+[05:45.721] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Error bits = 0x0000
+[05:45.801] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: NN-
+[... 8 lines elided: plumbing and repeats ...]
+[05:45.809] himax | ....#.......##..
+[05:45.809] himax | ....##..........
+[05:45.809] himax | .....#######....
+[05:45.809] himax | .....###........
+[... 3 lines elided: plumbing and repeats ...]
+[05:46.000] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 10 30 30 00 e0 0f 00 00 e0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[... 3 lines elided: plumbing and repeats ...]
+[05:46.105] nrf   | <info> app: BLE and AI time differ by 0s
+[05:46.105] nrf   | BLE out: Sent  10 bytes: 'Wake (MD)'
+[05:46.105] nrf   | 000: 80 01 08 00 73 65 6C 66  74 65 73 74 38 A9 36 2D  ....selftest8.6-
+[... 3 lines elided: plumbing and repeats ...]
+[05:46.105] nrf   | <info> app: AI self test bits = 0x0000 (all bits now 0x0000)
+[05:46.105] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[... 17 lines elided: plumbing and repeats ...]
+[05:46.105] nrf   |   AEConverged?: N'
+[... 11 lines elided: plumbing and repeats ...]
+[05:46.105] nrf   | 10 30 30 00 e0 0f 00 00 e0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[05:46.119] himax | EXIF: Adding DeploymentID: 58443d28-7811-4de4-b2c4-25a89e60c8ef
+[05:46.119] himax | Added 14 EXIF tags
+[05:46.119] himax | Writing 11774 bytes (10750 + 1024) to 'A9A1A4B0.JPG' from jpeg buffer of 115860 bytes
+[05:46.119] himax | Wrote 11772 byte image to SD: A9A1A4B0.JPG at 1:9:31 4/9/2026
+[... 3 lines elided: plumbing and repeats ...]
+[05:46.575] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: NN-
+[... 3 lines elided: plumbing and repeats ...]
+[05:46.622] himax | Image capture 2/2 took 35ms
+[... 3 lines elided: plumbing and repeats ...]
+[05:46.622] himax | Class 'unknown': 63.0% (raw: 67)
+[05:46.622] himax | Class '': 37.2% (raw: -67)
+[05:46.622] himax | Class 0 'unknown' = logit 67
+[05:46.622] himax | Class 1 '' = logit -67
+[05:46.622] himax | Target object not detected.
+[05:46.622] himax | Score -67/128 (Threshold 18)
+[05:46.622] himax | NN processing took 15ms
+[05:46.622] himax | [LS] AE light check: AGain = 0, conv=Y -> BRIGHT
+[05:46.622] himax | HM0360 motion in 3 blocks:
+[05:46.770] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: AE light check: AGain = 0, conv=Y -> BRIGHT
+[05:46.923] himax | ..............#.
+[05:46.923] himax | .............#..
+[05:46.923] himax | ...............#
+[05:46.923] himax | AE: p75=156 (target 110) exposure 1008->673 gain code 0->0
+[05:46.923] himax | WB auto: means R=83 G=146 B=101 -> gains R x476/256, B x349/256
+[05:46.923] himax | Colour correction: R x476/256, B x349/256 in 90ms
+[05:46.923] himax | SW JPEG 15356 bytes in 184ms
+[05:46.923] himax | BMP header buffer (1078 bytes) begins:
+[05:46.923] himax | Writing 308278 bytes (1078 + 307200) to 'A9A1A4C0.BMP'
+[05:46.972] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 40 00 20 00 80 00 00 
+[05:47.028] nrf   | BLE out: Sent   4 bytes: 'NN-'
+[... 5 lines elided: plumbing and repeats ...]
+[05:47.028] nrf   | BLE out: Sent  44 bytes: 'AE light check: AGain = 0, conv=Y -> BRIGHT'
+[... 9 lines elided: plumbing and repeats ...]
+[05:47.028] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[05:47.028] nrf   |   Integration time = 188 lines
+[05:47.028] nrf   |   Analog gain = 0
+[05:47.028] nrf   |   Digital gain = 74
+[05:47.028] nrf   |   AE Mean = 72
+[05:47.028] nrf   |   AEConverged?: Y'
+[... 10 lines elided: plumbing and repeats ...]
+[05:47.028] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 3 blocks:
+[05:47.224] himax | Wrote 308278 byte image to SD: A9A1A4C0.BMP at 1:9:32 4/9/2026
+[05:47.224] himax | File write took 180ms
+[05:47.224] himax | Current captures completed: 2
+[05:47.224] himax | Average file write time 112ms
+[05:47.224] himax | Total frames captured since last reset: 2
+[... 8 lines elided: plumbing and repeats ...]
+[05:47.328] nrf   | BLE out: Sent  64 bytes: 'Captured 2 images. Last is A9A1A4C0.BMP (File write 112ms avg.)'
+[05:47.493] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Captured 2 images. Last is A9A1A4C0.BMP (File write 112ms avg.)
+[05:47.497] app   | Written AI getop -1 to the device WILD-CNKW (13:09:33-265)
+[05:47.749] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: OpParams 48 45 9 9 36 2 500 0 1000 5 1 1000 100 0 20 1 18 1 2 9 0 2 50 65 15 0 1 286 326 1 110 1 
+[05:47.793] app   | [StopMonitoring] Pre-fetched bulk ops
+[05:47.846] himax | MKL62BA command received: 'getop -1'
+[05:47.846] himax | OpParams 48 45 9 9 36 2 500 0 1000 5 1 1000 100 0 20 1 18 1 2 9 0 2 50 65 15 0 1 286 326 1 110 1 
+[05:47.854] app   | Written AI setdid 00000000-0000-0000-0000-000000000000 to the device WILD-CNKW (13:09:33-624)
+[05:47.948] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[05:47.948] nrf   | 000: 80 01 08 00 67 65 74 6F  70 20 2D 31 BC B7 36 2D  ....getop -1..6-
+[... 8 lines elided: plumbing and repeats ...]
+[05:47.948] nrf   | <info> app: AI processor replies: 'OpParams 48 45 9 9 36 2 500 0 1000 5 1 1000 100 0 20 1 18 1 2 9 0 2 50 65 15 0 1 286 326 1 110 1 '
+[05:47.948] nrf   | BLE out: Sent  98 bytes: 'OpParams 48 45 9 9 36 2 500 0 1000 5 1 1000 100 0 20 1 18 1 2 9 0 2 50 65 15 0 1 286 326 1 110 1 '
+[05:48.151] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Deployment ID set to 00000000-0000-0000-0000-000000000000
+[05:48.156] himax | MKL62BA command received: 'setdid 00000000-0000-0000-0000-000000000000'
+[05:48.156] himax | Deployment ID set to 00000000-0000-0000-0000-000000000000
+[05:48.222] app   | [StopMonitoring] ID cleared
+[05:48.255] nrf   | BLE in: Received  46 bytes 'AI setdid 00000000-0000-0000-0000-000000000000'
+[... 10 lines elided: plumbing and repeats ...]
+[05:48.255] nrf   | <info> app: AI processor replies: 'Deployment ID set to 00000000-0000-0000-0000-000000000000'
+[05:48.255] nrf   | BLE out: Sent  58 bytes: 'Deployment ID set to 00000000-0000-0000-0000-000000000000'
+[05:48.281] app   | Written [REDACTED] to the device WILD-CNKW (13:09:34-054)
+[05:48.463] himax | MKL62BA command received: 'setgps 0��0'0.00"_N_0��0'0.00"_E_0.00_Above'
+[05:48.463] himax | Parsed GPS string is '0��0'0.00 N 0��0'0.00 E 0.00 Above'
+[05:48.463] himax | Device GPS set
+[05:48.531] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Device GPS set
+[05:48.562] app   | '[DeploymentService] Ending deployment:', '58443d28-7811-4de4-b2c4-25a89e60c8ef'
+[05:48.562] app   | 📦 Prepared UPDATE operation for deployments:58443d28-7811-4de4-b2c4-25a89e60c8ef (clock: 1788484174331)
+[05:48.569] nrf   | BLE in: Received  46 bytes 'AI setgps 0��0'0.00"_N_0��0'0.00"_E_0.00_Above'
+[... 8 lines elided: plumbing and repeats ...]
+[05:48.569] nrf   | <info> app: AI processor replies: 'Device GPS set'
+[05:48.569] nrf   | BLE out: Sent  15 bytes: 'Device GPS set'
+[05:48.662] app   | [DeviceSettings] Quiescing device (EndDeployment: true)...
+[05:48.662] app   | [DeviceSettings] 2. Clearing Motion & Timelapse intervals...
+[05:48.733] app   | Written AI setop 11 0 to the device WILD-CNKW (13:09:34-500)
+[05:48.765] himax | MKL62BA command received: 'setop 11 0'
+[05:48.765] himax | Set OpParam 11 = 0
+[05:48.869] nrf   | BLE in: Received  13 bytes 'AI setop 11 0'
+[05:48.869] nrf   | 000: 80 01 0A 00 73 65 74 6F  70 20 31 31 20 30 D7 35  ....setop 11 0.5
+[... 3 lines elided: plumbing and repeats ...]
+[05:48.869] nrf   | <info> app: AI processor replies: 'Set OpParam 11 = 0'
+[05:48.869] nrf   | BLE out: Sent  19 bytes: 'Set OpParam 11 = 0'
+[05:48.920] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Set OpParam 11 = 0
+[05:48.937] app   | [DeviceSettings] 3. Skipping Camera Enable due to end deployment...
+[05:48.939] app   | [DeviceSettings] Device quiesced successfully.
+[05:49.030] app   | Written dis to the device WILD-CNKW (13:09:34-800)
+[05:49.078] himax | Config saved (op params persisted).
+[05:49.179] nrf   | BLE in: Received   3 bytes 'dis'
+[05:49.179] nrf   | BLE out: Sent  14 bytes: 'Disconnecting'
+[05:49.310] app   | [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Disconnecting
+[05:49.910] app   | Peripheral disconnect event triggered. Disconnecting: D6:47:9B:89:E7:23
+[05:49.999] himax | Inactive for 1000ms
+[05:49.999] himax | Saved state to SD card. Image sequence number = 48
+[05:49.999] himax | Image task ready to sleep.
+[05:49.999] himax | IF task ready to sleep.
+[05:49.999] himax | Preparing HM0360 for MD:   HM0360 Motion Detection off.
+[05:49.999] himax |    Inhibiting MD
+[05:49.999] himax |    Changing mode from 2 to 2 with nFrames=1, sleepTime=0 sleepCount = 0xffff
+[05:49.999] himax |  No LED flashes.
+[05:49.999] himax | [LS] Will wake to check light level in 900 seconds. Currently it is LIGHT
+[05:49.999] himax | >>> Entering DPD at 2026:09:04 01:09:35
+[05:49.999] himax | Will wake at 2026:09:04 01:24:35
+[05:50.092] nrf   | <info> app: Disconnected. Conn_handle: 0x0, reason: 0x16
+[05:50.092] nrf   | <info> app:   local
+[... 8 lines elided: plumbing and repeats ...]
+[05:50.092] nrf   | <info> app: AI processor sends stats: '48 45 9 9 36 2 500 0 1000 5 1 0 100 0 20 1 18 1 2 9 0 2 50 65 15 0 1 286 326 1 110 1 '
+[05:50.092] nrf   | BLE out: Failed to send   6 bytes: 'Sleep'
+[05:50.692] app   | ⏰ Debounce timer expired, triggering sync...
+[05:51.740] app   | 📤 Uploading batch for table: deployments (1 ops)
+[05:51.740] app   | 🔍 Processing deployments payload. Has modified_by: false
+[05:51.750] app   | ℹ️ No modified_by in payload for deployments. Keys: id, project_id, device_id, name, setup_by, deployment_start, ended_by, deployment_end, deployment_status_id, capture_method_id, activity_detection_sensitivity_id, timelapse_interval_seconds, start_deployment_comments, end_deployment_comments, location_name, location_description, altitude, accuracy, camera_location_image_paths, latitude, longitude, camera_model, lorawan_network, device_eui, lorawan_registration_completed, lorawan_last_verified_at, ai_model_id, ble_firmware_id, himax_firmware_id, battery_level_at_start, sd_card_total_kb_at_start, sd_card_available_kb_at_start, lorawan_rssi_at_start, lorawan_snr_at_start, created_at, updated_at, deleted_at, operation_id
+[05:52.580] app   | ✅ Server processed 1 operations for deployments
+[05:53.011] app   | 📦 Found 0 pending operations in outbox:
+[05:53.011] app   | ✅ No pending changes, applying all server updates
+[05:53.044] app   | '👥 Syncing user roles since', '2026-09-04T00:15:01.285Z'
+[05:53.383] app   | 📥 Received 1 user role updates
+[05:53.441] app   | 👤 Fetching 1 missing user profiles...
+[05:53.781] app   | ✅ User roles sync complete
+[05:53.795] app   | '📂 Syncing projects since', '2026-09-04T00:14:58.115Z'
+[05:54.850] app   | ✅ No new project changes
+[05:54.860] app   | '📷 Syncing devices since', '2026-08-30T04:35:56.499Z'
+[05:55.229] app   | ✅ No new device changes
+[05:55.241] app   | '⛺ Syncing deployments since', '2026-09-04T01:07:58.235Z'
+[05:55.780] app   | 📥 Received 1 deployment updates
+[05:55.832] app   | ✅ Deployments sync complete
