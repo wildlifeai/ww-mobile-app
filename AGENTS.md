@@ -1,13 +1,14 @@
-# Agent guide — Wildlife Watcher mobile app
+# Agent guide, Wildlife Watcher mobile app
 
 React Native + Expo app for deploying and managing WW500 wildlife cameras. It talks to
 the camera over BLE, stores everything locally in WatermelonDB, and syncs to Supabase.
 Built for the field: **connectivity is the exception, not the rule.**
 
 **Before changing code or docs, read
-[`.agents/skills/SKILL.md`](.agents/skills/SKILL.md)** — workflow rules, the cross-repo
-contracts that will bite you, and the traps a code-read won't reveal. This file is only
-the quickstart.
+[`.agents/skills/SKILL.md`](.agents/skills/SKILL.md)**: the workflow rules, the five that
+apply to almost any change, and a map to the reference files that carry the detail (BLE,
+cross-repo contracts, traps, data and sync, tooling, documentation). This file is only the
+quickstart.
 
 ## Run it
 
@@ -15,16 +16,17 @@ the quickstart.
 npm install                                   # macOS/Linux
 npm install --ignore-scripts && npx patch-package   # Windows (see note)
 npm run android:doctor   # JDK 17, Android SDK, adb device, Supabase env
-npm run android          # preflight → types → schema sync → build → launch
+npm run android          # preflight, types, schema sync, build, launch
 npm run android:local    # skips the two network steps (fast iteration loop)
 ```
 
-`postinstall` applies `patches/` via patch-package — skipping it breaks the native build.
+`postinstall` applies `patches/` via patch-package, and skipping it breaks the native build.
 On Windows plain `npm install` aborts on the `maestro` package's shell postinstall, so run
 `patch-package` by hand as above.
 
-Needs a `.env.development` (copy `.env.example`, paste the Dev anon key) — the app cannot
-reach Supabase without it. iOS builds require macOS; there is no tracked `ios/` directory.
+Needs a `.env.development`, copied from `.env.example` with the Dev anon key pasted in. The
+app cannot reach Supabase without it. iOS builds require macOS; there is no tracked `ios/`
+directory.
 
 > [!NOTE]
 > A local debug build installs as `com.wildlife.wildlifewatcher.expo` and shows up as
@@ -49,11 +51,18 @@ npm run docs:validate    # every path/link in documentation/ resolves
 ## Non-negotiables
 
 - **Ask the maintainer before committing or pushing** to any shared branch.
+- **Check the agent layer before each commit.** Ask whether the change makes anything in this
+  file, the skill or its reference files wrong, missing or redundant, then add, edit or delete
+  in the same commit. The three questions are in
+  [`.agents/skills/references/documentation.md`](.agents/skills/references/documentation.md).
+  A confidently wrong skill costs more than a thin one.
+- **No em dashes** in documents or anything else that gets pasted elsewhere. Commas, or a new
+  sentence.
 - **`commandRegistry.ts` is the only place BLE commands are defined.** Never match device
   responses anywhere else; `messageClassifier.ts` is UI presentation only.
-- **OP parameter indices mirror the firmware** (`OP_PARAMETER` here ↔ `OP_PARAMETERS_E`
-  in the Seeed repo). A cross-repo contract — never renumber unilaterally. So are the
-  self-test bit numbers and the `AE light check` line's fields.
+- **OP parameter indices mirror the firmware**, where `OP_PARAMETER` here matches
+  `OP_PARAMETERS_E` in the Seeed repo. That is a cross-repo contract, never renumber
+  unilaterally. So are the self-test bit numbers and the `AE light check` line's fields.
 - **The project owns the camera's settings, the device is where they land.** Capture method,
   sensitivity, model, GPS and, since #282, the capture flash all live on the `projects` row and
   are written to the device after the deployment reset. A setting with no home in the project is
@@ -62,17 +71,17 @@ npm run docs:validate    # every path/link in documentation/ resolves
   hand, and both have silently dropped some (#285, ww-backend #170).
 - **The device tells you things you didn't ask for.** Self-test bits after every wake, the
   light decision after every check, motion grids while monitoring. Check for an existing
-  broadcast before adding a command that polls — one already cost us a stale banner that
+  broadcast before adding a command that polls. One already cost us a stale banner that
   made a working camera look broken.
 - **The schema is generated, not written.** `src/database/schema.ts` comes from
   `npm run schema:generate`; schema changes originate in `wildlife-watcher-backend`. Its
-  `version:` moves only on a real table change — and must never be edited downwards.
+  `version:` moves only on a real table change, and must never be edited downwards.
 - **Don't export `CI` locally.** It puts the type sync into strict mode and `npm run
   android` dies at step 2.
 - **Security lives at the sync boundary, not on the client.** Role checks in the app are
   UX; Supabase RLS is the enforcement. Never treat a local query as authoritative for
   data belonging to other users.
-- **Version bumps touch six files.** `npm run version:check` is the gate — EAS reads the
+- **Version bumps touch six files.** `npm run version:check` is the gate, because EAS reads the
   native Android values, not `app.config.ts`.
 - Docs are the record, GitHub issues are the tracker: substantive findings go in
   `documentation/development reports/` as a dated thread folder, open items become issues
@@ -86,10 +95,11 @@ npm run docs:validate    # every path/link in documentation/ resolves
 | | |
 |---|---|
 | Start here as a human | `documentation/onboarding/00-GETTING-STARTED.md` (six guides, in order) |
-| Structure, hooks, services | `documentation/onboarding/02-CODEBASE-GUIDE.md` — the maintained inventory |
-| BLE engine | `src/ble/` — protocol/, session/, workflows/; deep dive in `documentation/resources/BLE_Architecture.md` |
-| Day/night light sensor | `documentation/resources/Light-Sensor.md` — op23/24/25/26, `AI light`, why op25 reads stale, and the flash mode op34 that decides whether any of it reaches the LED |
-| Capture Picture | `documentation/resources/Capture-Picture.md` — the capture in order, the 3 s hold, what applies at wake, and the flash hold that arms the LED for the visit |
+| Structure, hooks, services | `documentation/onboarding/02-CODEBASE-GUIDE.md`, the maintained inventory |
+| BLE engine | `src/ble/`, meaning protocol/, session/ and workflows/; deep dive in `documentation/resources/BLE_Architecture.md` |
+| Day/night light sensor | `documentation/resources/Light-Sensor.md`: op23 to op26, `AI light`, why op25 reads stale, and the flash mode op34 that decides whether any of it reaches the LED |
+| Capture Picture | `documentation/resources/Capture-Picture.md`: the capture in order, the 3 s hold, what applies at wake, and the flash hold that arms the LED for the visit |
 | Device flows | `documentation/onboarding/05-DEVICE-FLOWS.md`, `06-BLE-CONNECTIONS.md` |
 | Offline/sync | `documentation/onboarding/03-DATA-AND-SYNC.md` |
+| Developer settings, Dev Build Info, first-run tutorial | `documentation/resources/Developer-Settings.md` |
 | How the code got this way | `documentation/development reports/` |
