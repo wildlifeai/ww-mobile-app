@@ -136,6 +136,11 @@ screens/                                  navigation/screens/
 > [!NOTE]
 > The old `PrepareAndTestScreen` has been removed. Device configuration and metrics snapshots are captured directly during Deployment.
 
+> [!NOTE]
+> `navigation/screens/developer/` holds the two developer screens and their twelve sections.
+> [Developer-Settings.md](../resources/Developer-Settings.md) lists what each one shows, which
+> actions wipe the local database, and how to reach them.
+
 ### `src/navigation/` — Navigation Setup
 
 ```
