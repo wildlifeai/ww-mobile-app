@@ -76,5 +76,5 @@ are the app-only changes and go first, on one branch.
 
 | File | What |
 |---|---|
-| [md_preview_bench.txt](md_preview_bench.txt) | Three-way log of the session, filtered as in the person-detection thread (hex dumps, LED debug, nRF state chatter, AE register blocks, grid rows removed) |
+| [md_preview_bench.txt](md_preview_bench.txt) | Three-way log of the session, filtered as in the person-detection thread (hex dumps, LED debug, nRF state chatter, AE register blocks, grid rows removed), then trimmed again on 19 September 2026 to 2,362 lines before merging. The second pass dropped plumbing and capped repeated lines at the first three and the last of each kind, keeping every app line and every string these findings quote. The 10,184 line version is commit [561da458](https://github.com/wildlifeai/ww-mobile-app/blob/561da458bccda3ff1bb0dc2489292a949470e438/documentation/development%20reports/2026-09-04_motion-detection-preview-review/md_preview_bench.txt) |
 | `<Letter>_*/explanation.md` | One per finding, in the review-finding template's four sections plus an evidence table |
