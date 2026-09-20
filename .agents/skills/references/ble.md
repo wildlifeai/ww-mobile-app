@@ -70,11 +70,13 @@ day are in [traps.md](traps.md).
   second, an open item.
 - **Stored op values can be stale, so check what keeps them updated.** The clearest case is the
   light decision, op25. The firmware only runs its AE check when something consumes the result,
-  meaning the flash is on (op13 is not 0) or auto camera switch is on (op26 is 1). With both
-  off, op25 keeps whatever it last held, so the device happily reports BRIGHT inside a dark box
-  and no amount of waiting changes it. Read the AE mean streamed during a capture *you*
-  triggered rather than the stored decision. Before surfacing any op as "current", establish
-  what writes it and when.
+  meaning the flash mode is AE (op34 is 1) or auto camera switch is on (op26 is 1). **Since #304
+  both are off on a deployed camera unless the project chose the AE flash**, so op25 stale is
+  the normal case, not the edge one: the device happily reports BRIGHT inside a dark box and no
+  amount of waiting changes it. Read the AE mean streamed during a capture *you* triggered
+  rather than the stored decision, and never phrase a stored verdict as a measurement. The
+  deployment log made exactly that mistake before #304. Before surfacing any op as "current",
+  establish what writes it and when.
 - **`setop` stores; the device applies at wake.** The flash LED and brightness, op13 and op9,
   are read in `setupLEDFlash()` when the device wakes, the camera settings when the image task
   starts, a camera switch resets at the next sleep, and op8 itself sets the timer of the *next*
@@ -113,11 +115,15 @@ day are in [traps.md](traps.md).
   packets into an image URI with byte-level progress. Use it whenever you need an image. What
   Capture Picture does around it is in
   [Capture-Picture.md](../../../documentation/resources/Capture-Picture.md).
-- **To measure light, do not take a photo.** `useLightSensor.measureNow` uses `AI light`: about
-  2 s, no JPEG, no transfer, against 13 to 50 s for a capture. It is **two-phase**, because the
-  command's reply is only an acknowledgement and the reading arrives afterwards as unsolicited
-  telemetry, so it subscribes before sending. A blocking version of this deadlocked the
-  firmware over BLE; do not ask for a synchronous one. See
+- **To measure light, do not take a photo.** `AI light` is about a second, no JPEG, no flash and
+  no transfer, against 13 to 50 s for a capture. It is **two-phase**, because the command's reply
+  is only an acknowledgement and the reading arrives afterwards as unsolicited telemetry, so the
+  caller subscribes before sending. A blocking version of this deadlocked the firmware over BLE;
+  do not ask for a synchronous one. The wait is
+  [`protocol/awaitAeRegisters.ts`](../../../src/ble/protocol/awaitAeRegisters.ts), shared by
+  `useLightSensor.measureNow` and `deploymentPipeline.measureLight` so the screen and the
+  deployment cannot disagree on what a complete reading is. The deployment took a capture here
+  until #304, which cost 21 s on the bench the day it was replaced. See
   [Light-Sensor.md](../../../documentation/resources/Light-Sensor.md).
 - **Ask what the device already tells you before adding a poll.** Self-test bits arrive
   unprompted after *every* wake, and the light decision after every light check. A September

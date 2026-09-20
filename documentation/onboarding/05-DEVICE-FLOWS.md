@@ -1,4 +1,4 @@
-# Device Flows — Scanner Routing, Deployment, and Retrieval
+# Device Flows: Scanner Routing, Deployment, and Retrieval
 
 > BLE connection mechanics (scanners, auto-connect trust rules, failure signatures) live in [06-BLE-CONNECTIONS.md](./06-BLE-CONNECTIONS.md).
 
@@ -9,7 +9,7 @@ User-facing device workflows covering the full deployment lifecycle: connect →
 ## Part 1: Scanner Routing (Automated Device Association)
 
 **Components:** `DeviceDiscoveryScreen.tsx`, `ScannerRoutingDialog.tsx`, `useDeviceDiscovery.ts`
-**Entry:** Scanner tab (default landing page — auto-scans only when the scanner tab is active via `isActiveTab`)
+**Entry:** Scanner tab (default landing page, auto-scans only when the scanner tab is active via `isActiveTab`)
 
 > [!IMPORTANT]
 > The old `PrepareAndTestScreen` has been **removed**. Device configuration and metrics snapshots are captured directly when a user starts a deployment via the `ScannerRoutingDialog`.
@@ -92,7 +92,7 @@ BLE initialization happens **upstream** in the Scanner connection flow, and the 
 > `getActiveDeploymentForDeviceId` first and routes an active deployment straight to Stop
 > Monitoring.
 
-**The factory reset happens once, in the Start Monitoring pipeline** (`pipeline.resetOps`, step 5 below), after the user has decided to deploy. It is the guarantee that nothing leaks from a previous deployment or an Engineer Console session (test-mode bits, extended inactivity timeout, flash overrides, intervals). A refused write there aborts the deployment; it is not a warning. The reset writes `FACTORY_DEFAULTS`, which includes `SLOT_SWITCH` (OP 26) = 1, so **every deployment starts with automatic day/night camera switching** on. See [Light-Sensor.md](../resources/Light-Sensor.md).
+**The factory reset happens once, in the Start Monitoring pipeline** (`pipeline.resetOps`, step 5 below), after the user has decided to deploy. It is the guarantee that nothing leaks from a previous deployment or an Engineer Console session (test-mode bits, extended inactivity timeout, flash overrides, intervals). A refused write there aborts the deployment; it is not a warning. The reset writes `FACTORY_DEFAULTS`, which since #304 holds `SLOT_SWITCH` (OP 26) = 0 and `AE_CHECK_INTERVAL` (OP 24) = 0, so **a deployment stays on the camera it started on** and schedules no periodic light wake. It was the other way round until then, and every camera the app had touched switched images on the light verdict. Choosing the camera for a site is manual until that becomes a project setting. See [Light-Sensor.md](../resources/Light-Sensor.md).
 
 On this screen:
 - `isInitializing` is hardcoded to `false` (initialization is already complete)
@@ -136,11 +136,11 @@ The screen is organized into cards:
 | SD Card Status | Manual check button → reads `aiinfo` via BLE |
 | Firmware Status | Shows BLE + Himax firmware versions with update buttons → `FirmwareUpdateScreen` |
 
-**5. Firmware Warning Banner** (conditional — shown when any firmware is outdated)
+**5. Firmware Warning Banner** (conditional, shown when any firmware is outdated)
 
 | Element | Notes |
 |---------|-------|
-| Warning banner | Orange banner with "Update Firmware" button navigating to `FirmwareStatusScreen` with `restrictToLatest: true` (which hides developer version selection dropdowns to keep the operator flow clean and simple). Non-blocking — user can proceed without updating. |
+| Warning banner | Orange banner with "Update Firmware" button navigating to `FirmwareStatusScreen` with `restrictToLatest: true` (which hides developer version selection dropdowns to keep the operator flow clean and simple). Non-blocking, user can proceed without updating. |
 
 Project settings (capture method, sensitivity, timelapse interval, GPS image tagging) are inherited from the selected project and displayed as feature icons. The user can switch projects at any time via the dropdown.
 
@@ -151,31 +151,39 @@ When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeplo
 | Step | Action | Detail |
 |------|--------|--------|
 | 1 | AI Model Sync | Checks SD card (`dir`) for existing model files before downloading. Only transfers missing files via BLE. Always issues `erasemodel` → `loadmodel` if OPs mismatch. Retries reference data sync if model not found locally. Runs **before** time sync to stay within the firmware's 1000ms IMAGE task inactivity window. |
-| 2 | Time Sync | `setutc` — see [BLE Command Reference](./04-ENGINEER-CONSOLE.md#ble-command-reference). Handled by BLE module (not AI processor). |
+| 2 | Time Sync | `setutc`, see [BLE Command Reference](./04-ENGINEER-CONSOLE.md#ble-command-reference). Handled by BLE module (not AI processor). |
 | 3 | Snapshot Data | Reads `battery`, `network` (if LoRaWAN required), `ver` for deployment record metadata |
 | 4 | Create DB Record | `DeploymentService.createDeployment()` → `OutboxService` → `SupabaseSyncService` |
-| 5 | Reset to Defaults | `pipeline.resetOps()` calls `executeResetToDefaults()` — shared workflow that intelligently resets parameters, skips tracking counters, and clears AI models. |
-| 6 | Configure Device | `pipeline.configureDevice()` — applies [capture method OPs](./04-ENGINEER-CONSOLE.md#capture-method-op-mapping), deployment ID, GPS, and the project's [capture flash](#c-configure-capture-flash). It configures against the op table **`resetOps` returned**, not the pre-reset snapshot |
+| 5 | Reset to Defaults | `pipeline.resetOps()` calls `executeResetToDefaults()`, shared workflow that intelligently resets parameters, skips tracking counters, and clears AI models. |
+| 6 | Configure Device | `pipeline.configureDevice()`, applies [capture method OPs](./04-ENGINEER-CONSOLE.md#capture-method-op-mapping), deployment ID, GPS, and the project's [capture flash](#c-configure-capture-flash). It configures against the op table **`resetOps` returned**, not the pre-reset snapshot |
+| 6b | Capture Format | `TEST_MODE_BITS` (OP 18) and `NUM_PICTURES` (OP 5). JPEG only by default; the advanced toggle adds the raw BMP, which needs 2 pics/trigger to yield one of each. Non-fatal |
+| 6c | Light Verdict | Reads the op table, and **only measures when something will consume the verdict** (OP 26 or OP 34 = 1). When it does, `pipeline.measureLight()` sends `AI light`, about a second and no photo. Reports DARK/BRIGHT and which camera the deployment keeps. Non-fatal |
+| 6d | Model Verification | Re-reads OP 14/15 and says loudly whether the NN is armed, guarding silent modelless starts. Non-fatal |
 | 7 | Live Monitor | Transitions to `DeploymentMonitorView` (remains connected) |
 | 8 | Disconnect | User initiates manual disconnect (`dis`) |
+
+> [!NOTE]
+> Step 6c used to take a capture unconditionally, purely to refresh OP 25. With the light sensor off that refreshed nothing, and it cost 21 s on the bench on 20 September 2026 when the sensor refused to stream and the firmware swallowed the failure ([#269](https://github.com/wildlifeai/ww-mobile-app/issues/269), [Seeed#231](https://github.com/wildlifeai/Seeed_Grove_Vision_AI_Module_V2/issues/231)). Firmware built without `AI light` still falls back to a capture, because there only a capture runs a check.
+>
+> Every line the progress dialog shows also goes to the logger, prefixed `[DeploymentLog]`. The dialog auto-transitions to the live monitor when the deployment finishes, so this is the only copy that survives a field report or a bench capture.
 
 > [!NOTE]
 > Live monitoring after step 7 polls `AI getop 19` once a minute for the stored-image count; the poll is owned by `DeploymentMonitorView`'s single `useDeploymentMonitor` instance, which also feeds the activity log. Each poll wakes the Himax.
 
 ### OP Factory Reset (`pipeline.resetOps` / `executeResetToDefaults`)
 
-Before applying deployment-specific configuration, the pipeline resets the device via `executeResetToDefaults` — the same shared workflow the Engineer Console's `RESET_TO_DEFAULTS` flow uses, but **not** with the same options.
+Before applying deployment-specific configuration, the pipeline resets the device via `executeResetToDefaults`, the same shared workflow the Engineer Console's `RESET_TO_DEFAULTS` flow uses, but **not** with the same options.
 
-`pipeline.resetOps()` passes `{ skipIdentityReset: true }`, so it leaves the deployment ID and GPS alone (the very next step, `configureDevice`, sets them). The Engineer Console's manual reset omits that flag and therefore also clears identity — it is the more aggressive of the two.
+`pipeline.resetOps()` passes `{ skipIdentityReset: true }`, so it leaves the deployment ID and GPS alone (the very next step, `configureDevice`, sets them). The Engineer Console's manual reset omits that flag and therefore also clears identity, it is the more aggressive of the two.
 
 The shared steps: 
 
-1. `AI getop -1` — [bulk fetch](./04-ENGINEER-CONSOLE.md#op-bulk-fetch-optimization-ai-getop--1) current OPs (also wakes device from DPD)
-2. **Skips Tracking Counters** — ignores OPs like `NUM_PICTURES`, `NUM_NN_ANALYSES`, etc., so device lifetime history is preserved
-3. **Keeps the AI model** — the pipeline passes `preserveModel: true`, so no `erasemodel` is sent and op14/op15 are left alone; model state belongs to the AI Model Sync step. The Engineer Console's reset omits the flag and does erase a loaded model
-4. Diff against `FACTORY_DEFAULTS` — only writes values that differ to save BLE round trips
+1. `AI getop -1`, [bulk fetch](./04-ENGINEER-CONSOLE.md#op-bulk-fetch-optimization-ai-getop--1) current OPs (also wakes device from DPD)
+2. **Skips Tracking Counters**, ignores OPs like `NUM_PICTURES`, `NUM_NN_ANALYSES`, etc., so device lifetime history is preserved
+3. **Keeps the AI model**, the pipeline passes `preserveModel: true`, so no `erasemodel` is sent and op14/op15 are left alone; model state belongs to the AI Model Sync step. The Engineer Console's reset omits the flag and does erase a loaded model
+4. Diff against `FACTORY_DEFAULTS`, only writes values that differ to save BLE round trips
 5. Clears Deployment ID and zeroizes GPS natively
-6. **Returns the resulting op table** — the snapshot with every write applied, so the configure step that follows diffs against what the device now holds rather than what it held before the reset
+6. **Returns the resulting op table**, the snapshot with every write applied, so the configure step that follows diffs against what the device now holds rather than what it held before the reset
 
 ### Device Configuration (`useDeploymentConfiguration`)
 
@@ -191,7 +199,7 @@ setgps 0,0,0               (if recordGpsInImages is disabled / privacy mode)
 ```
 
 > [!IMPORTANT]
-> The legacy OP-based deployment ID approach (`setop 20..27` with UUID chunks) has been removed — firmware no longer supports those parameters. OP 19 and OP 20 are now image directory counters.
+> The legacy OP-based deployment ID approach (`setop 20..27` with UUID chunks) has been removed, firmware no longer supports those parameters. OP 19 and OP 20 are now image directory counters.
 
 **B. Configure Capture Method:** See [Capture Method OP Mapping](./04-ENGINEER-CONSOLE.md#capture-method-op-mapping).
 
@@ -254,11 +262,11 @@ A single [bulk fetch](./04-ENGINEER-CONSOLE.md#op-bulk-fetch-optimization-ai-get
 
 | Step | Progress | Action | BLE Command |
 |------|----------|--------|-------------|
-| 0 | — | **Bulk Fetch OP Parameters** | `AI getop -1` → cached for steps below |
+| 0 | - | **Bulk Fetch OP Parameters** | `AI getop -1` → cached for steps below |
 | 1 | 0.2 | Clear Deployment ID | Conditional `AI setop 20-27` (retry 3×, 1s delay, skips unchanged) |
-| 2 | — | Clear GPS | `setgps 0 0 0` (non-blocking) |
+| 2 | - | Clear GPS | `setgps 0 0 0` (non-blocking) |
 | 3 | 0.3 | Update Database | `DeploymentService.endDeployment()` |
-| 4 | 0.6 | Quiesce Device | Conditional `AI setop` (optimised — uses cached ops) |
+| 4 | 0.6 | Quiesce Device | Conditional `AI setop` (optimised, uses cached ops) |
 | 5 | 0.8 | Disconnect | `dis` |
 
 > [!IMPORTANT]
