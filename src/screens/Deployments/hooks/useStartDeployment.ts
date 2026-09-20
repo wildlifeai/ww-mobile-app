@@ -641,20 +641,30 @@ export const useStartDeployment = ({
 
                 if (lightSensorRuns && bleSession && bleDevice) {
                     const outcome = await pipeline.measureLight(bleSession, bleDevice.id)
+                    let measured = outcome === 'ok'
+
                     if (outcome === 'unsupported') {
                         // Firmware without `AI light`. There every capture runs
                         // the check, so a photo is the only way to refresh op25.
                         try {
                             await bleSession.execute(() => commandRegistry.capture(1, 500))
+                            measured = true
                         } catch (captureError) {
                             logWarn('[Deployment] Light-check capture failed, using last known decision:', captureError)
                         }
                     }
+
                     try {
                         const opsAfter = await bleSession.execute(commandRegistry.getops)
                         if (opsAfter) {
                             ops = opsAfter
-                            freshReading = outcome !== 'failed' && opAt(ops, OP_PARAMETER.AE_FLASH_STATE) !== null
+                            // `measured`, not merely "did not fail". A timeout means
+                            // the command was acknowledged and the reading never
+                            // arrived, so op25 is exactly as stale as it was before;
+                            // so is it when the fallback capture throws. Calling
+                            // either a fresh reading is the bug this step was
+                            // rewritten to stop telling.
+                            freshReading = measured && opAt(ops, OP_PARAMETER.AE_FLASH_STATE) !== null
                         }
                     } catch (readError) {
                         logWarn('[Deployment] Could not re-read ops after the light check:', readError)

@@ -60,6 +60,26 @@ describe('measureLight', () => {
         await expect(measureLight(session as any, DEVICE)).resolves.toBe('ok')
     })
 
+    /**
+     * The caller distinguishes this from 'ok' to decide whether the deployment log
+     * may call op25 a measurement. A version that treated anything other than
+     * 'failed' as a reading would label a timed-out check "Light check", which is
+     * the stale-value-as-measurement bug the light step was rewritten to stop.
+     */
+    it('reports timeout when the command is acknowledged but no reading follows', async () => {
+        jest.useFakeTimers()
+        try {
+            const session = { execute: jest.fn(async () => true) }   // acked, then silence
+            const pending = measureLight(session as any, DEVICE)
+            await Promise.resolve()
+            await Promise.resolve()
+            jest.advanceTimersByTime(15_000)
+            await expect(pending).resolves.toBe('timeout')
+        } finally {
+            jest.useRealTimers()
+        }
+    })
+
     it('reports unsupported when the firmware does not know the command', async () => {
         const session = { execute: jest.fn(async () => { throw new Error('Unrecognised command') }) }
 
