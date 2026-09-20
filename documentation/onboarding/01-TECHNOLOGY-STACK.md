@@ -233,6 +233,10 @@ Bidirectional sync between WatermelonDB and Supabase. Sync is debounced (2s) and
 
 Dev-only routes (`__DEV__`): `DevBuildInfo`, `AuthTestScreen`, `DeveloperSettings`.
 
+What those three screens show, which of their buttons destroy local data, and what gates the
+`Tutorial` route (a transient flag set only on an explicit sign-in, not a stored "seen" value)
+are in [Developer-Settings.md](../resources/Developer-Settings.md).
+
 #### Navigation Guard Logic
 
 The navigator conditionally renders screens based on system state:
