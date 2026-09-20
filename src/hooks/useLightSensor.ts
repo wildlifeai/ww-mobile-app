@@ -1,10 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
-import { OP_PARAMETER } from './useDeviceSettings'
+import { FACTORY_DEFAULTS, OP_PARAMETER } from './useDeviceSettings'
 import { bleEventBus, BleEvent } from '../ble/protocol/eventBus'
 import { createBleSession } from '../ble/session/createBleSession'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
+import { awaitAeRegisters, LIGHT_CHECK_TIMEOUT_MS } from '../ble/protocol/awaitAeRegisters'
 import { parseLightCheck, type LightCheck } from '../ble/protocol/lightCheck'
 import { log, logError, logWarn } from '../utils/logger'
 import { AEData, grabAeFields } from '../utils/aeRegisters'
@@ -18,9 +19,12 @@ export interface LightSensorState {
     flashMode: number | null   // op34 - 0 = off, 1 = AE (this verdict drives the flash), 2 = always on, 3 = time of day; null = firmware without a flash mode
 }
 
+// Placeholders until the device's own ops arrive. Sourced from FACTORY_DEFAULTS
+// so they cannot drift from the values a deployment actually writes; the local
+// copy of checkInterval had already gone stale once (#304 moved op24 to 0).
 const DEFAULTS: LightSensorState = {
-    darkThreshold: 65,
-    checkInterval: 15,
+    darkThreshold: FACTORY_DEFAULTS[OP_PARAMETER.AE_DARK_THRESHOLD],
+    checkInterval: FACTORY_DEFAULTS[OP_PARAMETER.AE_CHECK_INTERVAL],
     flashState: null,
     flashLed: null,
     autoSwitch: null,
@@ -53,64 +57,10 @@ export type MeasureResult =
 // with Capture Picture so the two screens cannot read the same block differently.
 export type { AEData }
 
-/**
- * Wait for the next complete `HM0360 AE regs` block from this device. Resolves
- * null on timeout, or when cancelled.
- *
- * Subscribed before the command is sent, deliberately. `AI light` is
- * acknowledged immediately and the block follows about a second later, but
- * nothing guarantees that ordering under a slow render or a busy queue, and a
- * listener attached after the send could miss it entirely.
- *
- * The decision line, when the firmware sends one, arrives *before* the block
- * (lightSensor.c queues it inside the light check; image_task.c queues the
- * registers afterwards), so by the time this resolves the passive listener in
- * the hook has already recorded it.
- *
- * `cancel` matters on the paths that abandon the wait, such as firmware that
- * does not know the command: without it the listener would sit on a shared event
- * bus until the timeout, ready to consume a block meant for someone else.
- */
-const waitForRegisters = (deviceId: string, timeoutMs: number) => {
-    let settle!: (result: AEData | null) => void
-    const promise = new Promise<AEData | null>(resolve => { settle = resolve })
-    let collected: AEData | null = null
-
-    const done = (result: AEData | null) => {
-        clearTimeout(timer)
-        bleEventBus.removeListener('textLine', listener)
-        settle(result)
-    }
-    const listener = (event: BleEvent & { type: 'TEXT_LINE' }) => {
-        if (event.deviceId !== deviceId) return
-        // The decision line also says "analog gain = 4" in one of its wordings,
-        // which would otherwise be lifted into a half-built block.
-        if (parseLightCheck(event.line)) return
-        const next = grabAeFields(event.line, collected)
-        if (!next) return
-        collected = next
-        if (collected.aeConverged !== '' && collected.aeMean !== '') {
-            // Timing marker for the bench log: on the 2 September stream the
-            // caller acted on this block up to a second after it arrived, and
-            // this line says whether the wait was here or on the command's own
-            // acknowledgement (logged as "light acked" by measureNow).
-            log('[LightSensor] registers complete')
-            done(collected)
-        }
-    }
-    const timer = setTimeout(() => done(null), timeoutMs)
-    bleEventBus.on('textLine', listener)
-
-    return { promise, cancel: () => done(null) }
-}
-
-/**
- * Ceiling for the whole measurement: the command's own 8s allowance (the AI
- * processor may need a DPD wake first) plus the light check itself, with
- * headroom. Only reached when something is actually wrong, since the op10
- * preflight on screen entry removes the common cause of silence.
- */
-const LIGHT_CHECK_TIMEOUT_MS = 15_000
+// The wait that makes the two-phase `AI light` usable lives in
+// `ble/protocol/awaitAeRegisters.ts`, shared with the deployment pipeline since
+// #304 so the two callers cannot disagree on what a complete block is.
+const waitForRegisters = awaitAeRegisters
 
 /**
  * The WW500's light sensor, which is the HM0360's auto-exposure registers.
@@ -154,15 +104,20 @@ export const useLightSensor = ({ device }: { device: ExtendedPeripheral | undefi
     // once, from a closure taken when the device arrived.
     const turnedAutoSwitchOffRef = useRef(false)
 
-    // Put op26 back on the way out.
+    // Put op26 back to the app's default on the way out.
     //
-    // Turning it off is this screen's own doing (see refresh), and until the
-    // flash became a project setting it did not matter much: the next
-    // deployment's reset wrote op26 = 1 again, and a flash in AE mode kept the
-    // light check running meanwhile. Now a project can deploy in any mode, and
-    // `lightSensor_isRequired()` in the firmware is true only for mode 1 or
-    // op26. Leaving both off means the device runs no light check at all after
-    // a visit here, so op25 and the automatic camera switch quietly stop.
+    // Turning it off is this screen's own doing (see refresh), and it used to
+    // put back a literal 1, which was the default at the time. It is not any
+    // more (#304): a deployment now writes op26 = 0, so restoring 1 would
+    // re-arm the day/night slot switching on a device between this visit and
+    // the next deployment, which is the oscillation that issue is about. The
+    // value comes from FACTORY_DEFAULTS so it tracks the default rather than
+    // repeating it, and the write stays in place for the day it is flipped
+    // back.
+    //
+    // A device found at 1 on entry therefore leaves this screen at 0. That is
+    // the state a deployment would leave it in, and the Engineer Console can
+    // set it back for a bench session that wants it.
     useEffect(() => {
         if (!device) return
         const deviceId = device.id
@@ -170,8 +125,9 @@ export const useLightSensor = ({ device }: { device: ExtendedPeripheral | undefi
         return () => {
             if (!turnedAutoSwitchOffRef.current) return
             turnedAutoSwitchOffRef.current = false
-            session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.SLOT_SWITCH, value: 1 }))
-                .then(() => log(`[LightSensor] op26 restored to 1 on ${deviceId}`))
+            const restore = FACTORY_DEFAULTS[OP_PARAMETER.SLOT_SWITCH]
+            session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.SLOT_SWITCH, value: restore }))
+                .then(() => log(`[LightSensor] op26 restored to ${restore} on ${deviceId}`))
                 .catch((e) => logWarn('[LightSensor] could not restore op26; the next deployment reset will:', e))
         }
         // A new device object arrives on every redux update; only the identity

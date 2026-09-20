@@ -43,7 +43,7 @@ export const OP_PARAMETER = {
     AE_CHECK_INTERVAL: 24,
     /** Last AE flash decision (0/1). Runtime state - not user-set */
     AE_FLASH_STATE: 25,
-    /** Automatic light-based camera image switching: 0 = off (manual switchslot only), 1 = automatic (planned) */
+    /** Automatic light-based camera image switching: 0 = off (manual switchslot only), 1 = switch on each light verdict. Deployed at 0 since #304 */
     SLOT_SWITCH: 26,
     /** Software white-balance RED gain, Q8.8 (256 = 1.0x, 0 = correction off). RP3 colour camera only */
     WB_RED_GAIN: 27,
@@ -89,7 +89,7 @@ export const FLASH_MODE_OP_LABELS = ['Off', 'Light sensor', 'Always on', 'Time o
  * These control diagnostic capture behaviour on the Himax firmware.
  */
 // eslint-disable-next-line no-bitwise
-export const TEST_BIT_SAVE_BMP = 1 << 1  // bit 1 = 2 — alternates between JPG and BMP files
+export const TEST_BIT_SAVE_BMP = 1 << 1  // bit 1 = 2, alternates between JPG and BMP files
 
 /**
  * Factory default values for ALL operational parameters.
@@ -123,13 +123,27 @@ export const FACTORY_DEFAULTS: Record<number, number> = {
     // frame's integration window (HM0360 STROBE-gated, ~15 ms pulses).
     [OP_PARAMETER.MD_FLASH_BRIGHTNESS_PERCENT]: 50,
     [OP_PARAMETER.AE_DARK_THRESHOLD]: 65,
-    [OP_PARAMETER.AE_CHECK_INTERVAL]: 15,
+    // 0 = no periodic AE check while asleep (#304). The firmware only runs a
+    // check when something consumes the verdict, so with SLOT_SWITCH off this
+    // interval only bites when the project deploys op34 in AE mode, where the
+    // per-capture check already covers it. 15 minutes of extra wakes bought
+    // nothing but battery.
+    [OP_PARAMETER.AE_CHECK_INTERVAL]: 0,
     [OP_PARAMETER.AE_FLASH_STATE]: 0,
-    // 1 = automatic day/night camera switching after each AE light check.
-    // resetOps diff-writes this during every deployment, so monitoring runs
-    // switch cameras with the light. Requires both firmware slots labelled
-    // (a dual-image update leaves them so).
-    [OP_PARAMETER.SLOT_SWITCH]: 1,
+    // 0 = the deployment stays on the camera it started in (#304).
+    //
+    // 1 switches the active firmware slot after each AE light check, and
+    // resetOps diff-writes this during every deployment, so every camera the
+    // app had touched ran with it on. Each switch is a reboot into the other
+    // image at the next sleep, and the gain-based rule carries no hysteresis
+    // (Seeed#204), so marginal light made cameras oscillate between the colour
+    // and mono slots for a whole dusk.
+    //
+    // The cost of this default is real: a camera deployed in daylight stays on
+    // the colour slot overnight, and the IR flash only helps the mono one. Pick
+    // the camera for the site on the device screen until the day/night choice
+    // becomes a project setting the way the flash did (#282).
+    [OP_PARAMETER.SLOT_SWITCH]: 0,
     [OP_PARAMETER.WB_RED_GAIN]: 286,
     [OP_PARAMETER.WB_BLUE_GAIN]: 326,
     // 29-36: firmware in-RAM defaults (fatfs_task.c op_parameter[],

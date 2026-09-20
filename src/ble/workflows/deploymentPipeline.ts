@@ -1,5 +1,5 @@
 /**
- * deploymentPipeline — Pure async functions for shared BLE deployment steps.
+ * deploymentPipeline: pure async functions for shared BLE deployment steps.
  *
  * These are NOT hooks. They are stateless pipeline stages used by both
  * useStartDeployment and useDevDeployment during their start-deployment flows.
@@ -7,6 +7,7 @@
 
 import { BleSession } from '../session/createBleSession'
 import { commandRegistry } from '../protocol/commandRegistry'
+import { awaitAeRegisters } from '../protocol/awaitAeRegisters'
 import { runFileTransferPipeline } from '../protocol/fileTransfer'
 import { crc16ccitt } from '../protocol/fileTransfer/crc16ccitt'
 import ReferenceDataService from '../../services/ReferenceDataService'
@@ -84,11 +85,70 @@ export async function resetOps(
         return opsAfterReset
     } catch (e) {
         logWarn('[ResetOps] Reset failed:', e)
-        addLog('Parameter reset failed — the device may still carry settings from a previous session')
+        addLog('Parameter reset failed, the device may still carry settings from a previous session')
         throw e
     }
 }
 
+
+/**
+ * Run one light check on the device, without taking a photo.
+ *
+ * `AI light` is a throwaway single-frame AE check: no image file, no flash, no
+ * file transfer, about a second, against 13 to 50 seconds for a capture. The
+ * deployment used to take a capture here purely to refresh op25, which cost 21 s
+ * on the bench on 20 September 2026 when the IMX708 failed to power on and the
+ * firmware swallowed the error (#269, #304).
+ *
+ * Two-phase, so the command is watched only for failure and the reading is
+ * awaited from the telemetry that follows. See `awaitAeRegisters`.
+ *
+ * Returns `unsupported` for firmware built without the command, which answers
+ * `Unrecognised`. Callers that need op25 refreshed on such a device must fall
+ * back to a capture; on that firmware every capture runs the check anyway.
+ */
+export async function measureLight(
+    session: BleSession,
+    deviceId: string
+): Promise<'ok' | 'timeout' | 'unsupported' | 'failed'> {
+    const pending = awaitAeRegisters(deviceId)
+
+    // The registers are awaited directly; the command's own promise resolves on
+    // the acknowledgement line and reaches callers late, by up to 1.3 s on a
+    // busy session, with the block already in hand. Watching it for failure
+    // still makes firmware without `AI light` fail fast rather than sitting out
+    // the timeout.
+    const commandFailure: Promise<Error | null> = session.execute(() => commandRegistry.light())
+        .then(() => { log('[Deployment] light acked'); return null })
+        .catch((e: any) => (e instanceof Error ? e : new Error(String(e?.message ?? e))))
+
+    try {
+        const registers = await Promise.race([
+            pending.promise,
+            commandFailure.then(err => {
+                if (!err) return pending.promise
+                throw err
+            }),
+        ])
+        if (!registers) {
+            logWarn('[Deployment] no AE register block within the light timeout')
+            return 'timeout'
+        }
+        log(`[Deployment] light: AE mean ${registers.aeMean}, gain ${registers.analogGain}, converged ${registers.aeConverged}`)
+        return 'ok'
+    } catch (e: any) {
+        const message = e instanceof Error ? e.message : String(e?.message ?? e)
+        if (/unrecognised/i.test(message)) {
+            log('[Deployment] device has no `AI light`; falling back to a capture')
+            return 'unsupported'
+        }
+        logWarn('[Deployment] light check failed:', e)
+        return 'failed'
+    } finally {
+        // Torn down once the race has settled, never inside the losing branch.
+        pending.cancel()
+    }
+}
 
 /**
  * Step 3: Ensure the correct AI model is loaded on the device.
@@ -117,22 +177,22 @@ export async function syncAiModel(
             // 1. Resolve the target model from local WatermelonDB
             let targetModel = await AiModelService.getModelById(modelId)
 
-            // If not found, reference data may not have synced yet — try once
+            // If not found, reference data may not have synced yet, try once
             if (!targetModel) {
-                addLog('Model not found locally — syncing reference data...')
+                addLog('Model not found locally, syncing reference data...')
                 await ReferenceDataService.syncReferenceData()
                 targetModel = await AiModelService.getModelById(modelId)
             }
 
             if (!targetModel) {
-                addLog('⚠️ Assigned AI model not found after sync — continuing without model')
+                addLog('⚠️ Assigned AI model not found after sync, continuing without model')
                 return
             }
 
             // 2. Resolve firmware IDs (family ID for OP14, version for OP15)
             const firmwareIds = await ReferenceDataService.getFirmwareIds(targetModel)
             if (!firmwareIds) {
-                addLog('⚠️ Could not resolve firmware IDs for model — continuing without model')
+                addLog('⚠️ Could not resolve firmware IDs for model, continuing without model')
                 return
             }
             const { firmwareModelId: numericId, versionNumber: numericVer } = firmwareIds
@@ -176,7 +236,7 @@ export async function syncAiModel(
                 else if (targetModel.labelsPath) addLog(`📥 ${labelsFilename} not on SD card`)
             } catch (dirError) {
                 logWarn('SD card dir check failed, assuming files missing:', dirError)
-                addLog('Could not list SD card — will attempt transfer')
+                addLog('Could not list SD card, will attempt transfer')
             }
 
             // 4a. A matching name is not a matching file. Check the contents.
@@ -216,7 +276,7 @@ export async function syncAiModel(
                         const wantHex = `0x${want.toString(16).toUpperCase().padStart(4, '0')}`
 
                         if (onCard.crc.toUpperCase() !== wantHex || onCard.sizeBytes !== bytes.length) {
-                            addLog(`♻️ ${file.filename} on the card does not match the model (card ${onCard.crc}, ${onCard.sizeBytes} bytes; expected ${wantHex}, ${bytes.length} bytes) — replacing it`)
+                            addLog(`♻️ ${file.filename} on the card does not match the model (card ${onCard.crc}, ${onCard.sizeBytes} bytes; expected ${wantHex}, ${bytes.length} bytes). Replacing it`)
                             file.clear()
                         } else {
                             addLog(`✅ ${file.filename} on the card matches (${wantHex})`)
@@ -278,11 +338,11 @@ export async function syncAiModel(
                     addLog(`✅ ${labelsFilename} transferred`)
                 }
             } else {
-                addLog('All model files present on SD card — skipping transfer')
+                addLog('All model files present on SD card, skipping transfer')
             }
 
             // 6. Load the target model
-            // NOTE: Do NOT call erasemodel before loadmodel — it destroys the
+            // NOTE: Do NOT call erasemodel before loadmodel: it destroys the
             // flash-cached copy, forcing a slow SD→flash re-copy (~62 × 4KB writes).
             // The firmware's loadmodel command handles replacement on its own.
             // If the model is already in flash, it loads instantly (~23ms).
@@ -294,20 +354,20 @@ export async function syncAiModel(
 
         } catch (e) {
             logWarn('Failed to update AI model:', e)
-            addLog('⚠️ AI model update FAILED — the deployment will record but not classify. See device log.')
+            addLog('⚠️ AI model update FAILED. The deployment will record but not classify. See device log.')
         }
     } else if (eraseStaleModels) {
-        // No AI model assigned — check if device has a stale model loaded
+        // No AI model assigned, check if device has a stale model loaded
         try {
             const ops = currentOps || await session.execute(() => commandRegistry.getops())
             const currentId = ops && ops.length > 14 ? parseInt(ops[14] ?? '0', 10) || 0 : 0
 
             if (currentId !== 0) {
-                addLog(`Device has stale model (ID: ${currentId}) — erasing...`)
+                addLog(`Device has stale model (ID: ${currentId}), erasing...`)
                 await session.execute(() => commandRegistry.erasemodel())
                 addLog('Stale AI model erased')
             } else {
-                addLog('No AI model required — device clear')
+                addLog('No AI model required, device clear')
             }
         } catch (e) {
             logWarn('Failed to check/erase device model:', e)

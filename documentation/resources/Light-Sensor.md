@@ -53,9 +53,31 @@ that clause is not reproduced. In practice a railed frame scores dark on the mea
 |---|---|---|
 | 13 | `FLASH_LED` | 0 off, 1 visible, 2 IR. Non-zero makes the light check run on captures |
 | 23 | `AE_DARK_THRESHOLD` | Mean-rule threshold. Ships at 65. **Ignored by the gain-based algorithm** |
-| 24 | `AE_CHECK_INTERVAL` | Minutes between periodic checks while asleep. 0 disables |
+| 24 | `AE_CHECK_INTERVAL` | Minutes between periodic checks while asleep. 0 disables, and 0 is what a deployment writes |
 | 25 | `AE_FLASH_STATE` | The last decision. **Runtime state, not a setting** |
-| 26 | `SLOT_SWITCH` | 1 = switch camera image automatically on the decision |
+| 26 | `SLOT_SWITCH` | 1 = switch camera image automatically on the decision. **0 since #304** |
+
+> [!IMPORTANT]
+> **A deployed camera runs no light check unless its project asks for one.** Since #304 the
+> app's `FACTORY_DEFAULTS` hold op26 = 0 and op24 = 0, and every deployment diff-writes them,
+> so `lightSensor_isRequired()` is false unless the project's flash mode is 1 (AE). Automatic
+> day and night switching was on for practically every device before that, and each switch is a
+> reboot into the other firmware image at the next sleep: with the gain-based rule carrying no
+> hysteresis (Seeed#204), marginal light made cameras oscillate for a whole dusk.
+>
+> The cost is that a camera deployed in daylight stays on the colour image overnight, where the
+> IR flash does nothing. Choosing the camera per site is manual until the day and night choice
+> becomes a project column the way the flash did in #282. The deployment log says which way the
+> device is configured at the end of every start.
+>
+> **Start Monitoring measures the light only when something will consume the verdict**, and does
+> it with `AI light` rather than a photograph. It used to take a capture unconditionally, purely
+> to refresh op25. That cost 21 s on the bench on 20 September 2026: the IMX708 failed to power
+> on (three I2C writes to `0x0100` returned `-60`), the firmware logged `IMX708 on by app fail`,
+> moved the image task to `Capturing` anyway, sent the app nothing and slept, and only a chance
+> motion wake completed it (#269). With the sensor off that capture could not refresh anything
+> in the first place. Firmware built without `AI light` still falls back to a capture, because
+> there a capture is the only thing that runs a check.
 
 > [!WARNING]
 > **op25 is stale far more often than it is wrong.** It only updates when the check runs,
@@ -108,20 +130,22 @@ write still applies, on Capture Picture only. The screens themselves are describ
 [Capture-Picture.md](Capture-Picture.md).
 
 The Light Sensor screen turns automatic switching (op26) off on entry, so a light check cannot
-reboot the device into the other camera image in the middle of a session, **and puts it back
-when the screen closes**. It did not put it back before 5 September 2026, which stopped
-mattering the moment the flash became a project setting: `lightSensor_isRequired()` in the
-firmware is true only for mode 1 or op26, so a device left with both off runs no light check at
-all, and op25 and the automatic camera switch quietly stop until the next deployment's reset.
+reboot the device into the other camera image in the middle of a session, **and writes the app's
+default back when the screen closes**. That default is now 0, so a device that arrived with
+switching on leaves the screen with it off, which is the state a deployment would have left it
+in anyway. The restore reads `FACTORY_DEFAULTS` rather than repeating the value, so it follows
+the default if it is ever flipped back. Before 5 September 2026 the screen put nothing back at
+all, and before #304 it put back a literal 1.
 
 The same screen can set op34 directly, which is the honest way to answer "why is the flash not
 firing" at the bench. That write goes straight through rather than being held and restored the
 way Capture Picture holds it: changing the mode is the point of the control, and a deployment
 writes the project's mode over it.
 
-Note that **connecting to a device sets `op26 = 1`**, because `FACTORY_DEFAULTS` says so and
-the pre-deployment checks write any parameter that has drifted. Automatic switching is
-therefore on for practically every device the app has touched.
+Nothing in the app turns automatic switching on any more. Connecting runs no reset (#268), and
+the deployment's reset writes the `FACTORY_DEFAULTS` value, which is 0. A device found at
+op26 = 1 is carrying it from a deployment older than #304 or from a bench `setop`, and the next
+deployment clears it.
 
 ## The two messages the device sends
 
@@ -189,6 +213,11 @@ second, and no file transfer, against roughly 13 to 50 seconds for a capture.
 sending, then resolves on whichever arrives first, the complete block or a 15 second
 timeout. The decision line is picked up by the same passive listener and never waited on.
 
+The wait itself is [`ble/protocol/awaitAeRegisters.ts`](../../src/ble/protocol/awaitAeRegisters.ts),
+shared since #304 with `deploymentPipeline.measureLight()`, which is how Start Monitoring reads
+the light. One implementation, so the screen and the deployment cannot disagree about what a
+complete block is.
+
 The screen can also **stream**: one measurement every few seconds until stopped, light-only,
 each row logged. A single empty tick is a missed row, since a dropped request (Seeed#202)
 is exactly what a long run hits now and then; three in a row stops the stream and re-runs
@@ -208,10 +237,11 @@ the hook late, by up to 1.3 s on a busy session, because the transport completes
 through a timer that waits for a free JS thread. Awaiting the block directly took that off
 every measurement.
 
-The screen changes one thing on the device: **op26 is turned off on entry** if it was on,
-and not turned back on. Automatic switching reboots the device into the other camera image
-after a DARK verdict, which a capture with the photo option or the periodic op24 check would
-trigger in the middle of a run. A deployment's reset to defaults writes op26 = 1 again.
+The screen changes one thing on the device: **op26 is turned off on entry** if it was on.
+Automatic switching reboots the device into the other camera image after a DARK verdict, which
+a capture with the photo option or the periodic op24 check would trigger in the middle of a
+run. Since #304 the app's default for op26 is 0, so the screen writes 0 back on the way out
+and a deployment's reset writes 0 too.
 
 The CSV keeps the original columns in their original order and appends `approach`,
 `meanRuleDark`, `hysteresis`, `gainRuleDark` and `deviceLine`, so an old export and a new
