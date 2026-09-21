@@ -1,0 +1,40 @@
+# Advisory, never a required check.
+#
+# OP_PARAMETER in the app mirrors OP_PARAMETERS_E in the Seeed firmware by hand,
+# and AGENTS.md says never to renumber unilaterally. This job fetches the
+# firmware header from the Seeed fork's dev branch and diffs the index table,
+# so a renumbering on either side shows up on the PR that made it.
+#
+# Advisory because the firmware may legitimately lead the app by one pull
+# request, and this must not block that. A red run here is a conversation,
+# not a merge block. See scripts/check-op-indices.js for what counts as a
+# mismatch (indices and count) versus a warning (names).
+name: Op Index Drift
+
+on:
+  pull_request:
+    paths:
+      - 'src/hooks/useDeviceSettings.ts'
+      - 'scripts/check-op-indices.js'
+      - '.github/workflows/op-index-drift.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  op-index-drift:
+    name: Op indices match the firmware
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+
+      - name: Compare OP_PARAMETER against Seeed dev OP_PARAMETERS_E
+        run: node scripts/check-op-indices.js

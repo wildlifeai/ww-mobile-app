@@ -133,6 +133,12 @@ file is the list of things that look like an app bug and are not, and the revers
   stdout. Any `cmd > file` capture therefore writes the error into the file. The script now
   generates to a temp file, checks the content looks like types, and only then renames. Keep
   that shape if you touch it.
+- **Every text file is LF, enforced by `.gitattributes` since 21 September 2026.** Before
+  that, 53 files were committed CRLF and one was mixed, and `core.autocrlf` normalised on
+  `git add`, so any edit to one of them showed as a whole-file rewrite: `deploymentPipeline.ts`
+  changed 88 lines and diffed 796. If a diff is about the size of the file, check endings
+  before reading it. Binary types are declared, so `.apk`, `.tfl` and images are never
+  touched.
 - **Never redirect straight onto a tracked file.** The shell truncates the target *before* the
   command runs, so a failure destroys the committed version. This wiped
   `src/types/database.types.ts`, 169 KB down to a 217-byte error blob, and only surfaced two

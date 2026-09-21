@@ -2,12 +2,19 @@ name: React Doctor Review
 
 on:
   pull_request:
+  merge_group:
   workflow_dispatch:
     inputs:
       verbose:
         description: 'Show file details per rule'
         type: boolean
         default: true
+
+concurrency:
+  # One run per PR (refs/pull/N/merge) and a fresh push cancels the stale run.
+  # A merge-queue entry has its own unique ref, so queue runs never cancel each other.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   react-doctor:

@@ -1,7 +1,7 @@
 # Maestro E2E Test: SQLite Database Operations
 # Tests offline database functionality and organisation multi-tenancy
 
-appId: com.wildlifewatcher.mobile
+appId: com.wildlife.wildlifewatcher.expo
 tags:
   - offline
   - database

@@ -9,8 +9,8 @@ side silently breaks the other.
 
 | Contract | Here | Counterpart |
 |---|---|---|
-| **OP parameter indices** | `OP_PARAMETER` in `src/hooks/useDeviceSettings.ts` | `OP_PARAMETERS_E` in Seeed `ww500_md/fatfs_task.h`; mirrored again in ww-hardware `aiProcessor.h` |
-| **BLE command strings** | `src/ble/protocol/commandRegistry.ts` | Seeed `CLI-commands.c` and `CLI-FATFS-commands.c`; relay in ww-hardware |
+| **OP parameter indices** | `OP_PARAMETER` in `src/hooks/useDeviceSettings.ts` | `OP_PARAMETERS_E` in Seeed `ww500_md/fatfs_task.h`; mirrored again in ww-hardware `aiProcessor.h`. Diffed on every PR touching the enum by `scripts/check-op-indices.js`, advisory |
+| **BLE command strings** | `src/ble/protocol/commandRegistry.ts` | Seeed `CLI-commands.c` and `CLI-FATFS-commands.c`; relay in ww-hardware. Every builder has a golden row in `__tests__/commandRegistry.golden.test.ts` pinning the exact bytes sent and one reply accepted; add a command, add a row, or the suite fails |
 | **`ftx` file-transfer wire format** | `src/ble/protocol/fileTransfer/` | ww-hardware `fileTx.c` against Seeed `fileRx.c` |
 | **Database schema** | `src/database/schema.ts` (generated) | **owned by** `wildlife-watcher-backend`, schema changes start there |
 | **Backend schema directory names** | `SCHEMA_MAP` in `scripts/sync-db-schema.js` | `ww-backend/supabase/schemas/public/*`, where the `aaa_`, `xxx_`, `yyy_` and `zzz_` prefixes encode apply order |

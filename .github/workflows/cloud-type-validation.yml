@@ -11,6 +11,7 @@ on:
       - 'src/**/*.ts'
       - 'src/**/*.tsx'
       - '.github/workflows/cloud-type-validation.yml'
+  merge_group:
   push:
     branches: [dev]
     paths:
@@ -28,13 +29,19 @@ on:
           - cloud-dev
           - cloud-prod
 
+concurrency:
+  # One run per PR (refs/pull/N/merge) and a fresh push cancels the stale run.
+  # A merge-queue entry has its own unique ref, so queue runs never cancel each other.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate-cloud-dev:
     name: Validate Cloud Dev Types
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # Run on PRs to main or manual dispatch with cloud-dev selected
-    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'cloud-dev')
+    if: github.event_name == 'pull_request' || github.event_name == 'merge_group' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'cloud-dev')
 
     steps:
       - name: Checkout code
@@ -204,7 +211,7 @@ jobs:
           NODE_OPTIONS: "--experimental-vm-modules"
 
   summary:
-    name: Validation Summary
+    name: Cloud Type Validation Summary
     runs-on: ubuntu-latest
     needs: [validate-cloud-dev]
     if: always()
