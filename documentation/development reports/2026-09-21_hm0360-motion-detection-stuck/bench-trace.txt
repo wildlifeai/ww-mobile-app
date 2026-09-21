@@ -1,0 +1,57 @@
+# WW500 bench trace, 21 September 2026
+# Trimmed from two three-way captures (Himax COM6, nRF COM5, app logcat).
+# Times are MM:SS from the start of each capture, not wall clock.
+
+############ CAPTURE 1: motion working, then dying ############
+
+--- a healthy motion trigger ---
+10:48.037  ### Warm Boot ###
+10:48.037  Woke at 2026:09:21 05:33:39 
+10:48.037  Motion detected INT_INDIC = 0xc8
+10:48.037  Initialising FreeRTOS tasks
+10:48.037  Created task 'CLI' Priority 4
+10:48.037  Created task 'IFTask' Priority 3
+10:48.037  Created task 'FAT' Priority 2
+10:51.339  ### Warm Boot ###
+10:51.339  Woke at 2026:09:21 05:33:41 
+10:51.339  Motion detected INT_INDIC = 0xc8
+10:51.339  Initialising FreeRTOS tasks
+10:51.339  Created task 'CLI' Priority 4
+
+--- last motion of the session, then silence ---
+22:10.151  Sending 130 bytes: Header 4, payload 124, checksum 2 'HM0360 motion in 21 blocks:
+22:10.351  BLE out: Sent 125 bytes: 'HM0360 motion in 21 blocks:
+22:10.418  [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 motion in 21 blocks:
+
+############ CAPTURE 2: the fault, and the recovery ############
+
+--- the user power cycle: a WARM boot, fault persists ---
+00:53.659  Camera: RP v3 (IMX708)
+00:53.659  HM0360 present at 0x24
+00:53.659  ### Warm Boot ###
+01:53.857  Camera: RP v3 (IMX708)
+
+--- armed correctly on every sleep, yet nothing fires ---
+00:57.342  Preparing HM0360 for MD:   HM0360 Motion Detection on! 1000ms frame interval
+00:57.342  Interval of 1000ms gives sleep count = 0x8030
+00:57.342  Changing mode from 2 to 2 with nFrames=1, sleepTime=1000 sleepCount = 0x8030
+01:55.675  Preparing HM0360 for MD:   HM0360 Motion Detection on! 1000ms frame interval
+
+--- the IR LED is disabled entering deep sleep ---
+00:57.342  DEBUG: ledFlashBrightness(50%) [brbits = 0x7]
+00:57.342  DEBUG: ledFlashSelectLED(2)
+00:57.342  DEBUG: ledFlashDisable()
+00:57.342  >>> Entering DPD at 2026:09:21 05:58:38
+
+--- inithm0360 is not implemented, but still reboots the device ---
+43:44.636  <info> app: AI processor is in DPD. Waking it. (inithm0360)
+43:45.821  MKL62BA command received: 'inithm0360'
+43:45.821  Unrecognised
+
+--- RECOVERY after the USB re-seat ---
+48:48.291  [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake (MD)
+48:48.681  [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 motion in 13 blocks:
+48:48.691  [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Captured 1 images. Last is AB0D2AB0.JPG (File write 20ms avg.)
+48:50.442  [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Wake (MD)
+48:50.823  [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: HM0360 motion in 8 blocks:
+48:51.021  [useBleListeners] RAW_RX received for D6:47:9B:89:E7:23: Captured 1 images. Last is AB0D2AE0.JPG (File write 24ms avg.)
