@@ -171,7 +171,8 @@ Palmer raised on 9 September 2026.
   this session. Not the cause of this fault, but still wrong.
 - [#315](https://github.com/wildlifeai/ww-mobile-app/issues/315) Deployment GPS write is
   silently discarded. Reproduced again during this session, addendum added to the issue.
-- New issue for this finding, see below.
+- [#324](https://github.com/wildlifeai/ww-mobile-app/issues/324) The HM0360 can stop raising
+  its motion interrupt while reporting itself healthy. This finding.
 
 ## Recommendation
 
