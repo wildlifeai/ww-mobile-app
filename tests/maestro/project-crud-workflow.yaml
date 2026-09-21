@@ -1,7 +1,7 @@
 # Maestro E2E Test for Project CRUD Workflow
 # Goal: Verify Create, Read, Update, Delete operations for Projects
 
-appId: com.wildlifewatcher.app
+appId: com.wildlife.wildlifewatcher.expo
 
 ---
 # 1. Login (Reuse existing flow or simplified)

@@ -33,7 +33,8 @@ rather than all of them.
 - Conventional Commits, enforced by `commitlint`. Branch names use `feat/`, `fix/`, `chore/`
   and `docs/`.
 - Before you claim work is done, run the gates that exist precisely because things drifted
-  before: `npm run type-check`, `npm test`, `npm run version:check`, `npm run docs:validate`.
+  before: `npm run type-check`, `npm run lint`, `npm test`, `npm run version:check`,
+  `npm run docs:validate`.
 - Do not hand-edit generated files: `src/database/schema.ts`, from `schema:generate`, and
   `src/types/database.types.ts`, from `types:cloud-dev`.
 - **Verify against the code, not the docs**, and read what a passing check actually counted.

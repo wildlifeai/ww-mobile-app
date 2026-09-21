@@ -2,6 +2,13 @@ name: Commitlint
 
 on:
   pull_request:
+  merge_group:
+
+concurrency:
+  # One run per PR (refs/pull/N/merge) and a fresh push cancels the stale run.
+  # A merge-queue entry has its own unique ref, so queue runs never cancel each other.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   commitlint:
@@ -20,8 +27,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate merge-queue entry with commitlint
+        if: github.event_name == 'merge_group'
+        run: npx commitlint --from ${{ github.event.merge_group.base_sha }} --to ${{ github.event.merge_group.head_sha }} --verbose
+
       - name: Validate current commit (last commit) with commitlint
-        if: github.event.pull_request == null
+        if: github.event_name != 'pull_request' && github.event_name != 'merge_group'
         run: npx commitlint --from HEAD~1 --to HEAD --verbose
 
       - name: Validate PR commits with commitlint

@@ -41,3 +41,23 @@ shell boundary, and none of them reproduced in a Linux container.
   only pass or fail for the same reason, it has not been tested.
 - Prefer `npm run <guard>` over ad-hoc verification. `version:check` and `docs:validate` exist
   so drift fails loudly in CI.
+- **A test runner that ran zero tests is not a pass.** The E2E job reported success on every
+  run for months while Maestro printed a usage error and ran nothing: four of five flows
+  named a package that was never installed, and run 35493842313 on 20 September 2026 shows
+  an empty `~/.maestro/tests/` under a green tick. The job now writes a junit report and
+  fails if it holds no `<testcase>`. Apply the same guard to any runner you add: count what
+  ran, not whether the command exited.
+- **A required check that never triggers blocks the merge forever.** `native-build-validation`
+  and `cloud-type-validation` filter on `paths:`, so a docs-only PR never gets their checks
+  and can never enter the merge queue. Each has a `-skip.yml` mirror with `paths-ignore` and
+  the **same job names**, which reports success when the real one has nothing to do. The two
+  path lists must stay identical; if they drift, a PR either builds twice or never gets the
+  check. Merge-queue runs ignore path filters and always run the real workflow.
+- **The coverage floor is a ratchet, not a target.** `quality-gate-validation` fails below
+  20% statements, set just under the 21.29% measured on 21 September 2026. Until then the
+  awk checked `< 10` while the message claimed 70. Raise the floor by hand when coverage
+  has genuinely climbed; never lower it to make a PR pass.
+- `scripts/check-op-indices.js` diffs `OP_PARAMETER` against the firmware enum on Seeed
+  `dev`. It runs on any PR touching `useDeviceSettings.ts` and is advisory, because the
+  firmware may legitimately lead the app by one PR. Pass it a local header path to run
+  offline.
