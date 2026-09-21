@@ -618,6 +618,15 @@ export const useStartDeployment = ({
             // When one is needed it is measured with `AI light`, a throwaway
             // single-frame AE check: about a second, no image file, no flash and
             // no file transfer. Nothing here needs a photograph.
+            // The freshest table this step actually read back from the device,
+            // carried out to 7d. Deliberately NOT the same variable as `ops`
+            // below: that one falls back to the pre-reset snapshot when the
+            // device read fails, and a pre-reset table would tell 7d about the
+            // model that was on the device *before* this deployment configured
+            // it. Only genuine post-configuration reads land here, so 7d can
+            // either trust it or read for itself.
+            let latestDeviceOps: string[] | null = null
+
             try {
                 progress.addLog('Checking light conditions...')
                 progress.setFinishStep('Checking light...')
@@ -632,6 +641,7 @@ export const useStartDeployment = ({
                 let ops: string[] | null = null
                 try {
                     ops = (await bleSession?.execute(commandRegistry.getops)) ?? null
+                    latestDeviceOps = ops
                 } catch (readError) {
                     logWarn('[Deployment] Could not read ops for the light verdict:', readError)
                 }
@@ -673,6 +683,7 @@ export const useStartDeployment = ({
                         const opsAfter = await bleSession.execute(commandRegistry.getops)
                         if (opsAfter) {
                             ops = opsAfter
+                            latestDeviceOps = opsAfter
                             // `measured`, not merely "did not fail". A timeout means
                             // the command was acknowledged and the reading never
                             // arrived, so op25 is exactly as stale as it was before;
@@ -745,7 +756,16 @@ export const useStartDeployment = ({
             // 'motion detected' forever because resetOps had erased the model
             // after syncAiModel loaded it).
             try {
-                const finalOps = await bleSession?.execute(commandRegistry.getops)
+                // Reuse the table 7c already read back. It is taken after the
+                // last `setop`, and everything issued since is a read: `slots`,
+                // plus `AI light` on the deployments that need it, and when
+                // that one runs 7c re-reads the table afterwards anyway. None
+                // of them touch op14/op15. Asking the device for the same 37
+                // values a second time cost about 300 ms of every deployment,
+                // measured on the bench on 21 September 2026. When 7c came back
+                // with nothing, read for ourselves rather than guess.
+                const finalOps = latestDeviceOps
+                    ?? (await bleSession?.execute(commandRegistry.getops))
                 if (!finalOps) {
                     // A failed read must NOT masquerade as 'NO MODEL LOADED'
                     throw new Error('No operational parameters returned from device')

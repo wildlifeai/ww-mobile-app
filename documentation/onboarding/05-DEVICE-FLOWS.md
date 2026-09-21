@@ -158,7 +158,7 @@ When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeplo
 | 6 | Configure Device | `pipeline.configureDevice()`, applies [capture method OPs](./04-ENGINEER-CONSOLE.md#capture-method-op-mapping), deployment ID, GPS, and the project's [capture flash](#c-configure-capture-flash). It configures against the op table **`resetOps` returned**, not the pre-reset snapshot |
 | 6b | Capture Format | `TEST_MODE_BITS` (OP 18) and `NUM_PICTURES` (OP 5). JPEG only by default; the advanced toggle adds the raw BMP, which needs 2 pics/trigger to yield one of each. Non-fatal |
 | 6c | Light Verdict and camera | Reads the op table and `AI slots`, and **only measures when something will consume the verdict** (OP 26 or OP 34 = 1). When it does, `pipeline.measureLight()` sends `AI light`, about a second and no photo. Reports DARK/BRIGHT, **names the camera this deployment keeps**, and warns when the project's flash does not suit it (#321). Non-fatal |
-| 6d | Model Verification | Re-reads OP 14/15 and says loudly whether the NN is armed, guarding silent modelless starts. Non-fatal |
+| 6d | Model Verification | Reads OP 14/15 and says loudly whether the NN is armed, guarding silent modelless starts. Reuses the table 6c already read back rather than asking again: everything between the two is a read, so the second `getop -1` returned identical bytes and cost about 300 ms of every deployment, measured on the bench on 21 September 2026. Falls back to its own read when 6c got nothing. Non-fatal |
 | 7 | Live Monitor | Transitions to `DeploymentMonitorView` (remains connected) |
 | 8 | Disconnect | User initiates manual disconnect (`dis`) |
 
