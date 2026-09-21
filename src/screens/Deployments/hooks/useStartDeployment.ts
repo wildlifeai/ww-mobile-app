@@ -31,6 +31,8 @@ import { selectCurrentOrganisation } from '../../../redux/slices/authSlice'
 import { ProjectWithDetails } from '../../../types/project'
 import { InitPayload } from '../../../navigation/types'
 import { calculateDistance } from '../../../utils/gpsUtils'
+import { CAMERA_VARIANT_LABELS, CameraVariant, parseVariant } from '../../../utils/cameraVariant'
+import { checkFlashAgainstCamera } from '../../../utils/flashCameraMatch'
 
 interface UseStartDeploymentParams {
     deviceId?: string
@@ -634,6 +636,19 @@ export const useStartDeployment = ({
                     logWarn('[Deployment] Could not read ops for the light verdict:', readError)
                 }
 
+                // Which camera this deployment will actually use. Worth one
+                // command now that #304 has stopped the device switching slots
+                // on its own: whatever is active here is what the deployment
+                // keeps. Non-fatal, and 'unknown' is reported as unknown rather
+                // than guessed (#321).
+                let camera: CameraVariant = 'unknown'
+                try {
+                    const slots = await bleSession?.execute(commandRegistry.slots)
+                    if (slots) camera = parseVariant(slots.running)
+                } catch (slotsError) {
+                    logWarn('[Deployment] Could not read the active camera:', slotsError)
+                }
+
                 // Would a check here produce a reading, or move nothing at all?
                 const lightSensorRuns = opAt(ops, OP_PARAMETER.SLOT_SWITCH) === 1
                     || opAt(ops, OP_PARAMETER.FLASH_MODE) === 1
@@ -697,12 +712,28 @@ export const useStartDeployment = ({
                             ? `Light is re-checked after every photo and every ${checkInterval} min while asleep.`
                             : 'Light is re-checked after every photo.')
                     } else {
-                        progress.addLog('Auto day/night switching is OFF: this deployment stays on the camera that is active now. Set the camera for the site on the device screen if it is the wrong one.')
+                        progress.addLog(camera === 'unknown'
+                            ? 'Auto day/night switching is OFF: this deployment stays on the camera that is active now, which could not be read. Check it on the device screen.'
+                            : `Auto day/night switching is OFF: this deployment stays on the ${CAMERA_VARIANT_LABELS[camera]} camera. Set the camera for the site on the device screen if it is the wrong one.`)
                     }
                 } else {
                     progress.addLog(autoSwitch === 1
                         ? 'Light conditions unknown. Auto day/night switching is ON, so the device decides at its first check.'
                         : 'Light conditions unknown. Auto day/night switching is OFF, so this deployment keeps the camera that is active now.')
+                }
+
+                // #321: the flash and the camera are chosen in different places
+                // and nothing compared them. An IR flash in front of the colour
+                // camera is invisible to it (IR-cut filter), so the LED drains
+                // the battery and the night frames are black. Reported, never
+                // corrected: #304 deliberately stopped the app switching slots
+                // by itself, and the operator is the one who knows the site.
+                const flashVsCamera = checkFlashAgainstCamera(project, camera)
+                if (flashVsCamera.kind === 'mismatch') {
+                    const mark = flashVsCamera.severity === 'broken' ? '\u26a0\ufe0f' : '\u2139\ufe0f'
+                    progress.addLog(`${mark} ${flashVsCamera.message}`)
+                } else if (flashVsCamera.kind === 'unknown') {
+                    progress.addLog('Could not read the active camera, so the flash and camera were not checked against each other.')
                 }
             } catch (lightError) {
                 logWarn('[Deployment] Light check failed (non-fatal):', lightError)

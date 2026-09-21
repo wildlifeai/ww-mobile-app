@@ -157,13 +157,19 @@ When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeplo
 | 5 | Reset to Defaults | `pipeline.resetOps()` calls `executeResetToDefaults()`, shared workflow that intelligently resets parameters, skips tracking counters, and clears AI models. |
 | 6 | Configure Device | `pipeline.configureDevice()`, applies [capture method OPs](./04-ENGINEER-CONSOLE.md#capture-method-op-mapping), deployment ID, GPS, and the project's [capture flash](#c-configure-capture-flash). It configures against the op table **`resetOps` returned**, not the pre-reset snapshot |
 | 6b | Capture Format | `TEST_MODE_BITS` (OP 18) and `NUM_PICTURES` (OP 5). JPEG only by default; the advanced toggle adds the raw BMP, which needs 2 pics/trigger to yield one of each. Non-fatal |
-| 6c | Light Verdict | Reads the op table, and **only measures when something will consume the verdict** (OP 26 or OP 34 = 1). When it does, `pipeline.measureLight()` sends `AI light`, about a second and no photo. Reports DARK/BRIGHT and which camera the deployment keeps. Non-fatal |
+| 6c | Light Verdict and camera | Reads the op table and `AI slots`, and **only measures when something will consume the verdict** (OP 26 or OP 34 = 1). When it does, `pipeline.measureLight()` sends `AI light`, about a second and no photo. Reports DARK/BRIGHT, **names the camera this deployment keeps**, and warns when the project's flash does not suit it (#321). Non-fatal |
 | 6d | Model Verification | Re-reads OP 14/15 and says loudly whether the NN is armed, guarding silent modelless starts. Non-fatal |
 | 7 | Live Monitor | Transitions to `DeploymentMonitorView` (remains connected) |
 | 8 | Disconnect | User initiates manual disconnect (`dis`) |
 
 > [!NOTE]
 > Step 6c used to take a capture unconditionally, purely to refresh OP 25. With the light sensor off that refreshed nothing, and it cost 21 s on the bench on 20 September 2026 when the sensor refused to stream and the firmware swallowed the failure ([#269](https://github.com/wildlifeai/ww-mobile-app/issues/269), [Seeed#231](https://github.com/wildlifeai/Seeed_Grove_Vision_AI_Module_V2/issues/231)). Firmware built without `AI light` still falls back to a capture, because there only a capture runs a check.
+>
+> Since #321 the step also reads `AI slots` and compares the project's flash LED against the
+> camera in the active slot. An IR flash in front of the RP3 colour camera is invisible to it,
+> because of the IR-cut filter, so the LED drains the battery and the night frames are black.
+> It **warns and never switches the slot**: #304 deliberately stopped the app moving the camera
+> on its own, and a switch costs a reboot at the next sleep. The operator decides.
 >
 > Every line the progress dialog shows also goes to the logger, prefixed `[DeploymentLog]`. The dialog auto-transitions to the live monitor when the deployment finishes, so this is the only copy that survives a field report or a bench capture.
 
