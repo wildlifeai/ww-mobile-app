@@ -183,7 +183,8 @@ For detailed EAS configuration, see the [EAS Guide](./documentation/resources/Ex
 ```bash
 npm test                   # Unit tests (Jest)
 npm run test:integration   # Integration tests
-npm run test:maestro       # E2E UI tests (Maestro)
+npm run test:maestro:smoke # the one E2E flow CI requires (install, launch, screenshot)
+npm run test:maestro       # every E2E flow; CI runs these on the full-e2e label
 ```
 
 For detailed testing patterns, see the [Testing Guide](./documentation/resources/Testing-Guide.md).

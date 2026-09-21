@@ -8,7 +8,7 @@
 |------|------|----------|---------|
 | Unit | Jest + RNTL | `src/**/__tests__/*.test.ts` | `npm test` |
 | Integration/BDD | Jest + custom helpers | `tests/integration/**/*.bdd.test.tsx` | `npm test -- bdd` |
-| E2E | Maestro | `tests/maestro/*.yaml` | `npm run test:maestro` |
+| E2E | Maestro | `tests/maestro/smoke/` required in CI, the rest on the `full-e2e` label | `npm run test:maestro:smoke`, `npm run test:maestro` |
 
 ## Running Tests
 
@@ -17,7 +17,8 @@ npm test                    # All Jest tests (unit + integration)
 npm test -- --watch         # Watch mode
 npm test -- --coverage      # Coverage report
 npm test -- Login.test.tsx  # Single file
-npm run test:maestro        # E2E (requires device)
+npm run test:maestro:smoke  # the one E2E flow CI requires (requires device)
+npm run test:maestro        # every E2E flow (requires device)
 npm run lint                # ESLint
 npm run type-check          # TypeScript
 ```
@@ -112,28 +113,46 @@ Helpers: `tests/setup/helpers/bdd.ts`
 
 ```bash
 adb devices                 # 1. Verify device connected
-npm run test:maestro        # 2. Run all E2E tests
-npm run test:maestro:auth   # 3. Auth tests only
-maestro test tests/maestro/auth-workflow.yaml  # 4. Single file
+npm run test:maestro:smoke  # 2. What CI requires: install, launch, screenshot
+npm run test:maestro        # 3. Every flow
+npm run test:maestro:auth   # 4. Auth flow only
 maestro studio tests/maestro/auth-workflow.yaml  # 5. Interactive debug
 ```
+
+### What CI runs, and why the split
+
+`E2E Smoke` runs after every native build and is a required check. It is one flow,
+[`smoke/app-startup.yaml`](../../tests/maestro/smoke/app-startup.yaml): install the APK the
+same run built, launch it, take a screenshot. It asserts no screen content on purpose, because
+a required check must not fail for a test id nobody has verified.
+
+`E2E Full` runs every flow, only when the PR carries the `full-e2e` label or the workflow is
+dispatched by hand, and is advisory. Both jobs write a junit report and **fail if it holds no
+test cases**. That guard exists because until 21 September 2026 the E2E job reported success on
+every run while Maestro ran nothing: four of the five flows named a package that was never
+installed, `auth-workflow.yaml` had no `appId` at all, and run 35493842313 shows an empty
+`~/.maestro/tests/` under a green tick. The flows are now pointed at the real debug package,
+`com.wildlife.wildlifewatcher.expo`, but the four fuller ones have never passed against real
+screens and stay advisory until one does.
 
 ### Existing Test Flows
 
 | File | Purpose | Status |
 |------|---------|--------|
-| `tests/maestro/auth-workflow.yaml` | RBAC login flows for all 3 roles + multi-org switching | ⚠️ Some assertions commented out |
-| `tests/maestro/app-startup-debug.yaml` | Launch app + capture startup screenshot | ✅ Minimal |
-| `tests/maestro/project-crud-workflow.yaml` | Create, read, update, delete project flow | ⚠️ Uses text selectors (fragile) |
-| `tests/maestro/offline/complete-offline-workflow.yaml` | Full offline sync workflow | ✅ |
-| `tests/maestro/offline/database-operations.yaml` | Offline database CRUD operations | ✅ |
-| `tests/maestro/offline/setup-test-user.yaml` | Test user provisioning for offline tests | ✅ |
+| `tests/maestro/smoke/app-startup.yaml` | Install, launch, screenshot. **The required CI check** | ✅ Passes |
+| `tests/maestro/auth-workflow.yaml` | RBAC login flows for all 3 roles + multi-org switching | ⚠️ Never executed before 21 Sep 2026 (had no `appId`); some assertions commented out; advisory |
+| `tests/maestro/project-crud-workflow.yaml` | Create, read, update, delete project flow | ⚠️ Never executed (wrong `appId` until 21 Sep 2026); uses text selectors; advisory |
+| `tests/maestro/offline/complete-offline-workflow.yaml` | Full offline sync workflow | ⚠️ Never executed (wrong `appId` until 21 Sep 2026); advisory |
+| `tests/maestro/offline/database-operations.yaml` | Offline database CRUD operations | ⚠️ Never executed (wrong `appId` until 21 Sep 2026); advisory |
+| `tests/maestro/offline/setup-test-user.yaml` | Test user provisioning for offline tests | ⚠️ Never executed (wrong `appId` until 21 Sep 2026); advisory |
 
 ### npm Scripts
 
 ```json
 {
   "test:maestro": "maestro test tests/maestro/",
+  "test:maestro:smoke": "maestro test tests/maestro/smoke/",
+  "test:maestro:full": "maestro test tests/maestro/",
   "test:maestro:auth": "maestro test tests/maestro/auth-workflow.yaml",
   "test:maestro:offline": "maestro test tests/maestro/offline/complete-offline-workflow.yaml"
 }

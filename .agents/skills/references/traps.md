@@ -133,6 +133,12 @@ file is the list of things that look like an app bug and are not, and the revers
   stdout. Any `cmd > file` capture therefore writes the error into the file. The script now
   generates to a temp file, checks the content looks like types, and only then renames. Keep
   that shape if you touch it.
+- **Every text file is LF, enforced by `.gitattributes` since 21 September 2026.** Before
+  that, 53 files were committed CRLF and one was mixed, and `core.autocrlf` normalised on
+  `git add`, so any edit to one of them showed as a whole-file rewrite: `deploymentPipeline.ts`
+  changed 88 lines and diffed 796. If a diff is about the size of the file, check endings
+  before reading it. Binary types are declared, so `.apk`, `.tfl` and images are never
+  touched.
 - **An IR flash is invisible to the colour camera.** The RP3 has an IR-cut filter, so a
   project set to the IR flash on a device running the colour slot fires the LED, drains the
   battery and records black night frames. Nothing coupled the two until #321, and it matters

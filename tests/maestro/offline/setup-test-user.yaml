@@ -1,7 +1,7 @@
 # Setup Test User Flow
 # Reusable flow for setting up test users with different roles
 
-appId: com.wildlifeai.wildlifewatcher
+appId: com.wildlife.wildlifewatcher.expo
 name: "Setup Test User"
 description: "Configure test user with specified role and organisation"
 

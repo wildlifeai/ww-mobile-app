@@ -46,7 +46,14 @@ npm run type-check       # tsc --noEmit
 npm run lint             # ESLint
 npm run version:check    # the 5 files carrying the app version agree
 npm run docs:validate    # every path/link in documentation/ resolves
+npm run test:maestro:smoke   # the one E2E flow CI requires: install, launch, screenshot
 ```
+
+All of these run in CI on each pull request; the smoke flow runs after the native build,
+which a docs-only PR skips. Every check that can be required also runs on `merge_group`,
+so `dev` can sit behind a merge queue without touching the workflows. PR-Agent is the one
+that cannot: it triggers on open and on comments, so it stays advisory.
+The coverage floor is a ratchet at 20%: it only moves up, by hand.
 
 ## Non-negotiables
 
