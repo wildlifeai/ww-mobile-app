@@ -3,14 +3,16 @@ name: Cloud Type Validation
 # This workflow validates that committed types match cloud Supabase instances
 # Prevents deployments with stale cloud types
 
+# No `paths:` on pull_request, deliberately. A path-filtered workflow produces
+# no check run at all for a PR it does not match, so a required check can never
+# be satisfied. The `-skip.yml` mirror that used to cover that was worse:
+# `paths` and `paths-ignore` are not complements, so a PR touching both
+# `src/**` and `documentation/**` ran both and produced two check runs under
+# one name. The job below always runs and decides internally whether there is
+# anything to validate. `push` keeps its filter: it produces no required check.
 on:
   pull_request:
     branches: [dev]
-    paths:
-      - 'src/types/database.types.ts'
-      - 'src/**/*.ts'
-      - 'src/**/*.tsx'
-      - '.github/workflows/cloud-type-validation.yml'
   merge_group:
   push:
     branches: [dev]
@@ -46,22 +48,49 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # Which check names exist must not depend on what a PR touched, so this
+      # job always runs and decides here whether it has anything to validate.
+      - id: filter
+        name: Did any TypeScript change?
+        run: |
+          set -e
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "types=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          CHANGED=$(git diff --name-only '${{ github.event.pull_request.base.sha }}' '${{ github.event.pull_request.head.sha }}')
+          echo "changed files:"; echo "$CHANGED" | sed 's/^/  /'
+          if echo "$CHANGED" | grep -qE '^(src/.*\.(ts|tsx)$|\.github/workflows/cloud-type-validation\.yml$)'; then
+            echo "types=true" >> "$GITHUB_OUTPUT"; echo '=> validating against cloud-dev'
+          else
+            echo "types=false" >> "$GITHUB_OUTPUT"; echo '=> no TypeScript changed; reporting without validating'
+          fi
+
+      - name: Nothing to validate
+        if: steps.filter.outputs.types != 'true'
+        run: echo "No TypeScript or type-file changes in this PR."
 
       - name: Setup Node.js
+        if: steps.filter.outputs.types == 'true'
         uses: actions/setup-node@v7
         with:
           node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
+        if: steps.filter.outputs.types == 'true'
         run: npm ci
 
       - name: Setup Supabase CLI
+        if: steps.filter.outputs.types == 'true'
         uses: supabase/setup-cli@v3
         with:
           version: 2.101.0  # pinned: unpinned CLIs broke CI when new versions shipped (2026-06-11)
 
       - name: Authenticate to Supabase
+        if: steps.filter.outputs.types == 'true'
         run: |
           echo "Authenticating to Supabase cloud..."
           if [ -z "${{ secrets.SUPABASE_ACCESS_TOKEN }}" ]; then
@@ -71,6 +100,7 @@ jobs:
           npx supabase@2.101.0 login --token "${{ secrets.SUPABASE_ACCESS_TOKEN }}"
 
       - name: Link to cloud-dev project
+        if: steps.filter.outputs.types == 'true'
         run: |
           echo "Linking to cloud-dev Supabase instance..."
           npx supabase@2.101.0 link --project-ref qegeovogqxiouqbrxmnh
@@ -78,6 +108,7 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
       - name: Generate fresh types from cloud-dev
+        if: steps.filter.outputs.types == 'true'
         run: |
           echo "Generating types from cloud-dev Supabase instance..."
           npx supabase@2.101.0 gen types typescript --project-id qegeovogqxiouqbrxmnh > /tmp/cloud-dev-types.ts
@@ -85,6 +116,7 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
       - name: Compare with committed types
+        if: steps.filter.outputs.types == 'true'
         id: compare
         run: |
           echo "Comparing generated types with committed types..."
@@ -116,9 +148,11 @@ jobs:
           retention-days: 7
 
       - name: Run TypeScript type check
+        if: steps.filter.outputs.types == 'true'
         run: npm run type-check
 
       - name: Run tests
+        if: steps.filter.outputs.types == 'true'
         run: npm run test:unit -- --passWithNoTests
         env:
           NODE_OPTIONS: "--experimental-vm-modules"

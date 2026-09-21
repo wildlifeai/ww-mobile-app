@@ -47,12 +47,18 @@ shell boundary, and none of them reproduced in a Linux container.
   an empty `~/.maestro/tests/` under a green tick. The job now writes a junit report and
   fails if it holds no `<testcase>`. Apply the same guard to any runner you add: count what
   ran, not whether the command exited.
-- **A required check that never triggers blocks the merge forever.** `native-build-validation`
-  and `cloud-type-validation` filter on `paths:`, so a docs-only PR never gets their checks
-  and can never enter the merge queue. Each has a `-skip.yml` mirror with `paths-ignore` and
-  the **same job names**, which reports success when the real one has nothing to do. The two
-  path lists must stay identical; if they drift, a PR either builds twice or never gets the
-  check. Merge-queue runs ignore path filters and always run the real workflow.
+- **A required check that never triggers blocks the merge forever, and the obvious fix is a
+  trap.** A workflow with `paths:` produces no check run at all for a PR it does not match, so
+  a docs-only PR can never satisfy it. The tempting answer, a mirror workflow with
+  `paths-ignore` and the same job names that reports success, is **wrong**: `paths` and
+  `paths-ignore` are not complements. A PR touching both `src/**` and `documentation/**`
+  satisfies each of them, so both workflows run and produce **two check runs under one name**.
+  Proven on PR #322, where `Android EAS Local Build` appeared twice on one commit, a 2-second
+  success from the mirror and the real build still in progress; a required check satisfied by
+  whichever lands first is not a gate. The mirrors were removed the same day.
+  The shape that works: **no path filter, every job always runs and reports**, and a first
+  `changes` job diffs the PR against its base and sets an output the expensive steps guard on
+  with `if:`. One check name, produced once, by the workflow that owns it.
 - **The coverage floor is a ratchet, not a target.** `quality-gate-validation` fails below
   20% statements, set just under the 21.29% measured on 21 September 2026. Until then the
   awk checked `< 10` while the message claimed 70. Raise the floor by hand when coverage
