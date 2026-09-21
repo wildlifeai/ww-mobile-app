@@ -31,6 +31,8 @@ import { selectCurrentOrganisation } from '../../../redux/slices/authSlice'
 import { ProjectWithDetails } from '../../../types/project'
 import { InitPayload } from '../../../navigation/types'
 import { calculateDistance } from '../../../utils/gpsUtils'
+import { CAMERA_VARIANT_LABELS, CameraVariant, parseVariant } from '../../../utils/cameraVariant'
+import { checkFlashAgainstCamera } from '../../../utils/flashCameraMatch'
 
 interface UseStartDeploymentParams {
     deviceId?: string
@@ -616,6 +618,15 @@ export const useStartDeployment = ({
             // When one is needed it is measured with `AI light`, a throwaway
             // single-frame AE check: about a second, no image file, no flash and
             // no file transfer. Nothing here needs a photograph.
+            // The freshest table this step actually read back from the device,
+            // carried out to 7d. Deliberately NOT the same variable as `ops`
+            // below: that one falls back to the pre-reset snapshot when the
+            // device read fails, and a pre-reset table would tell 7d about the
+            // model that was on the device *before* this deployment configured
+            // it. Only genuine post-configuration reads land here, so 7d can
+            // either trust it or read for itself.
+            let latestDeviceOps: string[] | null = null
+
             try {
                 progress.addLog('Checking light conditions...')
                 progress.setFinishStep('Checking light...')
@@ -630,8 +641,22 @@ export const useStartDeployment = ({
                 let ops: string[] | null = null
                 try {
                     ops = (await bleSession?.execute(commandRegistry.getops)) ?? null
+                    latestDeviceOps = ops
                 } catch (readError) {
                     logWarn('[Deployment] Could not read ops for the light verdict:', readError)
+                }
+
+                // Which camera this deployment will actually use. Worth one
+                // command now that #304 has stopped the device switching slots
+                // on its own: whatever is active here is what the deployment
+                // keeps. Non-fatal, and 'unknown' is reported as unknown rather
+                // than guessed (#321).
+                let camera: CameraVariant = 'unknown'
+                try {
+                    const slots = await bleSession?.execute(commandRegistry.slots)
+                    if (slots) camera = parseVariant(slots.running)
+                } catch (slotsError) {
+                    logWarn('[Deployment] Could not read the active camera:', slotsError)
                 }
 
                 // Would a check here produce a reading, or move nothing at all?
@@ -658,6 +683,7 @@ export const useStartDeployment = ({
                         const opsAfter = await bleSession.execute(commandRegistry.getops)
                         if (opsAfter) {
                             ops = opsAfter
+                            latestDeviceOps = opsAfter
                             // `measured`, not merely "did not fail". A timeout means
                             // the command was acknowledged and the reading never
                             // arrived, so op25 is exactly as stale as it was before;
@@ -697,12 +723,28 @@ export const useStartDeployment = ({
                             ? `Light is re-checked after every photo and every ${checkInterval} min while asleep.`
                             : 'Light is re-checked after every photo.')
                     } else {
-                        progress.addLog('Auto day/night switching is OFF: this deployment stays on the camera that is active now. Set the camera for the site on the device screen if it is the wrong one.')
+                        progress.addLog(camera === 'unknown'
+                            ? 'Auto day/night switching is OFF: this deployment stays on the camera that is active now, which could not be read. Check it on the device screen.'
+                            : `Auto day/night switching is OFF: this deployment stays on the ${CAMERA_VARIANT_LABELS[camera]} camera. Set the camera for the site on the device screen if it is the wrong one.`)
                     }
                 } else {
                     progress.addLog(autoSwitch === 1
                         ? 'Light conditions unknown. Auto day/night switching is ON, so the device decides at its first check.'
                         : 'Light conditions unknown. Auto day/night switching is OFF, so this deployment keeps the camera that is active now.')
+                }
+
+                // #321: the flash and the camera are chosen in different places
+                // and nothing compared them. An IR flash in front of the colour
+                // camera is invisible to it (IR-cut filter), so the LED drains
+                // the battery and the night frames are black. Reported, never
+                // corrected: #304 deliberately stopped the app switching slots
+                // by itself, and the operator is the one who knows the site.
+                const flashVsCamera = checkFlashAgainstCamera(project, camera)
+                if (flashVsCamera.kind === 'mismatch') {
+                    const mark = flashVsCamera.severity === 'broken' ? '\u26a0\ufe0f' : '\u2139\ufe0f'
+                    progress.addLog(`${mark} ${flashVsCamera.message}`)
+                } else if (flashVsCamera.kind === 'unknown') {
+                    progress.addLog('Could not read the active camera, so the flash and camera were not checked against each other.')
                 }
             } catch (lightError) {
                 logWarn('[Deployment] Light check failed (non-fatal):', lightError)
@@ -714,7 +756,16 @@ export const useStartDeployment = ({
             // 'motion detected' forever because resetOps had erased the model
             // after syncAiModel loaded it).
             try {
-                const finalOps = await bleSession?.execute(commandRegistry.getops)
+                // Reuse the table 7c already read back. It is taken after the
+                // last `setop`, and everything issued since is a read: `slots`,
+                // plus `AI light` on the deployments that need it, and when
+                // that one runs 7c re-reads the table afterwards anyway. None
+                // of them touch op14/op15. Asking the device for the same 37
+                // values a second time cost about 300 ms of every deployment,
+                // measured on the bench on 21 September 2026. When 7c came back
+                // with nothing, read for ourselves rather than guess.
+                const finalOps = latestDeviceOps
+                    ?? (await bleSession?.execute(commandRegistry.getops))
                 if (!finalOps) {
                     // A failed read must NOT masquerade as 'NO MODEL LOADED'
                     throw new Error('No operational parameters returned from device')

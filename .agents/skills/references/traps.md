@@ -139,6 +139,13 @@ file is the list of things that look like an app bug and are not, and the revers
   changed 88 lines and diffed 796. If a diff is about the size of the file, check endings
   before reading it. Binary types are declared, so `.apk`, `.tfl` and images are never
   touched.
+- **An IR flash is invisible to the colour camera.** The RP3 has an IR-cut filter, so a
+  project set to the IR flash on a device running the colour slot fires the LED, drains the
+  battery and records black night frames. Nothing coupled the two until #321, and it matters
+  more since #304 stopped the device switching slots on its own: whatever camera is active at
+  deployment time is the one the whole deployment uses. The rule is
+  [`utils/flashCameraMatch.ts`](../../../src/utils/flashCameraMatch.ts) and Start Monitoring
+  warns; it deliberately does not switch the slot.
 - **Never redirect straight onto a tracked file.** The shell truncates the target *before* the
   command runs, so a failure destroys the committed version. This wiped
   `src/types/database.types.ts`, 169 KB down to a 217-byte error blob, and only surfaced two

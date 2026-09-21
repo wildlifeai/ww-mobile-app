@@ -35,7 +35,7 @@ src/
 ├── database/               # WatermelonDB schema, models, migrations
 ├── types/                  # TypeScript type definitions
 ├── hooks/                  # Custom React hooks (BLE, sync, auth)
-├── utils/                  # Utility functions
+├── utils/                  # Utility functions (incl. cameraVariant.ts, flashCameraMatch.ts)
 ├── providers/              # React context providers
 ├── ble/                    # BLE protocol engine (protocol/, session/, command registry)
 ├── features/               # Feature-specific modules (maps)

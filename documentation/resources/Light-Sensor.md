@@ -51,7 +51,7 @@ that clause is not reproduced. In practice a railed frame scores dark on the mea
 
 | OP | Name | Meaning |
 |---|---|---|
-| 13 | `FLASH_LED` | 0 off, 1 visible, 2 IR. Non-zero makes the light check run on captures |
+| 13 | `FLASH_LED` | 0 off, 1 visible, 2 IR. Non-zero makes the light check run on captures. **The LED has to suit the active camera**, see below |
 | 23 | `AE_DARK_THRESHOLD` | Mean-rule threshold. Ships at 65. **Ignored by the gain-based algorithm** |
 | 24 | `AE_CHECK_INTERVAL` | Minutes between periodic checks while asleep. 0 disables, and 0 is what a deployment writes |
 | 25 | `AE_FLASH_STATE` | The last decision. **Runtime state, not a setting** |
@@ -146,6 +146,29 @@ Nothing in the app turns automatic switching on any more. Connecting runs no res
 the deployment's reset writes the `FACTORY_DEFAULTS` value, which is 0. A device found at
 op26 = 1 is carrying it from a deployment older than #304 or from a bench `setop`, and the next
 deployment clears it.
+
+## The flash LED and the camera have to agree
+
+The RP3 colour camera has an **IR-cut filter**, so it cannot see the IR LED at all. An IR
+flash in front of it fires, drains the battery and produces black night frames. The HM0360
+is mono and sees IR, which is what it is there for. White light works on both, but it is
+what the colour camera is for and it is more likely to disturb wildlife.
+
+| Project `flash_led` | Camera in the active slot | Result |
+|---|---|---|
+| `ir` | HM0360, black & white | Correct |
+| `ir` | RP3, colour | **Broken.** Invisible to the sensor, black frames, wasted battery |
+| `white` | RP3, colour | Correct |
+| `white` | HM0360, black & white | Works, but wasteful |
+
+This mattered less while op26 was on, because a camera that started on the wrong image often
+ended up on the right one. Since #304 turned automatic switching off, a deployment keeps the
+camera it started on for its whole life, so the pairing is now fixed at deployment time.
+
+Start Monitoring reads `AI slots`, names the camera in the deployment log and **warns** on a
+mismatch (#321). It does not switch the slot. The check itself is
+[`flashCameraMatch.ts`](../../src/utils/flashCameraMatch.ts), a pure function, so the rule is
+written once and tested.
 
 ## The two messages the device sends
 
