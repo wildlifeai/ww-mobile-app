@@ -61,3 +61,24 @@ two wakes a minute late. Finding C on the firmware side removes most of the byte
 | 0.3 s run: nRF sent "Captured" at 10:31.8, app received at 11:35.2 | [`md_preview_bench.txt`](../md_preview_bench.txt) |
 | 1 s run: 17:24.5 sent, 18:12.8 received; next test started at 18:25.4 during the old cleanup | same file |
 | Setup spacing, run 2 versus runs 3 and 4 | same file, `[01:48` to `[01:53`, `[08:03` to `[08:16`, `[16:44` to `[17:13` |
+
+## Re-measured 23 September 2026: resolved by #326
+
+The cost was the Engineer Console screen, mounted under the test, re-rendering its whole
+history for every received line: a median 1.37 s per line in run 5 and 1.82 s in run 4,
+computed from the log above. [#326](https://github.com/wildlifeai/ww-mobile-app/pull/326)
+capped the console and took that render out of the receive path. Two runs of the same test
+on WILD-SIFK (HM0360 slot, nRF 0.30.51, Himax `dev` bcb45deb, dev build with Metro), log in
+[md_remeasure_bench.txt](../md_remeasure_bench.txt), numbers from
+[measure_md.py](../measure_md.py):
+
+| Run | Device | App behind the Himax, per motion line | "Captured" reached the app | App per-line gap, median |
+|---|---|---|---|---|
+| 20 at 1.0 s | 20 frames in 18.8 s, 0.99 s apart | 0.07 to 0.58 s | 0.25 s after the Himax sent it | 1 ms (183 lines) |
+| 20 at 0.5 s | 20 frames in 9.4 s, 0.51 s apart | 0.15 to 0.65 s | 0.5 s | 2 ms (180 lines) |
+
+The cleanup writes landed 0.5 s and 0.8 s after "Captured", inside the 3 s hold, so the
+"two wakes a minute late" part is gone too. Of the suggested fix, the per-line `RAW_RX` log to
+Metro is still there and did not matter at this rate; the ring buffer and the one-command
+cleanup are not needed. What still costs time in the test is finding H in the thread README,
+the nRF dropping the reply to `AI md` (ww-hardware #52), 5 s per run.
