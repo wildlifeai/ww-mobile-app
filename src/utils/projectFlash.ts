@@ -1,5 +1,5 @@
 /**
- * projectFlash — the project's capture flash settings, translated to op values.
+ * projectFlash: the project's capture flash settings, translated to op values.
  *
  * The `projects` row carries the flash as four columns (ww-backend migration
  * 20260904121047): `flash_mode`, `flash_led` and, for the time-of-day mode,
@@ -17,10 +17,10 @@
  * gates the STROBE-driven IR for motion frames, blind at night (#282).
  */
 
-/** `projects.flash_mode` — the check constraint's four values. */
+/** `projects.flash_mode`, the check constraint's four values. */
 export type ProjectFlashMode = 'off' | 'light_sensor' | 'always_on' | 'time_of_day'
 
-/** `projects.flash_led` — the check constraint's two values. */
+/** `projects.flash_led`, the check constraint's two values. */
 export type ProjectFlashLed = 'white' | 'ir'
 
 /**
@@ -69,6 +69,28 @@ export const FLASH_LED_LABELS_BY_COLUMN: Record<ProjectFlashLed, string> = {
     white: 'white',
     ir: 'IR',
 }
+
+/**
+ * The choices the project form offers for the two flash columns, and since
+ * #301 the Dev Deployment Test screen offers the same ones. One list, so the
+ * two screens cannot drift the way the LED labels once did ("Visible" against
+ * "White" for the same LED).
+ *
+ * "Light sensor" is last and marked, not hidden: it is the one mode whose
+ * behaviour depends on the firmware's AE light check, still being worked on
+ * (5 September 2026). Nothing in the app defaults to it.
+ */
+export const FLASH_MODE_OPTIONS: Array<{ label: string; value: ProjectFlashMode }> = [
+    { label: FLASH_MODE_LABELS.off, value: 'off' },
+    { label: FLASH_MODE_LABELS.always_on, value: 'always_on' },
+    { label: FLASH_MODE_LABELS.time_of_day, value: 'time_of_day' },
+    { label: `${FLASH_MODE_LABELS.light_sensor} (in development)`, value: 'light_sensor' },
+]
+
+export const FLASH_LED_OPTIONS: Array<{ label: string; value: ProjectFlashLed }> = [
+    { label: `${FLASH_LED_LABELS_BY_COLUMN.ir} (invisible to wildlife)`, value: 'ir' },
+    { label: FLASH_LED_LABELS_BY_COLUMN.white, value: 'white' },
+]
 
 /** The shape read off a project row; every field is optional so a stale local record still resolves. */
 export interface ProjectFlashColumns {
@@ -133,6 +155,29 @@ export const resolveProjectFlashOps = (project?: ProjectFlashColumns | null): Fl
         led: mode === 'off' ? 0 : FLASH_LED_OP_VALUE[led],
         windowStart,
         windowMinutes,
+    }
+}
+
+/**
+ * A screen's flash fields as the project's four columns, the shape both
+ * `configureDevice` and `ProjectService.updateProject` take. The window only
+ * means anything in time-of-day mode, so outside it both window columns go
+ * null, which is what the project form stores too. Shared by that form's
+ * submit and the Dev Deployment Test screen (#301).
+ */
+export const flashColumnsFromFields = (
+    mode: ProjectFlashMode,
+    led: ProjectFlashLed,
+    windowStartText: string,
+    windowMinutesText: string,
+): ProjectFlashColumns => {
+    const inWindowMode = mode === 'time_of_day'
+    const minutes = Number(windowMinutesText)
+    return {
+        flash_mode: mode,
+        flash_led: led,
+        flash_window_start_minutes_utc: inWindowMode ? parseUtcMinutes(windowStartText) : null,
+        flash_window_minutes: inWindowMode && Number.isFinite(minutes) && minutes > 0 ? Math.round(minutes) : null,
     }
 }
 

@@ -20,6 +20,103 @@ interface UseMonitoringActionsParams {
     progress: DeploymentProgress
 }
 
+interface EndDeploymentSequenceParams {
+    bleDevice: ExtendedPeripheral | undefined
+    deploymentId: string
+    userId: string | null
+    notes: string
+    quiesceDevice: (device: ExtendedPeripheral, options?: QuiesceOptions) => Promise<void>
+    progress: DeploymentProgress
+    /** Drop the BLE link at the end. Stop Monitoring does; the Dev Deployment Test's End deployment stays connected. */
+    disconnect: boolean
+}
+
+/**
+ * What ending a deployment means, on the device and in the database, in the
+ * order Stop Monitoring has always done it: read the ops, clear the deployment
+ * id and the GPS, end the record, quiesce, and disconnect when asked. Every
+ * device step is best effort and logged; the record is the one step that
+ * throws. Shared with the Dev Deployment Test's "End deployment" (22 September
+ * 2026), which ends the deployment a device already carries and keeps the link
+ * so a new one can be started straight after.
+ */
+export async function endDeploymentSequence({
+    bleDevice, deploymentId, userId, notes, quiesceDevice, progress, disconnect,
+}: EndDeploymentSequenceParams): Promise<void> {
+    let cachedOps: string[] | null = null
+    let session: any = null
+    if (bleDevice) {
+        try {
+            progress.addLog('Reading device parameters...')
+            session = createBleSession(bleDevice)
+            cachedOps = await session.execute(commandRegistry.getops)
+            progress.addLog('Device parameters read')
+            log('[StopMonitoring] Pre-fetched bulk ops')
+        } catch (err) {
+            logWarn('[StopMonitoring] Bulk ops fetch failed', err)
+            progress.addLog('Warning: Could not read device parameters')
+        }
+    }
+
+    // Clear deployment ID on device
+    if (bleDevice && session) {
+        progress.addLog('Clearing configuration...')
+        progress.setFinishStep('Clearing config...')
+        progress.setFinishProgress(0.2)
+        try {
+            await session.execute(() => commandRegistry.setdid(null))
+            log('[StopMonitoring] ID cleared')
+            progress.addLog('Configuration cleared')
+        } catch (e) {
+            logWarn('[StopMonitoring] Clear ID failed:', e)
+            progress.addLog('Warning: Config clear partially failed')
+        }
+
+        // Clear GPS
+        try {
+            const gpsStr = formatGPSString(0, 0, 0)
+            await session.execute(() => commandRegistry.setgps(gpsStr))
+        } catch (e) {
+            logWarn('[StopMonitoring] Failed to clear GPS:', e)
+        }
+    }
+
+    // Update DB
+    progress.addLog('Updating monitoring record...')
+    progress.setFinishStep('Updating record...')
+    progress.setFinishProgress(0.3)
+    await DeploymentService.endDeployment(deploymentId, userId, notes)
+    progress.addLog('Record updated successfully')
+
+    // Quiesce device
+    if (bleDevice && session) {
+        progress.addLog('Finalizing stop...')
+        progress.setFinishStep('Finalizing...')
+        progress.setFinishProgress(0.6)
+        try {
+            await quiesceDevice(bleDevice, { isEndDeployment: true, cachedOps, sessionScope: session })
+            progress.addLog('Device stopped')
+        } catch (e) {
+            logWarn('[StopMonitoring] Final stop warning:', e)
+            progress.addLog('Warning: Final stop incomplete')
+        }
+    }
+
+    // Disconnect
+    if (!disconnect) return
+    progress.addLog('Disconnecting...')
+    progress.setFinishStep('Disconnecting...')
+    progress.setFinishProgress(0.8)
+    if (bleDevice && session) {
+        try {
+            await session.execute(commandRegistry.disconnect)
+            progress.addLog('Device disconnected')
+        } catch (e) {
+            logWarn('[StopMonitoring] Disconnect error:', e)
+        }
+    }
+}
+
 /**
  * useMonitoringActions — Shared monitoring lifecycle (disconnect-and-continue, stop).
  *
@@ -74,77 +171,15 @@ export function useMonitoringActions({
         progress.addLog('Preparing to stop monitoring...')
 
         try {
-            let cachedOps: string[] | null = null
-            let session: any = null
-            if (bleDevice) {
-                try {
-                    progress.addLog('Reading device parameters...')
-                    session = createBleSession(bleDevice)
-                    cachedOps = await session.execute(commandRegistry.getops)
-                    progress.addLog('Device parameters read')
-                    log('[StopMonitoring] Pre-fetched bulk ops')
-                } catch (err) {
-                    logWarn('[StopMonitoring] Bulk ops fetch failed', err)
-                    progress.addLog('Warning: Could not read device parameters')
-                }
-            }
-
-            // Clear deployment ID on device
-            if (bleDevice && session) {
-                progress.addLog('Clearing configuration...')
-                progress.setFinishStep('Clearing config...')
-                progress.setFinishProgress(0.2)
-                try {
-                    await session.execute(() => commandRegistry.setdid(null))
-                    log('[StopMonitoring] ID cleared')
-                    progress.addLog('Configuration cleared')
-                } catch (e) {
-                    logWarn('[StopMonitoring] Clear ID failed:', e)
-                    progress.addLog('Warning: Config clear partially failed')
-                }
-
-                // Clear GPS
-                try {
-                    const gpsStr = formatGPSString(0, 0, 0)
-                    await session.execute(() => commandRegistry.setgps(gpsStr))
-                } catch (e) {
-                    logWarn('[StopMonitoring] Failed to clear GPS:', e)
-                }
-            }
-
-            // Update DB
-            progress.addLog('Updating monitoring record...')
-            progress.setFinishStep('Updating record...')
-            progress.setFinishProgress(0.3)
-            await DeploymentService.endDeployment(deploymentIdRef.current, userId || null, notes)
-            progress.addLog('Record updated successfully')
-
-            // Quiesce device
-            if (bleDevice && session) {
-                progress.addLog('Finalizing stop...')
-                progress.setFinishStep('Finalizing...')
-                progress.setFinishProgress(0.6)
-                try {
-                    await quiesceDevice(bleDevice, { isEndDeployment: true, cachedOps, sessionScope: session })
-                    progress.addLog('Device stopped')
-                } catch (e) {
-                    logWarn('[StopMonitoring] Final stop warning:', e)
-                    progress.addLog('Warning: Final stop incomplete')
-                }
-            }
-
-            // Disconnect
-            progress.addLog('Disconnecting...')
-            progress.setFinishStep('Disconnecting...')
-            progress.setFinishProgress(0.8)
-            if (bleDevice && session) {
-                try {
-                    await session.execute(commandRegistry.disconnect)
-                    progress.addLog('Device disconnected')
-                } catch (e) {
-                    logWarn('[StopMonitoring] Disconnect error:', e)
-                }
-            }
+            await endDeploymentSequence({
+                bleDevice,
+                deploymentId: deploymentIdRef.current,
+                userId: userId || null,
+                notes,
+                quiesceDevice,
+                progress,
+                disconnect: true,
+            })
 
             progress.setFinishStep('Complete')
             progress.setFinishProgress(1.0)

@@ -27,6 +27,18 @@ file is the list of things that look like an app bug and are not, and the revers
   only when the image task starts, so the write lands at the next wake. `AI enable` and
   `AI disable` change both. To turn the camera on *now*, write op10 **and** send `AI enable`.
   The inverse of this trap is documented on the firmware side.
+- **A slot switch does not check that the camera for that image answers, and `AI slots`
+  will not tell you either.** On WILD-SIFK, 22 September 2026, `AI switchslot` to the RP3
+  slot was accepted (`Switched to slot 1 ('RP3 (day/colour)'). Reset scheduled.`), the image
+  booted, printed `Main camera not present at 0x1a` and `Camera system disabled.`, raised
+  self-test bit 8, and `AI slots` reported it running RP3 all the same. The Dev Deployment
+  Test's first camera-switch leg went on to transfer a model to a device that could not take
+  a picture. The IMX708 is fitted: it stayed silent at 0x1a for the first four minutes and
+  seven boots after the switch, then answered on every boot from 09:51:44, cause unknown
+  (unfiled). `slots` reports labels, not hardware, so nothing before the switch can know; the
+  dev deployment reads the post-boot self-test after the switch, and bit 8 switches back and
+  aborts. Any other flow that switches slots needs the same check, and a warm wake reports
+  0x0000 for a sensor that was missing at boot, so the check has to read the boot's own line.
 - **A selected flash does not mean a flash.** op13 only chooses the LED; the firmware fires it
   on a capture only when its last light decision, op25, was DARK, and the check after every
   capture rewrites op25. In a lit room the LED never fires whatever the app selected, and that
