@@ -1,31 +1,72 @@
 name: Native Build Validation
 
+# No `paths:` filter, deliberately. A path-filtered workflow produces no check
+# run at all for a PR it does not match, so a required check can never be
+# satisfied. The `-skip.yml` mirror that used to solve that was worse: `paths`
+# and `paths-ignore` are not complements, so a PR touching both `src/**` and
+# `documentation/**` ran both workflows and produced two check runs under one
+# name (PR #322, commit ebc06692: one 2-second success, one real build still
+# running). Instead every job runs always, and `changes` below decides whether
+# there is work to do.
 on:
   pull_request:
-    paths:
-      # Only trigger when files that affect the native build are changed
-      - 'src/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'app.config.ts'
-      - 'app.json'
-      - 'eas.json'
-      - 'patches/**'
-      - 'babel.config.js'
-      - 'metro.config.js'
-      - 'tsconfig.json'
-      # The tracked prebuild output. `android/` is committed, so prebuild never
-      # regenerates it and a change here IS a native build change, not a
-      # by-product of one. Its absence meant PR #258, which edited
-      # android/app/build.gradle, got no native validation at all.
-      - 'android/**'
-      # This file, so a change to the triggers or the profile logic is exercised
-      # by the workflow it changes rather than landing unvalidated.
-      - '.github/workflows/native-build-validation.yml'
+  merge_group:
+  # Lets the full E2E suite be run by hand against any branch.
+  workflow_dispatch:
+
+concurrency:
+  # One run per PR (refs/pull/N/merge) and a fresh push cancels the stale run.
+  # A merge-queue entry has its own unique ref, so queue runs never cancel each other.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
+  # Which check names exist must not depend on what a PR touched, or a required
+  # check can never be satisfied by a PR that does not trigger it. So every job
+  # below always runs and always reports; this one decides whether they have any
+  # real work to do.
+  changes:
+    name: Detect native-affecting changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      native: ${{ steps.filter.outputs.native }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - id: filter
+        name: Did anything native change?
+        run: |
+          set -e
+          # The merge queue is the last gate before dev and always builds the
+          # merged result, whatever the diff says.
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "native=true" >> "$GITHUB_OUTPUT"
+            echo "event is ${{ github.event_name }}: building unconditionally"
+            exit 0
+          fi
+          BASE='${{ github.event.pull_request.base.sha }}'
+          HEAD='${{ github.event.pull_request.head.sha }}'
+          CHANGED=$(git diff --name-only "$BASE" "$HEAD")
+          echo "changed files:"; echo "$CHANGED" | sed 's/^/  /'
+          # Kept deliberately in step with the paths list this workflow used to
+          # carry. `android/` is tracked, so prebuild never regenerates it and a
+          # change there IS a native change (PR #258 got no validation without
+          # it). This file is included so a change to the build logic is
+          # exercised by the workflow it changes.
+          if echo "$CHANGED" | grep -qE '^(src/|android/|patches/|package\.json|package-lock\.json|app\.config\.ts|app\.json|eas\.json|babel\.config\.js|metro\.config\.js|tsconfig\.json|\.github/workflows/native-build-validation\.yml)'; then
+            echo "native=true" >> "$GITHUB_OUTPUT"
+            echo "=> native build required"
+          else
+            echo "native=false" >> "$GITHUB_OUTPUT"
+            echo "=> nothing native changed; jobs will report without building"
+          fi
+
   android-build:
     name: Android EAS Local Build
+    needs: changes
     runs-on: ubuntu-latest
     environment: development
     # Successful runs take 20-27 min on the `ci` profile. Without this the job
@@ -33,10 +74,16 @@ jobs:
     # first PR ever to use the `staging` profile before being cancelled by hand.
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - name: Nothing native changed
+        if: needs.changes.outputs.native != 'true'
+        run: echo "No native-affecting files in this PR. Reporting success without building; the merge queue builds the merged result regardless."
+
+      - uses: actions/checkout@v7
+        if: needs.changes.outputs.native == 'true'
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        if: needs.changes.outputs.native == 'true'
+        uses: actions/setup-node@v7
         with:
           # 22, not 20: eas-cli 20.1.0 pulls @oclif/plugin-autocomplete, which
           # requires Node >=22. On 20 the install fails before any build starts.
@@ -44,22 +91,26 @@ jobs:
           cache: 'npm'
 
       - name: Install Node dependencies
+        if: needs.changes.outputs.native == 'true'
         run: npm ci
 
       - name: Setup Java
-        uses: actions/setup-java@v3
+        if: needs.changes.outputs.native == 'true'
+        uses: actions/setup-java@v6
         with:
           distribution: 'zulu'
           java-version: '17'
           cache: 'gradle'
 
       - name: Setup EAS
-        uses: expo/expo-github-action@v8
+        if: needs.changes.outputs.native == 'true'
+        uses: expo/expo-github-action@v9
         with:
           eas-version: 20.1.0  # pinned: bump deliberately (EAS service stays compatible across CLI minors)
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Determine EAS profile and Supabase env
+        if: needs.changes.outputs.native == 'true'
         id: config
         run: |
           if [[ "${{ github.base_ref }}" == "main" ]]; then
@@ -74,20 +125,22 @@ jobs:
 
       # Cache the Expo prebuild output (android/ directory)
       - name: Generate prebuild fingerprint
+        if: needs.changes.outputs.native == 'true'
         id: fingerprint
         run: |
           HASH=$(npx expo-updates fingerprint:generate --platform android 2>/dev/null | md5sum | cut -d' ' -f1 || echo "no-fingerprint")
           echo "hash=$HASH" >> $GITHUB_OUTPUT
 
       - name: Restore cached APK
+        if: needs.changes.outputs.native == 'true'
         id: cache-apk
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ./app-debug.apk
           key: android-apk-${{ steps.config.outputs.profile }}-${{ steps.fingerprint.outputs.hash }}-${{ hashFiles('package-lock.json', 'app.config.ts', 'eas.json', 'patches/**') }}
 
       - name: Build Android APK (EAS Local)
-        if: steps.cache-apk.outputs.cache-hit != 'true'
+        if: needs.changes.outputs.native == 'true' && steps.cache-apk.outputs.cache-hit != 'true'
         run: eas build --local --profile ${{ steps.config.outputs.profile }} --platform android --output ./app-debug.apk --non-interactive
         env:
           EXPO_PUBLIC_SUPABASE_URL_DEV: ${{ steps.config.outputs.supabase_url }}
@@ -98,7 +151,8 @@ jobs:
           GOOGLE_MAPS_API_KEY_IOS: ${{ secrets.GOOGLE_MAPS_API_KEY_IOS }}
 
       - name: Upload APK
-        uses: actions/upload-artifact@v4
+        if: needs.changes.outputs.native == 'true'
+        uses: actions/upload-artifact@v7
         with:
           name: app-debug-apk
           path: ./app-debug.apk
@@ -106,21 +160,181 @@ jobs:
 
   ios-sanity:
     name: iOS Prebuild Sanity Check
-    runs-on: macos-latest
+    needs: changes
+    runs-on: ${{ needs.changes.outputs.native == 'true' && 'macos-latest' || 'ubuntu-latest' }}
     # Runs in about a minute. macOS runners bill at 10x, so a hung job here is
-    # the expensive one to leave unbounded.
+    # the expensive one to leave unbounded, and a no-op run stays on Linux.
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - name: Nothing native changed
+        if: needs.changes.outputs.native != 'true'
+        run: echo "No native-affecting files in this PR. Nothing to prebuild."
+
+      - uses: actions/checkout@v7
+        if: needs.changes.outputs.native == 'true'
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        if: needs.changes.outputs.native == 'true'
+        uses: actions/setup-node@v7
         with:
           node-version: '20'
           cache: 'npm'
 
       - name: Install Node dependencies
+        if: needs.changes.outputs.native == 'true'
         run: npm ci
 
       - name: Expo Prebuild (config plugin validation)
+        if: needs.changes.outputs.native == 'true'
         run: npx expo prebuild --no-install --platform ios
+
+  # Required. The one flow that can pass today: install, launch, screenshot.
+  # See tests/maestro/smoke/app-startup.yaml for why it asserts nothing else.
+  e2e-smoke:
+    name: E2E Smoke
+    needs: [changes, android-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Nothing native changed
+        if: needs.changes.outputs.native != 'true'
+        run: echo "No native-affecting files in this PR, so no APK was built. Nothing to launch; the merge queue runs the real smoke flow."
+
+      - uses: actions/checkout@v7
+        if: needs.changes.outputs.native == 'true'
+
+      - name: Setup Node.js
+        if: needs.changes.outputs.native == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        if: needs.changes.outputs.native == 'true'
+        run: npm ci
+
+      - name: Download the APK this run built
+        if: needs.changes.outputs.native == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: app-debug-apk
+
+      - name: Enable KVM
+        if: needs.changes.outputs.native == 'true'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Install Maestro
+        if: needs.changes.outputs.native == 'true'
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+
+      - name: Run flows on an emulator
+        if: needs.changes.outputs.native == 'true'
+        uses: ReactiveCircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            set -e
+            adb install -r ./app-debug.apk
+            maestro test --format junit --output maestro-report.xml tests/maestro/smoke/
+
+      # Maestro can print a usage error and exit before running anything, and
+      # on 20 September 2026 run 35493842313 did exactly that and was reported
+      # green: no flow ran, ~/.maestro/tests/ was empty, the check passed. A
+      # junit report with zero test cases is now a failure, not a pass.
+      - name: Fail if no flow actually ran
+        if: needs.changes.outputs.native == 'true'
+        run: |
+          n=$(grep -c "<testcase" maestro-report.xml 2>/dev/null || echo 0)
+          echo "flows executed: $n"
+          test "$n" -ge 1
+
+      - name: Upload Maestro report and screenshots
+        if: needs.changes.outputs.native == 'true' && always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: maestro-smoke
+          path: |
+            maestro-report.xml
+            ~/.maestro/tests/
+          retention-days: 7
+          if-no-files-found: warn
+
+  # Advisory. Every flow, including the four whose appId was wrong until
+  # 21 September 2026 and which have never passed against the real screens.
+  # Runs on the `full-e2e` label or by hand; never in the merge queue, where
+  # there are no labels.
+  e2e-full:
+    name: E2E Full
+    needs: [changes, android-build]
+    if: needs.changes.outputs.native == 'true' && (contains(github.event.pull_request.labels.*.name, 'full-e2e') || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download the APK this run built
+        uses: actions/download-artifact@v8
+        with:
+          name: app-debug-apk
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+
+      - name: Run flows on an emulator
+        uses: ReactiveCircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            set -e
+            adb install -r ./app-debug.apk
+            maestro test --format junit --output maestro-report.xml tests/maestro/
+
+      - name: Fail if no flow actually ran
+        run: |
+          n=$(grep -c "<testcase" maestro-report.xml 2>/dev/null || echo 0)
+          echo "flows executed: $n"
+          test "$n" -ge 1
+
+      - name: Upload Maestro report and screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: maestro-full
+          path: |
+            maestro-report.xml
+            ~/.maestro/tests/
+          retention-days: 7
+          if-no-files-found: warn

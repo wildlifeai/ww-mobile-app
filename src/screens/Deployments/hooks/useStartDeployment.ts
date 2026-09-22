@@ -31,6 +31,8 @@ import { selectCurrentOrganisation } from '../../../redux/slices/authSlice'
 import { ProjectWithDetails } from '../../../types/project'
 import { InitPayload } from '../../../navigation/types'
 import { calculateDistance } from '../../../utils/gpsUtils'
+import { CAMERA_VARIANT_LABELS, CameraVariant, parseVariant } from '../../../utils/cameraVariant'
+import { checkFlashAgainstCamera } from '../../../utils/flashCameraMatch'
 
 interface UseStartDeploymentParams {
     deviceId?: string
@@ -394,7 +396,7 @@ export const useStartDeployment = ({
         if (!isInitializing && !submitting && bleDevice && !bleDevice.connected && !isNavigatingAway.current && !isStartDeploymentInProgress.current && !isDfuInProgress.current && !isReconnectingAfterDfu.current) {
             if (monitoring.isMonitoring) {
                 logWarn('[Monitor] Connection lost. Auto-navigating to home.')
-                Alert.alert('Connection Lost', 'Connection lost — device continues recording.', [{ text: 'OK' }])
+                Alert.alert('Connection Lost', 'Connection lost. The device continues recording.', [{ text: 'OK' }])
                 isNavigatingAway.current = true
                 navigation.navigate('Home', { initialTab: 'deployment' })
             } else {
@@ -555,7 +557,7 @@ export const useStartDeployment = ({
                 opsAfterReset = (await pipeline.resetOps(bleSession, cb, currentOps)) ?? currentOps
             } catch (resetError) {
                 logError('[Deployment] OP reset failed, aborting deployment:', resetError)
-                progress.addLog('OP reset failed — aborting deployment')
+                progress.addLog('OP reset failed, aborting deployment')
                 throw new Error('The device could not be reset to defaults. Reconnect and try again.')
             }
 
@@ -571,7 +573,7 @@ export const useStartDeployment = ({
                 }, cb, opsAfterReset)
             } catch (configError) {
                 logError('[Deployment] Configuration failed:', configError)
-                progress.addLog('Configuration failed — aborting deployment')
+                progress.addLog('Configuration failed, aborting deployment')
                 throw configError
             }
 
@@ -595,62 +597,154 @@ export const useStartDeployment = ({
                 logWarn('[Deployment] Failed to set capture format (non-fatal):', formatError)
             }
 
-            // 7c. One-shot light check: take a single reference photo (every capture
-            // runs the AE light check on-device and persists the decision to op25),
-            // then read the verdict back and tell the user which camera mode the
-            // deployment starts in and when light is re-checked. Non-fatal: on any
-            // failure fall back to the last persisted decision from the pre-flight
-            // ops snapshot.
+            // 7c. Light verdict for the deployment log: which camera mode the
+            // deployment starts in, and when light is re-checked. Non-fatal
+            // throughout; on any failure fall back to the pre-flight snapshot.
+            //
+            // The op table is read FIRST, because op25 only moves when the
+            // firmware runs a light check and `lightSensor_isRequired()` is true
+            // only for op34 mode 1 or op26. Since #304 both are off unless the
+            // project asked for the AE flash, so the capture this step used to
+            // take unconditionally could not refresh anything.
+            //
+            // It was not free. On the bench on 20 September 2026 that capture
+            // cost 21 s: the IMX708 failed to power on (three I2C writes to
+            // 0x0100 returned -60), the firmware logged `IMX708 on by app fail`,
+            // moved the image task to 'Capturing' anyway, told the app nothing
+            // and slept. Only a chance motion wake completed it (#269). Paying
+            // that for a value that cannot change is what #304 calls an
+            // unnecessary light sensor check.
+            //
+            // When one is needed it is measured with `AI light`, a throwaway
+            // single-frame AE check: about a second, no image file, no flash and
+            // no file transfer. Nothing here needs a photograph.
+            // The freshest table this step actually read back from the device,
+            // carried out to 7d. Deliberately NOT the same variable as `ops`
+            // below: that one falls back to the pre-reset snapshot when the
+            // device read fails, and a pre-reset table would tell 7d about the
+            // model that was on the device *before* this deployment configured
+            // it. Only genuine post-configuration reads land here, so 7d can
+            // either trust it or read for itself.
+            let latestDeviceOps: string[] | null = null
+
             try {
                 progress.addLog('Checking light conditions...')
                 progress.setFinishStep('Checking light...')
                 progress.setFinishProgress(0.9)
 
-                let flashState: number | null = null
-                let checkInterval: number | null = null
-                let autoSwitch: number | null = null
+                const opAt = (table: string[] | null | undefined, index: number): number | null => {
+                    if (!table || index >= table.length) return null
+                    const value = parseInt(table[index] ?? '', 10)
+                    return isNaN(value) ? null : value
+                }
+
+                let ops: string[] | null = null
+                try {
+                    ops = (await bleSession?.execute(commandRegistry.getops)) ?? null
+                    latestDeviceOps = ops
+                } catch (readError) {
+                    logWarn('[Deployment] Could not read ops for the light verdict:', readError)
+                }
+
+                // Which camera this deployment will actually use. Worth one
+                // command now that #304 has stopped the device switching slots
+                // on its own: whatever is active here is what the deployment
+                // keeps. Non-fatal, and 'unknown' is reported as unknown rather
+                // than guessed (#321).
+                let camera: CameraVariant = 'unknown'
+                try {
+                    const slots = await bleSession?.execute(commandRegistry.slots)
+                    if (slots) camera = parseVariant(slots.running)
+                } catch (slotsError) {
+                    logWarn('[Deployment] Could not read the active camera:', slotsError)
+                }
+
+                // Would a check here produce a reading, or move nothing at all?
+                const lightSensorRuns = opAt(ops, OP_PARAMETER.SLOT_SWITCH) === 1
+                    || opAt(ops, OP_PARAMETER.FLASH_MODE) === 1
                 let freshReading = false
 
-                try {
-                    // One photo; its AE sample refreshes op25 (and doubles as a
-                    // deployment-start reference shot on the SD card).
-                    await bleSession?.execute(() => commandRegistry.capture(1, 500))
-                    const opsAfter = await bleSession?.execute(commandRegistry.getops)
-                    if (opsAfter) {
-                        flashState = parseInt(opsAfter[OP_PARAMETER.AE_FLASH_STATE] ?? '', 10)
-                        checkInterval = parseInt(opsAfter[OP_PARAMETER.AE_CHECK_INTERVAL] ?? '', 10)
-                        autoSwitch = parseInt(opsAfter[OP_PARAMETER.SLOT_SWITCH] ?? '', 10)
-                        freshReading = !isNaN(flashState)
+                if (lightSensorRuns && bleSession && bleDevice) {
+                    const outcome = await pipeline.measureLight(bleSession, bleDevice.id)
+                    let measured = outcome === 'ok'
+
+                    if (outcome === 'unsupported') {
+                        // Firmware without `AI light`. There every capture runs
+                        // the check, so a photo is the only way to refresh op25.
+                        try {
+                            await bleSession.execute(() => commandRegistry.capture(1, 500))
+                            measured = true
+                        } catch (captureError) {
+                            logWarn('[Deployment] Light-check capture failed, using last known decision:', captureError)
+                        }
                     }
-                } catch (captureError) {
-                    logWarn('[Deployment] Light-check capture failed, using last known decision:', captureError)
+
+                    try {
+                        const opsAfter = await bleSession.execute(commandRegistry.getops)
+                        if (opsAfter) {
+                            ops = opsAfter
+                            latestDeviceOps = opsAfter
+                            // `measured`, not merely "did not fail". A timeout means
+                            // the command was acknowledged and the reading never
+                            // arrived, so op25 is exactly as stale as it was before;
+                            // so is it when the fallback capture throws. Calling
+                            // either a fresh reading is the bug this step was
+                            // rewritten to stop telling.
+                            freshReading = measured && opAt(ops, OP_PARAMETER.AE_FLASH_STATE) !== null
+                        }
+                    } catch (readError) {
+                        logWarn('[Deployment] Could not re-read ops after the light check:', readError)
+                    }
+                } else if (!lightSensorRuns) {
+                    log('[Deployment] No light check would run (op26 and op34 both off); not measuring')
                 }
 
-                if (!freshReading) {
-                    // Pre-reset snapshot: op25 persists across sleep, so the last
-                    // session's decision is still meaningful, just not fresh.
-                    flashState = parseInt(currentOps[OP_PARAMETER.AE_FLASH_STATE] ?? '', 10)
-                    checkInterval = parseInt(currentOps[OP_PARAMETER.AE_CHECK_INTERVAL] ?? '', 10)
-                    autoSwitch = parseInt(currentOps[OP_PARAMETER.SLOT_SWITCH] ?? '', 10)
-                }
+                // Pre-reset snapshot as the last resort: op25 persists across
+                // sleep, so the last session's decision is still meaningful.
+                if (opAt(ops, OP_PARAMETER.AE_FLASH_STATE) === null) ops = currentOps
 
-                if (flashState !== null && !isNaN(flashState)) {
+                const flashState = opAt(ops, OP_PARAMETER.AE_FLASH_STATE)
+                const checkInterval = opAt(ops, OP_PARAMETER.AE_CHECK_INTERVAL)
+                const autoSwitch = opAt(ops, OP_PARAMETER.SLOT_SWITCH)
+
+                if (flashState !== null) {
                     const dark = flashState === 1
-                    const readingTag = freshReading ? 'Light check' : 'Light check (last known reading)'
-                    progress.addLog(dark
-                        ? `💡 ${readingTag}: DARK — starting in night mode (IR camera)`
-                        : `💡 ${readingTag}: BRIGHT — starting in day mode (colour camera)`)
+                    const readingTag = freshReading
+                        ? 'Light check'
+                        : 'Light check (last recorded, not measured now)'
+                    progress.addLog(`💡 ${readingTag}: ${dark ? 'DARK' : 'BRIGHT'}`)
 
-                    const intervalKnown = checkInterval !== null && !isNaN(checkInterval)
+                    const intervalKnown = checkInterval !== null
                     if (autoSwitch === 1) {
+                        progress.addLog(dark
+                            ? 'Auto day/night switching is ON, so the camera moves to night mode (black & white) at the next sleep.'
+                            : 'Auto day/night switching is ON, so the camera moves to day mode (colour) at the next sleep.')
                         progress.addLog(intervalKnown && checkInterval! > 0
-                            ? `Light is re-checked after every photo and every ${checkInterval} min while asleep — the camera switches day/night automatically at the next sleep.`
-                            : 'Light is re-checked after every photo — the camera switches day/night automatically at the next sleep.')
+                            ? `Light is re-checked after every photo and every ${checkInterval} min while asleep.`
+                            : 'Light is re-checked after every photo.')
                     } else {
-                        progress.addLog('Auto day/night switching is OFF — the device stays in this camera mode.')
+                        progress.addLog(camera === 'unknown'
+                            ? 'Auto day/night switching is OFF: this deployment stays on the camera that is active now, which could not be read. Check it on the device screen.'
+                            : `Auto day/night switching is OFF: this deployment stays on the ${CAMERA_VARIANT_LABELS[camera]} camera. Set the camera for the site on the device screen if it is the wrong one.`)
                     }
                 } else {
-                    progress.addLog('Light conditions unknown — the device will decide day/night on its first capture.')
+                    progress.addLog(autoSwitch === 1
+                        ? 'Light conditions unknown. Auto day/night switching is ON, so the device decides at its first check.'
+                        : 'Light conditions unknown. Auto day/night switching is OFF, so this deployment keeps the camera that is active now.')
+                }
+
+                // #321: the flash and the camera are chosen in different places
+                // and nothing compared them. An IR flash in front of the colour
+                // camera is invisible to it (IR-cut filter), so the LED drains
+                // the battery and the night frames are black. Reported, never
+                // corrected: #304 deliberately stopped the app switching slots
+                // by itself, and the operator is the one who knows the site.
+                const flashVsCamera = checkFlashAgainstCamera(project, camera)
+                if (flashVsCamera.kind === 'mismatch') {
+                    const mark = flashVsCamera.severity === 'broken' ? '\u26a0\ufe0f' : '\u2139\ufe0f'
+                    progress.addLog(`${mark} ${flashVsCamera.message}`)
+                } else if (flashVsCamera.kind === 'unknown') {
+                    progress.addLog('Could not read the active camera, so the flash and camera were not checked against each other.')
                 }
             } catch (lightError) {
                 logWarn('[Deployment] Light check failed (non-fatal):', lightError)
@@ -662,7 +756,16 @@ export const useStartDeployment = ({
             // 'motion detected' forever because resetOps had erased the model
             // after syncAiModel loaded it).
             try {
-                const finalOps = await bleSession?.execute(commandRegistry.getops)
+                // Reuse the table 7c already read back. It is taken after the
+                // last `setop`, and everything issued since is a read: `slots`,
+                // plus `AI light` on the deployments that need it, and when
+                // that one runs 7c re-reads the table afterwards anyway. None
+                // of them touch op14/op15. Asking the device for the same 37
+                // values a second time cost about 300 ms of every deployment,
+                // measured on the bench on 21 September 2026. When 7c came back
+                // with nothing, read for ourselves rather than guess.
+                const finalOps = latestDeviceOps
+                    ?? (await bleSession?.execute(commandRegistry.getops))
                 if (!finalOps) {
                     // A failed read must NOT masquerade as 'NO MODEL LOADED'
                     throw new Error('No operational parameters returned from device')
@@ -672,7 +775,7 @@ export const useStartDeployment = ({
                 if (project.model_id && modelId !== 0) {
                     progress.addLog(`🧠 AI model active on device (ID ${modelId} v${modelVer})`)
                 } else if (project.model_id && modelId === 0) {
-                    progress.addLog('⚠️ NO MODEL LOADED — the camera will capture on motion but nothing will be classified. Re-run the deployment or check the model sync log above.')
+                    progress.addLog('⚠️ NO MODEL LOADED. The camera will capture on motion but nothing will be classified. Re-run the deployment or check the model sync log above.')
                 } else {
                     progress.addLog('No on-device AI model for this project (motion-capture only)')
                 }

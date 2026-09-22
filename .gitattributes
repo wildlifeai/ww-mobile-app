@@ -1,2 +1,33 @@
+# Every text file is stored and checked out as LF, on every platform. This
+# overrides core.autocrlf so a Windows clone cannot commit CRLF, and so an
+# edit to a file that was committed CRLF no longer shows as a whole-file
+# rewrite (deploymentPipeline.ts, 20 September 2026: 88 real lines, 796 shown).
+* text=auto eol=lf
 
+# Shell hooks must be LF or sh refuses them.
 .husky/* text eol=lf
+
+# Binary: never normalise, never diff as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.jar binary
+*.zip binary
+*.apk binary
+*.aab binary
+*.keystore binary
+*.jks binary
+*.bin binary
+*.tfl binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.mp3 binary
+*.mp4 binary
+*.pdf binary
+*.so binary
+*.aar binary

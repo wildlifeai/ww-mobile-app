@@ -4,30 +4,14 @@ import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { createBleSession } from '../ble/session/createBleSession'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
 import { OP_PARAMETER } from './useDeviceSettings'
+import { CameraVariant, parseVariant } from '../utils/cameraVariant'
 import { log, logError, logWarn } from '../utils/logger'
 
-/**
- * Camera variants held in the device's two firmware slots.
- * - RP3:    Raspberry Pi Camera Module 3 (IMX708) - colour, daylight
- * - HM0360: Himax HM0360 - mono, sees IR, used in the dark with the IR flash
- */
-export type CameraVariant = 'RP3' | 'HM0360' | 'unknown'
-
-/**
- * What each camera is called in the UI, named by the picture it produces rather
- * than by its part number: an operator picking a camera is choosing between a
- * colour image and a black and white one.
- *
- * Centralised because four screens had written their own version of this and all
- * four disagreed ("Colour" / "Colour (day)" / "RP3 · day" / "Colour (RP3)").
- * Screens that are genuinely choosing a *firmware image* rather than a picture,
- * such as the firmware updater, legitimately want the part number and should say
- * so explicitly rather than reusing these.
- */
-export const CAMERA_VARIANT_LABELS: Record<Exclude<CameraVariant, 'unknown'>, string> = {
-    RP3: 'Colour',
-    HM0360: 'Black & White',
-}
+// The variant type, its labels and the parser live in `utils/cameraVariant.ts`
+// since #321, which needed them in a pure module a React hook cannot be imported
+// into. Re-exported here so every existing import site is unchanged.
+export { CAMERA_VARIANT_LABELS, parseVariant } from '../utils/cameraVariant'
+export type { CameraVariant } from '../utils/cameraVariant'
 
 interface UseCameraSwitchOptions {
     device: ExtendedPeripheral | undefined
@@ -51,13 +35,6 @@ interface UseCameraSwitchReturn {
     switchTo: (target: CameraVariant) => Promise<boolean>
 }
 
-/** Map a firmware variant description (e.g. "RP3 (day/colour)") to a CameraVariant */
-const parseVariant = (s: string | undefined): CameraVariant => {
-    if (!s) return 'unknown'
-    if (/RP3/i.test(s)) return 'RP3'
-    if (/HM0360/i.test(s)) return 'HM0360'
-    return 'unknown'
-}
 
 // After 'switchslot' the Himax resets when it next sleeps, then cold-boots
 // the other image (about 4 s) and announces itself with Wake. The switch is

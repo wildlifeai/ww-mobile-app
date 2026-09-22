@@ -6,6 +6,29 @@ The Wildlife Watcher mobile app allows users to communicate with Wildlife Watche
 
 **Project Overview**: [Watch on YouTube](https://www.youtube.com/watch?v=Ima3n2EYfeE)
 
+## 🤖 Working with a coding agent
+
+Most work in this repo now happens with an agent in the loop, so the prompts below are part of
+the documentation rather than a novelty. Each section has a few worth starting from.
+
+Point your agent at [`AGENTS.md`](./AGENTS.md) first. It is the quickstart, and it links to
+[`.agents/skills/SKILL.md`](./.agents/skills/SKILL.md), which carries the rules that apply to
+any change and a map to six reference files: BLE, cross-repo contracts, traps, data and sync,
+tooling, and documentation. An agent that has read those will not re-learn things that have
+already cost this project a day.
+
+Two house rules an agent must follow here:
+
+- **Ask before committing or pushing** to a shared branch.
+- **Check the agent layer before each commit**, meaning `AGENTS.md`, the skill and its
+  references, and fix what the change made wrong, missing or redundant in the same commit.
+
+> 💬 **Ask the agent:** "Read AGENTS.md and the skill, then tell me in ten lines what this app
+> does and what the device contract is."
+>
+> 💬 **Ask the agent:** "What should I know about this repo before I touch anything in
+> `src/ble/`?"
+
 ## Tech Stack
 
 - **Framework**: Expo SDK 54 with React Native 0.81.5 (React 19.1.0)
@@ -87,6 +110,15 @@ This app uses **Expo SDK 54** with a managed workflow (prebuild enabled). Ensure
     npx expo start --clear
     ```
 
+> 💬 **Ask the agent:** "Set this repo up on my machine: install, check my JDK and Android SDK,
+> create the env file from the example, and tell me what is missing."
+>
+> 💬 **Ask the agent:** "`npm run android:doctor` is unhappy. Work out why and fix it."
+>
+> 🔍 **What it does:** the doctor script checks JDK 17, the Android SDK, an attached adb device
+> and the Supabase environment before a build starts, so most setup failures surface there
+> rather than fifteen minutes into Gradle.
+
 ## Building
 
 ### Local Builds
@@ -110,6 +142,16 @@ eas build --platform android --profile production --auto-submit  # Build + submi
 
 For detailed EAS configuration, see the [EAS Guide](./documentation/resources/Expo-EAS-Guide.md).
 
+> 💬 **Ask the agent:** "Bump the app version and show me the six files that carry it, then run
+> `npm run version:check`."
+>
+> 💬 **Ask the agent:** "I want to hand a build to a tester. Which EAS profile, and what will it
+> do to the app already on their phone?"
+>
+> ⚠️ **Worth knowing before you ask:** preview and staging builds are release-type, so they
+> replace the Play Store app and destroy its local database. The agent should tell you this; if
+> it does not, it has not read the skill.
+
 ## Troubleshooting
 
 | Issue | Fix |
@@ -120,7 +162,16 @@ For detailed EAS configuration, see the [EAS Guide](./documentation/resources/Ex
 | Windows `MAX_PATH` errors | Use short path like `C:\dev\ww`. Try `git config --global core.longpaths true` |
 | Sync not working | Check network, verify `.env` credentials, check Metro logs |
 | BLE connection issues | Enable Bluetooth + permissions, keep within 5m, check Metro for `[RxRouter]` / `[bleEventBus]` logs |
-| Database corrupted | Clear app data, reinstall — data re-syncs from Supabase on next login |
+| Database corrupted | Clear app data, reinstall, and data re-syncs from Supabase on next login |
+
+> 💬 **Ask the agent:** "The app connects to the camera but the flow times out. Read the Metro
+> log, work out which side stopped, and tell me before changing anything."
+>
+> 💬 **Ask the agent:** "Is this a known trap? Check the traps reference before you debug."
+>
+> 🔍 **Why that second prompt earns its place:** several failures that look like app bugs are
+> firmware behaviour with a known cause and a known cost. The traps file exists so nobody
+> rediscovers them.
 
 ## Database Migrations
 
@@ -132,10 +183,20 @@ For detailed EAS configuration, see the [EAS Guide](./documentation/resources/Ex
 ```bash
 npm test                   # Unit tests (Jest)
 npm run test:integration   # Integration tests
-npm run test:maestro       # E2E UI tests (Maestro)
+npm run test:maestro:smoke # the one E2E flow CI requires (install, launch, screenshot)
+npm run test:maestro       # every E2E flow; CI runs these on the full-e2e label
 ```
 
 For detailed testing patterns, see the [Testing Guide](./documentation/resources/Testing-Guide.md).
+
+> 💬 **Ask the agent:** "Write a test that reproduces this bug first, show me it failing, then
+> fix it."
+>
+> 💬 **Ask the agent:** "Run the gates: type-check, lint, tests, version:check and
+> docs:validate. Report what actually failed, not a summary."
+>
+> 🧪 **Try it out:** ask for a test around a BLE command's timeout and retry policy. Those live
+> in `commandRegistry.ts` and are the part most likely to regress silently.
 
 ## Additional Commands
 
@@ -178,6 +239,27 @@ All documentation is organised under `documentation/`:
 | [Maps](./documentation/resources/Maps.md) | Maps feature architecture and API configuration |
 | [Testing](./documentation/resources/Testing-Guide.md) | Jest, Maestro, and E2E testing |
 | [Auth Guide](./documentation/resources/Authentication-Implementation-Guide.md) | Authentication implementation details |
+| [Developer Settings](./documentation/resources/Developer-Settings.md) | The developer screens, the environment switcher, the database reset actions, and the first-run tutorial |
+
+### For agents
+
+| File | What It Covers |
+|------|----------------|
+| [AGENTS.md](./AGENTS.md) | Quickstart, the non-negotiables, and where everything lives |
+| [.agents/skills/SKILL.md](./.agents/skills/SKILL.md) | The rules that apply to any change, and which reference to read next |
+| [references/ble.md](./.agents/skills/references/ble.md) | Command definitions, sleep and wake, op parameters, captures and telemetry |
+| [references/cross-repo-contracts.md](./.agents/skills/references/cross-repo-contracts.md) | The eleven interfaces shared with the firmware, backend and website repos |
+| [references/traps.md](./.agents/skills/references/traps.md) | Failures that look like app bugs and are not, each with what it cost |
+| [references/data-and-sync.md](./.agents/skills/references/data-and-sync.md) | Local database rules, the RLS blindspot, the schema version |
+| [references/tooling.md](./.agents/skills/references/tooling.md) | Writing scripts that survive Windows, macOS and CI |
+| [references/documentation.md](./.agents/skills/references/documentation.md) | Where each kind of document lives, house style, and the commit-time check |
+
+> 💬 **Ask the agent:** "I just changed how the capture flow works. What in AGENTS.md or the
+> skill is now wrong, missing or redundant?"
+>
+> ✏️ **Make changes:** when a session teaches you something that would have saved you an hour,
+> ask the agent to add it to the right reference file with the date and what it cost. That is
+> the whole maintenance model for this layer.
 
 ## Contributing
 
@@ -190,6 +272,10 @@ If you wish to contribute to this project, submit a [pull request](https://githu
 - Update documentation for API changes
 - Use conventional commits
 - Test offline functionality
+- Ask the maintainer before committing or pushing to a shared branch
+- Check `AGENTS.md`, the skill and its references before each commit, and fix what your change
+  made wrong, missing or redundant
+- No em dashes in documents, commas or a new sentence instead
 
 ## Created & Maintained By
 

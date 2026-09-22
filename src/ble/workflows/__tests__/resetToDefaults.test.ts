@@ -96,6 +96,32 @@ describe('executeResetToDefaults resulting ops', () => {
         expect(result).toHaveLength(23)
     })
 
+    /**
+     * Not a tautology: these two values decide whether a deployed camera runs
+     * the light sensor at all, and the deployment writes them to every device
+     * it touches. op26 = 1 rebooted cameras between the colour and mono images
+     * all through dusk (#304); op24 woke them every 15 minutes to decide it.
+     * Flipping either back is a field-behaviour change, so it should fail here
+     * first and be argued for, not land as a one-character edit. Turning them
+     * on for a site is a per-project setting the app does not have yet.
+     */
+    it('writes the light sensor off, so a deployment does not switch cameras on its own', async () => {
+        const session = makeSession()
+        const currentOps = opTable(37)
+
+        const result = await executeResetToDefaults(session as any, {
+            currentOps,
+            skipIdentityReset: true,
+        })
+
+        expect(FACTORY_DEFAULTS[OP_PARAMETER.SLOT_SWITCH]).toBe(0)
+        expect(FACTORY_DEFAULTS[OP_PARAMETER.AE_CHECK_INTERVAL]).toBe(0)
+        expect(result![OP_PARAMETER.SLOT_SWITCH]).toBe('0')
+        expect(result![OP_PARAMETER.AE_CHECK_INTERVAL]).toBe('0')
+        expect(session.writes).toContain('AI setop 26 0')
+        expect(session.writes).toContain('AI setop 24 0')
+    })
+
     it('returns null when the ops could not be read, so callers keep their own view', async () => {
         const session = makeSession()
 

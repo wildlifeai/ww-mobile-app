@@ -35,16 +35,16 @@ src/
 ├── database/               # WatermelonDB schema, models, migrations
 ├── types/                  # TypeScript type definitions
 ├── hooks/                  # Custom React hooks (BLE, sync, auth)
-├── utils/                  # Utility functions
+├── utils/                  # Utility functions (incl. cameraVariant.ts, flashCameraMatch.ts)
 ├── providers/              # React context providers
 ├── ble/                    # BLE protocol engine (protocol/, session/, command registry)
 ├── features/               # Feature-specific modules (maps)
 └── assets/                 # Images, fonts
 ```
 
-### `src/App.tsx` — Provider Hierarchy
+### `src/App.tsx`: Provider Hierarchy
 
-The app wraps all content in nested providers. The order matters — inner providers can access outer ones.
+The app wraps all content in nested providers. The order matters, inner providers can access outer ones.
 
 ```typescript
 export const App = () => {
@@ -76,7 +76,7 @@ export const App = () => {
 }
 ```
 
-### `src/components/` — Reusable Components
+### `src/components/`: Reusable Components
 
 ```
 components/
@@ -96,7 +96,7 @@ components/
 > [!TIP]
 > Always check `src/components/ui/` before building new UI elements. The `WW`-prefixed components (`WWButton`, `WWTextInput`, `WWSelect`, etc.) provide consistent styling and theme integration.
 
-### `src/screens/` — Screen Components
+### `src/screens/`: Screen Components
 
 Screens live in two locations:
 
@@ -131,27 +131,32 @@ screens/                                  navigation/screens/
 ```
 
 > [!NOTE]
-> Auth screens live in `navigation/screens/auth/` with a `Screen` suffix — not flat in `navigation/screens/`.
+> Auth screens live in `navigation/screens/auth/` with a `Screen` suffix, not flat in `navigation/screens/`.
 
 > [!NOTE]
 > The old `PrepareAndTestScreen` has been removed. Device configuration and metrics snapshots are captured directly during Deployment.
 
-### `src/navigation/` — Navigation Setup
+> [!NOTE]
+> `navigation/screens/developer/` holds the two developer screens and their twelve sections.
+> [Developer-Settings.md](../resources/Developer-Settings.md) lists what each one shows, which
+> actions wipe the local database, and how to reach them.
+
+### `src/navigation/`: Navigation Setup
 
 ```
 navigation/
 ├── index.tsx              # Stack navigator + route definitions
-├── BottomTabs.tsx         # Bottom tab navigator (Scanner, Map, Projects — 3 tabs)
+├── BottomTabs.tsx         # Bottom tab navigator (Scanner, Map, Projects, 3 tabs)
 ├── types.ts               # Navigation TypeScript types
 ├── linking.ts             # Deep linking configuration
 └── screens/               # Auth & utility screens
 ```
 
-The app launches to the **Scanner** tab by default. The **Engineer Console** is accessible from the side drawer (hamburger menu) — not from a tab.
+The app launches to the **Scanner** tab by default. The **Engineer Console** is accessible from the side drawer (hamburger menu), not from a tab.
 
 The full route table with params is documented in [01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md#route-table).
 
-### `src/services/` — Business Logic
+### `src/services/`: Business Logic
 
 ```
 services/
@@ -180,7 +185,7 @@ services/
 > [!NOTE]
 > The sync services live at the top level of `src/services/`, **not** under `offline/`. `offline/` holds only `OfflineService.ts`.
 
-**Service Pattern** — all data services write to WatermelonDB first:
+**Service Pattern**, all data services write to WatermelonDB first:
 ```typescript
 // src/services/ProjectService.ts
 export class ProjectService {
@@ -197,7 +202,7 @@ export class ProjectService {
 }
 ```
 
-### `src/hooks/` — Custom Hooks
+### `src/hooks/`: Custom Hooks
 
 > This is the maintained inventory. Other documents link here rather than keeping their own copies.
 
@@ -237,9 +242,9 @@ hooks/
 └── useTimer.ts                # Timer utility
 ```
 
-Screen-scoped hooks live beside their screens — see `src/screens/Devices/hooks/` (scanner, firmware update, console) and `src/screens/Deployments/hooks/` (start/end/monitor).
+Screen-scoped hooks live beside their screens, see `src/screens/Devices/hooks/` (scanner, firmware update, console) and `src/screens/Deployments/hooks/` (start/end/monitor).
 
-### `src/ble/` — BLE Protocol Engine
+### `src/ble/`: BLE Protocol Engine
 
 ```
 ble/
@@ -248,7 +253,7 @@ ble/
 ├── messageClassifier.ts        # UI-only log categorization for monitoring display
 ├── emitters.ts                 # Legacy EventEmitter3 (retained for ImageReassembler)
 ├── protocol/                   # Event-driven command engine
-│   ├── eventBus.ts             # bleEventBus — frozen event types
+│   ├── eventBus.ts             # bleEventBus, frozen event types
 │   ├── rxRouter.ts             # Binary/text classification
 │   ├── commandRegistry.ts      # Typed command factories (frozen schema)
 │   ├── runCommandPipeline.ts   # Multi-command sequential executor
@@ -257,6 +262,9 @@ ble/
 │   ├── deviceSignals.ts        # Sleep/Wake/Busy signals
 │   ├── textStreamScope.ts      # Text stream scoping for responses
 │   ├── selfTestCache.ts        # Latest `Error bits` per connection, from the wake broadcast
+│   ├── opCache.ts              # Op table cached per device for one wake window; dropped on Wake
+│   ├── lightCheck.ts           # Parser for the `AE light check` telemetry line
+│   ├── awaitAeRegisters.ts     # Wait for the `HM0360 AE regs` block that answers the two-phase `AI light`
 │   └── fileTransfer/           # Chunked file transfer protocol
 │       ├── runFileTransferPipeline.ts
 │       ├── fileTransferPackets.ts
@@ -269,12 +277,12 @@ ble/
 │   └── flashHold.ts            # Hold the capture flash armed for a screen visit (op34 always-on, restored the same way)
 └── workflows/                  # Reusable BLE workflow functions
     ├── deploymentPipeline.ts   # Shared deployment pipeline
-    ├── resetToDefaults.ts      # executeResetToDefaults — shared OP factory reset
+    ├── resetToDefaults.ts      # executeResetToDefaults, shared OP factory reset
     ├── configVerification.ts   # Post-firmware-update CONFIG.TXT handshake
     └── checkSdCard.ts          # SD card health validation
 ```
 
-### `src/providers/` — Context Providers
+### `src/providers/`: Context Providers
 
 ```
 providers/
@@ -286,12 +294,12 @@ providers/
 └── DeviceReconnectProvider.tsx     # Auto-reconnection
 ```
 
-### `src/database/` — WatermelonDB
+### `src/database/`: WatermelonDB
 
 ```
 database/
 ├── index.ts               # Database instance + collection accessors
-├── schema.ts              # Auto-generated schema — version + table count live in the file
+├── schema.ts              # Auto-generated schema, version + table count live in the file
 ├── migrations.ts          # Schema migration definitions
 └── models/                # WatermelonDB model classes
     ├── Project.ts
@@ -300,7 +308,7 @@ database/
     └── ... (one class per synced table)
 ```
 
-### `src/types/` — TypeScript Definitions
+### `src/types/`: TypeScript Definitions
 
 ```text
 types/
@@ -348,7 +356,7 @@ npm run schema:generate     # Regenerate WatermelonDB schema
 
 ### Data Access Pattern
 
-Components subscribe to WatermelonDB via `withObservables` — **not** `useAppSelector`:
+Components subscribe to WatermelonDB via `withObservables`, **not** `useAppSelector`:
 
 ```typescript
 // ✅ CORRECT: Observe database directly
@@ -408,12 +416,12 @@ const syncSlice = createSlice({
 - ✅ Use Redux for **UI state** (sync status, modals, network)
 - ✅ Use WatermelonDB for **all domain data**
 - ✅ Use `withObservables` to connect components to data
-- ✅ Write to WatermelonDB directly — the sync engine handles the rest
+- ✅ Write to WatermelonDB directly, the sync engine handles the rest
 
 **DON'T:**
 - ❌ Duplicate WatermelonDB data into Redux
 - ❌ Use `useAppSelector` for projects, deployments, devices
-- ❌ Dispatch actions to "save" data — write to DB directly
+- ❌ Dispatch actions to "save" data. Write to the DB directly instead
 
 ---
 
@@ -459,9 +467,9 @@ const syncSlice = createSlice({
 
 ## Next Steps
 
-1. [03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md) — WatermelonDB, Supabase sync, and security model
-2. [05-DEVICE-FLOWS.md](./05-DEVICE-FLOWS.md) — Device deployment lifecycle
-3. [01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md) — Complete dependency reference
+1. [03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md): WatermelonDB, Supabase sync, and security model
+2. [05-DEVICE-FLOWS.md](./05-DEVICE-FLOWS.md): device deployment lifecycle
+3. [01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md): complete dependency reference
 
 ---
 

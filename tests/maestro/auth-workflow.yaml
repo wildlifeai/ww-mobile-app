@@ -1,3 +1,8 @@
+# Advisory until it passes against real screens: this file was a fragment with no
+# appId and could never have been executed. Runs on the `full-e2e` label.
+appId: com.wildlife.wildlifewatcher.expo
+---
+- launchApp
 # Verify WW Admin Dashboard Access
 - assertVisible: "project-search-bar"
 - assertVisible: "new-project-fab"

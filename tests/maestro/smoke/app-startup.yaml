@@ -1,0 +1,13 @@
+# Smoke: the CI APK installs, launches, and the JS bundle comes up.
+#
+# Deliberately minimal. `launchApp` fails if the process crashes on start,
+# which is the whole claim this flow makes. It asserts no screen content,
+# because a required check must not fail for a test id nobody verified.
+# The fuller flows under tests/maestro/ run on the `full-e2e` label.
+#
+# appId is the debug variant: build.gradle applies `.expo` to the debug
+# applicationId, and the `ci` EAS profile is a development client.
+appId: com.wildlife.wildlifewatcher.expo
+---
+- launchApp
+- takeScreenshot: startup
