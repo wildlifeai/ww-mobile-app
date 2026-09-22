@@ -64,6 +64,15 @@ file is the list of things that look like an app bug and are not, and the revers
   showed nothing. `headerTitleAlign: 'left'` was ignored the same way. Both are honoured now;
   anything else (`headerTitle` components, `headerStyle`) still has to be added there before a
   screen can rely on it. Check the phone, not the option name.
+- **A paper `Menu` that re-opens with the arrow up and nothing drawn is
+  `patches/react-native-paper+5.14.5.patch`, not the screen.** Every `WWSelect` is a
+  `react-native-paper-dropdown` over paper's `Menu`, and on Android (Fabric) the Menu's close
+  path animated a fade on a value whose view was already unmounted; the completion callback
+  did not come back, `prevRendered` stayed true, and the next open skipped `show()`. The
+  symptom was three taps to re-open any dropdown right after a selection, on every screen,
+  22 September 2026. The patch does the close bookkeeping at once and keeps one set of
+  back-button and dimensions listeners. Metro loads paper from `src/`, so the patch carries
+  `src/` and both `lib/` builds. If paper is upgraded, re-check the reopen before dropping it.
 
 - **A screen left in the stack under a flow keeps rendering, and the Engineer Console is
   under every flow it opens.** Until 22 September 2026 `BleConsoleOutput` rebuilt its whole
