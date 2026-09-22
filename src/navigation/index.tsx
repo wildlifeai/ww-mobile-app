@@ -216,7 +216,9 @@ export const MainNavigation = () => {
 						<Stack.Screen
 							name="EngineerConsoleScreen"
 							component={EngineerConsoleScreen}
-							options={{ title: "Engineer Console", headerTitleAlign: 'center' }}
+							// The screen replaces the title with the device's name once it
+							// has one (#302); this is what shows when it has none.
+							options={{ title: "Engineer Console", headerTitleAlign: 'left' }}
 						/>
 						<Stack.Screen
 							name="StandaloneMotionDetectionScreen"

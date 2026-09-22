@@ -20,8 +20,15 @@ export const NavigationBar = ({
 	const netInfo = useNetInfo()
 	const isOffline = netInfo.isConnected === false
 
+	// A screen that asks for a left-aligned title gets Paper's small bar, which
+	// is what a title next to a row of actions needs: centred, it would sit off
+	// centre between one icon on the left and several on the right. Every other
+	// screen keeps the centred bar it has always had. The Engineer Console is
+	// the first to ask (#302).
+	const alignLeft = options.headerTitleAlign === "left"
+
 	return (
-		<Appbar.Header mode="center-aligned">
+		<Appbar.Header mode={alignLeft ? "small" : "center-aligned"}>
 			{options.headerLeft ? (
 				options.headerLeft({ canGoBack: !!back })
 			) : back ? (
@@ -37,7 +44,7 @@ export const NavigationBar = ({
 				/>
 			)}
 			<View style={styles.contentContainer}>
-				{title && <Appbar.Content title={title} />}
+				{title && <Appbar.Content title={title} style={alignLeft ? undefined : styles.centredTitle} />}
 				{isOffline && (
 					<Chip
 						style={styles.offlineChip}
@@ -50,13 +57,28 @@ export const NavigationBar = ({
 					</Chip>
 				)}
 			</View>
+			{/* The screen's own actions. This bar replaces the stack's header for
+			    every screen, so an option the stack would honour is silently
+			    dropped unless it is rendered here; headerRight was, until the
+			    console asked for three icons (#302). */}
+			{options.headerRight ? options.headerRight({ canGoBack: !!back, tintColor: onBackground }) : null}
 		</Appbar.Header>
 	)
 }
 
 const styles = StyleSheet.create({
+	// A row, not a column: Appbar.Content is `flex: 1`, and in a column that
+	// grew it to the bar's full height with the title at the top, a line
+	// above the actions either side of it. In a row it grows sideways and the
+	// title sits on the actions' line. The offline chip is absolutely
+	// positioned, so justifyContent is what keeps it centred.
 	contentContainer: {
 		flex: 1,
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	centredTitle: {
 		alignItems: "center",
 	},
 	offlineChip: {

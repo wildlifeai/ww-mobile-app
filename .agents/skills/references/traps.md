@@ -56,6 +56,15 @@ file is the list of things that look like an app bug and are not, and the revers
   as well, and a `setop` inside the same window is acknowledged with `Set OpParam N = V` and
   never saved (#207), so that reply is not proof a value survived a sleep.
 
+## Screens and navigation
+
+- **The stack's header is `components/NavigationBar.tsx`, not the native one, so a header
+  option it does not render is dropped without a warning.** `headerRight` was dropped that
+  way until 21 September 2026 (#302): the screen set it, the type-check passed, and the phone
+  showed nothing. `headerTitleAlign: 'left'` was ignored the same way. Both are honoured now;
+  anything else (`headerTitle` components, `headerStyle`) still has to be added there before a
+  screen can rely on it. Check the phone, not the option name.
+
 ## File transfer
 
 - **The File Transfer Test's loopback benchmark cannot pass on BLE firmware 0.30.48.** The nRF

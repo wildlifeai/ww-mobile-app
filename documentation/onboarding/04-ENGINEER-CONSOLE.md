@@ -1,8 +1,8 @@
 # Engineer Console & BLE Tools
 
-The Engineer Console is the developer's direct interface to the Wildlife Watcher device. It provides raw BLE command access, hardware testing tools, and device diagnostics — all independent of the standard deployment flow.
+The Engineer Console is the developer's direct interface to the Wildlife Watcher device. It provides raw BLE command access, hardware testing tools, and device diagnostics, all independent of the standard deployment flow.
 
-**Deep dive:** [BLE Architecture Guide](../resources/BLE_Architecture.md) — command system, timing constraints, message classification
+**Deep dive:** [BLE Architecture Guide](../resources/BLE_Architecture.md): command system, timing constraints, message classification
 
 ---
 
@@ -33,7 +33,7 @@ Commands are organised by **target processor**. All commands are sent over BLE; 
 
 ### 📡 BLE Processor (nRF52)
 
-Direct commands handled by the BLE chip — no `AI` prefix.
+Direct commands handled by the BLE chip, no `AI` prefix.
 
 #### System & Identity
 
@@ -90,7 +90,7 @@ Direct commands handled by the BLE chip — no `AI` prefix.
 
 ### 🧠 AI Processor (Himax HX6538)
 
-Commands prefixed with `AI` — routed via BLE to the Himax chip. These interact with the SD card, CONFIG.TXT, camera sensor, and AI model.
+Commands prefixed with `AI`, routed via BLE to the Himax chip. These interact with the SD card, CONFIG.TXT, camera sensor, and AI model.
 
 #### AI System
 
@@ -119,7 +119,7 @@ Commands prefixed with `AI` — routed via BLE to the Himax chip. These interact
 | Command | Response | Purpose |
 |---------|----------|---------|
 | `AI capture 1 1000` | `Captured` | Manual image capture (count, delay_ms) |
-| `AI md <0-3>` | — | Set motion detection sensitivity (0 = off, 1–3 = increasing) |
+| `AI md <0-3>` | none | Set motion detection sensitivity (0 = off, 1–3 = increasing) |
 
 #### Model Management
 
@@ -140,19 +140,19 @@ Convenience commands that wrap `AI setop` with human-readable names and defaults
 | `SET_MOTION_DETECT_INTERVAL` | `AI setop 11 <ms>` | Motion detection polling interval, 0 = off |
 
 > [!NOTE]
-> Factory defaults are **not** listed here — `FACTORY_DEFAULTS` in [`useDeviceSettings.ts`](../../src/hooks/useDeviceSettings.ts) is the single source of truth and these shortcuts do not carry their own defaults.
+> Factory defaults are **not** listed here. `FACTORY_DEFAULTS` in [`useDeviceSettings.ts`](../../src/hooks/useDeviceSettings.ts) is the single source of truth and these shortcuts do not carry their own defaults.
 | `DISABLE_MOTION_DETECT` | `AI setop 11 0` | Disable motion detection |
 | `DISABLE_TIMELAPSE` | `AI setop 7 0` | Disable timelapse capture |
 
 ### OP Parameter Index
 
-The complete index (`OP_PARAMETER` enum + `FACTORY_DEFAULTS`) is defined in [`useDeviceSettings.ts`](../../src/hooks/useDeviceSettings.ts) — that file is the **single source of truth** for all parameter indices and default values. The range extends well past OP 20 (MD illumination, AE thresholds, white balance, camera resolution); read the enum rather than assuming an upper bound.
+The complete index (`OP_PARAMETER` enum + `FACTORY_DEFAULTS`) is defined in [`useDeviceSettings.ts`](../../src/hooks/useDeviceSettings.ts). That file is the **single source of truth** for all parameter indices and default values. The range extends well past OP 20 (MD illumination, AE thresholds, white balance, camera resolution); read the enum rather than assuming an upper bound.
 
 The following subset is directly used during deployment:
 
 | Index | Constant | Role |
 |-------|----------|------|
-| 5 | `NUM_PICTURES` | Images per trigger. Start Monitoring writes 1 (JPEG only, the default since 5 September 2026) or 2 when the advanced BMP toggle is off; the Dev Deployment screen defaults its own control to 2 for JPG+BMP pairs |
+| 5 | `NUM_PICTURES` | Images per trigger. Start Monitoring writes 1; the Dev Deployment screen writes what its Pictures per Trigger field holds, default 1. Both write it explicitly because the reset preserves it. The BMP pairing that used to make it 2 was retired on 21 September 2026 |
 | 7 | `TIMELAPSE_INTERVAL` | 0 for activity, N seconds for timelapse/mixed |
 | 8 | `INTERVAL_BEFORE_DPD` | Always 1000ms |
 | 9 | `LED_BRIGHTNESS` | Flash brightness 0–100% |
@@ -163,7 +163,7 @@ The following subset is directly used during deployment:
 | 14 | `MODEL_PROJECT` | Currently loaded AI model ID |
 | 15 | `MODEL_VERSION` | Currently loaded AI model version |
 | 17 | `MD_SENSITIVITY` | 1 for activity/mixed, 0 for timelapse |
-| 18 | `TEST_MODE_BITS` | Diagnostic bitmask (bit 1 = `TEST_BIT_SAVE_BMP`, bit 3 = `TEST_BIT_SKIP_FILE_CREATION`) |
+| 18 | `TEST_MODE_BITS` | Diagnostic bitmask (bit 1 = `TEST_BIT_SAVE_BMP`, bit 3 = `TEST_BIT_SKIP_FILE_CREATION`). Neither deployment writes it since 21 September 2026; the reset leaves it 0 |
 | 19 | `IMAGES_COUNT` | Total images captured (reset on new deployment) |
 | 20 | `IMAGES_FILE_INDEX` | Image subdirectory counter (reset on new deployment) |
 | 34 | `FLASH_MODE` | When the flash is armed: 0 = off, 1 = light sensor, 2 = always on, 3 = time of day. Written from the project's `flash_mode`. With op13 it is the gate the firmware's `ledFlashIsActive()` tests, so it also decides whether motion frames get IR light at night |
@@ -179,7 +179,7 @@ All deployment flows use the **bulk parameter fetch** command to minimize BLE ro
 3. Before each `AI setop`, compare target value against cached value
 4. Skip the write if the parameter is already correct
 
-**Fallback:** If `AI getop -1` fails (older firmware), all functions gracefully fall back to "blind write" mode — they send every `setop` unconditionally.
+**Fallback:** If `AI getop -1` fails (older firmware), all functions gracefully fall back to "blind write" mode: they send every `setop` unconditionally.
 
 ### Capture Method OP Mapping
 
@@ -189,7 +189,7 @@ All deployment flows use the **bulk parameter fetch** command to minimize BLE ro
 | Timelapse | `setop 17 0`, `setop 11 0`, `setop 7 <secs>`, `setop 8 1000`, `setop 10 1` | MD off, timelapse on |
 | Mixed | `setop 17 1`, `setop 11 1000`, `setop 7 <secs>`, `setop 8 1000`, `setop 10 1` | MD on + timelapse on |
 
-Camera enable (`setop 10 1`) is always sent **last** to avoid premature triggers. All writes are conditional — unchanged values are skipped.
+Camera enable (`setop 10 1`) is always sent **last** to avoid premature triggers. All writes are conditional: unchanged values are skipped.
 
 ---
 
@@ -197,9 +197,9 @@ Camera enable (`setop 10 1`) is always sent **last** to avoid premature triggers
 
 The Engineer Console provides two reference modals:
 
-**Commands** (`CommandReferenceModal`) — Atomic BLE operations that send a single command string and receive a single response. These map 1:1 to firmware commands (e.g., `ver`, `battery`, `AI getop -1`). See [Key Commands](#key-commands) above.
+**Commands** (`CommandReferenceModal`): atomic BLE operations that send a single command string and receive a single response. These map 1:1 to firmware commands (e.g., `ver`, `battery`, `AI getop -1`). See [Key Commands](#key-commands) above.
 
-**Flows & Processes** (`FlowsReferenceModal`) — Multi-step workflows or convenience wrappers. These either compose multiple BLE commands, interact with app services (cloud, GPS, navigation), or wrap a single `setop` with a human-readable name. Tapping "Run" executes the full sequence.
+**Flows & Processes** (`FlowsReferenceModal`): multi-step workflows or convenience wrappers. These either compose multiple BLE commands, interact with app services (cloud, GPS, navigation), or wrap a single `setop` with a human-readable name. Tapping "Run" executes the full sequence.
 
 > [!NOTE]
 > In the codebase, commands have `type: 'command'` and flows have `type: 'process'` or `type: 'local'` in `COMMANDS` ([types.ts](../../src/ble/types.ts)).
@@ -243,7 +243,7 @@ trying to do rather than by the mechanism underneath.
 
 | Flow | What It Does |
 |------|-------------|
-| `DEV_DEPLOYMENT_TEST` | Full deployment with manual control over capture method, flash, diagnostics and AI model. See [Dev-Deployment-Guide.md](../resources/Dev-Deployment-Guide.md). |
+| `DEV_DEPLOYMENT_TEST` | Full deployment with the project's capture method and capture flash chosen on screen, plus the camera, pictures per trigger, LED brightness and AI model. See [Dev-Deployment-Guide.md](../resources/Dev-Deployment-Guide.md). |
 | `FILE_TRANSFER_TEST` | Sends a test file to the SD card to exercise the `ftx` pipeline end to end. |
 
 ### Removed, and why
@@ -252,7 +252,7 @@ trying to do rather than by the mechanism underneath.
 |------|------|
 | `CAPTURE_PREVIEW` | Folded into `CAPTURE_PICTURE`. Measured on the bench, the two were identical on the wire except that Capture Preview sent one extra `AI slots`: 7 commands against 6, for less function. |
 | `TX_FILE` | Deleted. It was the only `process` entry with no navigation handler, so it fell through to `writeRaw` and bypassed the command registry: its `Failed to open ''. (6)` never reached the operator, while `commandRegistry.txfile` handles that case and `useCapturePreview` already calls it properly. |
-| `CLEAR_CONSOLE` | Deleted as a flow, since it sent nothing to the device. Clearing the output is now a **Clear** button on the console header. |
+| `CLEAR_CONSOLE` | Deleted as a flow, since it sent nothing to the device. Clearing the output is the trash icon in the screen header, beside the Commands and Flows icons (#302, 21 September 2026). The September tidy recorded a Clear button on the console header that was never actually added. |
 | `TRANSFER_CONFIG` | Deleted with its screen and hook, 455 lines reachable from nowhere. The deployment pipeline transfers config as part of a real deployment. |
 
 > [!WARNING]
@@ -273,7 +273,7 @@ The following screens are accessed from the Engineer Console → Flows modal. Th
 - Uses `useMotionDetectionStream` to subscribe to `TEXT_LINE` events from `bleEventBus`
 - Sets `TEST_BIT_SKIP_FILE_CREATION` (OP 18, bit 3) before capture so firmware streams MD data without saving JPEGs
 - Parses `HM0360 motion in N blocks:` header + 32 hex-byte grid data from BLE text lines
-- Renders the 16×16 grid as a precomputed text string — visual feedback loop helps understand environmental threshold behaviour
+- Renders the 16×16 grid as a precomputed text string, a visual feedback loop that helps understand environmental threshold behaviour
 - **On completion/stop**, automatically resets `TEST_MODE_BITS` to 0 so subsequent captures (e.g., photo preview) save JPEG files normally
 
 **The flash on this screen, and how it differs from the field.** A test frame is lit through the
@@ -302,15 +302,15 @@ mode back when the test ends ([`flashHold.ts`](../../src/ble/session/flashHold.t
   `OP_PARAMETER` and are still covered by the factory reset.
 - **Direct Capture:** Triggers via `AI capture 1 1000` (direct command)
 - **DPD Synchronisation:** Before capture, writes `MD_INTERVAL=0` and `TIMELAPSE_INTERVAL=0` alongside flash OPs (9, 12, 13), then waits for Deep Power Down (`Sleep` message). This ensures CONFIG.TXT is committed with new flash parameters and zeroed background triggers.
-- **Post-Capture Cleanup:** Sends `CAMERA_ENABLED=0` (`setop 10 0`) and waits for the resulting sleep cycle — returns device to clean idle state.
+- **Post-Capture Cleanup:** Sends `CAMERA_ENABLED=0` (`setop 10 0`) and waits for the resulting sleep cycle, which returns the device to a clean idle state.
 - **Auto Exposure (AE) Data:** Captures console logs (`Integration time`, `Analog gain`, etc.) and renders live AE metrics with a visual AE Mean progress bar (0–255)
 - **Gallery:** Every captured image is stored with its `cameraParams` and `aeData`. Tapping a thumbnail opens a light-box modal showing the exact settings for that frame.
 
 > [!WARNING]
-> **Firmware Bug — Flash strobe not configured in manual capture path.** The Himax firmware only configures the HM0360 strobe mode (`Strobe mode 0x03`) when entering DPD via the normal MD sleep preparation path. The manual `AI capture` command bypasses this, so the flash LED never fires. The timelapse workaround forces the capture through the normal DPD path where strobe IS configured. **TODO:** Revert to direct `AI capture` once the Himax firmware is updated.
+> **Firmware Bug: flash strobe not configured in manual capture path.** The Himax firmware only configures the HM0360 strobe mode (`Strobe mode 0x03`) when entering DPD via the normal MD sleep preparation path. The manual `AI capture` command bypasses this, so the flash LED never fires. The timelapse workaround forces the capture through the normal DPD path where strobe IS configured. **TODO:** Revert to direct `AI capture` once the Himax firmware is updated.
 
 > [!NOTE]
-> The flash LED hardware is driven by the Himax AI processor (HX6538), not the nRF52 (WW500). The nRF only stores and forwards the OP values — the Himax reads them from CONFIG.TXT during the capture wake cycle.
+> The flash LED hardware is driven by the Himax AI processor (HX6538), not the nRF52 (WW500). The nRF only stores and forwards the OP values; the Himax reads them from CONFIG.TXT during the capture wake cycle.
 
 ---
 
@@ -325,11 +325,11 @@ Three OPs control the LED flash hardware:
 | OP | Constant | Range | Notes |
 |----|----------|-------|-------|
 | 9 | `LED_BRIGHTNESS` | 0–100 | Percentage. **0 = dim, not off.** Use OP 13 = 0 to fully disable the flash. |
-| 12 | `FLASH_DURATION` | ms | Flash pulse duration. Currently only applies to the RP3 camera — untested on HM0360. |
+| 12 | `FLASH_DURATION` | ms | Flash pulse duration. Currently only applies to the RP3 camera, untested on HM0360. |
 | 13 | `FLASH_LED` | 0, 1, 2 | 0 = off (no flash), 1 = visible (white) LED, 2 = IR LED |
 
 > [!IMPORTANT]
-> Setting `LED_BRIGHTNESS` to 0 still produces a dim flash — the LED is not fully off. To disable the flash entirely, set `FLASH_LED` to 0.
+> Setting `LED_BRIGHTNESS` to 0 still produces a dim flash; the LED is not fully off. To disable the flash entirely, set `FLASH_LED` to 0.
 
 ### Auto Exposure (AE) Registers
 
@@ -363,7 +363,7 @@ These flags are in the Himax firmware source (`ww-hardware` repo). They enable a
 | `INVESTIGATE_TONE_MAPPING` | Cycles through 4 HM0360 grey-scale tone levels across captures | Set `NUM_PICTURES` to 8 for 2 file types × 4 tones. Combine with `SAVEBMP` for JPG+BMP at each tone. |
 
 > [!NOTE]
-> These are **compile-time** firmware flags — they require reflashing the Himax AI processor. They are not runtime-configurable from the app.
+> These are **compile-time** firmware flags: they require reflashing the Himax AI processor. They are not runtime-configurable from the app.
 
 ### JPEG Quality
 
@@ -383,15 +383,19 @@ This is a compile-time setting. BMP output (via `SAVEBMP`) provides uncompressed
 1. Connect via Engineer Console
 2. Navigate to Flows → Camera Settings Test
 3. Select flash type (Off / Visible / IR) and brightness
-4. Tap "Capture Image" — image + AE data saved to gallery
-5. Adjust settings and repeat — gallery preserves per-image metadata for comparison
+4. Tap "Capture Image". The image and its AE data are saved to the gallery
+5. Adjust settings and repeat. The gallery preserves per-image metadata for comparison
 
-**Dev Deployment** (multi-capture with diagnostics):
+**Dev Deployment** (multi-capture):
 1. Connect via Engineer Console → Flows → Dev Deployment Test
-2. Set `NUM_PICTURES` (e.g., 6 for brightness sweep, 8 for tone mapping)
-3. Enable "Save BMP" toggle (sets `TEST_MODE_BITS` bit 1)
-4. Configure flash type and brightness
-5. Start deployment — device captures sequence per firmware mode
+2. Pick the camera, then set pictures per trigger (e.g., 6 for a brightness sweep, 8 for tone mapping)
+3. Choose the flash mode, LED and brightness
+4. Start the deployment. The device captures the sequence the firmware build dictates
+
+BMP output needs `TEST_MODE_BITS` bit 1, which the app no longer writes (retired 21 September 2026,
+the code is commented out in `useDevDeployment.ts` and `DevDeploymentTestScreen.tsx`). The
+deployment's reset clears OP 18, so for a BMP run set it from the console after the deployment has
+started, `AI setop 18 2`, or restore the commented-out switch.
 
 ### Recommended Experimental Protocols
 
@@ -416,7 +420,7 @@ Goal: Determine whether NN models detect subjects under IR illumination.
 Goal: Compare JPEG compression levels and BMP output.
 
 - Firmware: enable `SAVEBMP` + `INVESTIGATE_TONE_MAPPING`
-- App: set `NUM_PICTURES=8` (4 tones × 2 formats)
+- App: set `NUM_PICTURES=8` (4 tones × 2 formats), and `TEST_MODE_BITS` bit 1 from the console after the start, since the app no longer writes it
 - Compare JPG vs BMP at each tone level to assess quality loss
 - The `JPEG_ENC_QTABLE_4X` (higher quality) setting is the current default
 
@@ -445,14 +449,14 @@ Goal: Validate MD triggers when subject is only illuminated by flash.
 |---------|-----------|
 | Heartbeat | 58s idle → sends `get heartbeat` (or RSSI ping if UART paused) |
 | Disconnect Detection | `WWBleDisconnectedBanner` shown on all BLE-dependent screens |
-| DFU Suppression | Banner is hidden when `dfuInProgress` is `true` — the BLE disconnect during firmware updates is expected |
-| Disconnect Signal | `DEVICE_SIGNAL(DISCONNECT)` → `commandQueue.clearAll()` — rejects all in-flight commands instantly |
+| DFU Suppression | Banner is hidden when `dfuInProgress` is `true`, since the BLE disconnect during firmware updates is expected |
+| Disconnect Signal | `DEVICE_SIGNAL(DISCONNECT)` → `commandQueue.clearAll()`, which rejects all in-flight commands instantly |
 | Navigation Guard | `isNavigatingAway` ref prevents spurious disconnect alerts during screen transitions |
 
 All screens use `bleDeviceRef` (a `useRef`) for device state inside timer callbacks, preventing stale closure bugs.
 
 > [!NOTE]
-> On unexpected disconnect, the BLE pipeline rejects all in-flight and queued commands **instantly** via the `DISCONNECT` signal (see [BLE Architecture — Disconnect Resilience](../resources/BLE_Architecture.md#disconnect-resilience)).
+> On unexpected disconnect, the BLE pipeline rejects all in-flight and queued commands **instantly** via the `DISCONNECT` signal (see [BLE Architecture, Disconnect Resilience](../resources/BLE_Architecture.md#disconnect-resilience)).
 
 > [!NOTE]
 > During firmware updates (BLE DFU or Himax), `useFirmwareUpdate` dispatches `setDfuStatus(true)` to the device's Redux state. The `WWBleDisconnectedBanner` checks `dfuInProgress` and suppresses the error banner during expected DFU disconnections.

@@ -65,6 +65,9 @@ export const styles = StyleSheet.create({
         flex: 1,
         padding: 16,
     },
+    headerActions: {
+        flexDirection: 'row',
+    },
     quickActions: {
         paddingHorizontal: 16,
         paddingBottom: 8,
