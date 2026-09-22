@@ -1,5 +1,5 @@
-import React, { useRef, useEffect } from 'react'
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native'
+import React, { useRef, useCallback, memo } from 'react'
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, ListRenderItemInfo } from 'react-native'
 import * as Clipboard from 'expo-clipboard'
 
 export interface ConsoleEntry {
@@ -13,51 +13,67 @@ interface Props {
     entries: ConsoleEntry[]
 }
 
+const formatTime = (date: Date) =>
+    date.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+
+const copyToClipboard = (text: string) => {
+    Clipboard.setStringAsync(text).catch(() => {})
+}
+
+/**
+ * One line of the console, memoised so a new line draws one row and not the
+ * history behind it.
+ *
+ * Until 22 September 2026 every entry was rebuilt on every BLE line, in a
+ * plain ScrollView, and by the thousandth line each line cost the JS thread
+ * about 1.3 s. The Engineer Console stays mounted under every flow it opens,
+ * so that cost landed on every command of a deployment started from it: the
+ * nRF answered a `setop` within 0.8 s and the app took 6 s to notice, and a
+ * dev deployment start took 90 s.
+ */
+const Row = memo(({ entry }: { entry: ConsoleEntry }) => (
+    <TouchableOpacity
+        onLongPress={() => copyToClipboard(entry.content)}
+        activeOpacity={0.8}
+        style={[styles.entryContainer, styles[entry.type]]}
+    >
+        <View style={styles.entryHeader}>
+            <Text style={styles.timestamp}>{formatTime(entry.timestamp)}</Text>
+            <Text style={styles.typeLabel}>{entry.type.toUpperCase()}</Text>
+        </View>
+        <Text style={styles.content}>{entry.content}</Text>
+    </TouchableOpacity>
+))
+Row.displayName = 'ConsoleRow'
+
 export const BleConsoleOutput: React.FC<Props> = ({ entries }) => {
-    const scrollViewRef = useRef<ScrollView>(null)
+    const listRef = useRef<FlatList<ConsoleEntry>>(null)
 
-    useEffect(() => {
-        // Auto-scroll to bottom when new entries are added
-        scrollViewRef.current?.scrollToEnd({ animated: true })
-    }, [entries])
-
-    const copyToClipboard = async (text: string) => {
-        await Clipboard.setStringAsync(text)
-    }
-
-    const formatTime = (date: Date) => {
-        return date.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
-    }
+    const renderItem = useCallback(({ item }: ListRenderItemInfo<ConsoleEntry>) => <Row entry={item} />, [])
+    const keyExtractor = useCallback((item: ConsoleEntry) => item.id, [])
+    // Follow the newest line, as the console always has.
+    const scrollToEnd = useCallback(() => {
+        listRef.current?.scrollToEnd({ animated: false })
+    }, [])
 
     return (
         <View style={styles.container}>
-            <ScrollView
-                ref={scrollViewRef}
+            <FlatList
+                ref={listRef}
+                data={entries}
+                keyExtractor={keyExtractor}
+                renderItem={renderItem}
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
-            >
-                {entries.length === 0 ? (
+                ListEmptyComponent={
                     <Text style={styles.emptyText}>No commands yet. Type 'help' or send a command.</Text>
-                ) : (
-                    entries.map((entry) => {
-                        if (!entry) return null
-                        return (
-                            <TouchableOpacity
-                                key={entry.id}
-                                onLongPress={() => copyToClipboard(entry.content)}
-                                activeOpacity={0.8}
-                                style={[styles.entryContainer, styles[entry.type]]}
-                            >
-                                <View style={styles.entryHeader}>
-                                    <Text style={styles.timestamp}>{formatTime(entry.timestamp)}</Text>
-                                    <Text style={styles.typeLabel}>{entry.type.toUpperCase()}</Text>
-                                </View>
-                                <Text style={styles.content}>{entry.content}</Text>
-                            </TouchableOpacity>
-                        )
-                    })
-                )}
-            </ScrollView>
+                }
+                onContentSizeChange={scrollToEnd}
+                initialNumToRender={40}
+                maxToRenderPerBatch={40}
+                windowSize={5}
+                removeClippedSubviews
+            />
         </View>
     )
 }

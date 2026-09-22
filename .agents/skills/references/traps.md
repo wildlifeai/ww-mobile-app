@@ -65,6 +65,19 @@ file is the list of things that look like an app bug and are not, and the revers
   anything else (`headerTitle` components, `headerStyle`) still has to be added there before a
   screen can rely on it. Check the phone, not the option name.
 
+- **A screen left in the stack under a flow keeps rendering, and the Engineer Console is
+  under every flow it opens.** Until 22 September 2026 `BleConsoleOutput` rebuilt its whole
+  history, every line a touchable with three texts in a plain ScrollView, on every BLE line.
+  By the thousandth line each line cost the JS thread about 1.3 s: the nRF sent `Wake`,
+  `Error bits` and `Set OpParam` within 0.8 s of a `setop` and the app received them 1.3 s
+  apart, so one `setop` took 6 s and a dev deployment start took 90 s for commands the device
+  answered in under a second. It is a FlatList of memoised rows now, capped at 500 entries,
+  and the console effect finds new lines by identity rather than by count, which had gone
+  silent once the Redux log hit its 1000-entry trim. The same cost is the likely reason #273
+  (the app a minute behind the device during a motion test). Before blaming the device or
+  BLE for a slow flow, measure the gap between consecutive `RAW_RX` lines in logcat: the
+  device's replies are timestamped on the nRF console, the app's arrivals in logcat.
+
 ## File transfer
 
 - **The File Transfer Test's loopback benchmark cannot pass on BLE firmware 0.30.48.** The nRF
