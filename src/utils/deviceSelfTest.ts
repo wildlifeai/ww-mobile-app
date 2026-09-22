@@ -65,7 +65,7 @@ const ISSUE_TABLE: Array<Omit<SelfTestIssue, never>> = [
         bit: SelfTestBit.AI_NO_MAIN_CAMERA,
         severity: 'error',
         title: '📷 Main camera not responding',
-        hint: 'The active camera did not initialise — check its ribbon cable. Captures will fail until fixed.',
+        hint: 'The active camera did not initialise. Check its ribbon cable. Captures will fail until fixed.',
     },
     {
         bit: SelfTestBit.AI_NO_HM0360,
@@ -77,13 +77,13 @@ const ISSUE_TABLE: Array<Omit<SelfTestIssue, never>> = [
         bit: SelfTestBit.AI_NO_FLASH,
         severity: 'warning',
         title: '💡 LED flash circuit fault',
-        hint: 'The flash/IR illumination driver did not respond — night images will be dark.',
+        hint: 'The flash/IR illumination driver did not respond, so night images will be dark.',
     },
     {
         bit: SelfTestBit.AI_NO_SD_CARD,
         severity: 'error',
         title: '💾 SD card missing',
-        hint: 'Insert a FAT32 SD card — the device cannot store images or settings without it.',
+        hint: 'Insert a FAT32 SD card. The device cannot store images or settings without it.',
     },
     {
         bit: SelfTestBit.AI_PDM_ERROR,
@@ -95,7 +95,7 @@ const ISSUE_TABLE: Array<Omit<SelfTestIssue, never>> = [
         bit: SelfTestBit.AI_NN_ERROR,
         severity: 'warning',
         title: '🧠 Neural network error',
-        hint: 'The on-device AI model failed to load — species detection is off. Re-run "Prepare SD Card" or transfer a model.',
+        hint: 'The on-device AI model failed to load, so species detection is off. Re-run "Prepare SD Card" or transfer a model.',
     },
 ]
 
@@ -138,13 +138,20 @@ export const KNOWN_BITS_MASK = ISSUE_TABLE.reduce((mask, issue) => mask | (1 << 
 
 /**
  * The AI-side faults that make a deployment pointless: no main camera, no
- * motion sensor, or no working model. The pre-deployment checks block Start
- * Monitoring on these.
+ * motion sensor, no working model, or no SD card. The pre-deployment checks
+ * block Start Monitoring on these, and the Dev Deployment Test screen blocks
+ * its own Start on the card.
+ *
+ * The card joined the list on 21 September 2026 (#303). Every image and every
+ * setting a deployment writes goes to it, so a deployment without one records
+ * nothing, and until then the app went ahead and attempted every card-backed
+ * operation regardless.
  */
 export const CRITICAL_AI_MASK =
     (1 << SelfTestBit.AI_NO_MAIN_CAMERA) |
     (1 << SelfTestBit.AI_NO_HM0360) |
-    (1 << SelfTestBit.AI_NN_ERROR)
+    (1 << SelfTestBit.AI_NN_ERROR) |
+    (1 << SelfTestBit.AI_NO_SD_CARD)
 
 /**
  * Warning strings for the initialisation banners, one per set bit, in bit order,

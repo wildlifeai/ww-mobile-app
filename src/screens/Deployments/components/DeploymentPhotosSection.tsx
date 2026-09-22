@@ -80,7 +80,7 @@ export const DeploymentPhotosSection = ({
             {...props}
             icon="help-circle-outline"
             onPress={() => onShowHelp(
-                'Deployment Photos',
+                'Take a photo of the Watcher',
                 'Take a few photos of the camera in place and its surroundings. They are shared with everyone in the project, making the camera much easier to find again in the field.\n\nGood photos to take:\n• The camera mounted in position\n• The view standing a few steps back\n• A recognisable landmark nearby'
             )}
         >
@@ -90,12 +90,8 @@ export const DeploymentPhotosSection = ({
 
     return (
         <Card style={styles.card}>
-            <Card.Title title="Deployment Photos" right={renderHelp} />
+            <Card.Title title="Take a photo of the Watcher" right={renderHelp} />
             <Card.Content style={styles.content}>
-                <Text variant="bodySmall" style={styles.hint}>
-                    Photos of the camera in the field help anyone in the project find it later.
-                </Text>
-
                 {photoPaths.length > 0 && (
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         <View style={styles.thumbRow}>
@@ -143,7 +139,6 @@ export const DeploymentPhotosSection = ({
 const styles = StyleSheet.create({
     card: {},
     content: { gap: 12 },
-    hint: { opacity: 0.7 },
     thumbRow: {
         flexDirection: 'row',
         gap: 8,

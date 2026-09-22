@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react'
 import { View, StyleSheet } from 'react-native'
-import { List, Card, Button, Text, TextInput, Switch } from 'react-native-paper'
+import { List, Card, Button, Text, TextInput } from 'react-native-paper'
 import { WWButton } from '../../../components/ui/WWButton'
 import { WWSelect } from '../../../components/ui/WWSelect'
 
@@ -28,8 +28,12 @@ interface AdvancedSettingsSectionProps {
     sdCardStatus: { total: number; free: number } | null
     handleBatteryCheck: () => void
     handleSdCardCheck: () => void
-    recordJpegOnly: boolean
-    setRecordJpegOnly: (val: boolean) => void
+    isCheckingBattery?: boolean
+    isCheckingSdCard?: boolean
+    // The raw BMP capture format, retired 21 September 2026. The card that
+    // offered it is commented out below; see useStartDeployment for why.
+    //   recordJpegOnly: boolean
+    //   setRecordJpegOnly: (val: boolean) => void
     isInitializing: boolean
     bleDeviceConnected: boolean
     theme: any
@@ -53,8 +57,10 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
     sdCardStatus,
     handleBatteryCheck,
     handleSdCardCheck,
-    recordJpegOnly,
-    setRecordJpegOnly,
+    isCheckingBattery,
+    isCheckingSdCard,
+    // recordJpegOnly,
+    // setRecordJpegOnly,
     isInitializing,
     bleDeviceConnected,
     theme,
@@ -101,15 +107,17 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
     ), [onShowHelp])
 
 
-    const renderFormatHelp = useCallback((props: any) => (
-        <Button
-            {...props}
-            icon="help-circle-outline"
-            onPress={() => onShowHelp('Capture Format', 'Record JPEG only. Off (default): the camera records each trigger as a high-quality raw BMP plus a JPG, and the website compresses the BMP, which gives better image quality for the current testing phase. On: record JPEG only, with smaller files, faster uploads and less SD-card use.')}
-        >
-            <Text>Help</Text>
-        </Button>
-    ), [onShowHelp])
+    // Capture Format help, retired with the card below.
+    //
+    //   const renderFormatHelp = useCallback((props: any) => (
+    //       <Button
+    //           {...props}
+    //           icon="help-circle-outline"
+    //           onPress={() => onShowHelp('Capture Format', 'Record JPEG only. Off (default): the camera records each trigger as a high-quality raw BMP plus a JPG, and the website compresses the BMP, which gives better image quality for the current testing phase. On: record JPEG only, with smaller files, faster uploads and less SD-card use.')}
+    //       >
+    //           <Text>Help</Text>
+    //       </Button>
+    //   ), [onShowHelp])
 
     const renderRightIcon = useCallback((props: any) => <List.Icon {...props} icon={expanded ? "chevron-up" : "chevron-down"} />, [expanded])
 
@@ -124,6 +132,14 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
             {expanded && (
                 <View style={styles.accordionContent}>
                     
+                    {/* Camera View first: the operator aims the camera before
+                        naming the site, so the preview sits above the settings. */}
+                    <CameraViewSection
+                        device={device}
+                        onImageCaptured={onImageCaptured}
+                        onShowHelp={onShowHelp}
+                    />
+
                     {/* Location & Camera Settings Card */}
                     <Card style={styles.card}>
                         <Card.Title title="Location & Camera Settings" right={renderLocationHelp} />
@@ -177,7 +193,12 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
                     </Card.Content>
                 </Card>
 
-                {/* Capture Format Card (dev/testing quality trial) */}
+                {/* Capture Format card, the raw BMP quality trial. Retired on
+                    21 September 2026 (Victor): every deployment records one JPEG
+                    per trigger now. Commented out rather than deleted until it is
+                    certain nothing wants it back; the hook side is commented out
+                    in useStartDeployment, step 7b.
+
                 <Card style={styles.card}>
                     <Card.Title title="Capture Format" right={renderFormatHelp} />
                     <Card.Content style={styles.content}>
@@ -195,14 +216,9 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
                         </View>
                     </Card.Content>
                 </Card>
+                */}
 
-                {/* Camera View & MD Rendered inside Advanced Settings */}
-                <CameraViewSection
-                    device={device}
-                    onImageCaptured={onImageCaptured}
-                    onShowHelp={onShowHelp}
-                />
-
+                {/* MD rendered inside Advanced Settings */}
                 <DeploymentMotionDetectionSection
                     device={device}
                     project={project}
@@ -215,6 +231,7 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
                     handleBatteryCheck={handleBatteryCheck}
                     isInitializing={isInitializing}
                     bleDeviceConnected={bleDeviceConnected}
+                    isChecking={isCheckingBattery}
                     renderBatteryHelp={renderBatteryHelp}
                     styles={styles}
                 />
@@ -225,6 +242,7 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
                     handleSdCardCheck={handleSdCardCheck}
                     isInitializing={isInitializing}
                     bleDeviceConnected={bleDeviceConnected}
+                    isChecking={isCheckingSdCard}
                     renderSdCardHelp={renderSdCardHelp}
                     styles={styles}
                 />

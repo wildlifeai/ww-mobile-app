@@ -67,6 +67,19 @@ file is the list of things that look like an app bug and are not, and the revers
   in the loop the nRF parks in SELFTEST and drops every app command, so the console goes silent
   as well, and a `setop` inside the same window is acknowledged with `Set OpParam N = V` and
   never saved (#207), so that reply is not proof a value survived a sleep.
+- **A card put back into a running device stays missing until it is power cycled.** WILD-SIFK,
+  22 September 2026: the SD card was pulled with the Himax in DPD and put back, the next warm
+  boot printed `Mounting FatFS on SD card 	Card Ready` and then, 0.6 s later,
+  `SD card initialisation failed (reason 3)`, FatFS `FR_NOT_READY` from `disk_initialize`. The
+  card answers electrically but never reaches the identification state without a clean power
+  ramp. Self-test bit 11 stays set on every wake after that, so the app is right to keep the
+  blocker up, and repeating `selftest` will never clear it. Only a cold boot will. Expect the
+  same in the field whenever anyone swaps a card without cutting power; #325 is the copy fix.
+- **Ignore the battery percentage on a bench unit, it is reading the USB rail.** A WW500 powered
+  over USB on the bench reports numbers like `Battery = 3076mV 2%` that say nothing about any
+  cell, so a low reading there is not a reason to stop, charge anything or doubt a result.
+  Raising it as a risk mid-run has wasted time more than once. On the bench, only treat the
+  battery as real when the unit is deliberately running from a cell.
 
 ## Screens and navigation
 

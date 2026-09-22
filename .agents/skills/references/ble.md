@@ -104,6 +104,12 @@ day are in [traps.md](traps.md).
   word `Sleep`. The app never sees the numbers, so there is nothing to parse and the cache
   above is the only app-side answer. Getting them forwarded is a firmware ask, and it would
   delete the cache.
+- **The deployment reset does not touch op5.** `RESET_PRESERVED_OPS` keeps `NUM_PICTURES`
+  alongside the counters, so a device left at 2 pictures per trigger by an earlier BMP
+  deployment stays at 2 through every reset. Both deployment flows write op5 themselves for
+  that reason. op18 is not preserved and is 0 after the reset. Noted on 21 September 2026
+  while retiring the BMP option, where "the reset handles it" was true for one of the two
+  parameters and wrong for the other.
 
 ## Captures, light and telemetry
 
