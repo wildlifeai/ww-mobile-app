@@ -7,7 +7,11 @@ import { WWTextInput } from '../../../components/ui/WWTextInput'
 import { WWCheckbox } from '../../../components/ui/WWCheckbox'
 import { logError } from '../../../utils/logger'
 import { ProjectSettingsHelpDialogs } from './ProjectSettingsHelpDialogs'
-import { FLASH_MODE_LABELS, FLASH_LED_LABELS_BY_COLUMN } from '../../../utils/projectFlash'
+// The capture flash the project deploys, written to the camera as op34 and
+// op13 at every deployment (#282). The option lists live with the column
+// vocabulary in projectFlash.ts because the Dev Deployment Test screen offers
+// the same choices (#301).
+import { FLASH_MODE_OPTIONS, FLASH_LED_OPTIONS } from '../../../utils/projectFlash'
 
 interface ProjectFormData {
     name: string
@@ -28,26 +32,6 @@ interface ProjectFormData {
     flash_window_start_minutes_utc: string
     flash_window_minutes: string
 }
-
-/**
- * The capture flash the project deploys, written to the camera as op34 and
- * op13 at every deployment (#282).
- *
- * "Light sensor" is offered but not recommended while the firmware's AE light
- * check is still being worked on (5 September 2026): it is the one mode whose
- * behaviour depends on that check. Nothing in the app defaults to it.
- */
-const FLASH_MODE_OPTIONS: SelectOption[] = [
-    { label: FLASH_MODE_LABELS.off, value: 'off' },
-    { label: FLASH_MODE_LABELS.always_on, value: 'always_on' },
-    { label: FLASH_MODE_LABELS.time_of_day, value: 'time_of_day' },
-    { label: `${FLASH_MODE_LABELS.light_sensor} (in development)`, value: 'light_sensor' },
-]
-
-const FLASH_LED_OPTIONS: SelectOption[] = [
-    { label: `${FLASH_LED_LABELS_BY_COLUMN.ir} (invisible to wildlife)`, value: 'ir' },
-    { label: FLASH_LED_LABELS_BY_COLUMN.white, value: 'white' },
-]
 
 interface SelectOption {
     label: string

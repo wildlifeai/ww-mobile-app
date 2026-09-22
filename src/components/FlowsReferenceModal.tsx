@@ -77,8 +77,9 @@ export const getFlowGroups = (): FlowGroup[] => {
             ]),
         },
         // The Console group held only CLEAR_CONSOLE, which sent nothing to the
-        // device. Clearing the output is now a button on the console header,
-        // beside Commands and Flows, where a console action belongs. The File
+        // device. Clearing the output is an icon in the screen header, beside
+        // Commands and Flows, where a console action belongs (#302; the
+        // September tidy said the button existed, and it did not). The File
         // Transfer group emptied when its two entries moved to where they
         // belong by purpose rather than by mechanism.
         {

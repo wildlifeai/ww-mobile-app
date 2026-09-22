@@ -53,7 +53,14 @@ describe('deviceSelfTest', () => {
 
     it('keeps the masks in step with the table', () => {
         expect(KNOWN_BITS_MASK).toBe(0x3f1f)
-        expect(CRITICAL_AI_MASK).toBe(0x2300)
+        // Camera, HM0360, NN and, since #303, the SD card: 0x0800
+        expect(CRITICAL_AI_MASK).toBe(0x2b00)
         expect(decodeSelfTest(CRITICAL_AI_MASK).every(i => i.severity !== undefined)).toBe(true)
+    })
+
+    it('treats a missing SD card as critical, and a low battery as not (#303)', () => {
+        expect((CRITICAL_AI_MASK & (1 << SelfTestBit.AI_NO_SD_CARD)) !== 0).toBe(true)
+        expect((CRITICAL_AI_MASK & (1 << SelfTestBit.LOW_BATTERY)) !== 0).toBe(false)
+        expect(decodeSelfTest(1 << SelfTestBit.AI_NO_SD_CARD)[0].severity).toBe('error')
     })
 })

@@ -65,6 +65,10 @@ The coverage floor is a ratchet at 20%: it only moves up, by hand.
   A confidently wrong skill costs more than a thin one.
 - **No em dashes** in documents or anything else that gets pasted elsewhere. Commas, or a new
   sentence.
+- **No AI attribution on a commit or a pull request.** No `Co-Authored-By: Claude`, no model
+  name, no generated-with footer. A commit message ends with its last paragraph or its
+  `Closes #N` line, and a PR description ends with its own last line. The history and the PR
+  queue are read by outside collaborators and funders, the same reason the em dash rule exists.
 - **`commandRegistry.ts` is the only place BLE commands are defined.** Never match device
   responses anywhere else; `messageClassifier.ts` is UI presentation only.
 - **OP parameter indices mirror the firmware**, where `OP_PARAMETER` here matches

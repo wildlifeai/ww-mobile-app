@@ -54,7 +54,8 @@ export const StartMonitoringDetailsStep = () => {
         // Advanced Settings
         batteryLevel, sdCardStatus,
         handleBatteryCheck, handleSdCardCheck,
-        recordJpegOnly, setRecordJpegOnly,
+        isCheckingBattery, isCheckingSdCard,
+        // recordJpegOnly, setRecordJpegOnly, retired 21 September 2026 (see useStartDeployment)
         isMonitoring, handleMonitorDisconnect, handleStopMonitoring, isStoppingMonitoring,
         deploymentStartTime,
         // DFU control
@@ -147,6 +148,13 @@ export const StartMonitoringDetailsStep = () => {
         return warnings.some(w => w.includes('Camera Error') || w.includes('Camera system not enabled') || w.includes('Neural Network Error'))
     }, [initErrors.deviceHealth])
 
+    // A missing card blocks on its own since #303, and the blocker below says
+    // so instead of blaming the camera.
+    const hasSdCardError = useMemo(() => {
+        const warnings = initErrors.deviceHealth || []
+        return warnings.some(w => /no sd card/i.test(w))
+    }, [initErrors.deviceHealth])
+
     const renderProjectSettingsRight = useCallback((props: any) => (
         <Button {...props} icon="help-circle-outline" onPress={() => showHelp('Associated Project', 'This section shows the project linked to this device and its active features.\n\n🔄 Motion icon: Activity detection is enabled\n⏱ Clock icon: Time-lapse capture is enabled\n📡 Waves icon: LoRaWAN connectivity is enabled\n🛰 Satellite icon: GPS location is recorded in images\n🧠 Brain icon: An AI model is assigned for analysis\n⚡ Flash icon: The capture flash this project deploys, which also lights motion frames at night')}>
             <Text>Help</Text>
@@ -212,19 +220,21 @@ export const StartMonitoringDetailsStep = () => {
                     />
                 )}
 
-                {/* AI Processor Failure — Critical Blocker */}
+                {/* AI Processor Failure, or no SD card: the critical blocker */}
                 {aiProcessorFailed && (
                     <View style={{ backgroundColor: '#FFEBEE', marginBottom: 16, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#EF5350' }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                             <WWIcon source="alert-octagon" size={24} color="#C62828" />
                             <Text variant="titleSmall" style={{ color: '#C62828', marginLeft: 8, flex: 1, fontWeight: 'bold' }}>
-                                {hasCameraError ? 'Critical AI Processor Error' : 'AI Processor Not Responding'}
+                                {hasSdCardError ? 'No SD Card' : hasCameraError ? 'Critical AI Processor Error' : 'AI Processor Not Responding'}
                             </Text>
                         </View>
                         <Text variant="bodySmall" style={{ color: '#C62828', marginBottom: 8 }}>
-                            {hasCameraError 
-                                ? 'The AI processor has reported a critical camera or hardware error. Starting monitoring is blocked. Please check the camera module connections or hardware configuration.'
-                                : 'The AI processor (camera module) did not wake up after multiple attempts. The device cannot start monitoring without it. Please go back and try reconnecting to the device.'}
+                            {hasSdCardError
+                                ? 'The device reports no SD card. Every image and setting a deployment writes goes to the card, so monitoring cannot start without one. Insert a FAT32 card, then go back and reconnect.'
+                                : hasCameraError
+                                    ? 'The AI processor has reported a critical camera or hardware error. Starting monitoring is blocked. Please check the camera module connections or hardware configuration.'
+                                    : 'The AI processor (camera module) did not wake up after multiple attempts. The device cannot start monitoring without it. Please go back and try reconnecting to the device.'}
                         </Text>
                         <Button
                             mode="contained"
@@ -371,8 +381,10 @@ export const StartMonitoringDetailsStep = () => {
                     sdCardStatus={sdCardStatus}
                     handleBatteryCheck={handleBatteryCheck}
                     handleSdCardCheck={handleSdCardCheck}
-                    recordJpegOnly={recordJpegOnly}
-                    setRecordJpegOnly={setRecordJpegOnly}
+                    isCheckingBattery={isCheckingBattery}
+                    isCheckingSdCard={isCheckingSdCard}
+                    // recordJpegOnly={recordJpegOnly}
+                    // setRecordJpegOnly={setRecordJpegOnly}
                     isInitializing={isInitializing}
                     bleDeviceConnected={!!bleDevice?.connected}
                     theme={theme}

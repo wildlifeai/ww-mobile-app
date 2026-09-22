@@ -20,6 +20,16 @@ export type ConsoleAction =
     | { type: 'APPEND_LOGS_AND_AUTOMATION'; payload: { newEntries: ConsoleEntry[], isWaitingForCapture: boolean } };
 
 
+/**
+ * How much history the console keeps. The Redux log behind it holds 1000
+ * entries; this is what is drawn, and it stays bounded because the console
+ * remains mounted under every flow it opens and redraws on every BLE line.
+ */
+export const MAX_CONSOLE_ENTRIES = 500
+
+const keepLast = (entries: ConsoleEntry[]): ConsoleEntry[] =>
+    entries.length > MAX_CONSOLE_ENTRIES ? entries.slice(entries.length - MAX_CONSOLE_ENTRIES) : entries
+
 export const initialConsoleState: ConsoleState = {
     inputText: '',
     consoleHistory: [],
@@ -51,7 +61,7 @@ export const consoleReducer = (state: ConsoleState, action: ConsoleAction): Cons
             
         case 'APPEND_HISTORY': {
             const items = Array.isArray(action.payload) ? action.payload : [action.payload];
-            return { ...state, consoleHistory: [...state.consoleHistory, ...items] };
+            return { ...state, consoleHistory: keepLast([...state.consoleHistory, ...items]) };
         }
         
         case 'APPEND_LOGS_AND_AUTOMATION': {
@@ -91,7 +101,7 @@ export const consoleReducer = (state: ConsoleState, action: ConsoleAction): Cons
 
             return {
                 ...state,
-                consoleHistory: [...state.consoleHistory, ...uniqueHistoryToAdd]
+                consoleHistory: keepLast([...state.consoleHistory, ...uniqueHistoryToAdd])
             };
         }
 

@@ -27,6 +27,18 @@ file is the list of things that look like an app bug and are not, and the revers
   only when the image task starts, so the write lands at the next wake. `AI enable` and
   `AI disable` change both. To turn the camera on *now*, write op10 **and** send `AI enable`.
   The inverse of this trap is documented on the firmware side.
+- **A slot switch does not check that the camera for that image answers, and `AI slots`
+  will not tell you either.** On WILD-SIFK, 22 September 2026, `AI switchslot` to the RP3
+  slot was accepted (`Switched to slot 1 ('RP3 (day/colour)'). Reset scheduled.`), the image
+  booted, printed `Main camera not present at 0x1a` and `Camera system disabled.`, raised
+  self-test bit 8, and `AI slots` reported it running RP3 all the same. The Dev Deployment
+  Test's first camera-switch leg went on to transfer a model to a device that could not take
+  a picture. The IMX708 is fitted: it stayed silent at 0x1a for the first four minutes and
+  seven boots after the switch, then answered on every boot from 09:51:44, cause unknown
+  (unfiled). `slots` reports labels, not hardware, so nothing before the switch can know; the
+  dev deployment reads the post-boot self-test after the switch, and bit 8 switches back and
+  aborts. Any other flow that switches slots needs the same check, and a warm wake reports
+  0x0000 for a sensor that was missing at boot, so the check has to read the boot's own line.
 - **A selected flash does not mean a flash.** op13 only chooses the LED; the firmware fires it
   on a capture only when its last light decision, op25, was DARK, and the check after every
   capture rewrites op25. In a lit room the LED never fires whatever the app selected, and that
@@ -55,6 +67,50 @@ file is the list of things that look like an app bug and are not, and the revers
   in the loop the nRF parks in SELFTEST and drops every app command, so the console goes silent
   as well, and a `setop` inside the same window is acknowledged with `Set OpParam N = V` and
   never saved (#207), so that reply is not proof a value survived a sleep.
+- **A card put back into a running device stays missing until it is power cycled.** WILD-SIFK,
+  22 September 2026: the SD card was pulled with the Himax in DPD and put back, the next warm
+  boot printed `Mounting FatFS on SD card 	Card Ready` and then, 0.6 s later,
+  `SD card initialisation failed (reason 3)`, FatFS `FR_NOT_READY` from `disk_initialize`. The
+  card answers electrically but never reaches the identification state without a clean power
+  ramp. Self-test bit 11 stays set on every wake after that, so the app is right to keep the
+  blocker up, and repeating `selftest` will never clear it. Only a cold boot will. Expect the
+  same in the field whenever anyone swaps a card without cutting power; #325 is the copy fix.
+- **Ignore the battery percentage on a bench unit, it is reading the USB rail.** A WW500 powered
+  over USB on the bench reports numbers like `Battery = 3076mV 2%` that say nothing about any
+  cell, so a low reading there is not a reason to stop, charge anything or doubt a result.
+  Raising it as a risk mid-run has wasted time more than once. On the bench, only treat the
+  battery as real when the unit is deliberately running from a cell.
+
+## Screens and navigation
+
+- **The stack's header is `components/NavigationBar.tsx`, not the native one, so a header
+  option it does not render is dropped without a warning.** `headerRight` was dropped that
+  way until 21 September 2026 (#302): the screen set it, the type-check passed, and the phone
+  showed nothing. `headerTitleAlign: 'left'` was ignored the same way. Both are honoured now;
+  anything else (`headerTitle` components, `headerStyle`) still has to be added there before a
+  screen can rely on it. Check the phone, not the option name.
+- **A paper `Menu` that re-opens with the arrow up and nothing drawn is
+  `patches/react-native-paper+5.14.5.patch`, not the screen.** Every `WWSelect` is a
+  `react-native-paper-dropdown` over paper's `Menu`, and on Android (Fabric) the Menu's close
+  path animated a fade on a value whose view was already unmounted; the completion callback
+  did not come back, `prevRendered` stayed true, and the next open skipped `show()`. The
+  symptom was three taps to re-open any dropdown right after a selection, on every screen,
+  22 September 2026. The patch does the close bookkeeping at once and keeps one set of
+  back-button and dimensions listeners. Metro loads paper from `src/`, so the patch carries
+  `src/` and both `lib/` builds. If paper is upgraded, re-check the reopen before dropping it.
+
+- **A screen left in the stack under a flow keeps rendering, and the Engineer Console is
+  under every flow it opens.** Until 22 September 2026 `BleConsoleOutput` rebuilt its whole
+  history, every line a touchable with three texts in a plain ScrollView, on every BLE line.
+  By the thousandth line each line cost the JS thread about 1.3 s: the nRF sent `Wake`,
+  `Error bits` and `Set OpParam` within 0.8 s of a `setop` and the app received them 1.3 s
+  apart, so one `setop` took 6 s and a dev deployment start took 90 s for commands the device
+  answered in under a second. It is a FlatList of memoised rows now, capped at 500 entries,
+  and the console effect finds new lines by identity rather than by count, which had gone
+  silent once the Redux log hit its 1000-entry trim. The same cost is the likely reason #273
+  (the app a minute behind the device during a motion test). Before blaming the device or
+  BLE for a slow flow, measure the gap between consecutive `RAW_RX` lines in logcat: the
+  device's replies are timestamped on the nRF console, the app's arrivals in logcat.
 
 ## File transfer
 

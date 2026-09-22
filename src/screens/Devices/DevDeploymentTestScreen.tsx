@@ -4,10 +4,10 @@
  * Developer-only screen for testing monitoring with full parameter control.
  * Accessible from Engineer Console → Flows → "Dev Deployment Test".
  *
- * All settings are visible on a single scrollable page (no accordion).
- * Flash controls (op13 type + op9 brightness) come from the shared
- * FlashSelector, the same component the Capture Picture flow uses.
- * Project settings changes persist to the database.
+ * All settings are visible on a single scrollable page (no accordion). The
+ * capture method and the capture flash are the project's own fields, offered
+ * with the same choices as the project edit form (#301), and changes persist
+ * to the project. The camera is chosen here and switched at Start.
  *
  * Uses the existing end-monitoring flow (same as production).
  */
@@ -25,17 +25,25 @@ import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWButton } from '../../components/ui/WWButton'
 import { WWSelect } from '../../components/ui/WWSelect'
 import { WWText } from '../../components/ui/WWText'
+import { WWTextInput } from '../../components/ui/WWTextInput'
 import { WWIcon } from '../../components/ui/WWIcon'
 import { WWBleDisconnectedBanner } from '../../components/ui/WWBleDisconnectedBanner'
+import { DeviceHealthBanner } from '../../components/DeviceHealthBanner'
 import { RootStackParamList, AppParams } from '../../navigation/types'
 import { DeploymentMonitorView } from '../Deployments/components/DeploymentMonitorView'
 import { FinishProgressDialog } from './components/FinishProgressDialog'
-import { FlashSelector } from '../../components/device/FlashSelector'
 import { BatteryLevelCard } from '../Deployments/components/BatteryLevelCard'
 import { SdCardStatusCard } from '../Deployments/components/SdCardStatusCard'
-import { useDevDeployment } from './hooks/useDevDeployment'
-import { TEST_BIT_SAVE_BMP } from '../../hooks/useDeviceSettings'
+import { useDevDeployment, type DeployableCamera } from './hooks/useDevDeployment'
+import { CAMERA_VARIANT_LABELS } from '../../hooks/useCameraSwitch'
+import { FLASH_MODE_OPTIONS, FLASH_LED_OPTIONS, type ProjectFlashMode, type ProjectFlashLed } from '../../utils/projectFlash'
+// The Save BMP switch that used to sit under pictures per trigger, retired
+// 21 September 2026; see the commented-out block in the Pictures card.
+//   import { TEST_BIT_SAVE_BMP } from '../../hooks/useDeviceSettings'
 import { useExtendedTheme } from '../../theme'
+
+/** The AI model dropdown's "None" entry; WWSelect ignores an empty value. */
+const NO_MODEL = '__none__'
 
 export const DevDeploymentTestScreen = () => {
     const { colors, spacing } = useExtendedTheme()
@@ -50,17 +58,25 @@ export const DevDeploymentTestScreen = () => {
         locationName, setLocationName,
         cameraHeight, setCameraHeight,
         captureMethodOverride, setCaptureMethodOverride,
-        timelapseIntervalOverride, setTimelapseIntervalOverride,
+        timelapseIntervalText, setTimelapseIntervalText, timelapseInterval,
         motionSensitivityOverride, setMotionSensitivityOverride,
         aiModelIdOverride, setAiModelIdOverride,
         lorawanOverride, setLorawanOverride,
         recordGpsOverride, setRecordGpsOverride,
-        sensitivityOptions, aiModelOptions,
-        flashParams, setFlashParams,
-        numPictures, setNumPictures,
-        testModeBits, setTestModeBits,
+        captureMethodOptions, sensitivityOptions, aiModelOptions,
+        flashMode, setFlashMode,
+        flashLed, setFlashLed,
+        flashWindowStart, setFlashWindowStart,
+        flashWindowMinutes, setFlashWindowMinutes,
+        ledBrightnessText, setLedBrightnessText, ledBrightness,
+        numPicturesText, setNumPicturesText, numPictures,
+        //   testModeBits, setTestModeBits,
+        cameraChoice, setCameraChoice, activeCamera, cameraBusy, cameraStage,
         batteryLevel, sdCardStatus,
         handleBatteryCheck, handleSdCardCheck,
+        isCheckingBattery, isCheckingSdCard,
+        healthIssues, isCheckingHealth, recheckHealth, sdCardMissing,
+        activeDeployment, handleEndActiveDeployment, isEndingDeployment, dialogMode,
         submitting, deploymentStartTime,
         handleStartDeployment,
         isMonitoring, handleMonitorDisconnect, handleStopMonitoring, isStoppingMonitoring,
@@ -86,19 +102,6 @@ export const DevDeploymentTestScreen = () => {
             headerLeft: isMonitoring ? headerLeft : undefined,
         })
     }, [isMonitoring, navigation, headerLeft])
-
-    // --- Battery/SD help renderers ---
-    const renderBatteryHelp = useCallback((props: any) => (
-        <Button {...props} icon="help-circle-outline" onPress={() => {}}>
-            <Text>Check</Text>
-        </Button>
-    ), [])
-
-    const renderSdCardHelp = useCallback((props: any) => (
-        <Button {...props} icon="help-circle-outline" onPress={() => {}}>
-            <Text>Check</Text>
-        </Button>
-    ), [])
 
     // --- Monitoring view ---
     if (isMonitoring) {
@@ -144,6 +147,19 @@ export const DevDeploymentTestScreen = () => {
 
     const isConnected = !!bleDevice?.connected
 
+    // The pipeline reads the method by id: 1 activity, 2 timelapse, 3 mixed.
+    const showSensitivity = captureMethodOverride === 1 || captureMethodOverride === 3
+    const showTimelapseInterval = captureMethodOverride === 2 || captureMethodOverride === 3
+
+    // What the Camera card says under its control.
+    const cameraNote = cameraBusy
+        ? (cameraStage || 'Checking cameras…')
+        : activeCamera === 'unknown'
+            ? 'Reading which camera the device is running…'
+            : cameraChoice && cameraChoice !== activeCamera
+                ? `Running ${CAMERA_VARIANT_LABELS[activeCamera]}. Start switches to ${CAMERA_VARIANT_LABELS[cameraChoice]} first, about 30 seconds.`
+                : `Running ${CAMERA_VARIANT_LABELS[activeCamera]}.`
+
     return (
         <WWScreenView style={styles.screenView}>
             <ScrollView contentContainerStyle={[styles.content, { gap: spacing }]} keyboardShouldPersistTaps="handled">
@@ -151,11 +167,45 @@ export const DevDeploymentTestScreen = () => {
                 {/* Connection status banner */}
                 <WWBleDisconnectedBanner connected={isConnected} dfuInProgress={!!bleDevice?.dfuInProgress} />
 
+                {/* Hardware health from the self-test broadcast. A missing SD
+                    card also disables Start below (#303). */}
+                <DeviceHealthBanner issues={healthIssues} onRecheck={() => { recheckHealth() }} isChecking={isCheckingHealth} />
+
+                {/* One deployment per device: while the database holds an
+                    active one for this device, Start stays off and the way
+                    out is to end it, here, with the link kept. */}
+                {activeDeployment && (
+                    <Card style={[styles.card, { backgroundColor: colors.errorContainer }]}>
+                        <Card.Title
+                            title="Already deployed"
+                            titleStyle={{ color: colors.onErrorContainer }}
+                            subtitle={`${activeDeployment.locationName || activeDeployment.name || 'Unknown site'}${activeDeployment.deploymentStart ? `, since ${new Date(activeDeployment.deploymentStart).toLocaleString()}` : ''}`}
+                            subtitleStyle={{ color: colors.onErrorContainer }}
+                            subtitleNumberOfLines={2}
+                        />
+                        <Card.Content style={styles.cardContent}>
+                            <Text style={{ color: colors.onErrorContainer }}>
+                                A device carries one deployment at a time. End this one before starting another.
+                            </Text>
+                            <Button
+                                mode="contained"
+                                buttonColor={colors.error}
+                                textColor={colors.onError}
+                                onPress={handleEndActiveDeployment}
+                                loading={isEndingDeployment}
+                                disabled={isEndingDeployment || submitting || !isConnected}
+                            >
+                                {isEndingDeployment ? 'Ending…' : isConnected ? 'End deployment' : 'Connect to end it'}
+                            </Button>
+                        </Card.Content>
+                    </Card>
+                )}
+
                 {/* ═══════════════════════════════════════ */}
                 {/* 1. PROJECT SETTINGS */}
                 {/* ═══════════════════════════════════════ */}
                 <Card style={styles.card}>
-                    <Card.Title title="Project Settings" subtitle="Changes persist to project DB" />
+                    <Card.Title title="Project Settings" />
                     <Card.Content style={styles.cardContent}>
                         <WWSelect
                             label="Project"
@@ -167,49 +217,44 @@ export const DevDeploymentTestScreen = () => {
 
                         <View style={styles.spacer} />
 
-                        <WWText variant="labelLarge">Capture Method</WWText>
-                        <SegmentedButtons
-                            value={captureMethodOverride?.toString() || '1'}
-                            onValueChange={(val) => setCaptureMethodOverride(parseInt(val, 10))}
-                            buttons={[
-                                { value: '1', label: 'Activity' },
-                                { value: '2', label: 'Timelapse' },
-                                { value: '3', label: 'Mixed' },
-                            ]}
-                            style={styles.segmented}
+                        {/* The project form's capture method fields, with the
+                            same reference data, so what is tried here is what
+                            the project can be set to. */}
+                        <WWSelect
+                            label="Capture Method"
+                            value={captureMethodOverride?.toString() || ''}
+                            options={captureMethodOptions.map(m => ({ label: m.value, value: m.id.toString() }))}
+                            onChange={(val) => setCaptureMethodOverride(parseInt(val, 10))}
+                            disabled={submitting}
                         />
 
-                        {(captureMethodOverride === 2 || captureMethodOverride === 3) && (
+                        {showSensitivity && (
                             <View style={styles.spacer}>
-                                <TextInput
-                                    label="Timelapse Interval (seconds)"
-                                    value={timelapseIntervalOverride?.toString() || '300'}
-                                    onChangeText={(t) => {
-                                        const v = parseInt(t.replace(/[^0-9]/g, ''), 10)
-                                        setTimelapseIntervalOverride(isNaN(v) ? 0 : v)
-                                    }}
-                                    mode="outlined"
-                                    keyboardType="numeric"
-                                />
+                                {sensitivityOptions.length > 0 ? (
+                                    <WWSelect
+                                        label="Motion Sensitivity"
+                                        value={motionSensitivityOverride?.toString() || ''}
+                                        options={sensitivityOptions.map(s => ({ label: s.value, value: s.id.toString() }))}
+                                        onChange={(val) => setMotionSensitivityOverride(parseInt(val, 10))}
+                                        disabled={submitting}
+                                    />
+                                ) : (
+                                    <Text variant="bodySmall" style={styles.hint}>Loading sensitivities…</Text>
+                                )}
                             </View>
                         )}
 
-                        {(captureMethodOverride === 1 || captureMethodOverride === 3) && (
+                        {showTimelapseInterval && (
                             <View style={styles.spacer}>
-                                <WWText variant="labelLarge">Motion Sensitivity</WWText>
-                                {sensitivityOptions.length > 0 ? (
-                                    <SegmentedButtons
-                                        value={motionSensitivityOverride?.toString() || ''}
-                                        onValueChange={(val) => setMotionSensitivityOverride(parseInt(val, 10))}
-                                        buttons={sensitivityOptions.map(s => ({
-                                            value: s.id.toString(),
-                                            label: s.value,
-                                        }))}
-                                        style={styles.segmented}
-                                    />
-                                ) : (
-                                    <Text variant="bodySmall" style={{ opacity: 0.6 }}>Loading sensitivities…</Text>
-                                )}
+                                <TextInput
+                                    label="Time-lapse Interval (seconds)"
+                                    value={timelapseIntervalText}
+                                    onChangeText={(t) => setTimelapseIntervalText(t.replace(/[^0-9]/g, ''))}
+                                    onBlur={() => setTimelapseIntervalText(String(timelapseInterval))}
+                                    mode="outlined"
+                                    keyboardType="numeric"
+                                    disabled={submitting}
+                                />
                             </View>
                         )}
 
@@ -242,20 +287,23 @@ export const DevDeploymentTestScreen = () => {
                 {/* 1b. AI & CONNECTIVITY SETTINGS */}
                 {/* ═══════════════════════════════════════ */}
                 <Card style={styles.card}>
-                    <Card.Title title="AI & Connectivity" subtitle="Model selection and network options" />
+                    <Card.Title title="AI & Connectivity" />
                     <Card.Content style={styles.cardContent}>
                         <WWText variant="labelLarge">AI Model</WWText>
+                        {/* "None" is a sentinel, the same as the project form:
+                            WWSelect drops an empty value, so an empty string
+                            could never be chosen. */}
                         <WWSelect
                             label="Model"
-                            value={aiModelIdOverride || ''}
+                            value={aiModelIdOverride || NO_MODEL}
                             options={[
-                                { label: 'None (no AI)', value: '' },
+                                { label: 'None (no AI)', value: NO_MODEL },
                                 ...aiModelOptions.map(m => ({
                                     label: `${m.name} (${m.version})`,
                                     value: m.id,
                                 })),
                             ]}
-                            onChange={(val) => setAiModelIdOverride(val || null)}
+                            onChange={(val) => setAiModelIdOverride(val === NO_MODEL ? null : val)}
                             disabled={submitting}
                         />
 
@@ -288,39 +336,120 @@ export const DevDeploymentTestScreen = () => {
                 </Card>
 
                 {/* ═══════════════════════════════════════ */}
-                {/* 2. FLASH SETTINGS */}
+                {/* 2. CAMERA */}
                 {/* ═══════════════════════════════════════ */}
+                {/* One firmware slot per camera. The switch happens at Start,
+                    as the first step, so the control only records the choice
+                    here (#301). Labelled by the picture, not the sensor, the
+                    same as everywhere else. */}
                 <Card style={styles.card}>
-                    <Card.Title title="Flash Settings" subtitle="Op 13 (LED type) + Op 9 (brightness)" />
+                    <Card.Title title="Camera" subtitle="Switched at Start when it is not the one running" />
                     <Card.Content style={styles.cardContent}>
-                        <FlashSelector
-                            flashLed={flashParams.flashLed}
-                            onFlashLedChange={(v) => setFlashParams(prev => ({ ...prev, flashLed: v }))}
-                            ledBrightness={flashParams.ledBrightness}
-                            onLedBrightnessChange={(v) => setFlashParams(prev => ({ ...prev, ledBrightness: v }))}
-                            disabled={submitting}
+                        <SegmentedButtons
+                            value={cameraChoice ?? ''}
+                            onValueChange={(v) => setCameraChoice(v as DeployableCamera)}
+                            buttons={[
+                                { value: 'RP3', label: CAMERA_VARIANT_LABELS.RP3, disabled: submitting || cameraBusy },
+                                { value: 'HM0360', label: CAMERA_VARIANT_LABELS.HM0360, disabled: submitting || cameraBusy },
+                            ]}
+                            style={styles.segmented}
                         />
+                        <Text variant="bodySmall" style={styles.hint}>{cameraNote}</Text>
                     </Card.Content>
                 </Card>
 
                 {/* ═══════════════════════════════════════ */}
-                {/* 2b. CAPTURE DIAGNOSTICS */}
+                {/* 3. CAPTURE FLASH */}
+                {/* ═══════════════════════════════════════ */}
+                {/* The project form's Capture Flash card, same choices, same
+                    columns (op34, op13, and op35/op36 for the window), plus
+                    the brightness (op9) that has no project column. */}
+                <Card style={styles.card}>
+                    <Card.Title title="Capture Flash" />
+                    <Card.Content style={styles.cardContent}>
+                        <WWSelect
+                            label="Flash Mode"
+                            value={flashMode}
+                            options={FLASH_MODE_OPTIONS}
+                            onChange={(val) => setFlashMode(val as ProjectFlashMode)}
+                            disabled={submitting}
+                        />
+
+                        {flashMode !== 'off' && (
+                            <WWSelect
+                                label="Flash LED"
+                                value={flashLed}
+                                options={FLASH_LED_OPTIONS}
+                                onChange={(val) => setFlashLed(val as ProjectFlashLed)}
+                                disabled={submitting}
+                            />
+                        )}
+
+                        {flashMode === 'time_of_day' && (
+                            <>
+                                <WWTextInput
+                                    label="Window starts (UTC, HH:MM)"
+                                    value={flashWindowStart}
+                                    onChange={setFlashWindowStart}
+                                    mode="outlined"
+                                    placeholder="e.g., 18:00"
+                                    disabled={submitting}
+                                />
+                                <WWTextInput
+                                    label="Window length (minutes)"
+                                    value={flashWindowMinutes}
+                                    onChange={setFlashWindowMinutes}
+                                    mode="outlined"
+                                    keyboardType="numeric"
+                                    placeholder="e.g., 720"
+                                    disabled={submitting}
+                                />
+                                <Text variant="bodySmall" style={styles.hint}>
+                                    The camera runs on UTC, so this window is in UTC too. It may wrap past midnight.
+                                </Text>
+                            </>
+                        )}
+
+                        {/* op9, written to the device only: it has no project
+                            column, so a real deployment uses the factory value. */}
+                        {flashMode !== 'off' && (
+                            <TextInput
+                                label="LED Brightness (0-100%)"
+                                value={ledBrightnessText}
+                                onChangeText={(t) => setLedBrightnessText(t.replace(/[^0-9]/g, ''))}
+                                onBlur={() => setLedBrightnessText(String(ledBrightness))}
+                                mode="outlined"
+                                keyboardType="numeric"
+                                disabled={submitting}
+                            />
+                        )}
+                    </Card.Content>
+                </Card>
+
+                {/* ═══════════════════════════════════════ */}
+                {/* 4. PICTURES PER TRIGGER */}
                 {/* ═══════════════════════════════════════ */}
                 <Card style={styles.card}>
-                    <Card.Title title="Capture Diagnostics" subtitle="Op 18 (test bits) + Op 5 (pictures per trigger)" />
+                    <Card.Title title="Pictures per Trigger" />
                     <Card.Content style={styles.cardContent}>
-                        <WWText variant="labelLarge">Pictures per Trigger</WWText>
+                        {/* Text as typed, so the field can be emptied and
+                            retyped; the number is clamped in the hook and the
+                            field is put back to it on blur. */}
                         <TextInput
-                            label="Num Pictures (default: 2 for JPG+BMP)"
-                            value={numPictures.toString()}
-                            onChangeText={(t) => {
-                                const v = parseInt(t.replace(/[^0-9]/g, ''), 10)
-                                setNumPictures(isNaN(v) ? 2 : v)
-                            }}
+                            label="Pictures per trigger"
+                            value={numPicturesText}
+                            onChangeText={(t) => setNumPicturesText(t.replace(/[^0-9]/g, ''))}
+                            onBlur={() => setNumPicturesText(String(numPictures))}
                             mode="outlined"
                             keyboardType="numeric"
                             disabled={submitting}
                         />
+
+                        {/* Save BMP (alternating JPG/BMP), TEST_MODE_BITS bit 1.
+                            Retired 21 September 2026 (Victor): a quality trial
+                            nobody compared any more, at two pictures per trigger.
+                            Kept as a comment, with its hook state, until it is
+                            certain nothing wants it back.
 
                         <View style={styles.spacer} />
 
@@ -337,20 +466,21 @@ export const DevDeploymentTestScreen = () => {
                                     // eslint-disable-next-line no-bitwise
                                     setTestModeBits((prev: number) => enabled ? (prev | TEST_BIT_SAVE_BMP) : (prev & ~TEST_BIT_SAVE_BMP))
                                     if (enabled && numPictures % 2 !== 0) {
-                                        setNumPictures((prev) => prev + 1)
+                                        setNumPicturesText(String(numPictures + 1))
                                     }
                                 }}
                                 disabled={submitting}
                             />
                         </View>
+                        */}
                     </Card.Content>
                 </Card>
 
                 {/* ═══════════════════════════════════════ */}
-                {/* 3. LOCATION & CAMERA */}
+                {/* 5. LOCATION */}
                 {/* ═══════════════════════════════════════ */}
                 <Card style={styles.card}>
-                    <Card.Title title="Location & Camera" />
+                    <Card.Title title="Location" />
                     <Card.Content style={styles.cardContent}>
                         <TextInput
                             label="Site Name"
@@ -374,17 +504,18 @@ export const DevDeploymentTestScreen = () => {
                 </Card>
 
                 {/* ═══════════════════════════════════════ */}
-                {/* 4. DEVICE HEALTH */}
+                {/* 6. DEVICE HEALTH */}
                 {/* ═══════════════════════════════════════ */}
                 <Card style={styles.card}>
                     <Card.Title title="Device Health" />
                     <Card.Content style={styles.cardContent}>
+                        {/* No help buttons here: on this screen they opened nothing. */}
                         <BatteryLevelCard
                             batteryLevel={batteryLevel}
                             handleBatteryCheck={handleBatteryCheck}
                             isInitializing={false}
                             bleDeviceConnected={isConnected}
-                            renderBatteryHelp={renderBatteryHelp}
+                            isChecking={isCheckingBattery}
                             styles={healthStyles}
                         />
                         <Divider style={styles.divider} />
@@ -393,14 +524,14 @@ export const DevDeploymentTestScreen = () => {
                             handleSdCardCheck={handleSdCardCheck}
                             isInitializing={false}
                             bleDeviceConnected={isConnected}
-                            renderSdCardHelp={renderSdCardHelp}
+                            isChecking={isCheckingSdCard}
                             styles={healthStyles}
                         />
                     </Card.Content>
                 </Card>
 
                 {/* ═══════════════════════════════════════ */}
-                {/* 5. NOTES */}
+                {/* 7. NOTES */}
                 {/* ═══════════════════════════════════════ */}
                 <Card style={styles.card}>
                     <Card.Title title="Notes" />
@@ -412,6 +543,8 @@ export const DevDeploymentTestScreen = () => {
                             mode="outlined"
                             multiline
                             numberOfLines={3}
+                            textAlignVertical="top"
+                            style={styles.textArea}
                         />
                     </Card.Content>
                 </Card>
@@ -424,10 +557,12 @@ export const DevDeploymentTestScreen = () => {
                         mode="contained"
                         onPress={handleStartDeployment}
                         loading={submitting}
-                        disabled={!isConnected || submitting || !project}
-                        style={[styles.startButton, { backgroundColor: isConnected && project ? '#4CAF50' : undefined }]}
+                        disabled={!isConnected || submitting || !project || sdCardMissing || !!activeDeployment}
+                        style={[styles.startButton, { backgroundColor: isConnected && project && !sdCardMissing && !activeDeployment ? '#4CAF50' : undefined }]}
                     >
-                        <Text style={{ color: 'white' }}>Start Dev Deployment</Text>
+                        <Text style={{ color: 'white' }}>
+                            {activeDeployment ? 'Already deployed' : sdCardMissing ? 'No SD card' : 'Start Dev Deployment'}
+                        </Text>
                     </WWButton>
                 </View>
 
@@ -440,8 +575,8 @@ export const DevDeploymentTestScreen = () => {
                 logs={finishLogs}
                 isComplete={isStartSuccess}
                 onDismiss={handleFinishDismiss}
-                loadingTitle="Starting Dev Deployment"
-                successTitle="Dev Deployment Started"
+                loadingTitle={dialogMode === 'end' ? 'Ending Deployment' : 'Starting Dev Deployment'}
+                successTitle={dialogMode === 'end' ? 'Deployment Ended' : 'Dev Deployment Started'}
                 hideOkButton={true}
             />
         </WWScreenView>
@@ -470,6 +605,15 @@ const styles = StyleSheet.create({
     },
     divider: {
         marginVertical: 12,
+    },
+    hint: {
+        opacity: 0.6,
+        marginTop: 4,
+    },
+    // Three lines of notes. numberOfLines alone sets nothing on the outlined
+    // input; the same minimum as the other notes fields.
+    textArea: {
+        minHeight: 100,
     },
     featureRow: {
         flexDirection: 'row',
