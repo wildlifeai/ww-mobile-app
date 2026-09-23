@@ -80,6 +80,15 @@ file is the list of things that look like an app bug and are not, and the revers
   cell, so a low reading there is not a reason to stop, charge anything or doubt a result.
   Raising it as a risk mid-run has wasted time more than once. On the bench, only treat the
   battery as real when the unit is deliberately running from a cell.
+- **`AI md N` never answers over BLE, and the 5 s the app then waits is the nRF, not the
+  Himax.** The Himax replies `MD sensitivity set to N` within 0.2 s, but the nRF's prefix table
+  of Himax-originated messages matches it against `"MD "`, the motion-wake announcement, raises
+  `Wake (MD)` while it is still waiting for that very reply, logs `UNHANDLED event Wake (MD) in
+  PROCESSING` and drops it (ww-hardware #52; nRF 0.30.51, 23 September 2026). Every motion
+  test pays the `md` command's full timeout, on both cards. On the RP3 slot the command is
+  refused with `Unrecognised` instead (Seeed #211), and that reply gets through. The level is
+  persisted in op17 either way, so a flow that has just read the op table can skip the command
+  when it already holds the level (#272).
 
 ## Screens and navigation
 
@@ -107,10 +116,12 @@ file is the list of things that look like an app bug and are not, and the revers
   apart, so one `setop` took 6 s and a dev deployment start took 90 s for commands the device
   answered in under a second. It is a FlatList of memoised rows now, capped at 500 entries,
   and the console effect finds new lines by identity rather than by count, which had gone
-  silent once the Redux log hit its 1000-entry trim. The same cost is the likely reason #273
-  (the app a minute behind the device during a motion test). Before blaming the device or
-  BLE for a slow flow, measure the gap between consecutive `RAW_RX` lines in logcat: the
-  device's replies are timestamped on the nRF console, the app's arrivals in logcat.
+  silent once the Redux log hit its 1000-entry trim. The same cost was #273, the app a minute
+  behind the device during a motion test: re-measured on 23 September 2026 with the fix in,
+  the app received each frame 0.07 to 0.65 s after the Himax printed it and "Captured" 0.25 s
+  after it was sent, at 1 s and at 0.5 s intervals. Before blaming the device or BLE for a
+  slow flow, measure the gap between consecutive `RAW_RX` lines in logcat: the device's
+  replies are timestamped on the nRF console, the app's arrivals in logcat.
 
 ## File transfer
 
