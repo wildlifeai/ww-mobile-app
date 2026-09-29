@@ -40,4 +40,14 @@ describe('classifyForMonitor', () => {
     expect(classifyForMonitor('Wake (Timer)')).toMatchObject({ category: 'timelapse' })
     expect(classifyForMonitor('Wake (Timer)')?.isHidden).toBeUndefined()
   })
+
+  // The keep-alive reply. It says how long the link was quiet, so it has to
+  // follow the keep-alive interval: it read "50 seconds" for a 58 s ping and
+  // would have gone on saying so at 30 s (#312).
+  it('words the keep-alive reply from the keep-alive interval', () => {
+    expect(classifyForMonitor('heartbeat is 12h')).toMatchObject({
+      category: 'selftest_ok',
+      label: 'No motion in the last 30 seconds',
+    })
+  })
 })

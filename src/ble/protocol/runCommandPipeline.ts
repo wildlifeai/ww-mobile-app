@@ -20,20 +20,33 @@ import { opCache } from './opCache';
  *   - `DEVICE_BUSY` signal → reject (retried by the pipeline)
  *   - `DEVICE_DISCONNECTED` signal → reject (non-retryable)
  *   - timeout → reject (retried by the pipeline if eligible)
+ *   - `signal` aborted → reject with COMMAND_CANCELLED (non-retryable). The
+ *     transport aborts it whenever it cancels the task, so the listeners and
+ *     the timeout come off at once instead of outliving the caller (#257).
  */
 function runCommand<T>(
   peripheral: ExtendedPeripheral,
-  commandConstructor: () => CommandContext<T>
+  commandConstructor: () => CommandContext<T>,
+  signal?: AbortSignal
 ): Promise<T> {
   const context = commandConstructor();
 
   return new Promise((resolve, reject) => {
+    // Cancelled before it started, for example between two retries: send nothing.
+    if (signal?.aborted) {
+      reject(new Error('COMMAND_CANCELLED'));
+      return;
+    }
+
     let isResolved = false;
     let timeoutHandle: NodeJS.Timeout;
+
+    const onAbort = () => idempotentReject(new Error('COMMAND_CANCELLED'));
 
     const cleanup = () => {
       bleEventBus.removeListener('textLine', handleEvent);
       bleEventBus.removeListener('deviceSignal', handleDeviceSignal);
+      signal?.removeEventListener('abort', onAbort);
       clearTimeout(timeoutHandle);
     };
 
@@ -90,6 +103,7 @@ function runCommand<T>(
     // 1. REGISTER BEFORE ACT: Listeners must attach before bytes are placed on the transport
     bleEventBus.on('textLine', handleEvent);
     bleEventBus.on('deviceSignal', handleDeviceSignal);
+    signal?.addEventListener('abort', onAbort);
 
     // 2. TIMEOUT PROTECTION
     const timeoutThreshold = context.timeoutMs ?? BLE_PROTOCOL_TIMINGS.DEFAULT_RESPONSE_TIMEOUT_MS;
@@ -136,6 +150,12 @@ function isRetryable(error: Error): boolean {
     return false;
   }
 
+  // Cancelled by the transport or the caller. A retry here is exactly the
+  // write after cancellation that the abort exists to prevent.
+  if (msg.includes('CANCELLED')) {
+    return false;
+  }
+
   // Configuration errors — device is in an invalid state that won't self-resolve
   if (msg.includes('CONFIG_ERROR')) {
     return false;
@@ -168,7 +188,7 @@ function isRetryable(error: Error): boolean {
 export async function runCommandPipeline<T>(
   peripheral: ExtendedPeripheral,
   commandConstructor: () => CommandContext<T>,
-  options?: { maxRetries?: number }
+  options?: { maxRetries?: number; signal?: AbortSignal }
 ): Promise<T> {
   const context = commandConstructor();
   const maxRetries = options?.maxRetries ?? context.retryPolicy?.maxRetries ?? BLE_PROTOCOL_RETRIES.DEFAULT_MAX_RETRIES;
@@ -194,7 +214,7 @@ export async function runCommandPipeline<T>(
 
     while (true) {
       try {
-        const result = await runCommand(peripheral, commandConstructor);
+        const result = await runCommand(peripheral, commandConstructor, options?.signal);
         // One choke point for the op cache, so every caller benefits and no
         // writer can forget it: `getops` fills it, `setop` patches the value
         // the device has just confirmed (the command only resolves on that

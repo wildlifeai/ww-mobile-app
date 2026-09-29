@@ -28,6 +28,13 @@ day are in [traps.md](traps.md).
   add one, open the modal and confirm it renders.
 - **`commandQueue` does not exist.** The queue is `bleTransportController.ts`. Old docs and
   comments still name the former.
+- **Cancelling stops the command, and frees the queue at once.** Pass `signal` to
+  `session.execute`. The transport aborts the task's own signal wherever it marks it cancelled,
+  `clearAll()` included, and `runCommand` drops its listeners and timeout (#257). Before that a
+  cancelled command lived on for its full timeout, two minutes for `aifirmware`, and a retryable
+  one could write again after a disconnect. The flip side: a cancelled command that was already
+  sent no longer holds the queue, so the next one can reach the nRF while the Himax is still
+  answering. Cancel when giving up on the device, not to tidy away a poll about to finish.
 
 ## Connecting, sleeping, waking
 
@@ -37,10 +44,19 @@ day are in [traps.md](traps.md).
   heartbeat path. A deferred sleep-timer restore was briefly wired into the connect path on
   3 September 2026 and removed the same day for this reason. It now waits for the next hold.
 - **The device sleeps aggressively.** Deep Power Down after about 1000 ms of inactivity, and
-  the BLE link drops after about 60 s, which is why the heartbeat is 58 s. After *any*
+  the BLE link drops after 60 s with nothing sent either way. The heartbeat pings after 30 s of
+  air silence, `HEARTBEAT_IDLE_MS`: at 58 s a JS timer running late lost the link six times in
+  one session (#312). Only air traffic restarts it, because only that restarts the nRF's timer,
+  and the RSSI read it falls back to while paused never reaches the nRF at all. After *any*
   disconnect assume the device is asleep and not advertising until woken by button, motion or
   timer, and budget minutes: after a timeout disconnect on 4 September 2026 the nRF did not
   advertise again for two and a half, and a connect attempt inside that gap simply timed out.
+- **Ending a deployment does not wait on a sleeping camera.** While monitoring, the Himax may not
+  answer the wake at all, and every step then sat out its timeout and retries: about 40 s under a
+  "Disconnecting" spinner (#293). `session/endDeploymentSession.ts` probes once, skips every later
+  `AI` command after the first timeout, caps the lot at 20 s, and lets `dis` through because the
+  nRF answers it. The operator is told the camera was left running. Reuse it for any other flow
+  whose device steps are optional.
 - **A stale scan entry will hang you.** Auto-connect only trusts a device seen in the current
   scan session, the `lastSeen` gate. A just-disconnected device lingers in cache and
   connecting to it hangs until timeout.

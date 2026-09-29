@@ -39,7 +39,9 @@ export const DeploymentMonitorView: React.FC<Props> = ({
 }) => {
   const { colors } = useExtendedTheme()
   const { bottom } = useSafeAreaInsets()
-  const { stats, activityLog } = useDeploymentMonitor(device, deploymentStartTime)
+  // No image-count polls while the deployment is ending: they share the queue
+  // with the end sequence, and one held its `dis` up by 16 s (#293).
+  const { stats, activityLog } = useDeploymentMonitor(device, deploymentStartTime, { pausePolling: isStoppingMonitoring })
 
   const [isEnteringNotes, setIsEnteringNotes] = useState(false)
   const [endNotes, setEndNotes] = useState('')
