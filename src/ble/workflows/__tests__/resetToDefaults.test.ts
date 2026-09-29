@@ -133,3 +133,27 @@ describe('executeResetToDefaults resulting ops', () => {
         expect(result).toBeNull()
     })
 })
+
+/**
+ * A full reset zeroes the position in the firmware's six-field format. The
+ * bare '0,0,0' it used to send was one token the parser discarded, so the
+ * previous deployment's real coordinates stayed in EXIF (#315).
+ */
+describe('executeResetToDefaults GPS', () => {
+    it('zeroes GPS in the format the firmware parses', async () => {
+        const writes: string[] = []
+        const session = {
+            execute: jest.fn(async (build: any) => {
+                const command = typeof build === 'function' ? build() : build
+                writes.push(command?.build?.() ?? '')
+                return true
+            }),
+        }
+
+        await executeResetToDefaults(session as any, {
+            currentOps: Array.from({ length: 37 }, (_, index) => (FACTORY_DEFAULTS[index] ?? 0).toString()),
+        })
+
+        expect(writes).toContain(`AI setgps 0°0'0.00"_N_0°0'0.00"_E_0.00_Above`)
+    })
+})

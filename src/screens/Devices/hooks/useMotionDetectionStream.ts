@@ -8,6 +8,7 @@ import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { bleTransport } from '../../../ble/protocol/bleTransportController'
 import { createBleSession } from '../../../ble/session/createBleSession'
 import { flashHold } from '../../../ble/session/flashHold'
+import { keepAwake } from '../../../ble/session/keepAwake'
 import { OP_PARAMETER } from '../../../hooks/useDeviceSettings'
 
 /** Maximum number of frames per test run. */
@@ -30,6 +31,24 @@ const ACTIVE_CHAR = '█'
 const INACTIVE_CHAR = '·'
 const EMPTY_GRID = Array(16).fill(INACTIVE_CHAR.repeat(16)).join('\n')
 
+/**
+ * Undo what a test run set up: op18 back to 0, then the op8 and flash holds.
+ * Each step runs whether or not the one before it landed, and a hold that
+ * cannot be written back stays owed in keepAwake or flashHold for the next
+ * flow on that device (#271, #320). Every way out of a test ends here.
+ */
+const cleanUpAfterTest = (device: ExtendedPeripheral, why: string): Promise<void> => {
+    const session = createBleSession(device)
+    return session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TEST_MODE_BITS, value: 0 }))
+        .then(
+            () => log(`[MotionDetectionStream] TEST_MODE_BITS reset to 0 (${why})`),
+            (e: any) => logWarn(`[MotionDetectionStream] Failed to reset test mode bits (${why}):`, e)
+        )
+        .then(() => keepAwake.release(session, device.id))
+        .then(() => flashHold.release(session, device.id))
+        .catch((e: any) => logWarn(`[MotionDetectionStream] Failed to release the test holds (${why}):`, e))
+}
+
 /** A snapshot of one frame's motion detection grid. */
 export interface FrameSnapshot {
     frameIndex: number
@@ -47,7 +66,6 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
     const [motionDetected, setMotionDetected] = useState(false)
     const [frameCount, setFrameCount] = useState(0)
     const motionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-    const originalDpdRef = useRef<number | null>(null)
 
     // Pipeline status — shows the user what the system is doing at each stage
     const [statusMessage, setStatusMessage] = useState<string>('')
@@ -121,21 +139,7 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
 
                 // Reset test mode bits so subsequent captures save JPEG files.
                 // Done async after DPD — will briefly wake the device.
-                if (device) {
-                    const cleanupSession = createBleSession(device)
-                    cleanupSession.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TEST_MODE_BITS, value: 0 }))
-                        .then(() => {
-                            log('[MotionDetectionStream] TEST_MODE_BITS reset to 0')
-                            if (originalDpdRef.current !== null) {
-                                const originalDpd = originalDpdRef.current
-                                originalDpdRef.current = null
-                                return cleanupSession.execute(() => commandRegistry.setop({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: originalDpd }))
-                                    .then(() => log(`[MotionDetectionStream] INTERVAL_BEFORE_DPD reset to ${originalDpd}`))
-                            }
-                        })
-                        .then(() => flashHold.release(cleanupSession, device.id))
-                        .catch((e: any) => logWarn('[MotionDetectionStream] Failed to reset test mode bits:', e))
-                }
+                if (device) cleanUpAfterTest(device, 'done')
             }
 
             // Detect firmware errors that prevent capture
@@ -234,6 +238,18 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
             bleEventBus.removeListener('textLine', messageListener)
         }
     }, [device])
+
+    // Leaving the screen mid-test ends the test. The listener above goes with
+    // the screen, so "Captured" would never be seen, and op18 = 8 and the op8
+    // hold would stay behind with nothing left to clean them up (#271).
+    const deviceRef = useRef(device)
+    deviceRef.current = device
+    useEffect(() => () => {
+        if (activeRef.current && deviceRef.current) {
+            activeRef.current = false
+            cleanUpAfterTest(deviceRef.current, 'left the screen')
+        }
+    }, [])
 
     /**
      * Convert 32 hex bytes into a precomputed 16-line display string.
@@ -356,21 +372,22 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                     .catch((e: any) => logWarn('[MotionDetectionStream] Could not arm the flash for the test:', e))
             }
 
-            // 1d. Prevent DPD during test if interval > 1000ms
-            const currentDpd = currentOps ? parseInt(currentOps[OP_PARAMETER.INTERVAL_BEFORE_DPD] ?? '1000', 10) : -1
+            // 1d. Keep the device awake between test frames. Through keepAwake,
+            // not a ref: op8 lives in CONFIG.TXT and applies in the field, and a
+            // ref died with a dropped link or a killed app, leaving the device
+            // awake after every motion capture (#271). keepAwake remembers the
+            // original on disk and puts it back on the next hold or entry.
+            // It reads op8 from the op cache the getops above just filled.
             const requiredDpd = Math.max(1000, intervalMs + 2000)
-            if (currentDpd !== -1 && currentDpd < requiredDpd) {
-                log(`[MotionDetectionStream] Setting INTERVAL_BEFORE_DPD=${requiredDpd} to prevent sleep during test`)
-                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: requiredDpd }))
-                originalDpdRef.current = currentDpd
-            } else {
-                originalDpdRef.current = null
+            if (currentOps) {
+                await keepAwake.acquire(session, device.id, requiredDpd)
             }
 
             // Check before firing md
             if (!activeRef.current) {
                 log('[MotionDetectionStream] Start aborted — stop was called during setup.')
-                session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TEST_MODE_BITS, value: 0 })).catch(() => {})
+                // stopTest's cleanup may have run before these holds were taken
+                cleanUpAfterTest(device, 'aborted')
                 return
             }
 
@@ -439,10 +456,13 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
 
             if (!captureConfirmed) {
                 log('[MotionDetectionStream] All capture attempts failed')
+                // A stop breaks the loop too, and stopTest has cleaned up already
+                const stoppedByUser = !activeRef.current
                 activeRef.current = false
                 setIsTesting(false)
                 setStatusMessage('')
                 setErrorMessage('Capture command not acknowledged by device after 4 attempts.')
+                if (!stoppedByUser) cleanUpAfterTest(device, 'no capture')
                 return
             }
 
@@ -456,6 +476,7 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
             setIsTesting(false)
             setStatusMessage('')
             setErrorMessage(`Test failed to start: ${errMsg}`)
+            cleanUpAfterTest(device, 'failed')
         }
     }, [device])
 
@@ -484,21 +505,7 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
         log(`[MotionDetectionStream] Device will finish remaining capture frames in the background.`)
 
         // Reset test mode bits so subsequent captures save JPEG files.
-        if (device) {
-            const cleanupSession = createBleSession(device)
-            cleanupSession.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TEST_MODE_BITS, value: 0 }))
-                .then(() => {
-                    log('[MotionDetectionStream] TEST_MODE_BITS reset to 0 (stop)')
-                    if (originalDpdRef.current !== null) {
-                        const originalDpd = originalDpdRef.current
-                        originalDpdRef.current = null
-                        return cleanupSession.execute(() => commandRegistry.setop({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: originalDpd }))
-                            .then(() => log(`[MotionDetectionStream] INTERVAL_BEFORE_DPD reset to ${originalDpd} (stop)`))
-                    }
-                })
-                .then(() => flashHold.release(cleanupSession, device.id))
-                .catch((e: any) => logWarn('[MotionDetectionStream] Failed to reset test mode bits on stop:', e))
-        }
+        if (device) cleanUpAfterTest(device, 'stop')
     }, [device])
 
     return useMemo(() => ({
