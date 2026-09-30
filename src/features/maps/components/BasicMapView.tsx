@@ -105,9 +105,12 @@ export const BasicMapView: React.FC<BasicMapViewProps> = ({
 				// Performance
 				minZoomLevel={0}
 				maxZoomLevel={20}
-				loadingEnabled={true}
-				loadingBackgroundColor="#E5E5E5"
-				loadingIndicatorColor="#007AFF"
+				// No loading overlay. On Android it is an opaque view over the whole
+				// map, markers included, removed only when Google Maps reports every
+				// tile loaded (onMapLoaded), which it does not while the tiles cannot
+				// be fetched. The deployment markers come from the local database and
+				// must show without tiles (#332).
+				loadingEnabled={false}
 				// Error handling
 				onMapReady={handleMapReady}
 

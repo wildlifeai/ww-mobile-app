@@ -17,7 +17,6 @@ import { useRoute, useNavigation } from "@react-navigation/native"
 import { useEffect } from "react"
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-import { OfflineIndicator } from "../../components/ui/OfflineIndicator"
 import { WWScreenView } from "../../components/ui/WWScreenView"
 import { AppParams } from "../../navigation/types"
 
@@ -120,8 +119,6 @@ export const ProjectDetailsScreen = () => {
 
 	return (
 		<ScrollView style={styles.container}>
-			<OfflineIndicator />
-
 			<View style={[styles.content, { paddingBottom: 32 + insets.bottom }]}>
 				{/* Details Card */}
 				<ProjectDetailsCard

@@ -13,6 +13,7 @@ import type { RootState } from '../redux'
 import { generateUUID } from '../utils/uuid'
 import type Deployment from '../database/models/Deployment'
 import { log, logError, logWarn } from '../utils/logger'
+import { logCloudFailure } from '../utils/networkErrors'
 import { DEFAULT_FLASH_LED, DEFAULT_FLASH_MODE } from '../utils/projectFlash'
 
 
@@ -79,7 +80,9 @@ class SupabaseSyncService {
         // Set new timer
         this.syncDebounceTimer = setTimeout(() => {
             log('⏰ Debounce timer expired, triggering sync...')
-            this.sync()
+            // sync() has logged the failure already; an unhandled rejection
+            // would only repeat it as a LogBox warning
+            this.sync().catch(() => {})
         }, this.SYNC_DEBOUNCE_MS)
 
         // log(`⏳ Sync debounced (will trigger in ${this.SYNC_DEBOUNCE_MS}ms)`)
@@ -233,7 +236,7 @@ class SupabaseSyncService {
             }
 
         } catch (error) {
-            logError('❌ Sync failed:', error)
+            logCloudFailure('❌ Sync failed:', error)
 
             // Log error to sync state
             const errorMessage = error instanceof Error ? error.message : String(error)
@@ -475,7 +478,7 @@ class SupabaseSyncService {
                 // log(`✅ Server processed ${data?.processed ?? '?'} operations for ${tableName}`)
 
                 if (error) {
-                    logError(`❌ Push failed for ${tableName}:`, error)
+                    logCloudFailure(`❌ Push failed for ${tableName}:`, error)
                     anyFailures = true
 
                     // Mark these specific ops as failed
@@ -587,7 +590,7 @@ class SupabaseSyncService {
                 })
 
             } catch (err) {
-                logError(`❌ Exception during push for ${tableName}:`, err)
+                logCloudFailure(`❌ Exception during push for ${tableName}:`, err)
                 anyFailures = true
                 break
             }
@@ -615,7 +618,7 @@ class SupabaseSyncService {
         })
 
         if (error) {
-            logError('❌ Pull changes failed:', error)
+            logCloudFailure('❌ Pull changes failed:', error)
             throw error
         }
 
@@ -780,7 +783,7 @@ class SupabaseSyncService {
             .gt('updated_at', lastPulledAt)
 
         if (error) {
-            logError('❌ Failed to sync user roles:', error)
+            logCloudFailure('❌ Failed to sync user roles:', error)
             return
         }
 
@@ -874,7 +877,7 @@ class SupabaseSyncService {
                 .in('id', missingIds)
 
             if (error) {
-                logError('❌ Failed to fetch user profiles:', error)
+                logCloudFailure('❌ Failed to fetch user profiles:', error)
                 return
             }
 
@@ -896,7 +899,7 @@ class SupabaseSyncService {
                 log(`✅ Synced ${profiles.length} user profiles`)
             }
         } catch (e) {
-            logError('❌ Error syncing user profiles:', e)
+            logCloudFailure('❌ Error syncing user profiles:', e)
         }
     }
 
@@ -927,7 +930,7 @@ class SupabaseSyncService {
             .gt('updated_at', lastPulledAt)
 
         if (error) {
-            logError('❌ Failed to sync projects:', error)
+            logCloudFailure('❌ Failed to sync projects:', error)
             return
         }
 
@@ -1048,7 +1051,7 @@ class SupabaseSyncService {
             .gt('updated_at', lastPulledAt)
 
         if (error) {
-            logError('❌ Failed to sync devices:', error)
+            logCloudFailure('❌ Failed to sync devices:', error)
             return
         }
 
@@ -1122,7 +1125,7 @@ class SupabaseSyncService {
             .gt('updated_at', lastPulledAt)
 
         if (error) {
-            logError('❌ Failed to sync deployments:', error)
+            logCloudFailure('❌ Failed to sync deployments:', error)
             return
         }
 

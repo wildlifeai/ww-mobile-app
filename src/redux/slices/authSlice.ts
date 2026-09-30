@@ -237,6 +237,9 @@ export const authSlice = createSlice({
 				)
 				if (org) {
 					state.currentOrganisation = org
+					// setCredentials, on every token refresh, reopens user.organisation_id;
+					// without this a switch lasted until the next refresh (#332)
+					state.user.organisation_id = org.id
 					state.permissions = calculatePermissions(org.role)
 					state.error = undefined
 				} else {

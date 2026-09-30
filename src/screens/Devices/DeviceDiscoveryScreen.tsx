@@ -1,5 +1,4 @@
 import { View, StyleSheet } from 'react-native'
-import { OfflineIndicator } from '../../components/ui/OfflineIndicator'
 import { ActivityIndicator, Button, Text, IconButton, ProgressBar, useTheme } from 'react-native-paper'
 import { Image } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -41,8 +40,6 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
 
         return (
             <SafeAreaView style={styles.container} edges={['top']}>
-                <OfflineIndicator />
-
                 <View style={styles.centerContent}>
                     <View style={styles.graphicContainer}>
                         <Image 
@@ -89,7 +86,6 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
-            <OfflineIndicator />
             <View style={styles.container}>
                 <View style={styles.headerContainer}>
                     <IconButton

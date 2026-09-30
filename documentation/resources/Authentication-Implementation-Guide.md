@@ -107,12 +107,14 @@ Standalone exported functions (not a class):
 | `login(credentials)` | Sign in with email/password via Supabase, fetches user orgs |
 | `register(credentials)` | Create account, handles email confirmation flow |
 | `logout()` | Sign out from Supabase |
-| `getCurrentSession()` | Get existing session, transforms to `AuthResponse` |
-| `setupAuthListener(callback, onProfileData)` | Subscribes to `onAuthStateChange`, fires fast UI-unblocking callback, and triggers deduplicated background profile fetch |
+| `getCurrentSession()` | Get existing session, transforms to `AuthResponse`; offline, falls back to the stored session |
+| `setupAuthListener(callback, onProfileData)` | Subscribes to `onAuthStateChange`, fires fast UI-unblocking callback, and triggers deduplicated background profile fetch. Opens from the stored session at once; see [Offline](#offline) |
+| `readStoredSession()`, `getStoredUserId()` | The session auth-js keeps on disk, read without asking auth-js to refresh it; the user id for local reads |
+| `ensureValidSession()` | Refreshes an expired token if it can; true once the session may go to the server (the reconnect sync) |
 | `resetPassword(email)` | Send password reset email |
 | `updatePassword(newPassword)` | Update password (active session required) |
 | `updatePasswordWithToken(token, password, refreshToken?)` | Reset password using deep link token |
-| `fetchUserOrganisations(userId)` | Query `user_organisations` table for roles |
+| `fetchUserOrganisations(userId)` | The user's organisations and roles from `user_roles` and `organisations`; from the local tables when the cloud cannot be reached (#332) |
 | `transformSupabaseUser(user, session)` | Convert Supabase `User` → app `AuthResponse` with org data |
 | `getCurrentUser()` | Get current Supabase user |
 
@@ -193,7 +195,7 @@ type AuthState = {
 | `setOrganisationsAndRole(data)`| Merges background fetched profile configurations gracefully |
 | `logout()` | Clears all state, resets permissions to empty, clears storage |
 | `setInitialState(authResponse \| null)` | First load — sets state without triggering persistence writes |
-| `setCurrentOrganisation(orgId)` | Switches active org, recalculates permissions based on org role |
+| `setCurrentOrganisation(orgId)` | Switches active org, recalculates permissions based on org role, and sets `user.organisation_id` so a token refresh keeps it |
 | `updateUserProfile(profile)` | Updates profile fields and re-persists |
 
 ### Selectors
@@ -221,9 +223,23 @@ await reconnectSupabase()
 
 Configuration:
 - **Storage**: `AsyncStorage` (session persistence)
-- **Auto refresh**: enabled
+- **Auto refresh**: enabled; paused while NetInfo reports no connection and resumed on reconnect (`AppSetupProvider`)
 - **Detect session in URL**: disabled (mobile app)
+- **Fetch**: `createTimeoutFetch()` from `supabaseFetch.ts`, a 30 s limit on auth and PostgREST reads. Writes, RPCs, storage and edge functions are exempt
 - **Legacy compat**: `supabase` export uses a `Proxy` with deprecation warnings
+
+---
+
+## Offline
+
+The field is offline more often than not, so a signed-in user stays signed in until the **server** rejects the session (#310).
+
+- **The app opens from the stored session.** `setupAuthListener` reads the session auth-js keeps on disk and signs in from it at once, without waiting for `INITIAL_SESSION`. auth-js refreshes an expired token before it announces anything, about 26 s of retries per attempt without a network, and the app used to sit on a spinner for 75 s and then show Login.
+- **A missing session is not a sign-out.** When `INITIAL_SESSION` (or any event but `SIGNED_OUT`) comes without a session but the stored one is still on disk, the refresh could not reach the server: auth-js removes the stored session only when the server rejects it. The app stays signed in and auth-js renews the token when the network returns (`TOKEN_REFRESHED`). `SIGNED_OUT`, or nothing stored, signs out as before.
+- **Local reads never ask auth-js.** `ProjectService` takes the user from `getStoredUserId()`: `getSession()` would refresh an expired token first, and offline that is half a minute and then no user.
+- **Nothing is written with a token the server would refuse.** Supabase calls get their token from `getSession()`, which never returns an expired one, and the sync checks the user with the server (`getUser`) before it uploads. The reconnect sync also waits for `ensureValidSession()`. The Redux `token` can hold the expired one while offline, and nothing writes with it.
+- **Organisations come from the local database first** (#332): the tables the last sync left, then the cloud's answer when it arrives. An empty cloud answer is kept. The organisation the user last had open is remembered per user (`currentOrganisation:<userId>` in AsyncStorage) and reopened while the roles still allow it.
+- **Network failures are not errors.** Offline, a failed Supabase call is logged with `log`, not `logError`, and supabase-js's own `console.error` for each failed fetch goes to `console.log` (`installNetworkErrorFilter`, installed in `index.js`). The "Offline Mode" banner is the only sign in the UI.
 
 ---
 

@@ -35,7 +35,7 @@ src/
 ├── database/               # WatermelonDB schema, models, migrations
 ├── types/                  # TypeScript type definitions
 ├── hooks/                  # Custom React hooks (BLE, sync, auth)
-├── utils/                  # Utility functions (incl. cameraVariant.ts, flashCameraMatch.ts)
+├── utils/                  # Utility functions (incl. cameraVariant.ts, flashCameraMatch.ts, networkErrors.ts)
 ├── providers/              # React context providers
 ├── ble/                    # BLE protocol engine (protocol/, session/, command registry)
 ├── features/               # Feature-specific modules (maps)
@@ -161,7 +161,11 @@ The full route table with params is documented in [01-TECHNOLOGY-STACK.md](./01-
 ```
 services/
 ├── supabase.ts                # Supabase client (factory pattern)
-├── auth.ts                    # Session lifecycle management
+├── supabaseFetch.ts           # The client's fetch: 30 s limit on auth and PostgREST reads
+├── auth.ts                    # Session lifecycle management; offline, the stored session stands
+├── organisationMembership.ts  # User's organisations and roles, cloud or local; current org remembered
+├── connectivityWatch.ts       # NetInfo: offline and reconnect handlers, isKnownOffline()
+├── reconnectSync.ts           # One sync per reconnect, on a valid session
 ├── ProjectService.ts          # Project CRUD + outbox
 ├── DeploymentService.ts       # Deployment lifecycle
 ├── DeviceService.ts           # Device record management
@@ -179,7 +183,7 @@ services/
 ├── SyncTriggerService.ts      # Sync coordination
 ├── SyncBarrier.ts             # Event-driven initial-sync readiness barrier
 └── offline/
-    └── OfflineService.ts      # Connectivity monitoring
+    └── OfflineService.ts      # Connectivity monitoring; never initialised, the reconnect sync is connectivityWatch.ts + reconnectSync.ts
 ```
 
 > [!NOTE]
