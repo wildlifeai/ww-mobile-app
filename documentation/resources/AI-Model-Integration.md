@@ -177,6 +177,15 @@ The labels file is then transferred to the SD card `/MANIFEST/` next to the `.TF
 (same BLE file-transfer pipeline), so the firmware can write named NN scores into each
 photo's EXIF.
 
+Both files land under `documentDirectory/aimodels/`. Each is written to a `.part` name and
+moved into place once complete, so a file under its final name is always whole: the labels
+have no size to check them against. A file already there, at the model's `file_size_bytes`
+for the binary, is used without touching the network, which is how a deployment finds its
+model offline. `OfflinePrefetchService` fills this cache after each sync with the model of
+every project on the phone, and `syncAiModel` stops a deployment whose model is on neither
+the camera nor the card when the files are not in it and cannot be downloaded (#333). See
+[Files for the field](../onboarding/03-DATA-AND-SYNC.md#files-for-the-field).
+
 > [!IMPORTANT]
 > On the SD card the labels file shares the model's **basename**, differing only in
 > extension — `42V2.TFL` pairs with `42V2.TXT`. It is *not* called `labels.txt`; the
@@ -198,10 +207,11 @@ file in the model's class order to guarantee this.
 |------|---------|
 | `src/database/models/AiModel.ts` | WatermelonDB model with firmware ID fields |
 | `src/services/AiModelService.ts` | AI model metadata, label + binary download, registration |
+| `src/services/OfflinePrefetchService.ts` | Downloads every project's model after a sync, so a deployment needs no signal (#333) |
 | `src/ble/workflows/deploymentPipeline.ts` | `syncAiModel` owns model state during a deployment: the app's only model transfer path since the standalone `AiModelTransferScreen` was deleted in Sep 2026, unreachable and superseded by it |
 | `src/ble/protocol/fileTransfer/` | File transfer pipeline |
 | `src/ble/protocol/commandRegistry.ts` | `loadmodel`, `erasemodel`, `getop` commands |
 
 ---
 
-*Last Updated: June 20, 2026*
+*Last Updated: September 29, 2026*

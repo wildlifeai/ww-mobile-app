@@ -23,6 +23,7 @@ import { DeploymentMonitorView } from './components/DeploymentMonitorView'
 
 import { useStartDeployment } from './hooks/useStartDeployment'
 import { useFirmwareStatus } from '../Devices/hooks/useFirmwareStatus'
+import { useModelOnPhone } from '../../hooks/useOfflineFiles'
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
 import { resolveProjectFlash, shortFlashLabel } from '../../utils/projectFlash'
 
@@ -142,6 +143,9 @@ export const StartMonitoringDetailsStep = () => {
         const model = aiModels.find(m => m.id === project.model_id)
         return model ? `${model.name} v${model.version}` : null
     }, [project?.model_id, aiModels])
+    // Offline, a model the phone does not have stops the start unless the
+    // camera already carries it (#333), so say which it is before the press
+    const modelOnPhone = useModelOnPhone(project?.model_id)
 
     const hasCameraError = useMemo(() => {
         const warnings = initErrors.deviceHealth || []
@@ -341,6 +345,15 @@ export const StartMonitoringDetailsStep = () => {
                             )}
                         </View>
 
+                        {modelOnPhone && (
+                            <Text
+                                variant="labelSmall"
+                                style={[styles.modelOnPhone, { color: modelOnPhone === 'ready' ? theme.colors.onSurfaceVariant : theme.colors.error }]}
+                            >
+                                {modelOnPhone === 'ready' ? 'Model ready on this phone' : 'Model not downloaded: connect to download'}
+                            </Text>
+                        )}
+
                     </Card.Content>
                 </Card>
 
@@ -466,6 +479,10 @@ const styles = StyleSheet.create({
     },
     featureLabel: {
         opacity: 0.7,
+        textAlign: 'center',
+    },
+    modelOnPhone: {
+        marginTop: 8,
         textAlign: 'center',
     },
     projectSelectContainer: {

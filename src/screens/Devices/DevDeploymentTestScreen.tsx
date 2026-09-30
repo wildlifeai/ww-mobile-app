@@ -35,6 +35,7 @@ import { FinishProgressDialog } from './components/FinishProgressDialog'
 import { BatteryLevelCard } from '../Deployments/components/BatteryLevelCard'
 import { SdCardStatusCard } from '../Deployments/components/SdCardStatusCard'
 import { useDevDeployment, type DeployableCamera } from './hooks/useDevDeployment'
+import { useModelOnPhone } from '../../hooks/useOfflineFiles'
 import { CAMERA_VARIANT_LABELS } from '../../hooks/useCameraSwitch'
 import { FLASH_MODE_OPTIONS, FLASH_LED_OPTIONS, type ProjectFlashMode, type ProjectFlashLed } from '../../utils/projectFlash'
 // The Save BMP switch that used to sit under pictures per trigger, retired
@@ -83,6 +84,7 @@ export const DevDeploymentTestScreen = () => {
         isFinishing, finishProgress, finishStep, finishLogs,
         isStartSuccess, handleFinishDismiss,
     } = useDevDeployment({ deviceId, bleDeviceId, navigation })
+    const modelOnPhone = useModelOnPhone(aiModelIdOverride)
 
     // Title
     useEffect(() => {
@@ -306,6 +308,11 @@ export const DevDeploymentTestScreen = () => {
                             onChange={(val) => setAiModelIdOverride(val === NO_MODEL ? null : val)}
                             disabled={submitting}
                         />
+                        {modelOnPhone && (
+                            <Text variant="bodySmall" style={modelOnPhone === 'missing' ? [styles.hint, styles.hintAlert, { color: colors.error }] : styles.hint}>
+                                {modelOnPhone === 'ready' ? 'Model ready on this phone' : 'Model not downloaded: connect to download'}
+                            </Text>
+                        )}
 
                         <Divider style={styles.divider} />
 
@@ -609,6 +616,9 @@ const styles = StyleSheet.create({
     hint: {
         opacity: 0.6,
         marginTop: 4,
+    },
+    hintAlert: {
+        opacity: 1,
     },
     // Three lines of notes. numberOfLines alone sets nothing on the outlined
     // input; the same minimum as the other notes fields.

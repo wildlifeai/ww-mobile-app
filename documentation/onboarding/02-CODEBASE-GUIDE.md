@@ -167,9 +167,10 @@ services/
 ├── DeviceService.ts           # Device record management
 ├── UserRoleService.ts         # User role management
 ├── InvitationService.ts       # Member invitations
-├── AiModelService.ts          # AI model metadata and registration
+├── AiModelService.ts          # AI model metadata, the model file cache
 ├── ReferenceDataService.ts    # Downloaded reference data (capture methods, etc.)
-├── FirmwareService.ts         # Firmware blob management
+├── FirmwareService.ts         # Firmware blob management, the firmware file cache
+├── OfflinePrefetchService.ts  # Fills both caches after a sync, for the field (#333)
 ├── DfuService.ts              # Firmware updates (Nordic DFU)
 ├── MockLoRaWANService.ts      # LoRaWAN mocking
 ├── DeploymentPhotoService.ts  # Deployment photo capture + upload
@@ -230,6 +231,7 @@ hooks/
 ├── useLightSensor.ts          # Light readings: AI light, the AE register block, op23/24/25, and the flash mode op34
 ├── useCameraReadiness.ts      # Is the camera usable: self-test bits + op10
 ├── useOfflineSync.ts          # Offline sync triggers
+├── useOfflineFiles.ts         # Is the project's model / the firmware image on this phone
 ├── useOptimisticUpdate.ts     # UI responses before outbox confirms
 ├── useSupabaseAuth.ts         # Supabase auth hook
 ├── useSupabaseClient.ts       # Supabase client hook

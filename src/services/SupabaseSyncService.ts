@@ -219,6 +219,9 @@ class SupabaseSyncService {
                 logWarn('⚠️ [SupabaseSyncService] Could not start photo upload:', e)
             }
 
+            // Put the models and firmware a field visit needs on the phone (#333)
+            require('./OfflinePrefetchService').default.request('sync')
+
             // Mark initial sync complete — routing decisions in the scanner are now valid
             if (this.store) {
                 try {

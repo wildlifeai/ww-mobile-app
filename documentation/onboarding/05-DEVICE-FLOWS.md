@@ -113,6 +113,7 @@ through a subtitle under the title: the standing descriptions were removed on 22
 |---------|-------|
 | Project Selector (`WWSelect`) | Dropdown to pick or switch the attached project. Dynamically recalculates capture method, sensitivity, and feature icons. |
 | Feature Icons Row | Visual indicators: 🔄 Activity Detection, ⏱ Timelapse, 📡 LoRaWAN, 🛰 GPS in images, 🧠 AI Model |
+| Model readiness line | Only when the project has a model: "Model ready on this phone", or "Model not downloaded: connect to download". Offline, a start with a model the phone lacks stops unless the camera already carries it (#333). Refreshes when the pre-download lands the files. |
 
 **2. LoRaWAN Section** (only if `project.lorawan_required`)
 
@@ -161,7 +162,7 @@ When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeplo
 
 | Step | Action | Detail |
 |------|--------|--------|
-| 1 | AI Model Sync | Checks SD card (`dir`) for existing model files before downloading. Only transfers missing files via BLE. Always issues `erasemodel` → `loadmodel` if OPs mismatch. Retries reference data sync if model not found locally, and **stops the deployment** if the project's model is still missing or has no firmware IDs, before the deployment is created or anything is written to the device (#290). Runs **before** time sync to stay within the firmware's 1000ms IMAGE task inactivity window. |
+| 1 | AI Model Sync | Checks SD card (`dir`) for existing model files before downloading. Only transfers missing files via BLE. Always issues `erasemodel` → `loadmodel` if OPs mismatch. Retries reference data sync if model not found locally, and **stops the deployment** if the project's model is still missing or has no firmware IDs (#290), or if it is on neither the camera (op14/op15) nor the card and its files cannot be had from the phone's cache or a download (#333). Both stops come before the deployment is created or anything is written to the device. A failed transfer or `loadmodel` once the files are in hand stays a warning. The files are normally already on the phone: the [offline pre-download](./03-DATA-AND-SYNC.md#files-for-the-field) fetches them after each sync. Runs **before** time sync to stay within the firmware's 1000ms IMAGE task inactivity window. |
 | 2 | Time Sync | `setutc`, see [BLE Command Reference](./04-ENGINEER-CONSOLE.md#ble-command-reference). Handled by BLE module (not AI processor). |
 | 3 | Snapshot Data | Reads `battery`, `network` (if LoRaWAN required), `ver` for deployment record metadata |
 | 4 | Create DB Record | `DeploymentService.createDeployment()` → `OutboxService` → `SupabaseSyncService` |
@@ -321,8 +322,9 @@ If the device is not connected, the user can "Force End (Database Only)":
 | "Deployment Initialisation Failed" | Device handshake timeout | Re-connect and keep phone close |
 | "Failed to Set Deployment ID" | BLE write error or AI NACK | Keep phone within 1m; app falls back to GPS-only |
 | "No SD Card Detected" | Stale selftest bits (false positive) | App now masks stale AI bits (8-15) before AI processor is woken. If warning persists after reconnection, the SD card is genuinely missing. |
-| "AI model update failed" | Reference data not synced or cloud download failed | Pipeline now retries sync automatically. If still failing, check internet connectivity; model file may need manual upload to Supabase storage. |
+| "AI model update FAILED" | The files were on the phone but the transfer to the card or the `loadmodel` failed. The deployment carries on and records without classifying | Reconnect with the phone close to the camera and run the deployment again. |
 | "This project's AI model ... is not on this phone" | The model did not come down with the reference data: phone offline, or the model is not `validated` or `deployed` | Get the phone online and start again, which syncs first. If it persists, check the model's status on the website. |
+| "This project's AI model "..." could not be downloaded" | The model is not on the camera or its card, and the phone could not download its files. Offline, it was assigned after the phone's last sync or the pre-download had not finished; online, the download itself failed | Check the connection, wait for the sync (the Start Monitoring screen then says "Model ready on this phone"), and start again. Nothing was written to the camera. |
 
 ### End Deployment
 

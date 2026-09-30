@@ -27,6 +27,17 @@ version for humans is
   both, and `syncAiModel` refuses a project model it cannot resolve, before the deployment is
   created or anything is written to the device. `aiModelsApi.ts` (the picker) still asks for
   `validated` only.
+- **Rows sync, files do not.** A model's `.TFL` and labels and a firmware image live in the
+  phone's file caches (`aimodels/`, `firmware/`), filled after each sync by
+  `OfflinePrefetchService` so a deployment or an update needs no signal (#333). Offline,
+  `syncAiModel` stops a deployment whose model is on neither the camera nor the card and not
+  in the cache, before anything is written. Ask "is it here" with
+  `AiModelService.isDownloaded` or `FirmwareService.isFirmwareDownloaded`, the same checks the
+  downloads make, and hold `FirmwareService.holdCache()` for the whole of anything that reads
+  an image, or the pre-download may remove it as an older version. The two triggers, at the
+  end of `SupabaseSyncService.sync` and `ReferenceDataService.syncReferenceData`, are lazy
+  `require`s: Jest here rejects a dynamic `import()` (no VM modules flag), so a trigger written
+  that way type-checks and never runs under test.
 - **A deployment must carry its device with it.** The push order, `projects`, `devices`,
   `deployments`, is a foreign-key order, and `DeploymentService.createDeployment` queues an
   idempotent device CREATE alongside the deployment, since the server's devices insert is

@@ -284,6 +284,40 @@ private async pullRemoteChanges() {
 
 ---
 
+## Files for the field
+
+Rows sync; files do not. A deployment needs its AI model's `.TFL` and labels, and a firmware
+update needs its image, and until #333 both were fetched only at the moment of use. The first
+deployment of a model somewhere without signal went out without it.
+
+`OfflinePrefetchService` (`src/services/OfflinePrefetchService.ts`) fetches them ahead. It runs
+after each successful `SupabaseSyncService.sync()` and after each `syncReferenceData()`, one
+file at a time, in the background:
+
+| What | Which | Cache |
+|------|-------|-------|
+| AI models | The model of every active project in the local database, which holds what RLS let this user sync. Skips a model not in the reference data or without firmware IDs, since the deployment refuses those anyway (#290) | `documentDirectory/aimodels/`, through `AiModelService.ensureFilesDownloaded` |
+| Firmware | The latest BLE image, and the latest Himax image per camera variant (RP3, HM0360): the images the update screen flashes. Older images of a variant are deleted once its new one is complete, never while an update holds the cache | `documentDirectory/firmware/`, through `FirmwareService.ensureFirmwareDownloaded` |
+
+- **Nothing runs offline**, and nothing on mobile data when Settings says "Sync on Wi-Fi only"
+  or "Ask before syncing". In the default automatic mode it uses mobile data too. For scale,
+  the rat model is 73 KB, the person model 920 KB and a Himax image about 450 KB, and each is
+  fetched once.
+- **A file already there is not fetched again.** The check is the one the consumer makes: the
+  binary's size for a model (labels by presence), the size within 100 bytes for firmware.
+  Model files are written to a `.part` name and moved into place, so a file under its final
+  name is always whole.
+- **Failures are quiet.** A warning in the log, and the next sync tries again.
+- **It only downloads.** It never starts a firmware update; `useFirmwareUpdate` finds the file
+  in the cache and flashes it without a connection.
+
+The screens say what is on the phone: Start Monitoring and the Dev Deployment Test show whether
+the project's model is ready, and the firmware update screen shows "On this phone" in its
+pre-flight card. Offline, `syncAiModel` stops a deployment whose model is on neither the camera
+nor its card and not on the phone, before anything is written to the camera.
+
+---
+
 ## Conflict Resolution
 
 **Strategy: Last Write Wins** — compares `updated_at` timestamps.

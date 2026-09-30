@@ -171,7 +171,7 @@ The app queries `AI slots` to learn the running variant, then flashes **the othe
 
 | Stage | Phase | Detail |
 |-------|-------|--------|
-| Download | `downloading` | Cloud source only. Skipped when flashing from the SD card. |
+| Download | `downloading` | Cloud source only. Skipped when flashing from the SD card. `FirmwareService.ensureFirmwareDownloaded` uses the copy in the phone's cache (`documentDirectory/firmware/`) when it is there at the release's size, which needs no connection. The offline pre-download keeps the latest image of each variant there after every sync, and the pre-flight card says "On this phone: Downloaded" when both are (#333). |
 | Check the card | `sending` | SD-card source only. `AI crc <file>` reads the CRC16-CCITT and size of the file already on the card, and the app compares them with the release's `firmware.crc_checksum` and `file_size_bytes` before anything touches flash. See below. |
 | Transfer | `transferring` | `runFileTransferPipeline` stages the `.IMG` into `/MANIFEST/`. The pipeline's whole-file CRC16 is reused as the `AI firmware` CRC argument. |
 | Flash | `sending` → `flashing` | `AI firmware <file> <0xCRC>`. The phase advances to `flashing` on an 8-second timer because the HX goes silent during erase/write. |

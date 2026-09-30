@@ -12,6 +12,7 @@ import { WWText } from '../../components/ui/WWText'
 import { WWSelect } from '../../components/ui/WWSelect'
 import { FileTransferProgressCard } from '../../components/FileTransferProgressCard'
 import { useFirmwareUpdate, FirmwareTarget, HimaxFirmwareSource, firmware83Filename } from './hooks/useFirmwareUpdate'
+import { useFirmwareOnPhone } from '../../hooks/useOfflineFiles'
 import Firmware from '../../database/models/Firmware'
 
 const TARGET_TITLES: Record<FirmwareTarget, string> = {
@@ -177,6 +178,13 @@ export const FirmwareUpdateScreen = () => {
         const meta = VARIANT_META[(single.cameraVariant as 'RP3' | 'HM0360') ?? 'RP3']
         return `${meta.emoji} build ${shortBuild(single.version)} only`
     }, [latestByVariant])
+
+    // Whether the images this update would download are already on the phone,
+    // put there by the offline pre-download or an earlier update (#333). An
+    // image on the phone needs no connection to flash.
+    const onPhone = useFirmwareOnPhone(
+        target === 'himax' && latestByVariant ? [latestByVariant.rp3, latestByVariant.hm] : [latestFirmware]
+    )
 
     // Device already on the latest build (for the camera it is running)?
     const deviceUpToDate = useMemo(() => {
@@ -347,6 +355,21 @@ export const FirmwareUpdateScreen = () => {
                                     style={{ color: deviceUpToDate ? colors.onSurfaceVariant : colors.primary, flex: 1, textAlign: 'right' }}
                                 >
                                     {latestLabel}{deviceUpToDate ? ' ✓ up to date' : ''}
+                                </WWText>
+                            </View>
+                        )}
+
+                        {onPhone && (
+                            <View style={styles.preflightRow}>
+                                <WWText variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
+                                    On this phone
+                                </WWText>
+                                <WWText variant="bodyMedium" style={[styles.preflightValue, { color: colors.onSurfaceVariant }]}>
+                                    {onPhone.downloaded === onPhone.total
+                                        ? 'Downloaded'
+                                        : onPhone.downloaded === 0
+                                            ? 'Not downloaded'
+                                            : `${onPhone.downloaded} of ${onPhone.total} downloaded`}
                                 </WWText>
                             </View>
                         )}
@@ -683,6 +706,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         paddingVertical: 4,
+    },
+    preflightValue: {
+        flex: 1,
+        textAlign: 'right',
     },
     warningBanner: {
         backgroundColor: '#BF360C',
