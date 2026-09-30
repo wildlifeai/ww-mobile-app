@@ -79,7 +79,8 @@ The coverage floor is a ratchet at 20%: it only moves up, by hand.
   are written to the device after the deployment reset. A setting with no home in the project is
   a setting that no deployment will ever carry. Beware the two halves of that contract in
   `SupabaseSyncService.syncProjects` and ww-backend's `push_changes`: both name their columns by
-  hand, and both have silently dropped some (#285, ww-backend #170).
+  hand, and both have silently dropped some (#285, ww-backend #170). The app half is now
+  guarded: `syncProjects.columns.test.ts` fails when a local `projects` column has no pull line.
 - **The device tells you things you didn't ask for.** Self-test bits after every wake, the
   light decision after every check, motion grids while monitoring. Check for an existing
   broadcast before adding a command that polls. One already cost us a stale banner that

@@ -161,7 +161,7 @@ When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeplo
 
 | Step | Action | Detail |
 |------|--------|--------|
-| 1 | AI Model Sync | Checks SD card (`dir`) for existing model files before downloading. Only transfers missing files via BLE. Always issues `erasemodel` → `loadmodel` if OPs mismatch. Retries reference data sync if model not found locally. Runs **before** time sync to stay within the firmware's 1000ms IMAGE task inactivity window. |
+| 1 | AI Model Sync | Checks SD card (`dir`) for existing model files before downloading. Only transfers missing files via BLE. Always issues `erasemodel` → `loadmodel` if OPs mismatch. Retries reference data sync if model not found locally, and **stops the deployment** if the project's model is still missing or has no firmware IDs, before the deployment is created or anything is written to the device (#290). Runs **before** time sync to stay within the firmware's 1000ms IMAGE task inactivity window. |
 | 2 | Time Sync | `setutc`, see [BLE Command Reference](./04-ENGINEER-CONSOLE.md#ble-command-reference). Handled by BLE module (not AI processor). |
 | 3 | Snapshot Data | Reads `battery`, `network` (if LoRaWAN required), `ver` for deployment record metadata |
 | 4 | Create DB Record | `DeploymentService.createDeployment()` → `OutboxService` → `SupabaseSyncService` |
@@ -211,9 +211,13 @@ The shared steps:
 AI setdid <deployment-uuid>
 AI setop 20 0    (reset IMAGES_FILE_INDEX counter)
 AI setop 19 0    (reset IMAGES_COUNT counter)
-setgps <lat>,<lng>,<alt>    (if recordGpsInImages is enabled)
-setgps 0,0,0               (if recordGpsInImages is disabled / privacy mode)
+AI setgps 45°30'0.00"_S_167°45'0.00"_E_320.50_Above   (if recordGpsInImages is enabled)
+AI setgps 0°0'0.00"_N_0°0'0.00"_E_0.00_Above           (if recordGpsInImages is disabled / privacy mode)
 ```
+
+`formatGPSString` owns this format everywhere, the reset's zeroing included. The firmware turns
+underscores into spaces and needs six fields; the decimal `lat,lng,alt` sent here before #315 was
+one token it discarded, while still answering `Device GPS set`.
 
 > [!IMPORTANT]
 > The legacy OP-based deployment ID approach (`setop 20..27` with UUID chunks) has been removed, firmware no longer supports those parameters. OP 19 and OP 20 are now image directory counters.
@@ -318,6 +322,7 @@ If the device is not connected, the user can "Force End (Database Only)":
 | "Failed to Set Deployment ID" | BLE write error or AI NACK | Keep phone within 1m; app falls back to GPS-only |
 | "No SD Card Detected" | Stale selftest bits (false positive) | App now masks stale AI bits (8-15) before AI processor is woken. If warning persists after reconnection, the SD card is genuinely missing. |
 | "AI model update failed" | Reference data not synced or cloud download failed | Pipeline now retries sync automatically. If still failing, check internet connectivity; model file may need manual upload to Supabase storage. |
+| "This project's AI model ... is not on this phone" | The model did not come down with the reference data: phone offline, or the model is not `validated` or `deployed` | Get the phone online and start again, which syncs first. If it persists, check the model's status on the website. |
 
 ### End Deployment
 

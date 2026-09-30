@@ -34,6 +34,7 @@ import { InitPayload } from '../../../navigation/types'
 import { calculateDistance } from '../../../utils/gpsUtils'
 import { CAMERA_VARIANT_LABELS, CameraVariant, parseVariant } from '../../../utils/cameraVariant'
 import { checkFlashAgainstCamera } from '../../../utils/flashCameraMatch'
+import { mdSensitivityLevel } from '../../../utils/mdSensitivity'
 
 interface UseStartDeploymentParams {
     deviceId?: string
@@ -583,6 +584,8 @@ export const useStartDeployment = ({
                     recordGpsInImages: project.record_gps_in_images || false,
                     gpsLocation,
                     flash: project,
+                    // The same value the screen shows the operator (#316)
+                    mdSensitivity: mdSensitivityLevel(sensitivityLabel),
                 }, cb, opsAfterReset)
             } catch (configError) {
                 logError('[Deployment] Configuration failed:', configError)
@@ -818,7 +821,7 @@ export const useStartDeployment = ({
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false
         }
-    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total, aiProcessorFailed, initPayload?.deviceFirmwareVersion, initErrors.deviceHealth, deploymentPhotoPaths])
+    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total, aiProcessorFailed, initPayload?.deviceFirmwareVersion, initErrors.deviceHealth, deploymentPhotoPaths, sensitivityLabel])
 
     const handleFinishDismiss = useCallback(() => {
         progress.setIsFinishing(false)

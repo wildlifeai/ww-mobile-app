@@ -76,9 +76,9 @@ interface Hold {
  * the raised value the device reports now. Otherwise a drop and a re-entry
  * would "restore" the device to the raised value.
  *
- * The Motion Detection stream raises op8 the same way for its test window but
- * keeps the original in a ref, so a drop there leaves the device raised. It
- * predates this module.
+ * The Motion Detection stream holds the device through here too, for its test
+ * window of interval + 2 s. It used to raise op8 itself and keep the original
+ * in a ref, so a drop mid-test left the device raised (#271).
  */
 class KeepAwake {
     private holdsByDevice: Map<string, Hold> = new Map()

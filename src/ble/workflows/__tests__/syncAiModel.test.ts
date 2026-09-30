@@ -1,0 +1,131 @@
+import { syncAiModel } from '../deploymentPipeline'
+import AiModelService from '../../../services/AiModelService'
+import ReferenceDataService from '../../../services/ReferenceDataService'
+import { runFileTransferPipeline } from '../../protocol/fileTransfer'
+import { crc16ccitt } from '../../protocol/fileTransfer/crc16ccitt'
+
+jest.mock('../../../utils/logger', () => ({
+    log: jest.fn(),
+    logWarn: jest.fn(),
+    logError: jest.fn(),
+}))
+jest.mock('../../../services/AiModelService', () => ({
+    __esModule: true,
+    default: {
+        getModelById: jest.fn(),
+        getModelFileExtensions: jest.fn(),
+        ensureFilesDownloaded: jest.fn(),
+        readModelAsBytes: jest.fn(),
+    },
+}))
+jest.mock('../../protocol/fileTransfer', () => ({ runFileTransferPipeline: jest.fn() }))
+jest.mock('../../../services/ReferenceDataService', () => ({
+    __esModule: true,
+    default: { syncReferenceData: jest.fn(), getFirmwareIds: jest.fn() },
+}))
+
+const getModelById = AiModelService.getModelById as jest.Mock
+const syncReferenceData = ReferenceDataService.syncReferenceData as jest.Mock
+const getFirmwareIds = ReferenceDataService.getFirmwareIds as jest.Mock
+
+/**
+ * A project that names a model must not start monitoring without it. The
+ * pipeline used to log a warning and carry on, so the camera ran with no model
+ * and the Himax said `No model found` on every wake (#290). The refusal comes
+ * before the deployment is created and before anything is written to the
+ * device, which is why these tests also check the session is never used.
+ */
+describe('syncAiModel with a project model the phone cannot resolve', () => {
+    const MODEL_ID = 'd0000000-0000-4000-8000-0000000000a1'
+    const callbacks = () => ({ addLog: jest.fn(), setStep: jest.fn(), setProgress: jest.fn() })
+    const session = () => ({ execute: jest.fn() })
+
+    beforeEach(() => {
+        jest.resetAllMocks()
+    })
+
+    it('syncs once, looks again, then refuses with the model named', async () => {
+        getModelById.mockResolvedValue(null)
+        const bleSession = session()
+
+        await expect(syncAiModel({} as any, bleSession as any, MODEL_ID, callbacks(), true, ['0']))
+            .rejects.toThrow(/AI model \(d0000000\) is not on this phone/)
+
+        expect(syncReferenceData).toHaveBeenCalledTimes(1)
+        expect(getModelById).toHaveBeenCalledTimes(2)
+        expect(bleSession.execute).not.toHaveBeenCalled()
+    })
+
+    it('still refuses when the sync itself fails, as it will offline', async () => {
+        getModelById.mockResolvedValue(null)
+        syncReferenceData.mockRejectedValue(new Error('Network request failed'))
+
+        await expect(syncAiModel({} as any, session() as any, MODEL_ID, callbacks(), true, ['0']))
+            .rejects.toThrow(/is not on this phone/)
+    })
+
+    it('refuses when the model has no firmware IDs to load it under', async () => {
+        getModelById.mockResolvedValue({ name: 'Rat Detection v1' })
+        getFirmwareIds.mockRejectedValue(new Error('AI model "Rat Detection v1" has no version_number. Sync may be stale.'))
+        const bleSession = session()
+
+        await expect(syncAiModel({} as any, bleSession as any, MODEL_ID, callbacks(), true, ['0']))
+            .rejects.toThrow(/"Rat Detection v1" cannot be loaded on the camera/)
+
+        expect(bleSession.execute).not.toHaveBeenCalled()
+    })
+
+    it('does not look for a model when the project has none', async () => {
+        const cb = callbacks()
+
+        await syncAiModel({} as any, session() as any, null, cb, false)
+
+        expect(getModelById).not.toHaveBeenCalled()
+        expect(cb.addLog).toHaveBeenCalledWith('No AI model required')
+    })
+})
+
+/**
+ * A model file already on the card, with the same checksum and size as the
+ * one the phone would send, must not be sent again. The comparison upper-cased
+ * the device's `0xDB68` to `0XDB68` and compared it with `0xDB68`, so every
+ * file read as different and was re-sent on every deployment: 13 s for a 73 KB
+ * model on the bench on 29 September 2026, minutes for a large one.
+ */
+describe('syncAiModel with the model files already on the card', () => {
+    const MODEL_ID = 'd0000000-0000-4000-8000-0000000000a1'
+    const model = new Uint8Array([0x28, 0, 0, 0, 0x54, 0x46, 0x4c, 0x33, 1, 2, 3])
+    const labels = new Uint8Array([0x72, 0x61, 0x74])
+    const hex = (bytes: Uint8Array) => `0x${crc16ccitt(bytes).toString(16).toUpperCase().padStart(4, '0')}`
+
+    beforeEach(() => {
+        jest.resetAllMocks()
+        ;(AiModelService.getModelById as jest.Mock).mockResolvedValue({ name: 'Rat Detection', labelsPath: 'x/7V1.txt' })
+        ;(ReferenceDataService.getFirmwareIds as jest.Mock).mockResolvedValue({ firmwareModelId: 7, versionNumber: 1 })
+        ;(AiModelService.getModelFileExtensions as jest.Mock).mockReturnValue({ modelExt: 'tfl', labelsExt: 'txt' })
+        ;(AiModelService.ensureFilesDownloaded as jest.Mock).mockResolvedValue({ modelUri: 'file://m', labelsUri: 'file://l' })
+        ;(AiModelService.readModelAsBytes as jest.Mock).mockImplementation(async (uri: string) => (uri === 'file://m' ? model : labels))
+    })
+
+    it('verifies them by checksum and loads without sending anything', async () => {
+        const sent: string[] = []
+        const session = {
+            execute: jest.fn(async (build: any) => {
+                const line: string = build().build()
+                sent.push(line)
+                if (line === 'AI dir') return ['7V1.TFL 11', '7V1.TXT 3']
+                if (line === 'AI crc 7V1.TFL') return { crc: hex(model), sizeBytes: model.length }
+                if (line === 'AI crc 7V1.TXT') return { crc: hex(labels), sizeBytes: labels.length }
+                return true
+            }),
+        }
+        const cb = { addLog: jest.fn(), setStep: jest.fn(), setProgress: jest.fn() }
+        const ops = Array.from({ length: 37 }, () => '0')
+
+        await syncAiModel({} as any, session as any, MODEL_ID, cb, true, ops)
+
+        expect(runFileTransferPipeline).not.toHaveBeenCalled()
+        expect(sent).toContain('AI loadmodel 7 1')
+        expect(cb.addLog).toHaveBeenCalledWith(`✅ 7V1.TFL on the card matches (${hex(model)})`)
+    })
+})

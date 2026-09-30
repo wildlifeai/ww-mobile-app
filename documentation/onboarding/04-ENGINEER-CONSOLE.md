@@ -162,7 +162,7 @@ The following subset is directly used during deployment:
 | 13 | `FLASH_LED` | Which LED the capture flash uses: 0 = none, 1 = visible, 2 = IR. Written from the project's `flash_led` at deployment |
 | 14 | `MODEL_PROJECT` | Currently loaded AI model ID |
 | 15 | `MODEL_VERSION` | Currently loaded AI model version |
-| 17 | `MD_SENSITIVITY` | 1 for activity/mixed, 0 for timelapse |
+| 17 | `MD_SENSITIVITY` | The project's sensitivity for activity/mixed (low 1, medium 2, high 3; medium when the project has none), 0 for timelapse. Only the HM0360 image applies it until Seeed #211 |
 | 18 | `TEST_MODE_BITS` | Diagnostic bitmask (bit 1 = `TEST_BIT_SAVE_BMP`, bit 3 = `TEST_BIT_SKIP_FILE_CREATION`). Neither deployment writes it since 21 September 2026; the reset leaves it 0 |
 | 19 | `IMAGES_COUNT` | Total images captured (reset on new deployment) |
 | 20 | `IMAGES_FILE_INDEX` | Image subdirectory counter (reset on new deployment) |
