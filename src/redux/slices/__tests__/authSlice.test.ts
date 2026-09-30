@@ -133,6 +133,24 @@ describe("authSlice", () => {
 			expect(state.permissions.canCreateProjects).toBe(false)
 		})
 		
+		// #332. setCredentials runs on every token refresh and reopens
+		// user.organisation_id, which a switch used to leave behind, so the
+		// organisation the user chose lasted only until the next refresh.
+		it("keeps a switched organisation through a token refresh", () => {
+			let state = authReducer(initialState, setCredentials(mockAuthResponse))
+			state = authReducer(state, setCurrentOrganisation("org-2"))
+
+			// A refresh payload carries no organisations, as transformSupabaseUser sends it
+			const refreshed: AuthResponse = {
+				jwt: "refreshed-jwt",
+				user: { id: mockUser.id, email: mockUser.email, role: "project_member", organisation_id: null },
+			}
+			state = authReducer(state, setCredentials(refreshed))
+
+			expect(state.currentOrganisation?.id).toBe("org-2")
+			expect(state.user?.organisation_id).toBe("org-2")
+		})
+
 		it("should fail to set invalid organisation", () => {
 			let state = authReducer(initialState, setCredentials(mockAuthResponse))
 			state = authReducer(state, setCurrentOrganisation("invalid-org"))

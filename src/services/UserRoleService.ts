@@ -12,7 +12,9 @@
  */
 
 import { getSupabaseClient } from "./supabase"
+import { isKnownOffline } from "./connectivityWatch"
 import { log, logError } from "../utils/logger"
+import { logCloudFailure } from "../utils/networkErrors"
 
 import database from '../database'
 import Project from '../database/models/Project'
@@ -133,13 +135,17 @@ export const getProjectMembers = async (
 	try {
 		// 1. Try cloud first (Network-First strategy)
 		// This guarantees that non-admins (bound by RLS offline) can see the full member list natively.
-		try {
-			const cloudMembers = await fetchMembersFromCloud(projectId, requestingUserId)
-			if (cloudMembers && cloudMembers.length > 0) {
-				return cloudMembers
+		// Not when there is no connection at all: two requests that cannot
+		// answer, and error lines for each, before the local list (#310).
+		if (!(await isKnownOffline())) {
+			try {
+				const cloudMembers = await fetchMembersFromCloud(projectId, requestingUserId)
+				if (cloudMembers && cloudMembers.length > 0) {
+					return cloudMembers
+				}
+			} catch (cloudError) {
+				log("⚠️ Cloud fetch for project members failed or offline, securely falling back to local DB...")
 			}
-		} catch (cloudError) {
-			log("⚠️ Cloud fetch for project members failed or offline, securely falling back to local DB...")
 		}
 
 		// 2. Try local database (Offline Fallback)
@@ -393,7 +399,7 @@ const fetchMembersFromCloudManual = async (projectId: string, requestingUserId: 
 			.eq('is_active', true)
 
 		if (rolesError || !roles) {
-			logError("Failed to fetch roles manually: " + rolesError?.message)
+			logCloudFailure("Failed to fetch roles manually: " + rolesError?.message, rolesError)
 			return []
 		}
 
@@ -641,7 +647,12 @@ export const getUserProjectRole = async (
 			// Ignore
 		}
 
-		// 3. Fallback to Supabase
+		// 3. Fallback to Supabase, only with a network. Offline the call cannot
+		// answer, and with an expired token it first sits out auth-js's refresh
+		// retries, about 26 s, while the project details screen waits (#310).
+		if (await isKnownOffline()) {
+			return null
+		}
 		const { data, error } = await getSupabaseClient()
 			.from("user_roles")
 			.select("role")

@@ -78,12 +78,18 @@ describe('ProjectService Unit Test', () => {
         }));
 
         // 4. Mock Supabase Client
+        // ProjectService reads the user from the stored session (#310), under the
+        // client's own storage key, rather than asking auth-js for one.
         mockGetUser = jest.fn();
         jest.mock('../../src/services/supabase', () => ({
             getSupabaseClient: jest.fn(() => ({
                 auth: {
                     getUser: mockGetUser,
                     getSession: jest.fn(() => Promise.resolve({ data: { session: { user: { id: 'test-user' } } }, error: null })),
+                    storageKey: 'sb-test-auth-token',
+                    storage: {
+                        getItem: jest.fn(async () => JSON.stringify({ refresh_token: 'refresh', user: { id: 'test-user' } })),
+                    },
                 },
             })),
             initializeSupabaseClient: jest.fn(),

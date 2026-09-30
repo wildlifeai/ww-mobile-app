@@ -24,6 +24,7 @@ import {
 } from "../config/EnvironmentManager"
 import type { EnvironmentConfig } from "../config/environments"
 import { log, logError, logWarn } from '../utils/logger'
+import { createTimeoutFetch } from "./supabaseFetch"
 
 
 // ============================================================================
@@ -102,6 +103,9 @@ export async function initializeSupabaseClient(
 					detectSessionInUrl: false,
 					...options?.auth,
 				},
+				// A time limit on auth and PostgREST reads, so a network with no
+				// route cannot hold them for minutes (#310). See supabaseFetch.ts.
+				global: { fetch: createTimeoutFetch() },
 			},
 		)
 

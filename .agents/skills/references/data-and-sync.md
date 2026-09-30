@@ -25,6 +25,28 @@ version for humans is
   use on a device, the opposite of stale. A project pointing at a `deployed` model then cannot
   be deployed from the app and the model never appears in the picker; the camera runs with no
   model and only the Himax console says so. Filed as #290.
+- **Offline, the user stays signed in until the server says no** (#310). The app opens from
+  the session auth-js keeps on disk, and a missing session with that one still stored means the
+  refresh could not get through: auth-js removes it only on a real rejection. Never read "no
+  session" from `getSession()` as signed out, and never ask auth-js who the user is for a local
+  read (`getStoredUserId()` instead): offline with an expired token it spends about 26 s
+  retrying the refresh and then answers null. Supabase calls never carry an expired token, and
+  the sync checks the user with the server before it uploads, so nothing writes offline.
+- **Organisations come from the local tables first, then the cloud** (#332).
+  `organisationMembership.ts` builds them from `user_roles` and `organisations`; the cloud answer
+  replaces them, and an empty cloud answer is the server's truth. `organisations` is filled only
+  by that cloud answer, nothing else writes it. The current organisation is remembered per user
+  and reopened while the roles allow it.
+- **Work queued offline uploads on reconnect.** `OfflineService` has a listener for that but is
+  never initialised, which left a deployment in the outbox until the next sign-in. The trigger
+  is `connectivityWatch.ts` and `reconnectSync.ts`, wired in `AppSetupProvider`: 3 s of connection,
+  a valid session, one sync. Redux `network.isOnline` stays false throughout, so read NetInfo, as
+  `SupabaseSyncService.sync()` does.
+- **Offline is not an error.** The "Offline Mode" banner, rendered once by `OfflineAwareRoot`, is
+  the only sign. Cloud calls that fail for network reasons log with `logCloudFailure`, not
+  `logError`, and skip themselves when NetInfo reports no connection. supabase-js prints its own
+  failures with `console.error`; `installNetworkErrorFilter` in `index.js` sends those to
+  `console.log`.
 - **A deployment must carry its device with it.** The push order, `projects`, `devices`,
   `deployments`, is a foreign-key order, and `DeploymentService.createDeployment` queues an
   idempotent device CREATE alongside the deployment, since the server's devices insert is

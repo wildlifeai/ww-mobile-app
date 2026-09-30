@@ -1,6 +1,7 @@
 import { registerRootComponent } from 'expo';
 import "react-native-url-polyfill/auto"; // Required for Supabase
 import { App } from "./src/App";
+import { installNetworkErrorFilter } from "./src/utils/networkErrors";
 
 // Intercept specific benign Supabase auth errors (e.g., stale refresh tokens) 
 // to display as warnings rather than throwing full app errors
@@ -13,6 +14,12 @@ console.error = (...args) => {
   }
   originalConsoleError(...args);
 };
+
+// Offline, supabase-js prints every failed request with console.error (bare
+// "TypeError: Network request failed" lines, dozens with a token to refresh).
+// Those go to console.log instead: still in logcat, not red in LogBox. The
+// "Offline Mode" banner is how the app says it is offline.
+installNetworkErrorFilter();
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);
 // It also ensures that whether you load the app in Expo Go or in a native build,

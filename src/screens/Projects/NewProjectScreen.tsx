@@ -16,7 +16,6 @@ import {
 import { projectsApi } from "../../redux/api/projectsApi"
 import { WWScreenView } from "../../components/ui/WWScreenView"
 import { WWButton } from "../../components/ui/WWButton"
-import { OfflineIndicator } from "../../components/ui/OfflineIndicator"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { useAppDispatch, useAppSelector } from "../../redux"
 import { selectCurrentOrganisation, selectCurrentUser, setCurrentOrganisation } from "../../redux/slices/authSlice"
@@ -250,8 +249,6 @@ export const NewProjectScreen = () => {
 
 	return (
 		<WWScreenView style={styles.screenView}>
-			<OfflineIndicator />
-
 			<View style={styles.container}>
 				{/* Section: Basic Information */}
 				<NewProjectBasicInfoSection control={control as any} errors={errors as any} />
