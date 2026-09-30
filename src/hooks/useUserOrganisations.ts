@@ -19,6 +19,7 @@ import {
 } from "../redux/slices/authSlice"
 import { projectsApi } from "../redux/api/projectsApi"
 import SupabaseSyncService from "../services/SupabaseSyncService"
+import { rememberCurrentOrganisation } from "../services/organisationMembership"
 
 export const useUserOrganisations = () => {
 	const dispatch = useAppDispatch()
@@ -49,6 +50,11 @@ export const useUserOrganisations = () => {
 			// Update current organisation in state
 			dispatch(setCurrentOrganisation(organisationId))
 
+			// And reopen it on the next start, offline included (#332)
+			if (user?.id) {
+				rememberCurrentOrganisation(user.id, organisationId).catch(() => {})
+			}
+
 			// Clear RTK Query cache to refetch data for new organisation
 			dispatch(projectsApi.util.resetApiState())
 
@@ -59,7 +65,7 @@ export const useUserOrganisations = () => {
 
 			return targetOrg
 		},
-		[dispatch, organisations],
+		[dispatch, organisations, user?.id],
 	)
 
 	// Get organisation by ID

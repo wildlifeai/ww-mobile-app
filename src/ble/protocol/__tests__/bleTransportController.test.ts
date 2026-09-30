@@ -8,12 +8,13 @@ const DEVICE = 'dev_a'
 const signal = (s: typeof DeviceSignal.SLEEP | typeof DeviceSignal.WAKE | typeof DeviceSignal.DISCONNECT) =>
     bleEventBus.emitEvent({ type: 'DEVICE_SIGNAL', signal: s, deviceId: DEVICE, ts: Date.now() })
 
-/** A task whose completion the test controls. */
+/** A task whose completion the test controls. It ignores its abort signal, as a stuck command would. */
 const controllable = () => {
     let finish!: (v: string) => void
     const started = jest.fn()
-    const execute = () => new Promise<string>(resolve => { started(); finish = resolve })
-    return { execute, started, finish: (v = 'ok') => finish(v) }
+    let taskSignal: AbortSignal | undefined
+    const execute = (s: AbortSignal) => new Promise<string>(resolve => { taskSignal = s; started(); finish = resolve })
+    return { execute, started, finish: (v = 'ok') => finish(v), signal: () => taskSignal }
 }
 
 const drain = () => jest.advanceTimersByTimeAsync(BLE_PROTOCOL_TIMINGS.POST_COMPLETION_DRAIN_WINDOW_MS + 1)
@@ -23,8 +24,8 @@ const drain = () => jest.advanceTimersByTimeAsync(BLE_PROTOCOL_TIMINGS.POST_COMP
  * a failing test left in flight, and an unobserved rejection takes the whole
  * suite down with "Session Reset" instead of the assertion message.
  */
-const enqueue = (execute: () => Promise<string>) => {
-    const p = bleTransport.enqueue(execute)
+const enqueue = (execute: (signal: AbortSignal) => Promise<string>, options?: { signal?: AbortSignal }) => {
+    const p = bleTransport.enqueue(execute, options)
     p.catch(() => {})
     return p
 }
@@ -208,5 +209,78 @@ describe('bleTransportController image stream gate', () => {
         expect(bleTransport.isStreaming).toBe(true)
         signal(DeviceSignal.DISCONNECT)
         expect(bleTransport.isStreaming).toBe(false)
+    })
+})
+
+/**
+ * #257. Cancelling a task used to reject its caller and leave the work running.
+ * The transport now aborts the signal it hands every task, so the command
+ * underneath can stop, and a task it has dropped cannot disturb the queue when
+ * it settles late.
+ */
+describe('bleTransportController cancellation', () => {
+    it('aborts the running task on a disconnect and on the caller\'s own abort', async () => {
+        const a = controllable()
+        const pa = enqueue(a.execute)
+        await Promise.resolve()
+        expect(a.signal()?.aborted).toBe(false)
+        signal(DeviceSignal.DISCONNECT)
+        expect(a.signal()?.aborted).toBe(true)
+        await expect(pa).rejects.toThrow('Session Reset')
+
+        const b = controllable()
+        const caller = new AbortController()
+        const pb = enqueue(b.execute, { signal: caller.signal })
+        await Promise.resolve()
+        caller.abort()
+        expect(b.signal()?.aborted).toBe(true)
+        await expect(pb).rejects.toThrow('Command cancelled')
+    })
+
+    it('a dropped task that settles late does not free the slot of the command after it', async () => {
+        const a = controllable()
+        const pa = enqueue(a.execute)
+        await Promise.resolve()
+        bleTransport.clearAll()
+        await expect(pa).rejects.toThrow('Session Reset')
+
+        const b = controllable()
+        const c = controllable()
+        const pb = enqueue(b.execute)
+        const pc = enqueue(c.execute)
+        await Promise.resolve()
+        expect(b.started).toHaveBeenCalledTimes(1)
+
+        // The orphan finally settles while B is waiting for its reply.
+        a.finish()
+        await drain()
+        expect(c.started).not.toHaveBeenCalled()
+
+        b.finish('b')
+        await drain()
+        await expect(pb).resolves.toBe('b')
+        expect(c.started).toHaveBeenCalledTimes(1)
+        c.finish('c')
+        await drain()
+        await expect(pc).resolves.toBe('c')
+    })
+
+    it('reports the queue idle when clearAll drops work, since the dropped task no longer does', async () => {
+        const states: boolean[] = []
+        const onState = (e: { isBusy: boolean }) => states.push(e.isBusy)
+        bleEventBus.on('queueStateChanged', onState)
+        try {
+            const a = controllable()
+            enqueue(a.execute)
+            await Promise.resolve()
+            bleTransport.clearAll()
+            expect(states).toEqual([true, false])
+
+            // Nothing to drop, nothing to say.
+            bleTransport.clearAll()
+            expect(states).toEqual([true, false])
+        } finally {
+            bleEventBus.removeListener('queueStateChanged', onState)
+        }
     })
 })

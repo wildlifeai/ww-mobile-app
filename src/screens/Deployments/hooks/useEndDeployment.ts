@@ -3,12 +3,13 @@ import { Alert } from 'react-native'
 import { DeploymentService } from '../../../services/DeploymentService'
 import { log, logError, logWarn } from '../../../utils/logger'
 
-import { createBleSession } from '../../../ble/session/createBleSession'
+import { createEndDeploymentSession, EndDeploymentSession } from '../../../ble/session/endDeploymentSession'
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { formatGPSString } from '../../../utils/gpsUtils'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { QuiesceOptions } from '../../../hooks/useDeviceSettings'
 import { useDeploymentProgress } from '../../../hooks/useDeploymentProgress'
+import { END_DEPLOYMENT_CAMERA_COPY, END_DEPLOYMENT_NOT_ANSWERING_DISMISS_MS } from '../../../hooks/useMonitoringActions'
 
 interface UseEndDeploymentParams {
     deployment: any
@@ -89,11 +90,18 @@ export const useEndDeployment = ({
         try {
             // Pre-fetch all ops once for the entire end-deployment sequence
             let cachedOps: string[] | null = null
-            let session: any = null
+            let session: EndDeploymentSession | null = null
             if (storeDevice) {
                 try {
                     progress.addLog('Reading device parameters...')
-                    session = createBleSession(storeDevice)
+                    // One budget for the camera's steps, and none after the first it
+                    // does not answer (#293). `dis` still goes: the nRF answers it.
+                    session = createEndDeploymentSession(storeDevice, {
+                        onGiveUp: () => {
+                            progress.setFinishStep(END_DEPLOYMENT_CAMERA_COPY.step)
+                            progress.addLog(END_DEPLOYMENT_CAMERA_COPY.gaveUp)
+                        },
+                    })
                     cachedOps = await session.execute(commandRegistry.getops)
                     progress.addLog('Device parameters read')
                     log('[EndDeployment] Pre-fetched bulk ops for end-deployment')
@@ -145,7 +153,7 @@ export const useEndDeployment = ({
                 
                 try {
                     await quiesceDevice(storeDevice, { isEndDeployment: true, cachedOps, sessionScope: session })
-                    progress.addLog('Device stopped')
+                    progress.addLog(session.cameraNotAnswering() ? END_DEPLOYMENT_CAMERA_COPY.notStopped : 'Device stopped')
                 } catch (e) {
                     logWarn('[EndDeployment] Final stop warning:', e)
                     progress.addLog('Warning: Final stop incomplete')
@@ -167,10 +175,11 @@ export const useEndDeployment = ({
             }
 
             // Success State
-            progress.setFinishStep('Complete')
+            const cameraAnswered = !session?.cameraNotAnswering()
+            progress.setFinishStep(cameraAnswered ? 'Complete' : END_DEPLOYMENT_CAMERA_COPY.finalStep)
             progress.setFinishProgress(1.0)
             progress.setIsSuccess(true)
-            progress.addLog('Monitoring stopped successfully')
+            progress.addLog(cameraAnswered ? 'Monitoring stopped successfully' : END_DEPLOYMENT_CAMERA_COPY.endedInApp)
 
             navigationTimerRef.current = setTimeout(() => {
                 navigationTimerRef.current = null
@@ -179,7 +188,7 @@ export const useEndDeployment = ({
                     index: 0,
                     routes: [{ name: 'Home' }],
                 })
-            }, 1500)
+            }, cameraAnswered ? 1500 : END_DEPLOYMENT_NOT_ANSWERING_DISMISS_MS)
 
         } catch (error) {
             logError(error)

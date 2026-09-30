@@ -98,6 +98,15 @@ file is the list of things that look like an app bug and are not, and the revers
   showed nothing. `headerTitleAlign: 'left'` was ignored the same way. Both are honoured now;
   anything else (`headerTitle` components, `headerStyle`) still has to be added there before a
   screen can rely on it. Check the phone, not the option name.
+- **The "Offline Mode" banner is drawn once, above the navigation, so never add one to a
+  screen.** `OfflineAwareRoot` in `components/ui/OfflineIndicator.tsx` renders it under the status
+  bar and puts the navigation in a nested `SafeAreaProvider`, which measures insets for its own
+  frame: below the banner the top inset is 0, so headers, `SafeAreaView` and
+  `useSafeAreaInsets().top` leave no second gap. Until September 2026 some screens placed the
+  banner by hand and the stack header drew an "Offline" chip, and the bench saw one form on one
+  screen and the other on the next. Take the top inset from `useSafeAreaInsets()`, never from
+  `StatusBar.currentHeight`, or a screen will leave room for a status bar the banner sits under.
+  A test fails if any other file renders `OfflineIndicator` or calls `useNetInfo`.
 - **A paper `Menu` that re-opens with the arrow up and nothing drawn is
   `patches/react-native-paper+5.14.5.patch`, not the screen.** Every `WWSelect` is a
   `react-native-paper-dropdown` over paper's `Menu`, and on Android (Fabric) the Menu's close

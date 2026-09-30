@@ -18,7 +18,6 @@ import {
     IconButton,
 } from 'react-native-paper'
 
-import { OfflineIndicator } from './OfflineIndicator'
 import { useAppDrawer } from '../AppDrawer'
 
 interface StandardizedListLayoutProps<T> {
@@ -88,7 +87,6 @@ export function StandardizedListLayout<T>({
     if (isLoading && (!data || data.length === 0)) {
         return (
             <SafeAreaView style={styles.container} edges={['top']}>
-                <OfflineIndicator />
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" />
                     <Text variant="bodyMedium" style={[styles.loadingText, { color: theme.colors.onSurfaceVariant }]}>
@@ -103,7 +101,6 @@ export function StandardizedListLayout<T>({
     if (error && (!data || data.length === 0)) {
         return (
             <SafeAreaView style={styles.container} edges={['top']}>
-                <OfflineIndicator />
                 <View style={styles.centerContainer}>
                     <Text variant="headlineSmall" style={[styles.errorTitle, { color: theme.colors.error }]}>
                         Something went wrong
@@ -128,8 +125,6 @@ export function StandardizedListLayout<T>({
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
-            <OfflineIndicator />
-
             {/* Header / Search Area */}
             <View style={styles.headerContainer}>
                 {/* Hamburger Menu Button */}

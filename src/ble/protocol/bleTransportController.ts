@@ -54,7 +54,7 @@ export type CommandState = 'CREATED' | 'ACTIVE' | 'COMPLETING' | 'COMPLETED' | '
 
 export interface CommandTask<T = any> {
   id: string;
-  execute: () => Promise<T>;
+  execute: (signal: AbortSignal) => Promise<T>;
   abortSignal?: AbortSignal;
   onStateChange?: (state: CommandState) => void;
   // Internal tracking
@@ -62,6 +62,14 @@ export interface CommandTask<T = any> {
   _resolve: (value: T) => void;
   _reject: (err: Error) => void;
   _abortHandler?: () => void;
+  /**
+   * Aborted wherever the task becomes CANCELLED, so the work underneath stops
+   * with it. Rejecting the caller alone left the command running: its response
+   * timeout and its event bus listeners lived on for up to the command's full
+   * timeout, two minutes for a firmware update, and a retryable one could still
+   * write to the device after a disconnect (#257).
+   */
+  _controller: AbortController;
 }
 
 const emitQueueState = (isBusy: boolean) => {
@@ -179,7 +187,7 @@ class BleTransportController {
    *                    execute sub-commands while holding the lock.
    */
   public enqueue<T>(
-    executeFn: () => Promise<T>,
+    executeFn: (signal: AbortSignal) => Promise<T>,
     options?: { signal?: AbortSignal; lockHolder?: string }
   ): Promise<T> {
     return new Promise((resolve, reject) => {
@@ -199,6 +207,7 @@ class BleTransportController {
         _state: 'CREATED',
         _resolve: resolve,
         _reject: reject,
+        _controller: new AbortController(),
       };
 
       if (options?.signal?.aborted) {
@@ -208,9 +217,8 @@ class BleTransportController {
 
       const abortHandler = () => {
         if (task._state !== 'COMPLETED' && task._state !== 'FAILED') {
-          this.transitionCommand(task, 'CANCELLED');
-          task._reject(new Error('Command cancelled'));
-          
+          this.cancelTask(task, new Error('Command cancelled'));
+
           if (this.activeTask?.id !== task.id) {
             this.queue = this.queue.filter(t => t.id !== task.id);
           }
@@ -242,6 +250,16 @@ class BleTransportController {
   private transitionCommand(task: CommandTask, newState: CommandState) {
     task._state = newState;
     task.onStateChange?.(newState);
+  }
+
+  /** Reject the caller and stop the work underneath, together. */
+  private cancelTask(task: CommandTask, error: Error) {
+    this.transitionCommand(task, 'CANCELLED');
+    task._reject(error);
+    task._controller.abort();
+    if (task.abortSignal && task._abortHandler) {
+      task.abortSignal.removeEventListener('abort', task._abortHandler);
+    }
   }
 
   private handleDeviceSignal(event: BleEvent & { type: 'DEVICE_SIGNAL' }) {
@@ -374,7 +392,7 @@ class BleTransportController {
     this.transitionCommand(task, 'ACTIVE');
 
     try {
-      const result = await task.execute();
+      const result = await task.execute(task._controller.signal);
       
       // Strict Late-Response Drain Post-Completion
       this.transitionCommand(task, 'COMPLETING');
@@ -393,10 +411,16 @@ class BleTransportController {
       if (task.abortSignal && task._abortHandler) {
         task.abortSignal.removeEventListener('abort', task._abortHandler);
       }
-      this.activeTask = null;
-      this.isProcessing = false;
-      if (this.queue.length === 0) emitQueueState(false);
-      this.processNext();
+      // clearAll() may have dropped this task while it ran, and the queue may
+      // have started the next command since. The slot is that command's now, so
+      // a cancelled task settling late must not free it: that let a third
+      // command go out while the second was still waiting for its reply.
+      if (this.activeTask === task) {
+        this.activeTask = null;
+        this.isProcessing = false;
+        if (this.queue.length === 0) emitQueueState(false);
+        this.processNext();
+      }
     }
   }
 
@@ -411,19 +435,21 @@ class BleTransportController {
     this.streamActive = false;
     this.clearStreamStall();
     const error = new Error('Session Reset');
+    const hadWork = this.activeTask !== null || this.queue.length > 0;
     if (this.activeTask) {
-      this.transitionCommand(this.activeTask, 'CANCELLED');
-      this.activeTask._reject(error);
+      this.cancelTask(this.activeTask, error);
       this.activeTask = null;
     }
     const currentQueue = [...this.queue];
     this.queue = [];
     for (const task of currentQueue) {
-      this.transitionCommand(task, 'CANCELLED');
-      task._reject(error);
+      this.cancelTask(task, error);
     }
     this.transitionQueue('IDLE');
     this.isProcessing = false;
+    // The dropped task no longer reports its own end (see processNext), so say
+    // it here or the console's busy indicator stays on.
+    if (hadWork) emitQueueState(false);
   }
 }
 

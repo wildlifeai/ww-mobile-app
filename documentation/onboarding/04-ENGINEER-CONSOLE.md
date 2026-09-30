@@ -47,7 +47,7 @@ Direct commands handled by the BLE chip, no `AI` prefix.
 | `battery` | `Battery = 3305mV 100%` | Battery voltage and percentage |
 | `temp` | `Temperature: 23.5C` | Board temperature |
 | `selftest` | `Error bits = 0x0000` | Hardware self-test bitmask |
-| `get heartbeat` | `heartbeat is 58s` | Read/set heartbeat interval |
+| `get heartbeat` | `heartbeat is 12h` | Read/set the nRF's heartbeat interval. The app also sends it as its BLE keep-alive, because the nRF answers it without waking the Himax |
 
 #### Clock & Location
 
@@ -447,7 +447,7 @@ Goal: Validate MD triggers when subject is only illuminated by flash.
 
 | Feature | Behaviour |
 |---------|-----------|
-| Heartbeat | 58s idle → sends `get heartbeat` (or RSSI ping if UART paused) |
+| Heartbeat | 30s with nothing sent or received → sends `get heartbeat` (or reads RSSI if UART paused, which does not reach the nRF) |
 | Disconnect Detection | `WWBleDisconnectedBanner` shown on all BLE-dependent screens |
 | DFU Suppression | Banner is hidden when `dfuInProgress` is `true`, since the BLE disconnect during firmware updates is expected |
 | Disconnect Signal | `DEVICE_SIGNAL(DISCONNECT)` → `commandQueue.clearAll()`, which rejects all in-flight commands instantly |
@@ -472,6 +472,6 @@ All screens use `bleDeviceRef` (a `useRef`) for device state inside timer callba
 | [`commandRegistry.ts`](../../src/ble/protocol/commandRegistry.ts) | All BLE command definitions |
 | [`deploymentPipeline.ts`](../../src/ble/workflows/deploymentPipeline.ts) | Shared pipeline functions |
 | [`useDeviceSettings.ts`](../../src/hooks/useDeviceSettings.ts) | OP enum, factory defaults, quiesce |
-| [`useBleHeartbeat.ts`](../../src/hooks/useBleHeartbeat.ts) | 58s heartbeat mechanism |
+| [`useBleHeartbeat.ts`](../../src/hooks/useBleHeartbeat.ts) | 30s heartbeat mechanism |
 
 *Last Updated: May 16, 2026*

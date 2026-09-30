@@ -7,7 +7,9 @@ import AiModelFamily from '../database/models/AiModelFamily'
 import SamplingDesign from '../database/models/SamplingDesign'
 import Firmware from '../database/models/Firmware'
 import { getSupabaseClient } from './supabase'
+import { isKnownOffline } from './connectivityWatch'
 import { log, logError } from '../utils/logger'
+import { logCloudFailure } from '../utils/networkErrors'
 
 
 /**
@@ -30,6 +32,14 @@ class ReferenceDataService {
      */
     async syncReferenceData(): Promise<void> {
         // log('📚 Syncing reference data from Supabase...')
+
+        // Nothing to pull without a connection, and the auth check below would
+        // try the server three times, each failure a red error in the dev build.
+        // AppSetupProvider pulls again on reconnect.
+        if (await isKnownOffline()) {
+            log('📚 Offline: reference data sync skipped until the connection returns')
+            return
+        }
 
         const client = getSupabaseClient()
 
@@ -73,7 +83,7 @@ class ReferenceDataService {
 
             // log('✅ Reference data sync complete')
         } catch (error) {
-            logError('❌ Reference data sync failed:', error)
+            logCloudFailure('❌ Reference data sync failed:', error)
             // Don't throw - app can continue with stale data
         }
     }
@@ -91,7 +101,7 @@ class ReferenceDataService {
             .order('id')
 
         if (error) {
-            logError('Failed to fetch capture methods:', error)
+            logCloudFailure('Failed to fetch capture methods:', error)
             return
         }
 
@@ -152,7 +162,7 @@ class ReferenceDataService {
             .order('id')
 
         if (error) {
-            logError('Failed to fetch activity sensitivity:', error)
+            logCloudFailure('Failed to fetch activity sensitivity:', error)
             return
         }
 
@@ -216,7 +226,7 @@ class ReferenceDataService {
             .order('firmware_model_id')
 
         if (error) {
-            logError('Failed to fetch AI model families:', error)
+            logCloudFailure('Failed to fetch AI model families:', error)
             return
         }
 
@@ -394,7 +404,7 @@ class ReferenceDataService {
             .order('id')
 
         if (error) {
-            logError('Failed to fetch sampling designs:', error)
+            logCloudFailure('Failed to fetch sampling designs:', error)
             return
         }
 
@@ -461,7 +471,7 @@ class ReferenceDataService {
             .order('version', { ascending: false })
 
         if (error) {
-            logError('[RefData] Failed to fetch firmware:', error)
+            logCloudFailure('[RefData] Failed to fetch firmware:', error)
             return
         }
 

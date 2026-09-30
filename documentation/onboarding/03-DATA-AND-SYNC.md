@@ -355,8 +355,9 @@ await database.write(async () => {
 // → sync_outbox entry created
 
 // 3. User lands, network returns
-// → OfflineService detects connectivity
-// → SupabaseSyncService.sync() triggers
+// → AppSetupProvider's connectivity watch (connectivityWatch.ts) sees it
+// → after 3 s of connection, once the session is valid, reconnectSync.ts
+//   runs SupabaseSyncService.sync() (one per reconnect, never two at once)
 // → Outbox pushes to Supabase
 // → RLS validates, server confirms
 // → Local record updated with server timestamps
