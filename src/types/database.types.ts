@@ -4071,6 +4071,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      cancel_project_invitation: {
+        Args: { p_invitation_id: string }
+        Returns: undefined
+      }
       check_user_uploader_role: {
         Args: { p_org_id: string; p_user_id: string }
         Returns: boolean
