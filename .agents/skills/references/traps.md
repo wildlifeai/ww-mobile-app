@@ -182,6 +182,16 @@ file is the list of things that look like an app bug and are not, and the revers
   keystore's SHA-1 registered against `.expo` in the Google Maps key, or maps break in those
   builds. And `.expo` is not in the website's `assetlinks.json`, so App Links to
   `wildlifewatcher.ai/reset-password` will not open a debug build.
+- **`npm run android:local` ends in an error after a good install.** Expo CLI takes the package
+  name from `app.config.ts`, which has no `.expo` suffix, so once Gradle has installed the debug
+  app it fails with `No development build (com.wildlife.wildlifewatcher)` and takes Metro down
+  with it. The app on the phone is fine. Start Metro on its own
+  (`npx expo start --dev-client --port 8081`), run `adb reverse tcp:8081 tcp:8081`, and open the
+  app with the dev-client link alone:
+  `adb shell am start -a android.intent.action.VIEW -d "wildlifewatcher://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081" com.wildlife.wildlifewatcher.expo`.
+  Starting `MainActivity` first and sending the link a moment later crashed the dev launcher in
+  September 2026. In Git Bash, prefix `adb shell` commands that carry a path or a URL with
+  `MSYS_NO_PATHCONV=1`, or MSYS rewrites them.
 - **Installing on Windows** is in AGENTS.md: `npm install --ignore-scripts` then
   `npx patch-package`, because `maestro`'s postinstall aborts a plain install, and skipping
   `postinstall` alone leaves `patches/` unapplied, which breaks the native build later.
@@ -217,3 +227,15 @@ file is the list of things that look like an app bug and are not, and the revers
   command runs, so a failure destroys the committed version. This wiped
   `src/types/database.types.ts`, 169 KB down to a 217-byte error blob, and only surfaced two
   steps later as a confusing `schema:generate` crash.
+- **Agent worktrees under `.claude/worktrees` start from `main`, not `dev`.** `main` is the
+  default branch, so an agent given worktree isolation begins at `origin/main`. Check
+  `git log -1` and reset to the intended base before editing. Inside one, `npm test` finds 0
+  tests on Windows, because Jest reads the `\.` of `\.claude` in `<rootDir>` as a glob escape:
+  pass the test globs as root-relative patterns instead. In the main checkout Jest also picks
+  up the worktrees' copies of every test, so add `--modulePathIgnorePatterns=<rootDir>/.claude/`
+  **after** any test paths: the option swallows the paths that follow it and silently turns
+  them into ignore patterns.
+- **A worktree's `node_modules` is usually a junction to the main checkout's.** Unlink it on its
+  own (`cmd /c rmdir <worktree>\node_modules`) before `git worktree remove`. A recursive delete,
+  such as PowerShell 5.1's `Remove-Item -Recurse`, can follow the junction and empty the real
+  one.

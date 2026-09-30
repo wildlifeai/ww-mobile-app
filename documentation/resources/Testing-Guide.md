@@ -253,6 +253,29 @@ maestro cloud tests/maestro/auth-workflow.yaml
 
 ---
 
+## Testing offline by hand (Android)
+
+The Maestro offline flows have never run, so offline behaviour is checked on a phone, with a
+debug build over USB. Four things decide whether the test means anything:
+
+1. **Airplane mode is not offline.** Android turns Wi-Fi back on near a remembered network. Turn
+   off "Turn on Wi-Fi automatically", keep Bluetooth on for the camera, and confirm before every
+   test: `adb shell ping -c 1 -W 2 8.8.8.8` must fail, and
+   `adb shell dumpsys connectivity | grep "Active default network"` must say `none`.
+2. **Metro keeps working offline** through `adb reverse tcp:8081 tcp:8081`. A USB drop clears
+   it, so run it again after any reconnect.
+3. **An expired sign-in** is simulated by setting the phone's clock two hours ahead, since access
+   tokens last an hour. A cold start offline should reach the Scanner within seconds and log
+   `Staying signed in offline` (#310).
+4. **Put the clock back on automatic before going online.** With the clock ahead, every new token
+   looks expired and the app refreshes in a loop.
+
+Check the queue, not the screen: the app's WatermelonDB file is readable with
+`adb exec-out run-as com.wildlife.wildlifewatcher.expo cat watermelon.db` (and
+`watermelon.db-wal`), and `sync_outbox` holds every queued change with its status.
+
+---
+
 ## CI/CD
 
 The `quality-gate-validation.yml` GitHub Action runs on all PRs:

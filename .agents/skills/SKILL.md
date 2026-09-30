@@ -42,17 +42,20 @@ rather than all of them.
 - **No em dashes** in documents or anything else destined to be pasted elsewhere. Commas, or a
   new sentence.
 
-### PRs are squash-merged, and the branch is auto-deleted
+### PRs usually merge with a merge commit, and the branch is not deleted
 
-Two consequences:
+The repo allows merge commits, squash and rebase, and "Automatically delete head branches" is
+off, so a merged branch stays on GitHub until someone deletes it. Three consequences:
 
-1. Squashing rewrites the commit SHAs, so a branch built on the pre-merge commits shows every
-   already-merged commit again as new. After a PR merges, run `git fetch` and branch fresh from
-   `dev`, then cherry-pick your unmerged work across rather than opening a PR from the old
-   branch.
-2. Pushing to the deleted branch **silently recreates it** instead of failing. If a push
-   reports `[new branch]` for a branch you know existed, it was merged and deleted underneath
-   you. Stop and rebuild before opening anything.
+1. **A stacked PR keeps its base.** When the lower PR merges, the upper one still targets the
+   lower branch, and merging it lands there, not in `dev`. On 30 September 2026 #337 merged into
+   `fix/offline-connection` 21 seconds after #336, never reached `dev`, and had to be relanded as
+   #338. Open the upper PR against `dev` once the lower one has merged, or retarget it first.
+2. **A squashed PR rewrites the SHAs**, so a branch built on its pre-merge commits shows them
+   again as new. After a squash, branch fresh from `dev` and cherry-pick the unmerged work.
+3. **Pushing to a deleted branch silently recreates it.** If a push reports `[new branch]` for
+   a branch you know existed, it was merged and deleted underneath you. Stop and rebuild before
+   opening anything.
 
 ## The five that apply to almost any change
 
