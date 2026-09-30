@@ -77,6 +77,10 @@ class ReferenceDataService {
                 (async () => { /* log('📚 Syncing firmware...'); */ await this.syncFirmware() })(),
             ])
 
+            // The model and firmware rows have just changed: fetch their files
+            // (#333). Required here, not imported: the pre-download reads this service.
+            require('./OfflinePrefetchService').default.request('reference data')
+
             // log('✅ Reference data sync complete')
         } catch (error) {
             logCloudFailure('❌ Reference data sync failed:', error)

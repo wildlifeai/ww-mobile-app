@@ -1073,6 +1073,8 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
 
         // Mark DFU in progress so the disconnect banner is suppressed
         if (device?.id) dispatch(setDfuStatus({ id: device.id, status: true }))
+        // The offline pre-download must not delete the image this update reads
+        const releaseCache = FirmwareService.holdCache()
 
         try {
             if (target === 'ble') {
@@ -1087,6 +1089,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                 advancePhase('failed')
             }
         } finally {
+            releaseCache()
             // Clear DFU flag regardless of success/failure
             if (device?.id) dispatch(setDfuStatus({ id: device.id, status: false }))
             if (!unmountedRef.current) setIsUpdating(false)

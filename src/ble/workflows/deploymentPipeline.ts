@@ -152,6 +152,13 @@ export async function measureLight(
 }
 
 /**
+ * The project's model is on neither the camera nor the card, and its files
+ * could not be downloaded. The one model failure that stops a deployment
+ * rather than warning, see step 5 of `syncAiModel` (#333).
+ */
+class ModelFilesUnavailableError extends Error {}
+
+/**
  * Finds the project's model on the phone, with the firmware IDs it loads
  * under, or throws a message that names what is missing. Reference data may
  * not have synced yet, so a model not found locally gets one sync and a
@@ -319,11 +326,31 @@ export async function syncAiModel(
 
             // 5. Only download and transfer files that are missing
             if (!hasTfl || (!hasLabels && targetModel.labelsPath)) {
-                addLog('Downloading missing model files...')
-                setStep('Downloading model...')
+                const onPhone = await AiModelService.isDownloaded(targetModel)
+                addLog(onPhone ? 'Model files are on this phone' : 'Downloading missing model files...')
+                setStep(onPhone ? 'Reading model...' : 'Downloading model...')
                 setProgress(0.14)
 
-                const localFiles = await AiModelService.ensureFilesDownloaded(targetModel)
+                // The files have to come from somewhere, and offline the phone's
+                // cache is the only place. Until #333 a failed download was the
+                // warning below and the deployment went out without its model;
+                // the first deployment of a model somewhere without signal always
+                // did. Nothing has been written to the camera yet (every step so
+                // far is a read), and the deployment is created after this, so
+                // stopping here leaves both untouched. The offline pre-download
+                // (OfflinePrefetchService) fills this cache after each sync.
+                let localFiles: { modelUri: string, labelsUri: string | null }
+                try {
+                    localFiles = await AiModelService.ensureFilesDownloaded(targetModel)
+                } catch (downloadError) {
+                    const reason = downloadError instanceof Error ? downloadError.message : String(downloadError)
+                    logWarn('[Deployment] Model files could not be obtained:', downloadError)
+                    addLog(`AI model "${targetModel.name}" is not on the camera or this phone, and could not be downloaded (${reason}), stopping`)
+                    throw new ModelFilesUnavailableError(
+                        `This project's AI model "${targetModel.name}" could not be downloaded, ` +
+                        'and it is not on the camera or this phone. Check the phone\'s connection and start again.'
+                    )
+                }
 
                 // Transfer TFL if missing
                 if (!hasTfl) {
@@ -382,6 +409,9 @@ export async function syncAiModel(
             addLog('AI model loaded successfully')
 
         } catch (e) {
+            // Files the phone cannot get stop the deployment. A transfer or a
+            // `loadmodel` that fails stays a warning: the camera still records.
+            if (e instanceof ModelFilesUnavailableError) throw e
             logWarn('Failed to update AI model:', e)
             addLog('⚠️ AI model update FAILED. The deployment will record but not classify. See device log.')
         }

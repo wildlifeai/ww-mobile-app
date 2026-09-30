@@ -53,7 +53,7 @@ Both flows share these pipeline functions from `deploymentPipeline.ts`:
 
 | Step | Function | Purpose |
 |------|----------|---------|
-| AI Model Sync | `pipeline.syncAiModel()` | Checks SD card for existing model files; only downloads and transfers missing files. Always loads via `erasemodel` → `loadmodel` if OPs mismatch. Runs first to stay within firmware's 1000ms IMAGE task window. |
+| AI Model Sync | `pipeline.syncAiModel()` | Checks SD card for existing model files; only downloads and transfers missing files. Always loads via `erasemodel` → `loadmodel` if OPs mismatch. Stops the start when the model is on neither the camera nor the card and the phone cannot get its files (#333). Runs first to stay within firmware's 1000ms IMAGE task window. |
 | Time Sync | `pipeline.syncTime()` | `setutc`, syncs the device clock (BLE module, not AI processor) |
 | Reset OPs | `pipeline.resetOps()` | Diff-writes `FACTORY_DEFAULTS`, keeps the model and the identity, returns the resulting table |
 | Configure Device | `pipeline.configureDevice()` | Sets capture method OPs, deployment ID, GPS and the capture flash |
@@ -76,7 +76,7 @@ Both flows share these pipeline functions from `deploymentPipeline.ts`:
 | Step | Action |
 |------|--------|
 | 0 | Camera switch, when the chosen camera is not the one running. `useCameraSwitch.switchTo`: `AI switchslot`, wait for the Sleep, wait for the Wake, confirm with `AI slots`. First, so everything after it is asked of the image that will run the deployment. A switch that does not come back on the chosen camera **aborts the start**. So does a camera that boots and finds no sensor: `AI slots` reports the image's label, not whether its sensor answered, so after the switch the post-boot self-test is read, and bit 8 (main camera not responding) switches back to the previous camera and aborts. Found on WILD-SIFK, whose IMX708 stayed silent for the first four minutes after a switch (22 September 2026) |
-| 1 | AI Model Sync, with the model chosen on screen |
+| 1 | AI Model Sync, with the model chosen on screen. It runs after step 0, so a start stopped here for a model the phone lacks has already switched the camera. The screen says under the model picker whether the model is on the phone |
 | 2 | Time Sync |
 | 3 | Persist project settings to DB |
 | 4 | Reset OPs |
