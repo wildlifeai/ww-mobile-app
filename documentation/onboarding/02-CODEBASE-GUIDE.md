@@ -212,7 +212,7 @@ hooks/
 ├── useBleSession.ts           # React hook wrapping createBleSession (deterministic workflows)
 ├── useBleInitialization.ts    # Shared self-test + UTC sync
 ├── useBleListeners.tsx        # BLE event listeners → rxRouter
-├── useBleHeartbeat.ts         # 58s inactivity keep-alive
+├── useBleHeartbeat.ts         # 30s inactivity keep-alive
 ├── useSetupBLELibrary.ts      # BLE library initialization
 ├── useBluetoothStatus.ts      # Bluetooth adapter state
 ├── useEngineerConnect.ts      # Console connection management
@@ -274,7 +274,8 @@ ble/
 ├── session/                    # Deterministic workflow API
 │   ├── createBleSession.ts     # Session factory
 │   ├── keepAwake.ts            # Hold a device awake for a screen visit (op8 raised, restored on exit or next connection)
-│   └── flashHold.ts            # Hold the capture flash armed for a screen visit (op34 always-on, restored the same way)
+│   ├── flashHold.ts            # Hold the capture flash armed for a screen visit (op34 always-on, restored the same way)
+│   └── endDeploymentSession.ts # Ending a deployment: one probe, skip the camera after its first timeout, 20 s cap, `dis` exempt
 └── workflows/                  # Reusable BLE workflow functions
     ├── deploymentPipeline.ts   # Shared deployment pipeline
     ├── resetToDefaults.ts      # executeResetToDefaults, shared OP factory reset

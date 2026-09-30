@@ -14,6 +14,14 @@ export const BLE_PROTOCOL_TIMINGS = {
   // that; this is the backstop for a stream that announced its size and never
   // delivered a packet.
   IMAGE_STREAM_STALL_MS: 10000,
+  // Idle time after which the app pings the nRF to keep the link up. The nRF
+  // drops the link after 60 s with nothing sent either way (DISCONNECTINTERVAL
+  // in ww-hardware ble_actions.c, restarted on every write it receives and
+  // every notification it sends). The ping used to go at 58 s, and a JS timer
+  // fires late whenever the thread is busy, so the link dropped six times in
+  // one bench session (#312). Half the window leaves room for that. The ping,
+  // `get heartbeat`, is answered by the nRF itself and never wakes the Himax.
+  HEARTBEAT_IDLE_MS: 30000,
 } as const;
 
 export const BLE_PROTOCOL_RETRIES = {

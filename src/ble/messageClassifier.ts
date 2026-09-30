@@ -8,6 +8,7 @@
  */
 
 import { parseLightCheck, summariseLightCheck } from './protocol/lightCheck'
+import { BLE_PROTOCOL_TIMINGS } from './protocol/protocolConstants'
 
 export enum MessageType {
   RESPONSE = 'RESPONSE',
@@ -290,7 +291,9 @@ export function classifyForMonitor(rawMessage: string): MonitorEvent | null {
   if (/^NN-/i.test(content)) return { category: 'nn_negative', label: 'Photo taken — no target detected', icon: 'image-outline' }
 
   // --- HEARTBEAT EVENT ---
-  if (/^heartbeat is\s/i.test(content)) return { category: 'selftest_ok', label: 'No motion in last 50 seconds', icon: 'check-circle' }
+  // The reply to the app's keep-alive, which only goes out after
+  // HEARTBEAT_IDLE_MS with nothing received, motion lines included.
+  if (/^heartbeat is\s/i.test(content)) return { category: 'selftest_ok', label: `No motion in the last ${BLE_PROTOCOL_TIMINGS.HEARTBEAT_IDLE_MS / 1000} seconds`, icon: 'check-circle' }
 
   // --- SELF-TEST EVENTS ---
   if (/^Error bits = 0x/i.test(content) && !/^Error bits = 0x0000/i.test(content)) return { category: 'selftest_warn', label: 'Self-test warning', icon: 'alert', details: content }

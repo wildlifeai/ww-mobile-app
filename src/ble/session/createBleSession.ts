@@ -63,8 +63,11 @@ export function createBleSession(peripheral: ExtendedPeripheral) {
     if (!peripheral.connected) {
       return Promise.reject(new Error('DEVICE_DISCONNECTED'));
     }
+    // The pipeline gets the transport's own signal for this task, not the
+    // caller's: the transport aborts it on the caller's abort and on
+    // clearAll() alike, so both stop the command underneath.
     return bleTransport.enqueue<T>(
-      () => runCommandPipeline(peripheral, commandConstructor, options),
+      (signal) => runCommandPipeline(peripheral, commandConstructor, { maxRetries: options?.maxRetries, signal }),
       { signal: options?.signal, lockHolder: options?.lockHolder }
     );
   };

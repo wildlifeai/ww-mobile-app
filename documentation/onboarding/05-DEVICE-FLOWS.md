@@ -185,7 +185,7 @@ When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeplo
 > Every line the progress dialog shows also goes to the logger, prefixed `[DeploymentLog]`. The dialog auto-transitions to the live monitor when the deployment finishes, so this is the only copy that survives a field report or a bench capture.
 
 > [!NOTE]
-> Live monitoring after step 7 polls `AI getop 19` once a minute for the stored-image count; the poll is owned by `DeploymentMonitorView`'s single `useDeploymentMonitor` instance, which also feeds the activity log. Each poll wakes the Himax.
+> Live monitoring after step 7 polls `AI getop 19` once a minute for the stored-image count; the poll is owned by `DeploymentMonitorView`'s single `useDeploymentMonitor` instance, which also feeds the activity log. Each poll wakes the Himax. It makes one attempt, and it stops while the deployment is ending, because it shares the queue with the end sequence (#293).
 
 ### OP Factory Reset (`pipeline.resetOps` / `executeResetToDefaults`)
 
@@ -293,6 +293,9 @@ A single [bulk fetch](./04-ENGINEER-CONSOLE.md#op-bulk-fetch-optimization-ai-get
 > [!IMPORTANT]
 > **Optimised quiesce** (`optimized=true`) only disables the camera. Skips re-enabling, interval clearing, and stabilisation delays.
 
+> [!NOTE]
+> **The camera's steps are best effort and capped** (#293), through `createEndDeploymentSession` in `src/ble/session/endDeploymentSession.ts`. The bulk fetch is a probe: one attempt, no retry. The first step the Himax does not answer gives up on the camera, and every later `AI` step is skipped without being sent. All of them together get 20 s. `dis` is exempt, because the nRF answers it itself. When the camera is given up on, the dialog says "Camera not answering" at once and ends on "Ended. The camera did not answer, so it keeps taking pictures", held for 6 s instead of 1.5 s: the record is ended, but the camera keeps this deployment's settings and goes on capturing. Before this, a camera asleep in its motion loop cost each step its full timeout and retries, about 40 s under a "Disconnecting" spinner (bench, 5 September 2026).
+
 ### Force End (Disconnected Device)
 
 If the device is not connected, the user can "Force End (Database Only)":
@@ -331,6 +334,7 @@ If the device is not connected, the user can "Force End (Database Only)":
 | "No Active Deployment" | Device not deployed or already ended | Verify correct device; check deployment list |
 | "Failed to Clear Deployment ID" | BLE write failure after 3 retries | Use "Force End"; manually reset via [Engineer Console](./04-ENGINEER-CONSOLE.md) |
 | "Connection Lost" before end | Device out of range or battery dead | Use "Force End (Database Only)" |
+| "Camera not answering" | The Himax did not answer the probe, usually asleep in its motion loop; the record is ended but the camera keeps capturing | Wake the camera with its button, reconnect, and clear it from the [Engineer Console](./04-ENGINEER-CONSOLE.md) |
 
 ---
 

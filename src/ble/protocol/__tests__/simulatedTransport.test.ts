@@ -25,8 +25,13 @@ describe('Simulated Transport Resiliency', () => {
     streamRegistry.terminateAll();
   });
 
+  // Cancel whatever a test left in flight, which now takes its response
+  // timeout with it, and the router's flush debounce. `jest.clearAllTimers()`
+  // stood here and did nothing under real timers, so an abandoned command's
+  // timeout outlived the suite and Jest force-exited the worker (#257).
   afterEach(() => {
-    jest.clearAllTimers();
+    bleTransport.clearAll();
+    rxRouter.clearBuffer(DEVICE_ID);
   });
 
   test('handles aggressively split packets (MTU fragmentation)', async () => {
@@ -128,15 +133,85 @@ describe('Simulated Transport Resiliency', () => {
     mockWrite.mockImplementation(async () => true);
 
     const abortController = new AbortController();
-    
+
     const promise = bleTransport.enqueue(
-      () => runCommandPipeline(peripheral, commandRegistry.battery),
+      (signal) => runCommandPipeline(peripheral, commandRegistry.battery, { signal }),
       { signal: abortController.signal }
     );
 
     abortController.abort();
-    
+
     await expect(promise).rejects.toThrow('Command cancelled');
+  });
+
+  // #257. Cancelling used to reject the caller and nothing else: the command's
+  // response timeout and both event bus listeners stayed until the timeout fired
+  // (two minutes for a firmware update), and a retryable command then wrote to
+  // the device again after it had been cancelled.
+  describe('cancelling a running command stops it underneath', () => {
+    const quickTimeoutBattery = () => {
+      const parent = commandRegistry.battery();
+      parent.timeoutMs = 100;   // battery allows one retry
+      return parent;
+    };
+    const batteryWrites = () =>
+      (transport.writeToDevice as jest.Mock).mock.calls.filter((c: any[]) => c[1] === 'battery');
+
+    test.each([
+      ['a caller abort', 'Command cancelled', (ac: AbortController) => ac.abort()],
+      ['clearAll(), which every disconnect runs', 'Session Reset', () => bleTransport.clearAll()],
+    ])('%s removes its listeners and never retries', async (_label, message, cancel) => {
+      const mockWrite = transport.writeToDevice as jest.Mock;
+      mockWrite.mockImplementation(async () => true);   // device stays silent
+
+      const ac = new AbortController();
+      const promise = bleTransport.enqueue(
+        (signal) => runCommandPipeline(peripheral, quickTimeoutBattery, { signal }),
+        { signal: ac.signal }
+      );
+      await sleep(20);
+      expect(batteryWrites()).toHaveLength(1);
+      expect(bleEventBus.listenerCount('textLine')).toBe(1);
+      expect(bleEventBus.listenerCount('deviceSignal')).toBe(1);
+
+      cancel(ac);
+      await expect(promise).rejects.toThrow(message);
+      expect(bleEventBus.listenerCount('textLine')).toBe(0);
+      expect(bleEventBus.listenerCount('deviceSignal')).toBe(0);
+
+      // Well past the timeout and its retry: nothing more goes to the device.
+      await sleep(300);
+      expect(batteryWrites()).toHaveLength(1);
+
+      // And the queue is free for the next command.
+      mockWrite.mockImplementation(async () => {
+        rxRouter.handleIncomingBytes(DEVICE_ID, Buffer.from('battery is 77%\n'));
+        return true;
+      });
+      await expect(
+        bleTransport.enqueue((signal) => runCommandPipeline(peripheral, commandRegistry.battery, { signal }))
+      ).resolves.toBe(77);
+    });
+
+    // A disconnect during a firmware update left heartbeats paused for the rest
+    // of the command's two-minute timeout.
+    test('a long-running command resumes heartbeats as soon as it is dropped', async () => {
+      (transport.writeToDevice as jest.Mock).mockImplementation(async () => true);
+      const pauses: boolean[] = [];
+      bleEventBus.on('heartbeatPause', (e) => pauses.push(e.isPaused));
+
+      const promise = bleTransport.enqueue((signal) =>
+        runCommandPipeline(peripheral, () => commandRegistry.aifirmware('FW.IMG'), { signal })
+      );
+      await sleep(20);
+      expect(pauses).toEqual([true]);
+
+      bleTransport.clearAll();
+      await expect(promise).rejects.toThrow('Session Reset');
+      await sleep(0);
+      expect(pauses).toEqual([true, false]);
+      expect(bleTransport.isLocked).toBe(false);
+    });
   });
 
   test('Test A: Binary marker split across chunks', (done) => {
