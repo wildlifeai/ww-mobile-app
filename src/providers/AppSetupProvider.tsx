@@ -1,4 +1,4 @@
-import { PropsWithChildren, useState, useEffect } from "react"
+import { PropsWithChildren, useState, useEffect, useRef } from "react"
 
 import { StyleSheet, View, Text, ActivityIndicator } from "react-native"
 
@@ -16,9 +16,13 @@ import { useSetupBLELibrary } from "../hooks/useSetupBLELibrary"
 import { useAppSelector } from "../redux"
 
 import ReferenceDataService from "../services/ReferenceDataService"
-import { initializeSupabaseClient } from "../services/supabase"
+import { getSupabaseClient, initializeSupabaseClient } from "../services/supabase"
 import SupabaseSyncService from "../services/SupabaseSyncService"
+import { watchConnectivity } from "../services/connectivityWatch"
+import { createReconnectSync } from "../services/reconnectSync"
+import { ensureValidSession } from "../services/auth"
 import { log, logError } from '../utils/logger'
+import { logCloudFailure } from '../utils/networkErrors'
 
 
 interface ExtendedToastConfigParams extends ToastConfigParams<any> {
@@ -62,9 +66,9 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 		if (!isSupabaseReady) return  // Wait for Supabase
 
 		log("🔄 Starting Supabase Sync Service...")
-		SupabaseSyncService.resetSyncState().then(() => {
-			SupabaseSyncService.startRealtimeSubscription()
-		})
+		SupabaseSyncService.resetSyncState()
+			.then(() => SupabaseSyncService.startRealtimeSubscription())
+			.catch((err) => logError("❌ Failed to start the sync service:", err))
 
 		return () => {
 			log("🛑 Stopping Supabase Sync Service...")
@@ -76,16 +80,55 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 	useEffect(() => {
 		if (isSupabaseReady && user?.id) {
 			log("👤 User authenticated - triggering data sync...")
-			SupabaseSyncService.sync()
+			// sync() logs its own failures; this only keeps them out of LogBox twice
+			SupabaseSyncService.sync().catch(() => {})
 
 			// Re-sync reference data now that we have a valid auth session.
 			// The initial sync on mount may have been skipped if the user
 			// wasn't authenticated yet (e.g., expired token, fresh install).
 			ReferenceDataService.syncReferenceData()
 				.then(() => log("✅ Post-login reference data sync complete"))
-				.catch((err) => logError("❌ Post-login reference data sync failed:", err))
+				.catch((err) => logCloudFailure("❌ Post-login reference data sync failed:", err))
 		}
 	}, [isSupabaseReady, user?.id]) // Depend strictly on user ID change
+
+	// Offline, stop the cloud work that cannot succeed; back online, resume it
+	// and upload what was queued meanwhile. The "Offline Mode" banner is the
+	// only sign of being offline (#310).
+	const userIdRef = useRef(user?.id)
+	useEffect(() => { userIdRef.current = user?.id }, [user?.id])
+	const reconnectSyncRef = useRef<ReturnType<typeof createReconnectSync> | null>(null)
+	if (!reconnectSyncRef.current) {
+		reconnectSyncRef.current = createReconnectSync({
+			isSignedIn: () => !!userIdRef.current,
+			ensureValidSession,
+			sync: () => SupabaseSyncService.sync(),
+			pullReferenceData: () => ReferenceDataService.syncReferenceData(),
+		})
+	}
+	useEffect(() => {
+		if (!isSupabaseReady) return
+		const reconnectSync = reconnectSyncRef.current!
+		const stopWatching = watchConnectivity({
+			onOffline: () => {
+				log("🔌 Offline: token auto-refresh paused until the connection returns")
+				getSupabaseClient().auth.stopAutoRefresh().catch(() => {})
+				reconnectSync.onOffline()
+			},
+			onReconnect: () => {
+				log("🔌 Back online: token auto-refresh resumed")
+				getSupabaseClient().auth.startAutoRefresh().catch(() => {})
+				reconnectSync.onReconnect()
+			},
+		})
+		return () => {
+			stopWatching()
+			reconnectSync.dispose()
+		}
+	}, [isSupabaseReady])
+	// A token refreshed after the reconnect: the sync that was waiting for it goes now
+	const token = useAppSelector((state) => state.authentication.token)
+	useEffect(() => { reconnectSyncRef.current?.onSessionChanged() }, [token])
 
 	// Show loading screen while initializing
 	if (!isSupabaseReady) {

@@ -124,6 +124,16 @@ describe("Supabase Client Environment Switching", () => {
 			expect((client as any)._isTestClient).toBe(true)
 		})
 
+		// #310: without its own fetch the client inherits React Native's, which
+		// has no timeout at all, and a network with no route held auth for minutes.
+		it("gives the client the time-limited fetch", async () => {
+			await initializeSupabaseClient()
+
+			const options = mockCreateClient.mock.calls[0][2] as any
+			expect(typeof options.global?.fetch).toBe("function")
+			expect(options.global.fetch).not.toBe(global.fetch)
+		})
+
 		it("should store client instance for later retrieval", async () => {
 			const client1 = await initializeSupabaseClient()
 			const client2 = getSupabaseClient()

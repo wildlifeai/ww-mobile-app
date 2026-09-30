@@ -25,6 +25,7 @@ import { PaperProvider } from "react-native-paper"
 import { CombinedDefaultTheme } from "./theme"
 import { AuthProvider } from "./providers/AuthProvider"
 import { KeyboardProvider } from "react-native-keyboard-controller"
+import { OfflineAwareRoot } from "./components/ui/OfflineIndicator"
 
 export const App = () => {
 	return (
@@ -41,7 +42,10 @@ export const App = () => {
 											<BleEngineProvider>
 												<ListenToBleEngineProvider>
 													<AuthProvider>
-														<MainNavigation />
+														{/* The one offline banner, above every screen */}
+														<OfflineAwareRoot>
+															<MainNavigation />
+														</OfflineAwareRoot>
 													</AuthProvider>
 												</ListenToBleEngineProvider>
 											</BleEngineProvider>

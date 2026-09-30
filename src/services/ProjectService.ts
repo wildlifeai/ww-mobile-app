@@ -11,6 +11,7 @@ import { Q } from '@nozbe/watermelondb'
 import database from '../database'
 import Project from '../database/models/Project'
 import { getSupabaseClient } from "./supabase"
+import { getStoredUserId } from "./auth"
 import OutboxService from './OutboxService'
 import SupabaseSyncService from './SupabaseSyncService'
 import type {
@@ -534,10 +535,11 @@ class ProjectService {
 	// --- Private Helpers ---
 
 	private async getCurrentUserId(): Promise<string | null> {
-		// Use getSession() instead of getUser() - works offline by reading from AsyncStorage
-		// getUser() tries to verify with server, which fails when offline
-		const { data: { session } } = await getSupabaseClient().auth.getSession()
-		return session?.user?.id || null
+		// Straight from the stored session. getSession() refreshes an expired
+		// token first, which offline costs about 26 s of retries and then answers
+		// null, so every local project read waited and lost the user (#310).
+		// getUser() is worse: it always asks the server.
+		return getStoredUserId()
 	}
 
 	private async enrichProjectWithDetails(model: Project): Promise<ProjectWithDetails> {
