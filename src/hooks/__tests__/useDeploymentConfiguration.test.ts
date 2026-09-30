@@ -90,3 +90,87 @@ describe('useDeploymentConfiguration configureFlash', () => {
         expect(session.lines).toEqual([`AI setop ${OP_PARAMETER.FLASH_LED} 2`])
     })
 })
+
+/** A session that records every command line it is asked to send. */
+const makeRecordingSession = () => {
+    const lines: string[] = []
+    return {
+        lines,
+        execute: jest.fn(async (build: any) => {
+            const command = typeof build === 'function' ? build() : build
+            lines.push(command?.build?.() ?? '')
+            return true
+        }),
+    }
+}
+
+/**
+ * op17 comes from the project's sensitivity. Every deployment used to write
+ * the constant 1, and because the writes are diff-based a device already at 1
+ * got no command at all, so the gap left nothing in any log (#316).
+ */
+describe('useDeploymentConfiguration configureCaptureMethod sensitivity', () => {
+    /** Factory defaults as far as this step cares: op17 at 1, everything else 0. */
+    const opsAfterReset = (): string[] =>
+        Array.from({ length: 37 }, (_, index) => (index === OP_PARAMETER.MD_SENSITIVITY ? '1' : '0'))
+
+    const configureCaptureMethod = () =>
+        renderHook(() => useDeploymentConfiguration()).result.current.configureCaptureMethod
+
+    it.each([
+        ['activity', 3],
+        ['mixed', 2],
+    ] as const)('writes the project sensitivity for %s capture', async (captureMethod, level) => {
+        const session = makeRecordingSession()
+
+        await configureCaptureMethod()(session, { deploymentId: 'd', captureMethod, mdSensitivity: level }, opsAfterReset())
+
+        expect(session.lines).toContain(`AI setop ${OP_PARAMETER.MD_SENSITIVITY} ${level}`)
+    })
+
+    it('defaults to medium when the project has no sensitivity', async () => {
+        const session = makeRecordingSession()
+
+        await configureCaptureMethod()(session, { deploymentId: 'd', captureMethod: 'activity' }, opsAfterReset())
+
+        expect(session.lines).toContain(`AI setop ${OP_PARAMETER.MD_SENSITIVITY} 2`)
+    })
+
+    it('turns motion detection off for timelapse whatever the sensitivity', async () => {
+        const session = makeRecordingSession()
+
+        await configureCaptureMethod()(session, { deploymentId: 'd', captureMethod: 'timelapse', mdSensitivity: 3 }, opsAfterReset())
+
+        expect(session.lines).toContain(`AI setop ${OP_PARAMETER.MD_SENSITIVITY} 0`)
+    })
+})
+
+/**
+ * The exact bytes of the GPS write. The firmware splits the argument on
+ * spaces (after turning underscores into spaces) and needs six fields; the
+ * decimal "lat,lon,alt" this path used to send was one token, discarded
+ * without an error, so no deployment ever wrote EXIF GPS and privacy mode
+ * never cleared the previous position (#315).
+ */
+describe('useDeploymentConfiguration setDeploymentId GPS', () => {
+    const setDeploymentId = () =>
+        renderHook(() => useDeploymentConfiguration()).result.current.setDeploymentId
+
+    const gpsLine = (lines: string[]) => lines.find(line => line.startsWith('AI setgps '))
+
+    it('sends a real position in the six-field format', async () => {
+        const session = makeRecordingSession()
+
+        await setDeploymentId()(session, 'd', { latitude: -45.5, longitude: 167.75, altitude: 320.5 }, true, ['0'])
+
+        expect(gpsLine(session.lines)).toBe(`AI setgps 45°30'0.00"_S_167°45'0.00"_E_320.50_Above`)
+    })
+
+    it('zeroes the position in the same format when GPS is not recorded', async () => {
+        const session = makeRecordingSession()
+
+        await setDeploymentId()(session, 'd', { latitude: -45.5, longitude: 167.75, altitude: 320.5 }, false, ['0'])
+
+        expect(gpsLine(session.lines)).toBe(`AI setgps 0°0'0.00"_N_0°0'0.00"_E_0.00_Above`)
+    })
+})

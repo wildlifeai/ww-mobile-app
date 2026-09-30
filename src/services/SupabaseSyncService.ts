@@ -982,6 +982,11 @@ class SupabaseSyncService {
                         rec.flashLed = row.flash_led ?? DEFAULT_FLASH_LED
                         rec.flashWindowStartMinutesUtc = row.flash_window_start_minutes_utc ?? undefined
                         rec.flashWindowMinutes = row.flash_window_minutes ?? undefined
+                        // Pulled since #285: a GPS setting changed on the website never
+                        // reached the phone, so its deployments zeroed GPS regardless
+                        rec.recordGpsInImages = row.record_gps_in_images ?? false
+                        rec.lorawanRequired = row.lorawan_required ?? false
+                        rec.isArchived = row.is_archived ?? false
                         rec.createdBy = row.created_by || ''
                         rec.modifiedBy = row.modified_by || '';
                         // Use _raw to bypass @readonly check
@@ -1008,6 +1013,11 @@ class SupabaseSyncService {
                         rec.flashLed = row.flash_led ?? DEFAULT_FLASH_LED
                         rec.flashWindowStartMinutesUtc = row.flash_window_start_minutes_utc ?? undefined
                         rec.flashWindowMinutes = row.flash_window_minutes ?? undefined
+                        // Pulled since #285: a GPS setting changed on the website never
+                        // reached the phone, so its deployments zeroed GPS regardless
+                        rec.recordGpsInImages = row.record_gps_in_images ?? false
+                        rec.lorawanRequired = row.lorawan_required ?? false
+                        rec.isArchived = row.is_archived ?? false
                         rec.createdBy = row.created_by || ''
                         rec.modifiedBy = row.modified_by || '';
                         // Use _raw to bypass @readonly check

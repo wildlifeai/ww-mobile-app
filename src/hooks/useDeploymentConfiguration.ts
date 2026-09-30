@@ -5,6 +5,7 @@ import { commandRegistry } from '../ble/protocol/commandRegistry'
 import { OP_PARAMETER } from './useDeviceSettings'
 import { log, logError, logWarn } from '../utils/logger'
 import { describeProjectFlash, ProjectFlashColumns, resolveProjectFlashOps } from '../utils/projectFlash'
+import { formatGPSString } from '../utils/gpsUtils'
 
 
 export interface DeploymentConfig {
@@ -18,6 +19,12 @@ export interface DeploymentConfig {
         altitude: number
     }
     recordGpsInImages?: boolean
+    /**
+     * op17 for the activity and mixed methods, from the project's
+     * sensitivity via `mdSensitivityLevel`. Omitted means medium (2), the
+     * database default. Timelapse writes 0 whatever this says.
+     */
+    mdSensitivity?: 1 | 2 | 3
     /**
      * The project's capture flash columns. Omitted leaves op13/op34 to op36
      * alone, which after a reset means no flash and no night IR - only the dev
@@ -63,15 +70,17 @@ export const useDeploymentConfiguration = () => {
         
         log('[DeployConfig] Image directory counters handled (Op 19+20)')
 
-        // Always enforce GPS writing based on privacy setting
+        // Always enforce GPS writing based on privacy setting. formatGPSString
+        // owns the wire format: the firmware splits on spaces and needs six
+        // fields, so the decimal "lat,lon,alt" sent here before was one token,
+        // silently discarded, and privacy mode never cleared anything (#315).
         if (recordGpsInImages && location) {
             const { latitude, longitude, altitude } = location
-            const gpsStr = `${latitude.toFixed(6)},${longitude.toFixed(6)},${altitude.toFixed(1)}`
-            await session.execute(() => commandRegistry.setgps(gpsStr))
+            await session.execute(() => commandRegistry.setgps(formatGPSString(latitude, longitude, altitude)))
             log('[DeployConfig] Real GPS location set as EXIF fallback')
         } else {
-            // Use 0,0,0 if privacy enabled or no location provided
-            await session.execute(() => commandRegistry.setgps('0,0,0'))
+            // Zeroes if privacy enabled or no location provided
+            await session.execute(() => commandRegistry.setgps(formatGPSString(0, 0, 0)))
             log('[DeployConfig] GPS zeroed out (Privacy mode or missing location)')
         }
     }, [])
@@ -104,11 +113,14 @@ export const useDeploymentConfiguration = () => {
         log('[DeployConfig] Configuring capture method:', config.captureMethod)
 
         const updates: { index: number, value: number }[] = []
+        // The project's sensitivity, not a constant: every deployment used to
+        // run at 1 whatever the project said (#316).
+        const sensitivity = config.mdSensitivity ?? 2
 
         if (config.captureMethod === 'activity') {
             // Motion detection mode
-            log('[DeployConfig] Motion detection mode - interval 1000ms, timeout 30s')
-            updates.push({ index: OP_PARAMETER.MD_SENSITIVITY, value: 1 }) // Ensure MD is on (low sensitivity)
+            log(`[DeployConfig] Motion detection mode - interval 1000ms, sensitivity ${sensitivity}`)
+            updates.push({ index: OP_PARAMETER.MD_SENSITIVITY, value: sensitivity })
             updates.push({ index: OP_PARAMETER.MD_INTERVAL, value: config.motionInterval || 1000 })
             updates.push({ index: OP_PARAMETER.TIMELAPSE_INTERVAL, value: 0 })
             updates.push({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: 1000 })
@@ -126,8 +138,8 @@ export const useDeploymentConfiguration = () => {
         } else if (config.captureMethod === 'mixed') {
              // Mixed mode (Activity + Timelapse)
              const interval = config.timelapseInterval || 300
-             log(`[DeployConfig] Mixed mode - Motion 1000ms + Timelapse ${interval}s`)
-             updates.push({ index: OP_PARAMETER.MD_SENSITIVITY, value: 1 }) // Ensure MD is on (low sensitivity)
+             log(`[DeployConfig] Mixed mode - Motion 1000ms, sensitivity ${sensitivity} + Timelapse ${interval}s`)
+             updates.push({ index: OP_PARAMETER.MD_SENSITIVITY, value: sensitivity })
              updates.push({ index: OP_PARAMETER.MD_INTERVAL, value: config.motionInterval || 1000 })
              updates.push({ index: OP_PARAMETER.TIMELAPSE_INTERVAL, value: interval })
              updates.push({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: 1000 })

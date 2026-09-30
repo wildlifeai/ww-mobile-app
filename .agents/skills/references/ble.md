@@ -103,11 +103,12 @@ day are in [traps.md](traps.md).
   Whether the firmware should apply on `setop` instead is Charles's decision in Seeed #209.
 - **op8 is a field setting, so go through `ble/session/keepAwake.ts`.** It is written to
   CONFIG.TXT, and a device left raised stays awake that long after every motion capture in the
-  field. `acquire` raises op8, 3 s for Capture Picture, and records the original on disk;
-  `release` puts it back; and anything a dropped link left owed is restored the next time a
-  flow takes a hold on that device. Nothing is written at connect time. Never `setop 8` from a
-  screen and never keep the original only in a ref, which the Motion Detection stream still
-  does (#271). While `keepAwake.holds(deviceId)` the capture path sends `txfile` straight after
+  field. `acquire` raises op8, 3 s for Capture Picture and the interval plus 2 s for the motion
+  test, and records the original on disk; `release` puts it back; and anything a dropped link
+  left owed is restored the next time a flow takes a hold on that device. Nothing is written at
+  connect time. Never `setop 8` from a screen and never keep the original only in a ref, which
+  the motion test did until #271. Every way out of a flow must release its holds, failures
+  included: a hold left in memory makes the next `acquire` a no-op. While `keepAwake.holds(deviceId)` the capture path sends `txfile` straight after
   `Captured` instead of paying a wake: 22 s to 13 s for the same picture.
 - **The app runs ahead of the firmware on op indices, deliberately.** op32, `CAM_RESOLUTION`,
   exists here before it ships on the device. Guard on the array length before touching a high

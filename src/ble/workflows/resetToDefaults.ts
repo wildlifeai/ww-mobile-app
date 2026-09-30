@@ -1,6 +1,7 @@
 import { BleSession } from '../session/createBleSession'
 import { commandRegistry } from '../protocol/commandRegistry'
 import { log, logWarn } from '../../utils/logger'
+import { formatGPSString } from '../../utils/gpsUtils'
 import { FACTORY_DEFAULTS, OP_PARAMETER, RESET_PRESERVED_OPS } from '../../hooks/useDeviceSettings'
 
 export interface ResetToDefaultsOptions {
@@ -166,7 +167,9 @@ export async function executeResetToDefaults(
     if (!options?.skipIdentityReset) {
         onProgress?.('Zeroing GPS...', 0.9)
         log('[ResetDefaults] Zeroing GPS...')
-        await session.execute(() => commandRegistry.setgps('0,0,0'))
+        // In the firmware's own format: a bare '0,0,0' is one token its parser
+        // discards, so the reset used to leave the last real position in EXIF (#315)
+        await session.execute(() => commandRegistry.setgps(formatGPSString(0, 0, 0)))
     } else {
         log('[ResetDefaults] Skipping zeroing GPS (skipIdentityReset = true)')
     }

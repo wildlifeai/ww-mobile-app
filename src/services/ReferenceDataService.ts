@@ -271,11 +271,14 @@ class ReferenceDataService {
 
     private async syncAiModels(): Promise<void> {
         const supabase = getSupabaseClient()
+        // Both statuses a project can be assigned, per the backend contract.
+        // Pulling validated alone dropped deployed models, and a project using
+        // one then started monitoring with no model at all (#290).
         const { data, error } = await supabase
             .from('ai_models')
             .select('*')
             .is('deleted_at', null)
-            .eq('status', 'validated')
+            .in('status', ['validated', 'deployed'])
             .order('name')
 
         if (error) {

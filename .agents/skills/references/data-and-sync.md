@@ -19,12 +19,14 @@ version for humans is
 - **Security lives at the sync boundary, not on the client.** Role checks in the app are user
   experience; Supabase row level security is the enforcement. Never treat a local query as
   authoritative for data belonging to other users.
-- **Reference sync must pull both `validated` and `deployed` models.** `ReferenceDataService`
-  filters `ai_models` to `status = 'validated'` only, but the backend contract, in ww-backend's
-  `MOBILE_INTEGRATION_GUIDE.md`, is `status IN ('validated','deployed')`. `deployed` means in
-  use on a device, the opposite of stale. A project pointing at a `deployed` model then cannot
-  be deployed from the app and the model never appears in the picker; the camera runs with no
-  model and only the Himax console says so. Filed as #290.
+- **Reference sync must pull both `validated` and `deployed` models.** The backend contract, in
+  ww-backend's `MOBILE_INTEGRATION_GUIDE.md`, is `status IN ('validated','deployed')`, and
+  `deployed` means in use on a device, the opposite of stale. `ReferenceDataService` pulled
+  `validated` alone until #290, so a project pointing at a `deployed` model started monitoring
+  with no model and only the Himax console said so. Two halves keep it closed: the pull asks for
+  both, and `syncAiModel` refuses a project model it cannot resolve, before the deployment is
+  created or anything is written to the device. `aiModelsApi.ts` (the picker) still asks for
+  `validated` only.
 - **Offline, the user stays signed in until the server says no** (#310). The app opens from
   the session auth-js keeps on disk, and a missing session with that one still stored means the
   refresh could not get through: auth-js removes it only on a real rejection. Never read "no

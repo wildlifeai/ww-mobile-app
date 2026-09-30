@@ -32,7 +32,8 @@ ever run.
   so every command after that pays a wake. A screen that sends several
   commands per visit can hold it awake through `ble/session/keepAwake.ts`,
   which raises op8 for the visit and puts it back on exit, or the next
-  time a hold is taken if the link dropped first. Capture Picture does this.
+  time a hold is taken if the link dropped first. Capture Picture and the
+  motion test do this.
   Connecting itself never writes to the device.
 - iOS: `peripheral.id` is a phone-local CoreBluetooth UUID (never a MAC —
   Android's id IS the MAC). Pending iOS connects never time out on their

@@ -40,6 +40,7 @@ import {
 import * as pipeline from '../../../ble/workflows/deploymentPipeline'
 
 import { log, logError, logWarn } from '../../../utils/logger'
+import { mdSensitivityLevel } from '../../../utils/mdSensitivity'
 import { sleep } from '../../../utils/helpers'
 import { selectCurrentOrganisation } from '../../../redux/slices/authSlice'
 import { ProjectWithDetails } from '../../../types/project'
@@ -100,8 +101,11 @@ export const useDevDeployment = ({
     const { configure: startConfigure } = useDeploymentConfiguration()
     useBleActions()
 
-    // GPS
-    const { location: gpsLocation } = useGPSLocation()
+    // GPS. Asked for on focus, as Start Monitoring does: nothing asked until
+    // 29 Sep 2026, so "Record GPS in Images" here always wrote zeros and dev
+    // deployments were saved without coordinates.
+    const { location: gpsLocation, getLocation } = useGPSLocation()
+    useFocusEffect(useCallback(() => { getLocation() }, [getLocation]))
 
     // Device health
     const [batteryLevel, setBatteryLevel] = useState<number | null>(null)
@@ -639,6 +643,11 @@ export const useDevDeployment = ({
                 recordGpsInImages: recordGpsOverride,
                 gpsLocation,
                 flash,
+                // The sensitivity picked on this screen, which is the one it
+                // saves to the project, so both paths write the same op17 (#316)
+                mdSensitivity: mdSensitivityLevel(
+                    sensitivityOptions.find(o => String(o.id) === String(motionSensitivityOverride))?.value
+                ),
             }, cb, opsAfterReset)
 
             // 7. Flash brightness, dev only (the LED and the mode went in above).
@@ -692,6 +701,7 @@ export const useDevDeployment = ({
         sdCardStatus, sdCardMissing,
         flashMode, flashLed, flashWindowStart, flashWindowMinutes, ledBrightness,
         numPictures, cameraChoice, camera, readSelfTestBits, refreshActiveDeployment,
+        sensitivityOptions, motionSensitivityOverride,
         aiModelIdOverride, recordGpsOverride,
         effectiveCaptureMethod, effectiveTimelapseInterval,
         monitoring

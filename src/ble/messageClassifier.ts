@@ -254,10 +254,12 @@ export function classifyForMonitor(rawMessage: string): MonitorEvent | null {
   // --- WAKE & MOTION EVENTS ---
   // One motion wake reaches the app as up to four lines: "Wake (MD)", the NN
   // verdict, "HM0360 motion in N blocks:" and "Captured ...". The wake line is
-  // the event and is what the stats count; the blocks line is the one worth
-  // reading, so it is the one listed. Listing both showed "Motion detected"
-  // twice per wake and counted it twice (bench, 5 Sep 2026).
-  if (/^Wake\s*\(MD\)/i.test(content)) return { category: 'motion', label: 'Motion detected', icon: 'run', details: content, isHidden: true }
+  // the event: it is counted and it is the one row listed. Listing the blocks
+  // line as well showed "Motion detected" twice per wake (bench, 5 Sep 2026),
+  // and listing it instead left the log empty: with one picture per trigger
+  // the HM0360 reports 0 blocks on every wake, because the first frame has no
+  // reference, so no wake was ever listed (bench, 29 Sep 2026).
+  if (/^Wake\s*\(MD\)/i.test(content)) return { category: 'motion', label: 'Motion detected', icon: 'run', details: content }
   if (/^MD[\s.]/i.test(content)) return { category: 'motion', label: 'Motion detected', icon: 'run', details: content }
 
   // Himax WW500 hardware outputs block counts dynamically
@@ -265,7 +267,7 @@ export function classifyForMonitor(rawMessage: string): MonitorEvent | null {
   if (motionMatch) {
     const blocks = parseInt(motionMatch[1], 10)
     if (blocks > 0) {
-      return { category: 'motion', label: `Motion detected (${blocks} blocks)`, icon: 'run', details: content, skipStats: true }
+      return { category: 'motion', label: `Motion detected (${blocks} blocks)`, icon: 'run', details: content, skipStats: true, isHidden: true }
     } else {
       return null // Safely ignore 0 block updates to prevent UI noise
     }
