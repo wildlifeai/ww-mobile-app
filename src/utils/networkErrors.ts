@@ -67,8 +67,8 @@ export function logCloudFailure(message: string, error: unknown, status?: number
  * attempt: auth-js prints every failed fetch (lib/fetch.js), every failed
  * refresh and every failed auto-refresh tick. Offline with a token to refresh
  * that is dozens of bare `TypeError: Network request failed` lines. Route
- * `console.error` calls whose arguments carry a network failure to
- * `console.log` instead, prefixed, so they stay in logcat and leave LogBox
+ * `console.error` calls whose arguments carry a network failure to the plain
+ * log (`target.log`) instead, prefixed, so they stay in logcat and leave LogBox
  * alone. Everything else passes through untouched.
  */
 export function installNetworkErrorFilter(target: Console = console): () => void {
