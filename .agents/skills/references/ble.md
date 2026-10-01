@@ -100,6 +100,9 @@ day are in [traps.md](traps.md).
   that should use it, which is why the pre-capture `waitForSleep` is not an optimisation to
   remove, and it must send nothing while waiting, because every command restarts the timer. A
   20 s hold with `slots` polling, tried on 3 September 2026, meant a camera switch never reset.
+  The HM0360's motion rate, op11, is programmed on the way into that sleep. The motion test got
+  its sleep for free from `md`'s 5 s timeout until #272 started skipping `md`, so it now waits
+  for one explicitly before the capture (#274).
   Whether the firmware should apply on `setop` instead is Charles's decision in Seeed #209.
 - **op8 is a field setting, so go through `ble/session/keepAwake.ts`.** It is written to
   CONFIG.TXT, and a device left raised stays awake that long after every motion capture in the
@@ -112,6 +115,16 @@ day are in [traps.md](traps.md).
   owed restore from before it can write the old value back. Every way out of a flow must release its holds, failures
   included: a hold left in memory makes the next `acquire` a no-op. While `keepAwake.holds(deviceId)` the capture path sends `txfile` straight after
   `Captured` instead of paying a wake: 22 s to 13 s for the same picture.
+- **op11 is a field setting too, and the motion test holds it through
+  `ble/session/mdIntervalHold.ts`** at the test interval (#274). Raised on a stopped camera it
+  turns motion capture back on, so it differs from keepAwake in three ways: the owed record goes
+  to disk before the raise, since a write whose reply is lost may have landed; the test's cleanup
+  pays a restore left owed as well as releasing its own hold; and a deployment calls `forget`
+  before writing op11, because it writes the same 1000 ms the Start Monitoring card tests at and
+  an owed restore cannot tell the two apart. Any other flow that writes op11 to a value a test
+  could hold needs the same `forget`. With the detector armed through the setup sleep, a motion
+  wake can take and report a capture of its own first, so the test counts grids and ends only
+  after its own `About to capture` (bench, 1 October 2026).
 - **The app runs ahead of the firmware on op indices, deliberately.** op32, `CAM_RESOLUTION`,
   exists here before it ships on the device. Guard on the array length before touching a high
   index, the way `useCapturePicture` does for the white balance gains, rather than reading it
