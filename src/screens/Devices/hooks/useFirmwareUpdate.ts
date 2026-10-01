@@ -325,7 +325,13 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
     const phaseRef = useRef<UpdatePhase>('idle')
     const deviceIdRef = useRef<string | undefined>(device?.id)
 
+    // Cleared on mount as well as set on unmount: an effect that runs again
+    // (Fast Refresh, StrictMode) runs its cleanup first, and a flag only ever
+    // set to true left the hook believing it was gone. On 1 October 2026 that
+    // stopped an update after image 1's flash command with the screen frozen
+    // on "Sending", and nothing sent the reset (#344 bench).
     useEffect(() => {
+        unmountedRef.current = false
         return () => { unmountedRef.current = true }
     }, [])
 

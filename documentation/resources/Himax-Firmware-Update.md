@@ -83,10 +83,16 @@ Mobile App                     nRF52840                         HX6538
 | Screen / module | File | Context |
 |-----------------|------|---------|
 | Firmware Status | `FirmwareStatusScreen.tsx` | Shows BLE + Himax versions, triggers update |
-| Firmware Update | `FirmwareUpdateScreen.tsx` | Update progress UI (presentational) |
+| Firmware Update | `FirmwareUpdateScreen.tsx` | Update progress UI (presentational). Two views: the operator's, `components/SimpleFirmwareUpdate.tsx`, and the engineer's, opened with `engineer: true` |
 | **Update orchestration** | `screens/Devices/hooks/useFirmwareUpdate.ts` | **The actual flow:** UART phase listener, progress parsing, slot/transfer logic, and the post-update reset/sleep sequence. Start here when changing behaviour. |
 
-Accessible from Engineer Console → Flows → "Update Himax Firmware".
+Accessible from Engineer Console → Flows → "Update Himax Firmware", which opens the engineer view: the build picker, the SD-card or cloud source and the transfer cards. Start Monitoring's banner and Firmware Status open the operator's view (#344), which says only this:
+
+- **Before:** from which build to which ("Update from the 23 Sep build to the 30 Sep build"), and one Update button. It installs both camera images, from the SD card when they are there, otherwise from the cloud.
+- **While it runs:** one bar for the whole pair and one line, "Sending image 1 of 2 to the camera", "Installing image 2 of 2", "Restarting the camera", with the update's last six log steps under them (file names and CRCs included), so a wait of minutes shows what is happening. While an image goes to the camera, a smaller bar and a line under the log give what is across, the speed and the time left ("212 of 476 KB, 7.9 KB/s, about 38 s left"). The steps stay on screen after a failure.
+- **After:** one line, "Updated to the 30 Sep build".
+
+Why it sends two images is under [Dual-Image Update](#dual-image-update-camera-variant-pair). Why a low battery blocks it: an update takes minutes of flash writing and two restarts, and a camera that dies part way through a pair is left with its two camera images on different builds. A bench unit on USB reads its battery as a few percent (the USB rail, not a battery), so both views offer "It's on USB power, update anyway" when the battery reads low.
 
 ### Command Registration (`commandRegistry.ts`)
 

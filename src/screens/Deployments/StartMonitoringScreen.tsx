@@ -272,7 +272,7 @@ export const StartMonitoringDetailsStep = () => {
                             textColor="#FFFFFF"
                             onPress={() => {
                                 isDfuInProgress.current = true
-                                navigation.navigate('FirmwareStatusScreen', { deviceId: bleDeviceId!, restrictToLatest: true })
+                                navigation.navigate('FirmwareStatusScreen', { deviceId: bleDeviceId! })
                             }}
                         >
                             <Text style={{ color: '#FFFFFF' }}>Update Firmware</Text>
@@ -417,7 +417,7 @@ export const StartMonitoringDetailsStep = () => {
                         if (id) {
                             // Suppress the disconnect alert during BLE DFU
                             isDfuInProgress.current = true
-                            navigation.navigate('FirmwareUpdateScreen', { deviceId: id, target, restrictToLatest: true })
+                            navigation.navigate('FirmwareUpdateScreen', { deviceId: id, target })
                         }
                     }}
                 />
