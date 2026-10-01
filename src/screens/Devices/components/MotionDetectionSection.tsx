@@ -12,7 +12,10 @@ import { OP_PARAMETER } from '../../../hooks/useDeviceSettings'
 import { log, logWarn } from '../../../utils/logger'
 import { MotionGrid, MiniGrid } from './MotionGrid'
 
-const MIN_INTERVAL_SEC = 0.3
+// 0.5 s is what the device has been shown to keep up: 20 frames at a median
+// 0.51 s on the HM0360 slot with a model loaded, 23 September 2026. 0.3 s has
+// not been shown to hold (#272).
+const MIN_INTERVAL_SEC = 0.5
 const MAX_INTERVAL_SEC = 20
 const DEFAULT_INTERVAL_SEC = '1.0'
 const MIN_PHOTOS = 1
@@ -113,8 +116,12 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
         frameHistory,
         statusMessage,
         errorMessage,
+        sensitivityNote,
         clearError,
     } = useMotionDetectionStream({ device: bleDevice })
+
+    // A build that refused the sensitivity has nothing for the selector to choose.
+    const sensitivityDisabled = sensitivityNote?.kind === 'refused'
 
     // Sensitivity is only changed while test is stopped.
     const handleSensitivityChange = useCallback((val: string) => {
@@ -225,9 +232,9 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                             value={sensitivity}
                             onValueChange={handleSensitivityChange}
                             buttons={[
-                                { value: '1', label: 'Low', disabled },
-                                { value: '2', label: 'Med', disabled },
-                                { value: '3', label: 'High', disabled }
+                                { value: '1', label: 'Low', disabled: disabled || sensitivityDisabled },
+                                { value: '2', label: 'Med', disabled: disabled || sensitivityDisabled },
+                                { value: '3', label: 'High', disabled: disabled || sensitivityDisabled }
                             ]}
                             style={styles.segmented}
                         />
@@ -350,6 +357,16 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                     </Banner>
                 )}
 
+                {/* What became of the sensitivity: shown during the run and after it */}
+                {sensitivityNote && (
+                    <WWText
+                        variant="bodySmall"
+                        style={[styles.sensitivityNote, { color: sensitivityDisabled ? theme.colors.error : theme.colors.onSurfaceVariant }]}
+                    >
+                        {sensitivityNote.message}
+                    </WWText>
+                )}
+
                 {/* ───────── Live test view ───────── */}
                 {isTesting && (
                     <>
@@ -373,14 +390,11 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                             Frame {frameCount}/{photosText} · Motion in {mdBlocksCount} blocks
                         </WWText>
 
-                        {/* Live Motion Grid */}
+                        {/* The HM0360's own detector, read once per test frame. It
+                            is not motion between the frames the test asked for,
+                            and frame 1 is always empty (#272). */}
                         <View style={styles.gridContainer}>
-                            <WWText variant="labelSmall" style={styles.gridLabel}>Live: Motion Detection Grid (16×16)</WWText>
-                            {parseFloat(intervalText) < 1.0 && (
-                                <WWText variant="labelSmall" style={styles.throttleNote}>
-                                    ⚡ Live grid refreshes up to 10fps for stability
-                                </WWText>
-                            )}
+                            <WWText variant="labelSmall" style={styles.gridLabel}>HM0360 motion detector, sampled per frame</WWText>
                             <View style={styles.gridBox}>
                                 <MotionGrid gridString={mdGrid} />
                             </View>
@@ -539,11 +553,8 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         textAlign: 'center',
     },
-    throttleNote: {
-        opacity: 0.5,
-        textAlign: 'center',
-        marginBottom: 4,
-        fontSize: 10,
+    sensitivityNote: {
+        marginBottom: 12,
     },
     gridBox: {
         borderRadius: 8,

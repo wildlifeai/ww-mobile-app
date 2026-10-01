@@ -9,7 +9,9 @@ import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { useMotionDetectionStream } from '../../Devices/hooks/useMotionDetectionStream'
 import { MotionGrid } from '../../Devices/components/MotionGrid'
 import { useTimer } from '../../../hooks/useTimer'
-import { logError } from '../../../utils/logger'
+import { log, logError, logWarn } from '../../../utils/logger'
+import ReferenceDataService from '../../../services/ReferenceDataService'
+import { mdSensitivityLevel } from '../../../utils/mdSensitivity'
 
 /** Default capture settings for deployment MD test */
 const CAPTURE_COUNT = 20
@@ -41,6 +43,7 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
         motionDetected,
         frameCount,
         statusMessage,
+        sensitivityNote,
     } = useMotionDetectionStream({ device })
 
     // Elapsed time counter: ticks every second while testing
@@ -59,12 +62,26 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
     )
 
     const handleStartTest = useCallback(async () => {
-        if (!device || !project?.activity_detection_sensitivity_id) return
+        if (!device || !project) return
 
         setIsPreparing(true)
         try {
+            // The level is the reference row's value, never its id: ids differ
+            // between tiers, and the id used to be sent as the level (#272). No
+            // sensitivity, or one this build does not know, tests at medium.
+            let sensitivityValue: string | undefined
+            if (project.activity_detection_sensitivity_id) {
+                try {
+                    const sensitivities = await ReferenceDataService.getActivitySensitivity()
+                    sensitivityValue = sensitivities.find(s => String(s.id) === String(project.activity_detection_sensitivity_id))?.value
+                } catch (e) {
+                    logWarn('[DeploymentMD] Could not read the sensitivity reference data, testing at medium:', e)
+                }
+            }
+            const level = mdSensitivityLevel(sensitivityValue)
+            log(`[DeploymentMD] Sensitivity ${sensitivityValue ?? 'not set'} -> level ${level}`)
             await startTest(
-                project.activity_detection_sensitivity_id ?? 3,
+                level,
                 CAPTURE_INTERVAL_MS,
                 CAPTURE_COUNT,
             )
@@ -84,7 +101,7 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
                 `Starts a ${CAPTURE_COUNT}-frame motion detection test using your project's sensitivity settings.\n\n` +
                 `Once started, the test runs for approximately ${estimatedTotalSec} seconds and cannot be stopped early: ` +
                 'the firmware controls the capture sequence internally.\n\n' +
-                'The 16×16 grid shows which zones detected movement between frames.'
+                "The 16×16 grid is the HM0360 motion detector's own output, read once per frame: the zones where it saw change."
             )}
         >
             <Text>Help</Text>
@@ -131,6 +148,13 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
                                         : 'Test Motion Detection'}
                         </Text>
                     </WWButton>
+
+                    {/* What became of the project's sensitivity (#272) */}
+                    {sensitivityNote && (
+                        <WWText variant="bodySmall" style={styles.durationHint}>
+                            {sensitivityNote.message}
+                        </WWText>
+                    )}
 
                     {/* Duration info: shown before and during test */}
                     {!isTesting && !testFinished && (
