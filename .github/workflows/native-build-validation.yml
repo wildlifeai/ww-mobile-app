@@ -346,7 +346,7 @@ jobs:
 
       - name: Fail if no flow actually ran
         run: |
-          n=$(grep -c "<testcase" maestro-report.xml 2>/dev/null || echo 0)
+          n=$(cat maestro-report*.xml 2>/dev/null | grep -c "<testcase" || echo 0)
           echo "flows executed: $n"
           test "$n" -ge 1
 

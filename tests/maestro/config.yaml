@@ -4,8 +4,8 @@
 # subfolder, which is why nothing under offline/ ran before October 2026. The
 # globs resolve from this folder. A file no glob matches is a subflow, run only
 # through `runFlow` from another flow: everything under subflows/. The smoke flow
-# has its own CI job and is left out on purpose.
+# has its own CI job and is left out on purpose, and so is offline/: those three
+# files are phases of one scenario that scripts/maestro-offline.sh runs with the
+# network switched between them, which Maestro cannot do by itself.
 flows:
   - "*.yaml"
-  - "offline/complete-offline-workflow.yaml"
-  - "offline/database-operations.yaml"

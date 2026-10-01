@@ -162,17 +162,18 @@ of building for 20 to 27 minutes. Caches are scoped per ref: the first dispatch 
 builds, later ones should not. Check the "Restore cached APK" step rather than assuming.
 
 Two jobs run the flows on an API 33 x86_64 emulator with the Pixel 6 profile (the default AVD
-is 320x640 at 160 dpi, where the drawer's version footer sat over its sign-out button), through
-`scripts/ci-maestro.sh`. That script also turns Bluetooth on, which the app insists on before
-the login screen, and takes `bluetooth` out of `airplane_mode_radios`, because the offline flows
-switch airplane mode and would otherwise land on "Please enable Bluetooth":
+is 320x640 at 160 dpi, where the drawer's version footer sat over its sign-out button, #379),
+through `scripts/ci-maestro.sh`. That script also turns Bluetooth on, which the app insists on
+before the login screen, and runs the offline scenario through `scripts/maestro-offline.sh`
+after the other flows:
 
 - `E2E Smoke`, **required**. One flow, [`smoke/app-startup.yaml`](../../tests/maestro/smoke/app-startup.yaml):
   install, launch, and the login screen's `email-input` and `login-button` render within 90 s.
   It asserts no more than that so that a required check never fails for an unverified id.
 - `E2E Full`, advisory. Every flow [`config.yaml`](../../tests/maestro/config.yaml) lists, signed
-  in as the E2E account. Runs on the `full-e2e` label or by hand (`gh workflow run
-  native-build-validation.yml --ref <branch>`); never in the merge queue, which has no labels.
+  in as the E2E account, then the three offline phases. Runs on the `full-e2e` label or by hand
+  (`gh workflow run native-build-validation.yml --ref <branch>`); never in the merge queue,
+  which has no labels.
 
 Both write a junit report and **fail if it holds no test cases**, because until 21 September
 2026 the E2E job reported success on every run while Maestro ran nothing (run 35493842313: an
@@ -189,8 +190,9 @@ the hierarchy there to find a real id before changing a selector; the `maestro-s
 | `tests/maestro/smoke/app-startup.yaml` | The APK installs, launches, and the bundle renders the login screen. **The required check** | See the PR that landed it for the run |
 | `tests/maestro/auth-workflow.yaml` | A wrong password is refused with "Login Failed"; the right one reaches the home screen and the project list; sign out returns to the login screen | Advisory, E2E Full |
 | `tests/maestro/project-crud-workflow.yaml` | Create a project with a unique name, see it listed, rename it, archive it (the app's delete), see it gone | Advisory, E2E Full |
-| `tests/maestro/offline/complete-offline-workflow.yaml` | A cold start in airplane mode stays signed in (#310), shows the offline indicator, and lists projects from the local database | Advisory, E2E Full |
-| `tests/maestro/offline/database-operations.yaml` | A project created in airplane mode is listed at once and survives the network returning and a pull | Advisory, E2E Full |
+| `tests/maestro/offline/sign-in-online.yaml` | Phase 1 of the offline scenario: sign in online and reach the project list | Advisory, E2E Full, via `scripts/maestro-offline.sh` |
+| `tests/maestro/offline/complete-offline-workflow.yaml` | Phase 2, in airplane mode: a cold start stays signed in (#310), shows the offline indicator, lists projects from the local database, and a project created offline is listed at once | Advisory, E2E Full, via the script |
+| `tests/maestro/offline/database-operations.yaml` | Phase 3, back online: the indicator goes, the outbox pushes the offline project and a pull keeps it; then archives it | Advisory, E2E Full, via the script |
 | `tests/maestro/subflows/*.yaml` | Subflows: sign in, open the New Project form, archive a project by name. Not flows | Run via `runFlow` only |
 
 The status column names what each flow proves; which runs passed is in the development report
@@ -205,7 +207,7 @@ that landed them, [`2026-10-02_e2e-real-screens`](../development%20reports/2026-
   "test:maestro:full": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/",
   "test:maestro:auth": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/auth-workflow.yaml",
   "test:maestro:crud": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/project-crud-workflow.yaml",
-  "test:maestro:offline": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/offline/complete-offline-workflow.yaml"
+  "test:maestro:offline": "bash scripts/maestro-offline.sh -e APP_ID=com.wildlife.wildlifewatcher.expo"
 }
 ```
 
@@ -259,10 +261,12 @@ adb devices
   Maestro ignores subfolders unless the config's `flows:` globs name them, and a subflow is any
   file no glob matches.
 - **Maestro cannot shell out.** `runScript` runs JavaScript in Maestro's own sandbox with no
-  `adb`, no `Android.shell`. Airplane mode is a command (`setAirplaneMode: enabled`, Android
-  only); anything else outside the app belongs in the workflow, before Maestro starts. Before an
-  offline flow runs locally: `adb shell settings put global airplane_mode_radios cell,wifi,nfc,wimax`,
-  or airplane mode takes Bluetooth down and the app with it.
+  `adb`, no `Android.shell`. Maestro has `setAirplaneMode`, but on Android it takes the
+  Bluetooth radio down and this app stops at "Please enable Bluetooth" (taking `bluetooth` out
+  of `airplane_mode_radios` did not help, run 36926971767). So the offline scenario is three
+  flows that share one app state, and `scripts/maestro-offline.sh` switches airplane mode and
+  turns Bluetooth back on with `adb` between them. Anything else outside the app belongs in a
+  script around Maestro, the same way.
 - **Scroll to a button near the bottom of a form** with `scrollUntilVisible` before tapping it;
   `hideKeyboard` after typing, or the keyboard covers it.
 
@@ -283,7 +287,7 @@ maestro cloud tests/maestro/auth-workflow.yaml
 | `maestro: command not found` | `source ~/.bashrc` or reinstall via curl |
 | Java version error | Install Java 17+: `sudo apt install -y openjdk-17-jdk` |
 | "Element not found" | Read the hierarchy (`maestro studio`, or the CI log's compact view); `extendedWaitUntil` before `tapOn`; use a testID |
-| Stuck on "Please enable Bluetooth" | The app refuses to run with the adapter off: `adb shell svc bluetooth enable`, which `scripts/ci-maestro.sh` does. In an offline flow, airplane mode took it down: take `bluetooth` out of `airplane_mode_radios` first |
+| Stuck on "Please enable Bluetooth" | The app refuses to run with the adapter off: `adb shell svc bluetooth enable`, which `scripts/ci-maestro.sh` does, and `scripts/maestro-offline.sh` again after switching airplane mode on |
 | Login never happens | `E2E_TEST_EMAIL` / `E2E_TEST_PASSWORD` not passed, or not a seeded user since the last cloud-dev reseed |
 | Flaky tests | `launchApp` with `clearState: true`; disable animations |
 
@@ -291,8 +295,9 @@ maestro cloud tests/maestro/auth-workflow.yaml
 
 ## Testing offline by hand (Android)
 
-The Maestro offline flows cover a cold start in airplane mode and one offline write. Everything
-else offline is checked on a phone, with a debug build over USB. Four things decide whether the test means anything:
+The Maestro offline scenario (`npm run test:maestro:offline`) covers a cold start in airplane
+mode, one offline write and its sync. Everything else offline is checked on a phone, with a
+debug build over USB. Four things decide whether the test means anything:
 
 1. **Airplane mode is not offline.** Android turns Wi-Fi back on near a remembered network. Turn
    off "Turn on Wi-Fi automatically", keep Bluetooth on for the camera, and confirm before every

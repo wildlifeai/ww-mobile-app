@@ -22,6 +22,7 @@
 | `install-maestro-wsl2.sh` | Install the Maestro CLI and JDK 17 in WSL2 | Bash (WSL2) |
 | `ci-maestro.sh` | Run the Maestro flows on the CI emulator (install APK, Bluetooth on, junit report, final hierarchy, logcat) | Bash (CI) |
 | `ci-maestro-output.sh` | Redact the E2E password and print Maestro's report, hierarchies and logs into the job log | Bash (CI) |
+| `maestro-offline.sh` | Run the three offline Maestro phases, switching airplane mode and restoring Bluetooth between them | Bash |
 
 ## Environment Configuration
 

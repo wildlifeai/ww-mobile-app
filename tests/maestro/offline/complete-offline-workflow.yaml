@@ -1,35 +1,19 @@
-# Offline cold start: a signed-in user who starts the app with no network stays
-# signed in (#310), sees the offline indicator, and still gets the project list
-# from the local database.
+# Offline scenario, phase 2 of 3 (scripts/maestro-offline.sh): the script has
+# switched airplane mode on and turned Bluetooth back on. A cold start stays
+# signed in (#310), shows the offline indicator, lists projects from the local
+# database, and a project created now is listed at once (the outbox). Nothing
+# is cleared: the state is phase 1's.
 #
 # Until October 2026 this file held ten "tests" against screens the app never
 # had (an admin panel, LoRaWAN simulation, conflict review) and shelled out
-# from JavaScript, which Maestro cannot do. Airplane mode is a Maestro command
-# on Android (`setAirplaneMode`), so the network part is real now, provided the
-# device keeps Bluetooth out of airplane mode's radios (scripts/ci-maestro.sh
-# sets `airplane_mode_radios`), or the app stops at "Please enable Bluetooth".
-# The flow ends with the network back on whatever happens, so the next flow
-# starts online.
+# from JavaScript, which Maestro cannot do. Maestro's own `setAirplaneMode`
+# was tried first; it takes the Bluetooth radio down and the app with it
+# (runs 36921573134, 36926971767), hence the phases.
 #
-# Needs E2E_TEST_EMAIL and E2E_TEST_PASSWORD from the run, see ../subflows/sign-in.yaml.
-# appId comes from the run (`-e APP_ID=...`), see ../smoke/app-startup.yaml
+# OFFLINE_PROJECT_NAME comes from the script, unique per run, and phase 3
+# looks for the same name. appId comes from the run (`-e APP_ID=...`).
 appId: ${APP_ID}
-onFlowComplete:
-  - setAirplaneMode: disabled
 ---
-- runFlow: ../subflows/sign-in.yaml
-# Sync has run by the time the list shows the organisation's projects
-- tapOn:
-    id: "bottom-tab-projects"
-- extendedWaitUntil:
-    visible:
-      id: "project-search-bar"
-    timeout: 60000
-- assertNotVisible:
-    id: "offline-indicator"
-
-# Go offline and start cold
-- setAirplaneMode: enabled
 - stopApp
 - launchApp
 - extendedWaitUntil:
@@ -46,11 +30,24 @@ onFlowComplete:
     visible:
       id: "project-search-bar"
     timeout: 60000
-- takeScreenshot: offline-cold-start
+- takeScreenshot: offline-2-cold-start
 
-# Back online, the indicator goes
-- setAirplaneMode: disabled
+# A project created offline is listed at once
+- runFlow: ../subflows/open-new-project.yaml
+- tapOn:
+    id: "project-name-input"
+- inputText: ${OFFLINE_PROJECT_NAME}
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "create-project-button"
+    direction: DOWN
+- tapOn:
+    id: "create-project-button"
 - extendedWaitUntil:
-    notVisible:
-      id: "offline-indicator"
+    visible:
+      text: ${OFFLINE_PROJECT_NAME}
     timeout: 60000
+- assertVisible:
+    id: "offline-indicator"
+- takeScreenshot: offline-2-created

@@ -21,7 +21,7 @@
     "test:e2e:android": "detox test --configuration android.emu.debug",
     "test:maestro": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/",
     "test:maestro:auth": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/auth-workflow.yaml",
-    "test:maestro:offline": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/offline/complete-offline-workflow.yaml",
+    "test:maestro:offline": "bash scripts/maestro-offline.sh -e APP_ID=com.wildlife.wildlifewatcher.expo",
     "type-check": "tsc --noEmit",
     "version:check": "node scripts/check-version-sync.js",
     "docs:validate": "node scripts/validate-docs.js",

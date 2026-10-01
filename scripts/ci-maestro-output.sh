@@ -13,7 +13,7 @@ tests_dir="$HOME/.maestro/tests"
 
 if [ -n "${E2E_TEST_PASSWORD:-}" ]; then
   export PW="$E2E_TEST_PASSWORD"
-  grep -rlF -- "$PW" "$tests_dir" maestro-report.xml final-hierarchy.json device-logcat.txt 2>/dev/null \
+  grep -rlF -- "$PW" "$tests_dir" maestro-report*.xml final-hierarchy.json device-logcat.txt 2>/dev/null \
     | while read -r f; do perl -pi -e 's/\Q$ENV{PW}\E/[redacted]/g' "$f"; done
 fi
 
@@ -22,9 +22,12 @@ compact='[.. | objects | select(has("attributes")) | .attributes
   | map(select(((.id // "") != "") or ((.text // "") != "") or ((.acc // "") != "")))
   | .[] | "\(.id // "-") | \(.text // "-") | \(.acc // "-") | \(.bounds // "-")"'
 
-echo "::group::maestro-report.xml"
-cat maestro-report.xml 2>/dev/null || echo "(no report)"
-echo "::endgroup::"
+for r in maestro-report*.xml; do
+  [ -f "$r" ] || continue
+  echo "::group::$r"
+  cat "$r"
+  echo "::endgroup::"
+done
 
 echo "::group::files"
 find "$tests_dir" -type f 2>/dev/null | sort
@@ -46,6 +49,13 @@ done
 for f in $(find "$tests_dir" -type f -name 'maestro.log' 2>/dev/null | sort); do
   echo "::group::$f (tail)"
   tail -n 150 "$f"
+  echo "::endgroup::"
+done
+
+# Maestro keeps a logcat per flow; the app's own lines are what matter
+for f in $(find "$tests_dir" -type f -name 'device-logcat.txt' 2>/dev/null | sort); do
+  echo "::group::$f (app lines, tail)"
+  grep -E 'ReactNativeJS|AndroidRuntime|wildlifewatcher' "$f" | tail -n 80
   echo "::endgroup::"
 done
 

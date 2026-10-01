@@ -6,8 +6,12 @@ appId: ${APP_ID}
 env:
   PROJECT_NAME: ""
 ---
+# By the card's accessibility label, see project-crud-workflow.yaml
+- waitForAnimationToEnd:
+    timeout: 5000
 - tapOn:
-    text: ${PROJECT_NAME}
+    text: "Project ${PROJECT_NAME},.*"
+    retryTapIfNoChange: true
 - extendedWaitUntil:
     visible:
       id: "edit-button"

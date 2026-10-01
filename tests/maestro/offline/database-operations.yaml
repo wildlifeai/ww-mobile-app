@@ -1,68 +1,32 @@
-# Offline write: a project created with no network is in the list at once (the
-# local database and the outbox), and is still there after the network returns
-# and the list is pulled from the server. Archives it afterwards.
+# Offline scenario, phase 3 of 3 (scripts/maestro-offline.sh): the script has
+# switched airplane mode off. The indicator goes, the outbox pushes the project
+# created in phase 2, and a pull from the server keeps it in the list. Archives
+# it afterwards so cloud-dev stays tidy.
 #
 # Until October 2026 this file asserted screens the app never had ("Database
-# Status", "Sync History", a device status page). See ../../documentation/onboarding/03-DATA-AND-SYNC.md
-# for what the outbox does. The flow ends with the network back on whatever
-# happens.
+# Status", "Sync History", a device status page). What the outbox does is in
+# documentation/onboarding/03-DATA-AND-SYNC.md.
 #
-# Needs E2E_TEST_EMAIL and E2E_TEST_PASSWORD from the run, for a user who may
-# create projects in their organisation. See ../subflows/sign-in.yaml.
-# appId comes from the run (`-e APP_ID=...`), see ../smoke/app-startup.yaml
+# OFFLINE_PROJECT_NAME comes from the script, the same value phase 2 used.
+# appId comes from the run (`-e APP_ID=...`).
 appId: ${APP_ID}
-onFlowComplete:
-  - setAirplaneMode: disabled
 ---
-- runFlow: ../subflows/sign-in.yaml
-- evalScript: ${output.projectName = 'E2E offline ' + Date.now()}
-- tapOn:
-    id: "bottom-tab-projects"
-- extendedWaitUntil:
-    visible:
-      id: "project-search-bar"
-    timeout: 60000
-
-# Offline, create a project
-- setAirplaneMode: enabled
-- extendedWaitUntil:
-    visible:
-      id: "offline-indicator"
-    timeout: 30000
-- runFlow: ../subflows/open-new-project.yaml
-- tapOn:
-    id: "project-name-input"
-- inputText: ${output.projectName}
-- hideKeyboard
-- scrollUntilVisible:
-    element:
-      id: "create-project-button"
-    direction: DOWN
-- tapOn:
-    id: "create-project-button"
-- extendedWaitUntil:
-    visible:
-      text: ${output.projectName}
-    timeout: 60000
-- takeScreenshot: offline-created
-
-# Online again: the outbox pushes it, and a pull keeps it
-- setAirplaneMode: disabled
 - extendedWaitUntil:
     notVisible:
       id: "offline-indicator"
     timeout: 60000
+# Pull to refresh: SupabaseSyncService.sync(), then the list refetches
 - swipe:
     direction: DOWN
     duration: 600
 - extendedWaitUntil:
     visible:
-      text: ${output.projectName}
+      text: ${OFFLINE_PROJECT_NAME}
     timeout: 60000
-- takeScreenshot: offline-synced
+- takeScreenshot: offline-3-synced
 
 # Tidy up
 - runFlow:
     file: ../subflows/archive-project.yaml
     env:
-      PROJECT_NAME: ${output.projectName}
+      PROJECT_NAME: ${OFFLINE_PROJECT_NAME}

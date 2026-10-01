@@ -35,9 +35,16 @@ appId: ${APP_ID}
     timeout: 60000
 - takeScreenshot: crud-created
 
-# Update: open it, rename it, and see the new name as the details title
+# Update: open it, rename it, and see the new name as the details title.
+# The card is tapped by its accessibility label, which lands on the card
+# itself; a tap on the name's text node did nothing (run 36926971767), and the
+# list redraws as the outbox pushes the new project, so the tap repeats if the
+# screen does not change.
+- waitForAnimationToEnd:
+    timeout: 5000
 - tapOn:
-    text: ${output.projectName}
+    text: "Project ${output.projectName},.*"
+    retryTapIfNoChange: true
 - extendedWaitUntil:
     visible:
       id: "edit-button"
