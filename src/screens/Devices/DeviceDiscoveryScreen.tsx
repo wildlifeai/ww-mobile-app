@@ -236,9 +236,15 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         textAlign: 'center',
     },
+    // The illustration is the only part of the column allowed to shrink. On a
+    // small phone or with a large font the centred column is taller than the
+    // space: it used to spill upwards over the title (#176), and since the
+    // overflow was hidden it clipped the picture's top and, with a large font,
+    // the button at the bottom instead.
     graphicContainer: {
         width: '100%',
-        maxHeight: 200,
+        height: 200,
+        flexShrink: 1,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 20,

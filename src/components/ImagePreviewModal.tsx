@@ -77,7 +77,8 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                     {/* Footer with filename and custom children */}
                     <View style={styles.footer}>
                         <Text style={[styles.filename, dynamicStyles.filename]}>
-                            {imageUri.startsWith('data:') ? 'Captured Image' : imageUri.split('/').pop()}
+                            {/* A signed storage URL carries its token as a query string */}
+                            {imageUri.startsWith('data:') ? 'Captured Image' : imageUri.split('?')[0].split('/').pop()}
                         </Text>
                         {children}
                     </View>
