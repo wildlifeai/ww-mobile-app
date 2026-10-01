@@ -90,9 +90,9 @@ version for humans is
   that way type-checks and never runs under test.
 - **A site photo is uploaded, then its local file goes.** `DeploymentPhotoService` swaps each
   local path on the deployment for its bucket path after the upload, and runs one pass per
-  deployment at a time, merged against the record at write time. A pull can still put the
-  older row, with the local path, back while the update waits to be pushed (#349), so a local
-  path whose file is gone is looked up in the bucket before it is dropped (#347).
+  deployment at a time, merged against the record at write time. A pull no longer puts the
+  older row back over a record whose change is still in the outbox (#349), and a local path
+  whose file is gone is still looked up in the bucket before it is dropped (#347).
 - **A deployment must carry its device with it.** The push order, `projects`, `devices`,
   `deployments`, is a foreign-key order, and `DeploymentService.createDeployment` queues an
   idempotent device CREATE alongside the deployment, since the server's devices insert is
