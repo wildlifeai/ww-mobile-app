@@ -10,6 +10,7 @@ import { commandRegistry } from '../protocol/commandRegistry'
 import { awaitAeRegisters } from '../protocol/awaitAeRegisters'
 import { runFileTransferPipeline } from '../protocol/fileTransfer'
 import { crc16ccitt } from '../protocol/fileTransfer/crc16ccitt'
+import { FileTransferError } from '../protocol/fileTransfer/fileTransferTypes'
 import ReferenceDataService from '../../services/ReferenceDataService'
 import AiModelService from '../../services/AiModelService'
 import AiModel from '../../database/models/AiModel'
@@ -208,6 +209,10 @@ async function resolveTargetModel(
  * @param eraseStaleModels  If true and no model is assigned, erase any model
  *                          currently on the device. Used by production deployments
  *                          but not dev deployments.
+ * @param bleFirmwareVersion  The `ver` reading the caller already holds, such
+ *                          as the pre-deployment checks'. Passed to each
+ *                          transfer so a camera that clears the BLE firmware
+ *                          floor costs no extra command (#289).
  */
 export async function syncAiModel(
     device: ExtendedPeripheral,
@@ -215,7 +220,8 @@ export async function syncAiModel(
     modelId: string | null | undefined,
     { addLog, setStep, setProgress }: ProgressCallbacks,
     eraseStaleModels: boolean = false,
-    currentOps?: string[]
+    currentOps?: string[],
+    bleFirmwareVersion?: string | null
 ): Promise<void> {
     addLog('Checking AI model...')
     setStep('AI Model...')
@@ -369,6 +375,7 @@ export async function syncAiModel(
                     await runFileTransferPipeline(device, {
                         filename: tflFilename,
                         data: modelBytes,
+                        bleFirmwareVersion,
                         onProgress: (p) => {
                             setProgress(0.14 + (p.percentage / 100) * 0.04)
                             if (p.percentage !== lastPct) {
@@ -390,6 +397,7 @@ export async function syncAiModel(
                     await runFileTransferPipeline(device, {
                         filename: labelsFilename,
                         data: labelsBytes,
+                        bleFirmwareVersion,
                         onProgress: (p) => setStep(`Transferring labels… ${p.percentage}%`)
                     })
                     addLog(`✅ ${labelsFilename} transferred`)
@@ -413,6 +421,16 @@ export async function syncAiModel(
             // Files the phone cannot get stop the deployment. A transfer or a
             // `loadmodel` that fails stays a warning: the camera still records.
             if (e instanceof ModelFilesUnavailableError) throw e
+            // A transfer refused over the BLE firmware stops it too, for the
+            // same reasons as the files: the refusal comes before anything is
+            // written to the camera or the deployment is created, a second
+            // attempt meets the same firmware, and the operator can fix it by
+            // updating the BLE firmware. As a warning, every deployment of that
+            // camera would go out without its model (#289).
+            if (e instanceof FileTransferError && e.reason === 'BLE_FIRMWARE_TOO_OLD') {
+                addLog('The camera\'s BLE firmware is too old to receive the model, stopping')
+                throw e
+            }
             logWarn('Failed to update AI model:', e)
             addLog('⚠️ AI model update FAILED. The deployment will record but not classify. See device log.')
         }

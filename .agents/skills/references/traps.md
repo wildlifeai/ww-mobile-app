@@ -168,17 +168,17 @@ file is the list of things that look like an app bug and are not, and the revers
   ww-hardware #34 with the proof: the nRF already gates that logging off for uploads, and the
   same 241-byte packets went five times faster that way on the same device. The app's 1.1 KB/s
   countdown model stands until the gate covers downloads.
-- **The transfer window only works on nRF firmware 0.30.47 and later.** The app streams up to
-  12 packets ahead by default, in `runFileTransferPipeline.ts`, which the nRF's 16-slot FIFO,
-  0.30.47 and later, ww-hardware #27, absorbs. On pre-FIFO firmware there is one relay slot:
-  the surplus packets are dropped with a log-only warning, an in-flight-ack race resets the AI
-  state machine to SLEEP, and the transfer hangs to the 15 s silence timeout with **no
-  `ftx err`**, reporting only "no transfer response for 15s". It does not fail fast, and it does
-  not complete via retries, because the windowed path has no per-packet ACK timeout. The window
-  must be gated on the `ver` string; until then a board on old firmware has to be DFU'd to
-  0.30.48 first. Filed as #289. The comment at `runFileTransferPipeline.ts` lines 109 to 111
-  and `File-Transfer-Protocol.md`, which claim it "fails fast with an ftx error" and "completes
-  slowly via ACK-timeout retries", both describe this wrongly.
+- **The transfer window only works on nRF firmware 0.30.47 and later, and the app refuses
+  anything older.** On pre-FIFO firmware (0.23.x on ww-hardware `main`) the surplus packets are
+  dropped with a log-only warning, an in-flight-ack race resets the AI state machine to SLEEP,
+  and the transfer hangs to the 15 s silence timeout with **no `ftx err`** (Charles Palmer,
+  5 September 2026, #289). Since #289 the pipeline reads `ver` before `FILE_START` and refuses
+  below `MIN_BLE_FIRMWARE_FOR_TRANSFER`, so "This camera's BLE firmware is ..., and sending
+  files to it needs ..." is the gate working, not a bug: DFU the nRF and retry. When `ver` goes
+  unanswered it streams anyway, and "The camera acknowledged N of the M packets sent, then went
+  silent" is the likely old-firmware face. Do not reach for `windowSize: 1` as a fix: it suits
+  that firmware and stalls on 0.30.47 and later. The rules are in
+  [File-Transfer-Protocol.md](../../../documentation/resources/File-Transfer-Protocol.md#the-ble-firmware-floor).
 - **Nothing may be sent while an image is streaming in, and a flow must stop when its screen
   goes.** The nRF forwards any command to the Himax at once, restarts its binary packet
   counter, and the reply comes only when the file has finished: a `slots` sent mid-stream drew
@@ -265,7 +265,9 @@ file is the list of things that look like an app bug and are not, and the revers
   tests on Windows, because Jest reads the `\.` of `\.claude` in `<rootDir>` as a glob escape:
   pass the five `testMatch` globs from `jest.config.js` with `<rootDir>` swapped for `**`, as
   `npx jest --testMatch "**/src/**/__tests__/**/*.{js,jsx,ts,tsx}" ...`, and check that
-  `--listTests` counts every test file on disk. In the main checkout Jest also picks
+  `--listTests` counts every test file on disk. `--testMatch` takes every argument after it as
+  another glob, so a file path appended after it runs the whole suite; to run one file, make its
+  name the glob. In the main checkout Jest also picks
   up the worktrees' copies of every test, so add `--modulePathIgnorePatterns=<rootDir>/.claude/`
   **after** any test paths: the option swallows the paths that follow it and silently turns
   them into ignore patterns.

@@ -3,6 +3,7 @@ import AiModelService from '../../../services/AiModelService'
 import ReferenceDataService from '../../../services/ReferenceDataService'
 import { runFileTransferPipeline } from '../../protocol/fileTransfer'
 import { crc16ccitt } from '../../protocol/fileTransfer/crc16ccitt'
+import { FileTransferError } from '../../protocol/fileTransfer/fileTransferTypes'
 
 jest.mock('../../../utils/logger', () => ({
     log: jest.fn(),
@@ -240,5 +241,66 @@ describe('syncAiModel when the model files cannot be downloaded', () => {
         await syncAiModel({} as any, session as any, MODEL_ID, cb, true, ops())
 
         expect(cb.addLog).toHaveBeenCalledWith(expect.stringMatching(/AI model update FAILED/))
+    })
+})
+
+/**
+ * BLE firmware below 0.30.47 cannot take the windowed transfer, and the
+ * pipeline refuses it before FILE_START (#289). In a deployment that refusal
+ * stops the start like files the phone cannot get: nothing has been written
+ * to the camera, and a retry meets the same firmware.
+ */
+describe('syncAiModel when the camera BLE firmware is too old for the transfer', () => {
+    const MODEL_ID = 'd0000000-0000-4000-8000-0000000000a1'
+    const model = new Uint8Array([0x28, 0, 0, 0, 0x54, 0x46, 0x4c, 0x33, 1, 2, 3])
+    const labels = new Uint8Array([0x72, 0x61, 0x74])
+    const ops = Array.from({ length: 37 }, () => '0')
+    const refusal = "This camera's BLE firmware is 0.23.29, and sending files to it needs 0.30.47 or later. Update the BLE firmware first, then try again."
+
+    const device = () => {
+        const sent: string[] = []
+        const session = {
+            execute: jest.fn(async (build: any) => {
+                const line: string = build().build()
+                sent.push(line)
+                if (line === 'AI dir') return []
+                return true
+            }),
+        }
+        return { session, sent }
+    }
+    const callbacks = () => ({ addLog: jest.fn(), setStep: jest.fn(), setProgress: jest.fn() })
+
+    beforeEach(() => {
+        jest.resetAllMocks()
+        ;(AiModelService.getModelById as jest.Mock).mockResolvedValue({ name: 'Rat Detection', labelsPath: 'x/7V1.txt' })
+        ;(ReferenceDataService.getFirmwareIds as jest.Mock).mockResolvedValue({ firmwareModelId: 7, versionNumber: 1 })
+        ;(AiModelService.getModelFileExtensions as jest.Mock).mockReturnValue({ modelExt: 'tfl', labelsExt: 'txt' })
+        ;(AiModelService.isDownloaded as jest.Mock).mockResolvedValue(true)
+        ;(AiModelService.ensureFilesDownloaded as jest.Mock).mockResolvedValue({ modelUri: 'file://m', labelsUri: 'file://l' })
+        ;(AiModelService.readModelAsBytes as jest.Mock).mockImplementation(async (uri: string) => (uri === 'file://m' ? model : labels))
+    })
+
+    it('stops the deployment with the refusal, instead of warning and deploying without the model', async () => {
+        ;(runFileTransferPipeline as jest.Mock).mockRejectedValue(new FileTransferError('BLE_FIRMWARE_TOO_OLD', refusal))
+        const { session, sent } = device()
+        const cb = callbacks()
+
+        await expect(syncAiModel({} as any, session as any, MODEL_ID, cb, true, ops, '00.23.29'))
+            .rejects.toThrow(refusal)
+
+        expect(runFileTransferPipeline).toHaveBeenCalledTimes(1)
+        expect(sent).not.toContain('AI loadmodel 7 1')
+        expect(cb.addLog).toHaveBeenCalledWith("The camera's BLE firmware is too old to receive the model, stopping")
+        expect(cb.addLog).not.toHaveBeenCalledWith(expect.stringMatching(/update FAILED/))
+    })
+
+    it('hands the reading the caller already holds to each transfer', async () => {
+        const { session } = device()
+
+        await syncAiModel({} as any, session as any, MODEL_ID, callbacks(), true, ops, '00.30.51')
+
+        const transfers = (runFileTransferPipeline as jest.Mock).mock.calls.map(([, opts]) => [opts.filename, opts.bleFirmwareVersion])
+        expect(transfers).toEqual([['7V1.TFL', '00.30.51'], ['7V1.TXT', '00.30.51']])
     })
 })

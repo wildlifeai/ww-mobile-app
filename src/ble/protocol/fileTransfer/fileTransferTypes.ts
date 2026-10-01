@@ -116,6 +116,7 @@ export type FileTransferFailureReason =
   | 'ABORTED'            // user cancelled
   | 'WRITE_FAILED'       // BLE write rejected by OS
   | 'VALIDATION_FAILED'  // pre-flight check failed
+  | 'BLE_FIRMWARE_TOO_OLD' // nRF below MIN_BLE_FIRMWARE_FOR_TRANSFER, refused before FILE_START
 
 export class FileTransferError extends Error {
   constructor(
@@ -168,9 +169,20 @@ export interface FileTransferOptions {
   abortSignal?: AbortSignal
   /**
    * Window size for pipelining (packets in flight). Defaults to 12.
-   * Firmware >= 0.30.47 acks only every 4th data packet, so values <= 4
-   * (including 1 = stop-and-wait) deadlock against it - override only for
-   * protocol testing against known firmware.
+   * Firmware at or above MIN_BLE_FIRMWARE_FOR_TRANSFER acks only every 4th
+   * data packet, so values <= 4 (including 1 = stop-and-wait) deadlock
+   * against it - override only for protocol testing against known firmware.
+   * A window of 1 skips the BLE firmware check below: stop-and-wait is what
+   * older firmware can take.
    */
   windowSize?: number
+  /**
+   * The camera's BLE (nRF) firmware version, the `ver` reply or its
+   * `00.30.51` token, when the caller has already read it. A reading at or
+   * above MIN_BLE_FIRMWARE_FOR_TRANSFER (bleFirmwareFloor.ts) sends nothing
+   * extra; without one, or below the floor, the pipeline sends one `ver`
+   * before FILE_START. Below the floor the transfer is refused with
+   * BLE_FIRMWARE_TOO_OLD (#289).
+   */
+  bleFirmwareVersion?: string | null
 }

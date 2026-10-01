@@ -173,6 +173,37 @@ export function createMultiLineCommand<T>(
   };
 }
 
+/** A BLE (nRF) firmware version as numbers, from `parseBleFirmwareVersion`. */
+export interface BleFirmwareVersion {
+  major: number;
+  minor: number;
+  patch: number;
+}
+
+const BLE_FIRMWARE_VERSION_PATTERN = /(?:^|\bV\s*)(\d{1,3})\.(\d{1,3})\.(\d{1,3})(?=$|[\s-])/i;
+
+/**
+ * Read the BLE (nRF) firmware version out of a `ver` reply.
+ *
+ * Takes the whole reply, `WW500-C02 V 00.30.51 08:16:11 Sep 18 2026`, or the
+ * token the `version` command returns from it, `00.30.51`. The nRF pads each
+ * part to two digits and the cloud's `ble` rows do not (`0.30.48`), so both
+ * forms read the same. Anything else is null, never a guess.
+ *
+ * `AI ver` answers for the Himax, a different processor with its own version
+ * scheme: never pass its reply here.
+ */
+export function parseBleFirmwareVersion(reply: string | null | undefined): BleFirmwareVersion | null {
+  if (typeof reply !== 'string') return null;
+  const match = reply.trim().match(BLE_FIRMWARE_VERSION_PATTERN);
+  if (!match) return null;
+  return {
+    major: parseInt(match[1], 10),
+    minor: parseInt(match[2], 10),
+    patch: parseInt(match[3], 10),
+  };
+}
+
 /**
  * HX6538 firmware update error codes returned by xip_update_firmware_from_sd().
  * Maps numeric codes to human-readable descriptions for field debugging.

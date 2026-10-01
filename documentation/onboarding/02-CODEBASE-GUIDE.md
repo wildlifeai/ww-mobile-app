@@ -272,6 +272,7 @@ ble/
 │   ├── awaitAeRegisters.ts     # Wait for the `HM0360 AE regs` block that answers the two-phase `AI light`
 │   └── fileTransfer/           # Chunked file transfer protocol
 │       ├── runFileTransferPipeline.ts
+│       ├── bleFirmwareFloor.ts # Oldest BLE firmware the transfer window works on; refuses below it
 │       ├── fileTransferPackets.ts
 │       ├── ackMatcher.ts
 │       ├── crc16ccitt.ts
