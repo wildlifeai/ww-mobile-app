@@ -1,6 +1,7 @@
 # Advisory until it passes against real screens: this file was a fragment with no
 # appId and could never have been executed. Runs on the `full-e2e` label.
-appId: com.wildlife.wildlifewatcher.expo
+# appId comes from the run (`-e APP_ID=...`), see smoke/app-startup.yaml
+appId: ${APP_ID}
 ---
 - launchApp
 # Verify WW Admin Dashboard Access

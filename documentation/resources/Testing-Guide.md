@@ -131,12 +131,14 @@ dispatched by hand, and is advisory. Both jobs write a junit report and **fail i
 test cases**. That guard exists because until 21 September 2026 the E2E job reported success on
 every run while Maestro ran nothing: four of the five flows named a package that was never
 installed, `auth-workflow.yaml` had no `appId` at all, and run 35493842313 shows an empty
-`~/.maestro/tests/` under a green tick. The flows are now pointed at the real debug package,
-`com.wildlife.wildlifewatcher.expo`, but the four fuller ones have never passed against real
-screens and stay advisory until one does. The smoke flow takes its package from the run instead:
-a PR into main builds the release-type `staging` profile, which installs as
-`com.wildlife.wildlifewatcher`, so the job passes that, and the debug package otherwise;
-`npm run test:maestro:smoke` passes the debug one.
+`~/.maestro/tests/` under a green tick. The fuller flows have never passed against real
+screens and stay advisory until one does.
+
+Every flow takes its package from the run, as `appId: ${APP_ID}`. A PR into main builds the
+release-type `staging` profile, which installs as `com.wildlife.wildlifewatcher`, so both jobs
+pass that, and the debug package `com.wildlife.wildlifewatcher.expo` otherwise; the
+`test:maestro` scripts pass the debug one. A flow with a fixed package fails on the release PR,
+as the smoke flow did on #366, so a new flow uses `${APP_ID}` too.
 
 ### Existing Test Flows
 
@@ -153,11 +155,11 @@ a PR into main builds the release-type `staging` profile, which installs as
 
 ```json
 {
-  "test:maestro": "maestro test tests/maestro/",
-  "test:maestro:smoke": "maestro test tests/maestro/smoke/",
-  "test:maestro:full": "maestro test tests/maestro/",
-  "test:maestro:auth": "maestro test tests/maestro/auth-workflow.yaml",
-  "test:maestro:offline": "maestro test tests/maestro/offline/complete-offline-workflow.yaml"
+  "test:maestro": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/",
+  "test:maestro:smoke": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/smoke/",
+  "test:maestro:full": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/",
+  "test:maestro:auth": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/auth-workflow.yaml",
+  "test:maestro:offline": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/offline/complete-offline-workflow.yaml"
 }
 ```
 

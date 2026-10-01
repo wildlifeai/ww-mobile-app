@@ -19,9 +19,9 @@
     "test:e2e:build": "detox build",
     "test:e2e:ios": "detox test --configuration ios.sim.debug",
     "test:e2e:android": "detox test --configuration android.emu.debug",
-    "test:maestro": "maestro test tests/maestro/",
-    "test:maestro:auth": "maestro test tests/maestro/auth-workflow.yaml",
-    "test:maestro:offline": "maestro test tests/maestro/offline/complete-offline-workflow.yaml",
+    "test:maestro": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/",
+    "test:maestro:auth": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/auth-workflow.yaml",
+    "test:maestro:offline": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/offline/complete-offline-workflow.yaml",
     "type-check": "tsc --noEmit",
     "version:check": "node scripts/check-version-sync.js",
     "docs:validate": "node scripts/validate-docs.js",
@@ -56,7 +56,7 @@
     "postinstall": "npx patch-package && npm run validate:deps",
     "prepare": "node -e \"if(process.env.CI||process.env.EAS_BUILD)process.exit(0)\" && npx husky",
     "test:maestro:smoke": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/smoke/",
-    "test:maestro:full": "maestro test tests/maestro/"
+    "test:maestro:full": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/"
   },
   "dependencies": {
     "@getquip/expo-nordic-dfu": "^2.0.3",

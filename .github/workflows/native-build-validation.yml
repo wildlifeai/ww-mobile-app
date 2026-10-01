@@ -311,6 +311,7 @@ jobs:
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
 
+      # Same package rule as the smoke step: the flows take APP_ID from the run (#376)
       - name: Run flows on an emulator
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
@@ -323,7 +324,7 @@ jobs:
           script: |
             set -e
             adb install -r ./app-debug.apk
-            maestro test --format junit --output maestro-report.xml tests/maestro/
+            maestro test -e APP_ID=${{ github.base_ref == 'main' && 'com.wildlife.wildlifewatcher' || 'com.wildlife.wildlifewatcher.expo' }} --format junit --output maestro-report.xml tests/maestro/
 
       - name: Fail if no flow actually ran
         run: |

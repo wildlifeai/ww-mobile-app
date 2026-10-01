@@ -1,7 +1,8 @@
 # Maestro E2E Test for Project CRUD Workflow
 # Goal: Verify Create, Read, Update, Delete operations for Projects
 
-appId: com.wildlife.wildlifewatcher.expo
+# appId comes from the run (`-e APP_ID=...`), see smoke/app-startup.yaml
+appId: ${APP_ID}
 
 ---
 # 1. Login (Reuse existing flow or simplified)

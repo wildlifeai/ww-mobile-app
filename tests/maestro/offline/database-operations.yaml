@@ -1,7 +1,8 @@
 # Maestro E2E Test: SQLite Database Operations
 # Tests offline database functionality and organisation multi-tenancy
 
-appId: com.wildlife.wildlifewatcher.expo
+# appId comes from the run (`-e APP_ID=...`), see smoke/app-startup.yaml
+appId: ${APP_ID}
 tags:
   - offline
   - database

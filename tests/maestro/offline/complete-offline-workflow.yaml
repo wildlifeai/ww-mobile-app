@@ -1,7 +1,8 @@
 # Complete Offline Functionality E2E Test
 # Task 11.7: Comprehensive end-to-end testing with organisation scenarios and role-based workflows
 
-appId: com.wildlife.wildlifewatcher.expo
+# appId comes from the run (`-e APP_ID=...`), see smoke/app-startup.yaml
+appId: ${APP_ID}
 name: "Complete Offline Functionality Test"
 description: "Test complete offline workflows with organisation multi-tenancy, role-based access, LoRaWAN integration, and WW Admin features"
 

@@ -1,7 +1,8 @@
 # Setup Test User Flow
 # Reusable flow for setting up test users with different roles
 
-appId: com.wildlife.wildlifewatcher.expo
+# appId comes from the run (`-e APP_ID=...`), see smoke/app-startup.yaml
+appId: ${APP_ID}
 name: "Setup Test User"
 description: "Configure test user with specified role and organisation"
 

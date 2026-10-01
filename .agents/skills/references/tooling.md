@@ -46,7 +46,8 @@ shell boundary, and none of them reproduced in a Linux container.
   named a package that was never installed, and run 35493842313 on 20 September 2026 shows
   an empty `~/.maestro/tests/` under a green tick. The job now writes a junit report and
   fails if it holds no `<testcase>`. Apply the same guard to any runner you add: count what
-  ran, not whether the command exited.
+  ran, not whether the command exited. A Maestro flow names its package as `appId: ${APP_ID}`,
+  never a fixed one: a PR into main installs the release package, not the debug `.expo` one.
 - **A required check that never triggers blocks the merge forever, and the obvious fix is a
   trap.** A workflow with `paths:` produces no check run at all for a PR it does not match, so
   a docs-only PR can never satisfy it. The tempting answer, a mirror workflow with
