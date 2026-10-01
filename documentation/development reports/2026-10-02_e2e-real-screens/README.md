@@ -61,7 +61,6 @@ builds `e2e` and runs both E2E jobs.
 
 ## Open items
 
-- Seeded account for the flows: the `E2E_TEST_EMAIL` and `E2E_TEST_PASSWORD` secrets in the
-  `development` environment (maintainer).
-- Delete `tests/maestro/offline/setup-test-user.yaml`, superseded by `subflows/sign-in.yaml`
-  (maintainer's call; a flow file).
+- None yet. The account is `tama@ww.org`, added to the `development` environment's secrets by
+  the maintainer on 2 October 2026 (`laura@ww.org`, the first choice, is no longer seeded).
+  `offline/setup-test-user.yaml` was deleted with the maintainer's agreement the same day.

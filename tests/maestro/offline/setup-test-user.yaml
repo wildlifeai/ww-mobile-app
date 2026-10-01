@@ -1,7 +1,0 @@
-# Superseded by ../subflows/sign-in.yaml, which signs the E2E account in for
-# real. This file described a development menu and a "Test Mode" the app never
-# had. It is not in ../config.yaml, so `maestro test tests/maestro/` skips it;
-# kept only until the maintainer agrees to delete it.
-appId: ${APP_ID}
----
-- runFlow: ../subflows/sign-in.yaml

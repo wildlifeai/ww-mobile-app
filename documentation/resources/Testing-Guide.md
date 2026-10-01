@@ -134,10 +134,10 @@ yourself with `-e APP_ID=com.wildlife.wildlifewatcher`.
 
 Every flow but the smoke signs in as `E2E_TEST_EMAIL` / `E2E_TEST_PASSWORD`, passed with `-e`.
 Cloud-dev is wiped and reseeded by every ww-backend dev deploy, so the account has to be one the
-backend seed creates ([Role-Based Test Accounts](#role-based-test-accounts)), and one with a single
-role in its organisation: the seed gives some users two roles in one scope (ww-backend #248,
-app side #375), which no flow should depend on. The project flows need a user who may create
-projects in their organisation. In CI the two values are the `E2E_TEST_EMAIL` and
+backend seed creates ([Role-Based Test Accounts](#role-based-test-accounts)) and may create
+projects in its organisation. CI uses `tama@ww.org` (October 2026), an organisation manager of
+General. The seed also gives Tama `organisation_member` there (ww-backend #248, app side #375),
+so no flow asserts a role: a role assertion would test the seed, not the app. In CI the two values are the `E2E_TEST_EMAIL` and
 `E2E_TEST_PASSWORD` secrets of the `development` GitHub environment. Never write the password
 into a flow, a commit or an issue; `scripts/ci-maestro-output.sh` redacts it from the artifact,
 because Maestro writes each `inputText`'s resolved text into its command log and the artifact of
@@ -187,7 +187,6 @@ the hierarchy there to find a real id before changing a selector; the `maestro-s
 | `tests/maestro/project-crud-workflow.yaml` | Create a project with a unique name, see it listed, rename it, archive it (the app's delete), see it gone | Advisory, E2E Full |
 | `tests/maestro/offline/complete-offline-workflow.yaml` | A cold start in airplane mode stays signed in (#310), shows the offline indicator, and lists projects from the local database | Advisory, E2E Full |
 | `tests/maestro/offline/database-operations.yaml` | A project created in airplane mode is listed at once and survives the network returning and a pull | Advisory, E2E Full |
-| `tests/maestro/offline/setup-test-user.yaml` | Nothing. Superseded by `subflows/sign-in.yaml`, not in `config.yaml`, kept until deleted | Not run |
 | `tests/maestro/subflows/*.yaml` | Subflows: sign in, open the New Project form, archive a project by name. Not flows | Run via `runFlow` only |
 
 The status column names what each flow proves; which runs passed is in the development report
