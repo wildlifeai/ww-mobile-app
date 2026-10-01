@@ -36,6 +36,7 @@ The Dev Deployment screen is only accessible from the Engineer Console's Flows m
 | **Flash settings** | Mode and LED inherited from the project (op34, op13, and op35/op36 for the window) | The same fields, chosen on screen and persisted, plus the LED brightness (op9) as a dev-only extra |
 | **Pictures per trigger** | The project's count and interval (op5, op6), with op8 raised past the interval for a burst (#317) | Any number, default 3; op6 stays at the reset's 500 ms and op8 at 1000 |
 | **AI model** | Inherited from project | Overridable dropdown (including "None"), applied to this deployment and persisted |
+| **Detection threshold** | The project's `detection_threshold_pct`, written as op16 (#342) | The same, from the selected project; no field, so a model chosen here runs at the threshold the project would deploy it at |
 | **LoRaWAN / GPS** | Inherited from project | Toggleable switches |
 | **SD card** | Pre-deployment checks block on the self-test's SD card bit (#303) | The health banner shows the bit and Start is disabled while it is set |
 | **BLE init** | Upstream in Scanner flow | No BLE init, assumes connection from Engineer Console |
@@ -56,7 +57,7 @@ Both flows share these pipeline functions from `deploymentPipeline.ts`:
 | AI Model Sync | `pipeline.syncAiModel()` | Checks SD card for existing model files; only downloads and transfers missing files. Always loads via `erasemodel` → `loadmodel` if OPs mismatch. Stops the start when the model is on neither the camera nor the card and the phone cannot get its files (#333), and when the transfer is refused over [BLE firmware below the floor](File-Transfer-Protocol.md#the-ble-firmware-floor) (#289). Runs first to stay within firmware's 1000ms IMAGE task window. |
 | Time Sync | `pipeline.syncTime()` | `setutc`, syncs the device clock (BLE module, not AI processor) |
 | Reset OPs | `pipeline.resetOps()` | Diff-writes `FACTORY_DEFAULTS`, keeps the model and the identity, returns the resulting table |
-| Configure Device | `pipeline.configureDevice()` | Sets capture method OPs, deployment ID, GPS and the capture flash |
+| Configure Device | `pipeline.configureDevice()` | Sets capture method OPs, deployment ID, GPS, the capture flash and the project's detection threshold (op16) |
 
 ### Standard Deployment Pipeline
 
@@ -81,7 +82,7 @@ Both flows share these pipeline functions from `deploymentPipeline.ts`:
 | 3 | Persist project settings to DB |
 | 4 | Reset OPs |
 | 5 | Create DB Record |
-| 6 | Configure Device (capture method, deployment ID, GPS, and the flash as the project's four columns) |
+| 6 | Configure Device (capture method, deployment ID, GPS, the flash as the project's four columns, and the project's detection threshold as op16) |
 | 7 | Flash brightness (`LED_BRIGHTNESS`), only when the flash mode is not off |
 | 8 | Pictures per trigger (`NUM_PICTURES`), written explicitly because the reset preserves OP 5 |
 | 9 | Live Monitor |
@@ -152,6 +153,7 @@ The flash goes to the device as the project's four columns, through the same `co
 | [`deploymentPipeline.ts`](../../src/ble/workflows/deploymentPipeline.ts) | Shared pipeline functions (syncTime, syncAiModel, resetOps, configureDevice) |
 | [`useDeploymentConfiguration.ts`](../../src/hooks/useDeploymentConfiguration.ts) | Shared capture method and flash → OP parameter mapping |
 | [`projectFlash.ts`](../../src/utils/projectFlash.ts) | The flash columns, their option lists and their op values |
+| [`projectDetectionThreshold.ts`](../../src/utils/projectDetectionThreshold.ts) | The detection threshold column and its op16 value |
 | [`useDeviceSettings.ts`](../../src/hooks/useDeviceSettings.ts) | `OP_PARAMETER` enum, `FACTORY_DEFAULTS`, `RESET_PRESERVED_OPS` |
 
 ---
