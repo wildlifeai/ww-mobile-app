@@ -55,7 +55,7 @@
     "build:ios-sanity": "npx expo prebuild --no-install && npx pod-install && xcodebuild -workspace ios/*.xcworkspace -scheme wildlifewatcher -showBuildSettings",
     "postinstall": "npx patch-package && npm run validate:deps",
     "prepare": "node -e \"if(process.env.CI||process.env.EAS_BUILD)process.exit(0)\" && npx husky",
-    "test:maestro:smoke": "maestro test tests/maestro/smoke/",
+    "test:maestro:smoke": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/smoke/",
     "test:maestro:full": "maestro test tests/maestro/"
   },
   "dependencies": {
