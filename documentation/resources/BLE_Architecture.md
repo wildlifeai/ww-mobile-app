@@ -275,9 +275,9 @@ Centralized hook that eliminates duplicate scan orchestration code:
 
 | Feature | Implementation |
 |---|---|
-| **Burst cycling** | 3-second scans via `startScan(3)`, 300ms gap between bursts |
+| **Burst cycling** | 3-second scans via `startScan(3)`, 300ms gap between bursts, on the loop's own timer |
 | **Active flag** | Consumer passes `active: boolean` — loop starts/stops reactively |
-| **Scan lock** | `scanLockRef` prevents double-start races (500ms cooldown) |
+| **No `isScanning` dependency** | The next burst is never re-armed off Redux `isScanning`. It used to be, and a late `BleManagerStopScan` from `startScan`'s own stop could leave the loop dead after one burst while the screen said it was scanning (#346) |
 | **Cache flush** | `flushBleCache()` clears Redux + Android native BLE cache |
 
 **`flushBleCache()` sequence:**
