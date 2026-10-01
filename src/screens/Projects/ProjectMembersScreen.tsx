@@ -3,13 +3,14 @@
  *
  * Displays list of project members with role management capabilities
  * - View all project members
- * - Add new members from organization user pool
+ * - Invite new members by email
  * - Change member roles (admin ↔ member)
  * - Remove members from project
  *
  * Permissions:
  * - All project members can view member list
- * - Only project admins can add/remove/change roles
+ * - Only project admins can invite, remove or change roles; the server's RPCs
+ *   enforce it, and all three need a connection
  */
 
 import { useEffect, useCallback, useMemo, useReducer } from "react"
@@ -67,6 +68,8 @@ import type {
 import InvitationService from "../../services/InvitationService"
 import type ProjectInvitation from "../../database/models/ProjectInvitation"
 import { log, logError } from '../../utils/logger'
+import { logCloudFailure } from '../../utils/networkErrors'
+import { isKnownOffline } from '../../services/connectivityWatch'
 import { UserProfile } from "../../types/UserProfile"
 import { getDisplayName } from "../../utils/userUtils"
 import { ChangeRoleDialog } from "./components/ChangeRoleDialog"
@@ -147,16 +150,14 @@ export const ProjectMembersScreen = () => {
 					const isMe = String(m.id).toLowerCase() === String(user!.id).toLowerCase()
 					if (isMe) {
 						if (!m.name || m.name === "Unknown User" || m.name === "Me") {
-							// Try various property names that might be in Redux
-							// Try various property names that might be in Redux
-							const profile = user!.profile as UserProfile
-							const pName = getDisplayName(profile)
-							
+							// The profile comes from the cloud, so offline there is none;
+							// the email from the session is still there
+							const profile = user!.profile as UserProfile | undefined
 							return {
 								...m,
-								name: pName ? `${pName} (You)` : "Me (You)",
-								firstname: profile.firstName || profile.firstname || m.firstname,
-								surname: profile.lastName || profile.surname || m.surname,
+								name: getDisplayName(profile ?? { email: user!.email }, true),
+								firstname: profile?.firstName || profile?.firstname || m.firstname,
+								surname: profile?.lastName || profile?.surname || m.surname,
 								email: user!.email || m.email
 							}
 						}
@@ -170,11 +171,13 @@ export const ProjectMembersScreen = () => {
 				const currentUserRole = enrichedMembers.find((m) => m.id === user!.id)?.role
 				const isAdmin = currentUserRole === "project_admin" || user!.role === "ww_admin"
 				
-				if (isAdmin) {
+				// Pending invitations live only on the server, so offline the
+				// ones already shown stay
+				if (!isAdmin) {
+					dispatch({ pendingInvitations: [] })
+				} else if (!(await isKnownOffline())) {
 					const pending = await InvitationService.getProjectPendingInvitations(projectId)
 					dispatch({ pendingInvitations: pending })
-				} else {
-					dispatch({ pendingInvitations: [] })
 				}
 			} catch (error: any) {
 				if (error?.message?.includes("Unauthorized")) {
@@ -187,8 +190,13 @@ export const ProjectMembersScreen = () => {
 				throw error // Re-throw other errors
 			}
 		} catch (error) {
-			logError("❌ Error loading members:", error)
-			Alert.alert("Error", "Failed to load project members")
+			logCloudFailure("❌ Error loading members:", error)
+			// Offline, the banner is the only signal: the list shows what the
+			// phone has. Asked now rather than followed, because the banner is
+			// the one thing that subscribes to the connection.
+			if (!(await isKnownOffline())) {
+				Alert.alert("Error", "Failed to load project members")
+			}
 		} finally {
 			dispatch({ loading: false })
 		}
@@ -210,6 +218,13 @@ export const ProjectMembersScreen = () => {
 		await loadMembers()
 		dispatch({ refreshing: false })
 	}, [loadMembers])
+
+	// After a role change or a removal the server made: close the dialog and
+	// show the list as get_project_members now returns it (#335)
+	const handleMemberChanged = useCallback(async () => {
+		dispatch({ dialogState: { type: 'none' } })
+		await handleRefresh()
+	}, [handleRefresh])
 
 	const openMenu = useCallback((memberId: string) => {
 		dispatch({ type: 'TOGGLE_MENU', memberId, visible: true })
@@ -344,7 +359,7 @@ export const ProjectMembersScreen = () => {
 				member={dialogState.member || null}
 				user={user}
 				onDismiss={() => dispatch({ dialogState: { type: 'none' } })}
-				onSuccess={handleRefresh}
+				onSuccess={handleMemberChanged}
 			/>
 
 			<RemoveMemberDialog
@@ -354,7 +369,7 @@ export const ProjectMembersScreen = () => {
 				members={members}
 				user={user}
 				onDismiss={() => dispatch({ dialogState: { type: 'none' } })}
-				onSuccess={handleRefresh}
+				onSuccess={handleMemberChanged}
 			/>
 		</View>
 	)

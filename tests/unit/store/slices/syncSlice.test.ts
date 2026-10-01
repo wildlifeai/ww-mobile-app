@@ -11,11 +11,18 @@ import syncReducer, {
 	clearEntityError,
 	resetSyncStatus,
 	updateQueueCounts,
+	markInitialSyncComplete,
+	setGlobalSyncing,
 	selectEntitySyncStatus,
 	selectOverallSyncStatus,
 	selectQueueStatus,
 	SyncState,
 } from "../../../../src/redux/slices/syncSlice"
+import { logout } from "../../../../src/redux/slices/authSlice"
+
+jest.mock("../../../../src/utils/helpers", () => ({
+	storeDataToStorage: jest.fn(),
+}))
 
 describe("syncSlice", () => {
 	let initialState: SyncState
@@ -245,6 +252,18 @@ describe("syncSlice", () => {
 			)
 
 			state = syncReducer(state, resetSyncStatus())
+
+			expect(state).toEqual(initialState)
+		})
+
+		// #267: the next account to sign in has not synced, so the scanner must
+		// wait for its own first sync rather than route on the previous one
+		it("should forget the previous account's initial sync on sign-out", () => {
+			let state = syncReducer(initialState, markInitialSyncComplete())
+			state = syncReducer(state, setGlobalSyncing(true))
+			expect(state.hasCompletedInitialSync).toBe(true)
+
+			state = syncReducer(state, logout())
 
 			expect(state).toEqual(initialState)
 		})

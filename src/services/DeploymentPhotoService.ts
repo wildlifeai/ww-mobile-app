@@ -1,6 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy'
 import database from '../database'
 import Deployment from '../database/models/Deployment'
+import Project from '../database/models/Project'
 import OutboxService from './OutboxService'
 import { mapModelToPayload } from './DeploymentService'
 import SupabaseSyncService from './SupabaseSyncService'
@@ -212,7 +213,12 @@ export const DeploymentPhotoService = {
     uploadAllPending: async (userId: string): Promise<void> => {
         const deploymentsCollection = database.get<Deployment>('deployments')
         const deployments = await deploymentsCollection.query().fetch()
+        // A deployment whose project is no longer on the phone was kept by the
+        // project reconcile for its unsynced work (#330); its photos can only be
+        // refused, on every sync, so they stay on the phone with it
+        const projectIds = new Set((await database.get<Project>('projects').query().fetch()).map(p => p.id))
         for (const deployment of deployments) {
+            if (!projectIds.has(deployment.projectId)) continue
             const rawPaths = deployment.cameraLocationImagePaths
             const paths: string[] = typeof rawPaths === 'string' ? JSON.parse(rawPaths) : (rawPaths || [])
             if (paths.some(isLocalPath)) {

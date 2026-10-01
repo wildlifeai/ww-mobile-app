@@ -12,7 +12,7 @@ export default class SyncOutbox extends Model {
     @field('version') version!: number
     @field('lamport_clock') lamportClock!: number
     @field('retry_count') retryCount!: number
-    @field('status') status!: string // pending/syncing/synced/failed/conflict
+    @field('status') status!: string // pending/syncing/synced/failed/conflict/orphaned (project gone, #330)
     @text('error_message') errorMessage?: string
     @field('user_id') userId?: string
     @field('device_id') deviceId?: string

@@ -122,7 +122,9 @@ file is the list of things that look like an app bug and are not, and the revers
   banner by hand and the stack header drew an "Offline" chip, and the bench saw one form on one
   screen and the other on the next. Take the top inset from `useSafeAreaInsets()`, never from
   `StatusBar.currentHeight`, or a screen will leave room for a status bar the banner sits under.
-  A test fails if any other file renders `OfflineIndicator` or calls `useNetInfo`.
+  A test fails if any other file renders `OfflineIndicator` or calls `useNetInfo`. A screen
+  that has to know at a tap, such as Invite refusing to send offline, asks `isKnownOffline()` in
+  `services/connectivityWatch.ts` at that moment instead of following the connection.
 - **A paper `Menu` that re-opens with the arrow up and nothing drawn is
   `patches/react-native-paper+5.14.5.patch`, not the screen.** Every `WWSelect` is a
   `react-native-paper-dropdown` over paper's `Menu`, and on Android (Fabric) the Menu's close
@@ -270,7 +272,10 @@ file is the list of things that look like an app bug and are not, and the revers
   name the glob. In the main checkout Jest also picks
   up the worktrees' copies of every test, so add `--modulePathIgnorePatterns=<rootDir>/.claude/`
   **after** any test paths: the option swallows the paths that follow it and silently turns
-  them into ignore patterns.
+  them into ignore patterns. An isolated agent may not run git against another worktree
+  (`git -C`, `GIT_DIR` and `GIT_WORK_TREE` are refused), so to carry another worktree's
+  uncommitted work over, copy its changed files into your own worktree checked out at the same
+  base commit and take the diff there (30 September 2026).
 - **A worktree's `node_modules` is usually a junction to the main checkout's.** Unlink it on its
   own (`cmd /c rmdir <worktree>\node_modules`) before `git worktree remove`. A recursive delete,
   such as PowerShell 5.1's `Remove-Item -Recurse`, can follow the junction and empty the real
