@@ -307,7 +307,7 @@ The backend seeds **17 pre-configured user accounts** across 4 organisations for
 ### Quick Login Reference
 
 > [!NOTE]
-> "Org Manager" below is **not** a `UserRole` value. The app has exactly three: `ww_admin`, `project_admin`, `project_member` ([authSlice.ts](../../src/redux/slices/authSlice.ts)). "Org Manager" describes a `project_admin` granted at **organisation** scope (`user_roles.scope_type = 'organisation'`) rather than against a single project — hence the wider reach in the seed data. The permission matrix below has three columns for that reason.
+> "Org Manager" below is the `organisation_manager` role at organisation scope. The project list, devices and deployments follow the backend's role rules (`services/roleAccess.ts`, #351): a manager sees every project of the organisation, `ww_admin` (system scope) sees everything, and the project roles cover their own project only. The permission matrix below predates those roles and has three columns.
 
 | Role | User | Email | Organisation | Use For |
 |------|------|-------|--------------|---------|

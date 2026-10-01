@@ -7,6 +7,7 @@ import OutboxService from './OutboxService'
 import { DEPLOYMENT_STATUS } from './DeploymentService'
 
 import ProjectService from './ProjectService'
+import { managedOrganisationIds, seesEverything } from './roleAccess'
 import { log } from '../utils/logger'
 
 
@@ -254,8 +255,8 @@ export const DeviceService = {
                 Q.where('is_active', true)
             ).fetch()
 
-            const isGlobalAdmin = userRoles.some((r: any) => r.scopeType === 'global')
-            if (isGlobalAdmin) {
+            // A ww_admin, or a manager at system scope, sees every device (#351)
+            if (seesEverything(userRoles as any)) {
                 return await DeviceService.getDevicesAsListItems()
             }
 
@@ -287,19 +288,15 @@ export const DeviceService = {
                 Q.where('is_active', true)
             ).fetch()
 
-            const orgAdmins = userRoles.filter((r: any) =>
-                r.scopeType === 'organisation' &&
-                (r.role === 'project_admin' || r.role === 'ww_admin')
-            )
+            // An organisation manager sees the organisation's devices, unassigned
+            // ones included (#351)
+            const managedOrgIds = managedOrganisationIds(userRoles as any)
 
-            if (orgAdmins.length > 0) {
+            if (managedOrgIds.size > 0) {
                 const allDevices: Device[] = []
-                for (const adminRole of orgAdmins) {
-                    // Cast to any to access scopeId if TS complains, or assume model has it
-                    if ((adminRole as any).scopeId) {
-                        const orgDevices = await DeviceService.getDevicesByOrganisation((adminRole as any).scopeId)
-                        allDevices.push(...orgDevices)
-                    }
+                for (const organisationId of managedOrgIds) {
+                    const orgDevices = await DeviceService.getDevicesByOrganisation(organisationId)
+                    allDevices.push(...orgDevices)
                 }
                 const uniqueDevices = Array.from(new Map(allDevices.map(d => [d.id, d])).values())
                 return await Promise.all(uniqueDevices.map(d => DeviceService.deviceToListItem(d)))
@@ -321,22 +318,17 @@ export const DeviceService = {
             Q.where('is_active', true)
         ).fetch()
 
-        const orgAdmins = userRoles.filter((r: any) =>
-            r.scopeType === 'organisation' &&
-            (r.role === 'project_admin' || r.role === 'ww_admin')
-        )
+        const managedOrgIds = managedOrganisationIds(userRoles as any)
 
-        if (orgAdmins.length > 0) {
+        if (managedOrgIds.size > 0) {
             const allDevices: Device[] = []
             // Add project-linked devices first
             allDevices.push(...userDevices)
 
-            // Add org-wide devices
-            for (const adminRole of orgAdmins) {
-                if ((adminRole as any).scopeId) {
-                    const orgDevices = await DeviceService.getDevicesByOrganisation((adminRole as any).scopeId)
-                    allDevices.push(...orgDevices)
-                }
+            // Add the managed organisations' devices
+            for (const organisationId of managedOrgIds) {
+                const orgDevices = await DeviceService.getDevicesByOrganisation(organisationId)
+                allDevices.push(...orgDevices)
             }
 
             const uniqueDevices = Array.from(new Map(allDevices.map(d => [d.id, d])).values())
