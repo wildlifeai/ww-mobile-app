@@ -15,6 +15,8 @@ import {
 import { log, logError, logWarn } from '../utils/logger'
 import { logCloudFailure } from '../utils/networkErrors'
 import { WEBSITE_URL } from "../config/environments"
+import { getGoogleSignInConfig } from "../config/googleSignIn"
+import { isKnownOffline } from "./connectivityWatch"
 import {
 	OrganisationMembership,
 	buildMembership,
@@ -363,6 +365,144 @@ export const login = async (
 			stack: error instanceof Error ? error.stack : undefined,
 		})
 		throw error
+	}
+}
+
+/** Why a Google sign-in did not go through, so the screen can word it. */
+export type GoogleSignInFailure =
+	| "not_configured"
+	| "offline"
+	| "play_services"
+	| "in_progress"
+	| "google"
+	| "supabase"
+
+export class GoogleSignInError extends Error {
+	reason: GoogleSignInFailure
+
+	constructor(reason: GoogleSignInFailure, message: string) {
+		super(message)
+		this.name = "GoogleSignInError"
+		this.reason = reason
+	}
+}
+
+type GoogleSigninModule = typeof import("@react-native-google-signin/google-signin")
+
+/**
+ * The Google sign-in library, or null when this binary was built without it.
+ * The library looks up its native module as it loads and throws when that is
+ * missing, so it is required here, at the tap, rather than imported: a dev
+ * client built before it was added would otherwise crash at launch.
+ */
+const loadGoogleSignin = (): GoogleSigninModule | null => {
+	try {
+		return require("@react-native-google-signin/google-signin") as GoogleSigninModule
+	} catch (error) {
+		logWarn("Google sign-in is not in this build:", error instanceof Error ? error.message : error)
+		return null
+	}
+}
+
+/**
+ * Sign in with Google (#350): Google's native sign-in gives an ID token, and
+ * Supabase signs in with it. From there it is the same as `login`: the same
+ * `AuthResponse`, and the auth listener fetches organisations and the sync
+ * starts as for a password sign-in. A Google sign-up becomes a normal user on
+ * the server (users row, General organisation), and an email that already has
+ * an account signs in to that account.
+ *
+ * Resolves null when the user closes Google's sheet, which is not an error.
+ * Throws a `GoogleSignInError` otherwise.
+ */
+export const signInWithGoogle = async (): Promise<AuthResponse | null> => {
+	const config = getGoogleSignInConfig()
+	const google = config ? loadGoogleSignin() : null
+	if (!config || !google) {
+		throw new GoogleSignInError(
+			"not_configured",
+			"Google sign-in is not set up in this version of the app. Sign in with your email and password.",
+		)
+	}
+
+	// Made on the server, so offline it says so rather than fail (as Invite does)
+	if (await isKnownOffline()) {
+		throw new GoogleSignInError(
+			"offline",
+			"Signing in with Google needs a connection. Try again when you are online.",
+		)
+	}
+
+	const { GoogleSignin, isErrorWithCode, statusCodes } = google
+	let idToken: string | null
+	try {
+		GoogleSignin.configure({ webClientId: config.webClientId, iosClientId: config.iosClientId })
+		// Answers true on iOS; on Android, offers the Play Services update when it can
+		await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true })
+		const response = await GoogleSignin.signIn()
+		if (response.type === "cancelled") {
+			log("Google sign-in closed by the user")
+			return null
+		}
+		idToken = response.data.idToken
+	} catch (error) {
+		if (isErrorWithCode(error)) {
+			if (error.code === statusCodes.SIGN_IN_CANCELLED) return null
+			if (error.code === statusCodes.IN_PROGRESS) {
+				throw new GoogleSignInError("in_progress", "Google sign-in is already open.")
+			}
+			if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+				throw new GoogleSignInError(
+					"play_services",
+					"Google sign-in needs Google Play services, which is missing or out of date on this phone. Update it, or sign in with your email and password.",
+				)
+			}
+		}
+		logError("❌ Google sign-in failed:", error)
+		throw new GoogleSignInError(
+			"google",
+			`Google sign-in did not complete${error instanceof Error && error.message ? `: ${error.message}` : "."}`,
+		)
+	}
+
+	try {
+		if (!idToken) {
+			logError("❌ Google sign-in returned no ID token")
+			throw new GoogleSignInError("google", "Google did not return an ID token, so the app could not sign you in.")
+		}
+
+		// iOS nonce: Supabase checks the ID token's nonce on iOS unless "Skip nonce
+		// checks" is on for its Google provider. This library's free API (16.1.5)
+		// takes no nonce, so iOS needs that switch, or a nonce passed through both
+		// calls with a different sign-in API. Not decided yet (#350).
+		const { data, error } = await supabase().auth.signInWithIdToken({
+			provider: "google",
+			token: idToken,
+		})
+
+		if (error) {
+			logCloudFailure("❌ Supabase rejected the Google ID token:", error, error.status)
+			if (isNetworkOrRetryable(error, error.status)) {
+				throw new GoogleSignInError(
+					"offline",
+					"Could not reach the server. Signing in with Google needs a connection. Try again when you are online.",
+				)
+			}
+			throw new GoogleSignInError("supabase", `The server did not accept the Google sign-in (${error.message}).`)
+		}
+
+		if (!data.user || !data.session) {
+			logError("❌ No user or session returned from Supabase for the Google sign-in")
+			throw new GoogleSignInError("supabase", "The server did not return a session for the Google sign-in.")
+		}
+
+		const authResponse = await transformSupabaseUser(data.user, data.session)
+		log("✅ Login complete for:", data.user.email, "(Google)")
+		return authResponse
+	} finally {
+		// The Supabase session is the one that counts. Forgetting Google's own makes
+		// the next "Continue with Google" offer the account picker again.
+		GoogleSignin.signOut().catch((err) => logWarn("Google sign-out after sign-in failed:", err))
 	}
 }
 

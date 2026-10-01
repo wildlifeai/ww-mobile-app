@@ -239,6 +239,12 @@ file is the list of things that look like an app bug and are not, and the revers
   Starting `MainActivity` first and sending the link a moment later crashed the dev launcher in
   September 2026. In Git Bash, prefix `adb shell` commands that carry a path or a URL with
   `MSYS_NO_PATHCONV=1`, or MSYS rewrites them.
+- **A new native library is missing from every binary built before it.** Metro serves the new
+  JS to an old dev client all the same. `@react-native-google-signin/google-signin` looks up its
+  native module as it loads (`TurboModuleRegistry.getEnforcing`), so importing it at the top of
+  a file would crash such a build at launch. `signInWithGoogle` requires it at the tap and treats
+  a failure as "not set up in this build" (#350, 1 October 2026). Do the same for the next
+  native library, until every build in use carries it.
 - **Installing on Windows** is in AGENTS.md: `npm install --ignore-scripts` then
   `npx patch-package`, because `maestro`'s postinstall aborts a plain install, and skipping
   `postinstall` alone leaves `patches/` unapplied, which breaks the native build later.

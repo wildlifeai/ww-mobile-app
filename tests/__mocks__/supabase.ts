@@ -43,6 +43,7 @@ export const mockSession: Session = {
 export const mockSupabaseClient = {
 	auth: {
 		signInWithPassword: jest.fn(),
+		signInWithIdToken: jest.fn(),
 		signUp: jest.fn(),
 		signOut: jest.fn(),
 		getSession: jest.fn(),
@@ -116,6 +117,7 @@ export const mockAuthSuccess = (
 
 	// Configure the mock functions to return the success response
 	mockSupabaseClient.auth.signInWithPassword.mockResolvedValue(response)
+	mockSupabaseClient.auth.signInWithIdToken.mockResolvedValue(response)
 	mockSupabaseClient.auth.signUp.mockResolvedValue(response)
 	mockSupabaseClient.auth.getSession.mockResolvedValue({
 		data: { session },
@@ -161,6 +163,7 @@ export const mockAuthError = (message = "Authentication failed") => {
 
 	// Configure the mock functions to return the error response
 	mockSupabaseClient.auth.signInWithPassword.mockResolvedValue(response)
+	mockSupabaseClient.auth.signInWithIdToken.mockResolvedValue(response)
 	mockSupabaseClient.auth.signUp.mockResolvedValue(response)
 
 	return response
