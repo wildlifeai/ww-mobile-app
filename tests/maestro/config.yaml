@@ -1,0 +1,11 @@
+# Which flows `maestro test tests/maestro/` runs.
+#
+# Without this file Maestro runs only the files beside it and never looks in a
+# subfolder, which is why nothing under offline/ ran before October 2026. The
+# globs resolve from this folder. A file no glob matches is a subflow, run only
+# through `runFlow` from another flow: everything under subflows/. The smoke flow
+# has its own CI job and is left out on purpose.
+flows:
+  - "*.yaml"
+  - "offline/complete-offline-workflow.yaml"
+  - "offline/database-operations.yaml"

@@ -1,110 +1,62 @@
-# Advisory until it passes against real screens: this file was a fragment with no
-# appId and could never have been executed. Runs on the `full-e2e` label.
+# Sign-in against the real login screen (src/navigation/screens/auth/LoginScreen.tsx):
+# a wrong password is refused and says so, the right one reaches the home
+# screen and the project list, and signing out returns to the login screen.
+#
+# Needs E2E_TEST_EMAIL and E2E_TEST_PASSWORD from the run, see subflows/sign-in.yaml.
+# Role checks (who sees what) are not here: the seed gives some users two roles
+# in one scope (ww-backend #248, #375), so a role assertion would test the seed.
+#
 # appId comes from the run (`-e APP_ID=...`), see smoke/app-startup.yaml
 appId: ${APP_ID}
 ---
-- launchApp
-# Verify WW Admin Dashboard Access
-- assertVisible: "project-search-bar"
-- assertVisible: "new-project-fab"
+# A wrong password stays on the login screen and says so (LoginScreen.onSubmit)
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+- extendedWaitUntil:
+    visible:
+      id: "email-input"
+    timeout: 90000
+- tapOn:
+    id: "email-input"
+- inputText: ${E2E_TEST_EMAIL}
+- tapOn:
+    id: "password-input"
+- inputText: "not-the-password"
+- hideKeyboard
+- tapOn:
+    id: "login-button"
+- extendedWaitUntil:
+    visible: "Login Failed"
+    timeout: 30000
+- tapOn: "OK"
+- assertVisible:
+    id: "login-button"
 
-# Test Organisation Switching for WW Admin
-# Note: Organisation selector not found in codebase yet, commenting out
-# - tapOn: "Organisation Selector"
-# - assertVisible: "Organisation 1"
-# - assertVisible: "Organisation 2"
-# - tapOn: "Organisation 1"
-# - assertVisible: "Projects Overview"
+# The right one reaches the home screen, and the Projects tab its list
+- runFlow: subflows/sign-in.yaml
+- assertVisible:
+    id: "bottom-tab-scanner"
+- tapOn:
+    id: "bottom-tab-projects"
+- extendedWaitUntil:
+    visible:
+      id: "project-search-bar"
+    timeout: 60000
+- takeScreenshot: auth-projects
 
-# Verify WW Admin Permissions
-- assertVisible: "new-project-fab"
-# - assertVisible: "Manage Users" # Not found
-# - assertVisible: "System Settings" # Not found
-# Verify Project Admin Permissions
-- assertVisible: "Create Project"
-- assertVisible: "Manage Team"
-- assertNotVisible: "System Settings"
-- assertNotVisible: "Manage Users" # Global user management
-
----
-# Test: Project Admin Login and Organisation-Scoped Access
-- launchApp
-- tapOn: "email-input"
-- inputText: "admin@organisation1.com"
-- tapOn: "password-input"
-- inputText: "projectadmin123"
-- tapOn: "login-button"
-
-# Verify Project Admin Dashboard
-- assertVisible: "project-search-bar"
-- assertVisible: "new-project-fab"
-
-# Verify Project Admin Permissions
-- assertVisible: "new-project-fab"
-# - assertVisible: "Manage Team" # Not found
-
----
-# Test: Project Member Login and Limited Access
-- launchApp  
-- tapOn: "email-input"
-- inputText: "member@organisation1.com"
-- tapOn: "password-input"
-- inputText: "member123"
-- tapOn: "login-button"
-
-# Verify Project Member Dashboard
-- assertVisible: "project-search-bar"
-- assertVisible: "projects-list"
-
-# Verify Project Member Permissions (Limited)
-# - assertNotVisible: "new-project-fab" # Need to verify if FAB is hidden for members
-- assertNotVisible: "Manage Team"
-- assertVisible: "View Deployments"
-- assertVisible: "Manage My Deployments"
-
----
-# Test: Role-Based Navigation and Security
-- launchApp
-- tapOn: "email-input"
-- inputText: "member@organisation1.com" 
-- tapOn: "password-input"
-- inputText: "member123"
-- tapOn: "login-button"
-
-# Attempt to access admin features (should fail)
-# - tapOn: "Menu" # Not found
-# - assertNotVisible: "Admin Panel"
-- assertNotVisible: "System Settings"
-- assertNotVisible: "User Management"
-
-# Verify can access allowed features
-- assertVisible: "projects-list"
-- tapOn: "Deployments"
-- assertVisible: "My Deployments List"
-
----
-# Test: Multi-Organisation User Workflow
-- launchApp
-- tapOn: "email-input"
-- inputText: "multi@example.com"
-- tapOn: "password-input"
-- inputText: "multi123"
-- tapOn: "login-button"
-
-# Test organisation switching
-# - assertVisible: "Organisation Selector" # Not found
-- tapOn: "Organisation Selector"
-- assertVisible: "Primary Org"
-- assertVisible: "Secondary Org"
-
-# Switch to secondary org and verify role change
-- tapOn: "Secondary Org"
-- assertVisible: "Projects Overview"
-# Permissions should change based on role in secondary org
-- assertNotVisible: "Create Project" # Member in secondary org
-- assertVisible: "View Projects"
-
-# Switch back to primary org
-- tapOn: "Organisation Selector"
-- tapOn: "Primary Org"
-- assertVisible: "Create Project" # Admin in primary org
+# Sign out from the drawer (SideNavigation) and land on the login screen
+- tapOn:
+    id: "drawer-menu-button"
+- extendedWaitUntil:
+    visible:
+      id: "sign-out-button"
+    timeout: 15000
+- tapOn:
+    id: "sign-out-button"
+- extendedWaitUntil:
+    visible:
+      id: "email-input"
+    timeout: 30000
+- takeScreenshot: auth-signed-out

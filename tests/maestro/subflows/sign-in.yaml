@@ -1,0 +1,43 @@
+# Subflow: a fresh install signs in as the E2E account and lands on the home
+# screen. Not a flow of its own (see ../config.yaml); the flows start with
+#   - runFlow: subflows/sign-in.yaml
+#
+# E2E_TEST_EMAIL and E2E_TEST_PASSWORD come from the run (`-e`, or the
+# GitHub secrets in CI). They name a user from the ww-backend seed, because
+# every ww-backend dev deploy wipes and reseeds cloud-dev.
+#
+# appId comes from the run too (`-e APP_ID=...`), see ../smoke/app-startup.yaml
+appId: ${APP_ID}
+---
+- launchApp:
+    clearState: true
+    # AndroidPermissionsProvider blocks the whole app until Bluetooth and
+    # location are granted; granting them up front skips the system dialog
+    permissions:
+      all: allow
+# Permissions, the Bluetooth gate and the session restore all run before the
+# login screen renders, and a cold start on a CI emulator is slow
+- extendedWaitUntil:
+    visible:
+      id: "email-input"
+    timeout: 90000
+- tapOn:
+    id: "email-input"
+- inputText: ${E2E_TEST_EMAIL}
+- tapOn:
+    id: "password-input"
+- inputText: ${E2E_TEST_PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: "login-button"
+# An explicit sign-in opens the tutorial first (authSlice.pendingTutorial)
+- extendedWaitUntil:
+    visible:
+      id: "tutorial-skip-button"
+    timeout: 60000
+- tapOn:
+    id: "tutorial-skip-button"
+- extendedWaitUntil:
+    visible:
+      id: "bottom-tab-projects"
+    timeout: 60000

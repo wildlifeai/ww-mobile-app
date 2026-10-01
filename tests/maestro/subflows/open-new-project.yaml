@@ -1,0 +1,27 @@
+# Subflow: from the Projects tab, open the New Project form. The list shows a
+# centred "New Project" button while it is empty and a FAB otherwise
+# (StandardizedListLayout), so this checks which one is there.
+appId: ${APP_ID}
+---
+- extendedWaitUntil:
+    visible:
+      id: "project-search-bar"
+    timeout: 60000
+- runFlow:
+    when:
+      visible:
+        id: "new-project-button"
+    commands:
+      - tapOn:
+          id: "new-project-button"
+- runFlow:
+    when:
+      notVisible:
+        id: "new-project-button"
+    commands:
+      - tapOn:
+          id: "new-project-fab"
+- extendedWaitUntil:
+    visible:
+      id: "project-name-input"
+    timeout: 30000
