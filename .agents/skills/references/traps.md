@@ -56,7 +56,11 @@ file is the list of things that look like an app bug and are not, and the revers
 - **A multi-image capture with a gap above op8 is cut short by the device** (Seeed #208).
   Images after the first never come, `Captured` is never sent, and the app receives `Sleep`
   instead. Keep any `capture N interval` below op8, and treat a `Sleep` during a capture as the
-  end of it rather than waiting on the 30 s timeout.
+  end of it rather than waiting on the 30 s timeout. A deployed burst is the same capture: the
+  firmware sleeps in `handleEventForWaitForTimer` when op8 runs out before op6, and its
+  `config_file.md` says op6 must be less than op8. Since #317 Start Monitoring writes
+  op8 = op6 + 1000 whenever op5 is above 1, so anything that writes op8 after the deployment
+  (a hold's release, a restore owed to keepAwake) would cut every burst back to one picture.
 - **A device that prints `IMAGE task unhandled event 'Image Event Inactivity' in
   'Uninitialised'` once a second is stuck awake, and only a power cycle brings it back.**
   Firmware race on `ae_review` e8b7feb5: the inactivity timer fired while the IF task was

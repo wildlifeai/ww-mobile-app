@@ -166,9 +166,10 @@ The following subset is directly used during deployment:
 
 | Index | Constant | Role |
 |-------|----------|------|
-| 5 | `NUM_PICTURES` | Images per trigger. Start Monitoring writes 1; the Dev Deployment screen writes what its Pictures per Trigger field holds, default 1. Both write it explicitly because the reset preserves it. The BMP pairing that used to make it 2 was retired on 21 September 2026 |
+| 5 | `NUM_PICTURES` | Images per trigger, motion and timelapse alike. Start Monitoring writes the project's `photos_per_trigger`, twice that when the raw BMP is recorded (#317); the Dev Deployment screen writes what its Pictures per Trigger field holds, default 3. Both write it explicitly because the reset preserves it |
+| 6 | `PICTURE_INTERVAL` | Milliseconds between those images. Start Monitoring writes the project's `photo_interval_milliseconds` (#317); the reset sets 500. The firmware wants it below op8, see D under [Device Configuration](./05-DEVICE-FLOWS.md#device-configuration-usedeploymentconfiguration) |
 | 7 | `TIMELAPSE_INTERVAL` | 0 for activity, N seconds for timelapse/mixed |
-| 8 | `INTERVAL_BEFORE_DPD` | Always 1000ms |
+| 8 | `INTERVAL_BEFORE_DPD` | 1000ms, except that Start Monitoring writes op6 + 1000 when op5 is above 1, so the camera stays awake for the whole burst (#317) |
 | 9 | `LED_BRIGHTNESS` | Flash brightness 0–100% |
 | 10 | `CAMERA_ENABLED` | 1 = on, 0 = off (always sent last) |
 | 11 | `MD_INTERVAL` | 1000ms for activity/mixed, 0 for timelapse |
@@ -203,7 +204,7 @@ All deployment flows use the **bulk parameter fetch** command to minimize BLE ro
 | Timelapse | `setop 17 0`, `setop 11 0`, `setop 7 <secs>`, `setop 8 1000`, `setop 10 1` | MD off, timelapse on |
 | Mixed | `setop 17 1`, `setop 11 1000`, `setop 7 <secs>`, `setop 8 1000`, `setop 10 1` | MD on + timelapse on |
 
-Camera enable (`setop 10 1`) is always sent **last** to avoid premature triggers. All writes are conditional: unchanged values are skipped.
+Camera enable (`setop 10 1`) is always sent **last** to avoid premature triggers. All writes are conditional: unchanged values are skipped. A Start Monitoring burst then raises `setop 8` past the picture interval, see D under [Device Configuration](./05-DEVICE-FLOWS.md#device-configuration-usedeploymentconfiguration).
 
 ---
 
