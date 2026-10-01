@@ -10,7 +10,7 @@
 import { useMemo, useEffect, useCallback, useRef } from "react"
 import { StyleSheet, View, Alert } from "react-native"
 import { Text, useTheme, ActivityIndicator } from "react-native-paper"
-import { useRoute, useNavigation } from "@react-navigation/native"
+import { useRoute, useNavigation, StackActions } from "@react-navigation/native"
 
 import { WWScreenView } from "../../components/ui/WWScreenView"
 import { WWButton } from "../../components/ui/WWButton"
@@ -46,6 +46,7 @@ export const EditProjectScreen = () => {
 		isTimeLapse,
 		selectedFlashMode,
 		handleSave,
+		handleArchive,
 	} = useProjectDetails(projectId, true)
 
 	const {
@@ -86,20 +87,26 @@ export const EditProjectScreen = () => {
 		return () => unsubscribe()
 	}, [navigation, isDirty])
 
-	// Save and go back
+	// Save and go back. handleSave resolves false when the write failed, and
+	// has already said so: stay on the form.
 	const onSave = useCallback(async (data: any) => {
-		try {
-			await handleSave(data)
-			// Bypass the beforeRemove guard: save succeeded, safe to leave
-			isSavingRef.current = true
-			if (navigation.canGoBack()) {
-				navigation.goBack()
-			}
-		} catch {
-			// handleSave already shows an Alert on failure
-			isSavingRef.current = false
+		const saved = await handleSave(data)
+		if (!saved) return
+		// Bypass the beforeRemove guard: save succeeded, safe to leave
+		isSavingRef.current = true
+		if (navigation.canGoBack()) {
+			navigation.goBack()
 		}
 	}, [handleSave, navigation])
+
+	// Archiving leaves the project: back past its details screen to the list
+	// it was opened from, with any unsaved edit dropped along with it (#191).
+	const onArchive = useCallback(async () => {
+		const archived = await handleArchive()
+		if (!archived) return
+		isSavingRef.current = true
+		navigation.dispatch(StackActions.pop(2))
+	}, [handleArchive, navigation])
 
 	// Loading state
 	if (isLoading) {
@@ -158,7 +165,6 @@ export const EditProjectScreen = () => {
 					isLoadingModels={isLoadingModels}
 					modelsError={modelsError}
 					flashMode={selectedFlashMode}
-					showArchiveToggle={true}
 				/>
 
 				{/* Save Button */}
@@ -172,6 +178,18 @@ export const EditProjectScreen = () => {
 						testID="save-button"
 					>
 						<Text>Save Changes</Text>
+					</WWButton>
+					{/* Archiving is something done to the project, not one of its
+					    settings, so it sits apart from the form (#191) */}
+					<WWButton
+						mode="outlined"
+						onPress={onArchive}
+						disabled={isUpdating}
+						textColor={theme.colors.error}
+						style={styles.archiveButton}
+						testID="archive-button"
+					>
+						<Text>Archive project</Text>
 					</WWButton>
 				</View>
 			</View>
@@ -209,5 +227,8 @@ const styles = StyleSheet.create({
 	},
 	saveButton: {
 		paddingVertical: 8,
+	},
+	archiveButton: {
+		marginTop: 16,
 	},
 })

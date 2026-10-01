@@ -13,6 +13,18 @@ const SIGNED_URL_TTL_SECONDS = 60 * 60 // 1 hour
 
 const isLocalPath = (path: string) => path.startsWith('file://')
 
+const readPaths = (raw: unknown): string[] =>
+    typeof raw === 'string' ? JSON.parse(raw) : ((raw as string[] | undefined) || [])
+
+/**
+ * The upload pass running for each deployment. Start Monitoring starts one
+ * and the sync the new deployment triggers starts another; side by side, the
+ * second found the file the first had just uploaded and deleted, dropped it,
+ * and wrote its path list over the first's, so the photo sat in the bucket
+ * with nothing pointing at it (#347). A second call now waits for the first.
+ */
+const uploadsInFlight = new Map<string, Promise<void>>()
+
 /**
  * Decode base64 to a Uint8Array without external dependencies
  * (Hermes does not reliably expose atob/Buffer).
@@ -35,6 +47,103 @@ function base64ToBytes(base64: string): Uint8Array {
         }
     }
     return bytes
+}
+
+/**
+ * One upload pass for a deployment, run through `uploadPendingPhotos`. The
+ * path list is written back merged with the record as it is at write time:
+ * only the paths this pass uploaded are swapped, and only the ones it found
+ * missing are dropped, so a change made meanwhile is kept.
+ */
+async function uploadPass(deploymentId: string, userId: string): Promise<void> {
+    const deploymentsCollection = database.get<Deployment>('deployments')
+    let deployment: Deployment
+    try {
+        deployment = await deploymentsCollection.find(deploymentId)
+    } catch {
+        logWarn('[DeploymentPhotoService] Deployment not found:', deploymentId)
+        return
+    }
+
+    const paths = readPaths(deployment.cameraLocationImagePaths)
+    if (!paths.some(isLocalPath)) return
+
+    const supabase = getSupabaseClient()
+    const uploaded = new Map<string, string>() // local path -> storage path
+    const missing = new Set<string>()
+
+    for (const path of paths) {
+        if (!isLocalPath(path)) continue
+
+        const filename = path.split('/').pop() || `${Date.now()}.jpg`
+        const folder = `${deployment.projectId}/${deployment.id}`
+        const storagePath = `${folder}/${filename}`
+
+        try {
+            const fileInfo = await FileSystem.getInfoAsync(path)
+            if (!fileInfo.exists) {
+                // The file goes only once its upload has succeeded, so a local
+                // path whose file is gone is usually a photo already in the
+                // bucket whose path came back with an older copy of the record
+                // (a sync pull, #347). Only a photo the bucket does not have is
+                // dropped; when the bucket cannot be asked, the path stays.
+                const { data, error } = await supabase.storage.from(BUCKET).list(folder, { search: filename })
+                if (error) throw error
+                if ((data ?? []).some(entry => entry.name === filename)) {
+                    log('[DeploymentPhotoService] Local photo already uploaded:', storagePath)
+                    uploaded.set(path, storagePath)
+                } else {
+                    logWarn('[DeploymentPhotoService] Local photo missing, dropping:', path)
+                    missing.add(path)
+                }
+                continue
+            }
+
+            const base64 = await FileSystem.readAsStringAsync(path, {
+                encoding: FileSystem.EncodingType.Base64,
+            })
+            const contentType = filename.endsWith('.png') ? 'image/png' : 'image/jpeg'
+
+            const { error } = await supabase.storage
+                .from(BUCKET)
+                .upload(storagePath, base64ToBytes(base64).buffer as ArrayBuffer, {
+                    contentType,
+                    upsert: true,
+                })
+
+            if (error) throw error
+
+            log('[DeploymentPhotoService] Uploaded photo:', storagePath)
+            uploaded.set(path, storagePath)
+            await DeploymentPhotoService.removeLocalPhoto(path)
+        } catch (e) {
+            logError('[DeploymentPhotoService] Upload failed, will retry later:', e)
+            // the local path stays on the record for the next attempt
+        }
+    }
+
+    if (uploaded.size === 0 && missing.size === 0) return
+
+    await database.write(async () => {
+        const fresh = await deploymentsCollection.find(deploymentId)
+        const updatedPaths = readPaths(fresh.cameraLocationImagePaths)
+            .filter(path => !missing.has(path))
+            .map(path => uploaded.get(path) ?? path)
+        const updateOp = fresh.prepareUpdate((record) => {
+            record.cameraLocationImagePaths = updatedPaths
+            record.modifiedBy = userId
+        })
+        const outboxOp = OutboxService.recordOperation({
+            operation: 'UPDATE',
+            tableName: 'deployments',
+            recordId: fresh.id,
+            payload: mapModelToPayload(fresh),
+            userId,
+        })
+        await database.batch(updateOp, outboxOp)
+    })
+
+    SupabaseSyncService.debouncedSync()
 }
 
 /**
@@ -82,85 +191,18 @@ export const DeploymentPhotoService = {
      * Upload all still-local photos of a deployment to Supabase storage and
      * replace the local paths on the record with storage paths.
      * Safe to call repeatedly; already-uploaded photos are skipped and
-     * failures leave the local path in place for the next attempt.
+     * failures leave the local path in place for the next attempt. Calls for
+     * the same deployment run one after the other.
      */
-    uploadPendingPhotos: async (deploymentId: string, userId: string): Promise<void> => {
-        const deploymentsCollection = database.get<Deployment>('deployments')
-        let deployment: Deployment
-        try {
-            deployment = await deploymentsCollection.find(deploymentId)
-        } catch {
-            logWarn('[DeploymentPhotoService] Deployment not found:', deploymentId)
-            return
+    uploadPendingPhotos: (deploymentId: string, userId: string): Promise<void> => {
+        const previous = uploadsInFlight.get(deploymentId) ?? Promise.resolve()
+        const pass = previous.catch(() => undefined).then(() => uploadPass(deploymentId, userId))
+        uploadsInFlight.set(deploymentId, pass)
+        const forget = () => {
+            if (uploadsInFlight.get(deploymentId) === pass) uploadsInFlight.delete(deploymentId)
         }
-
-        const rawPaths = deployment.cameraLocationImagePaths
-        const paths: string[] = typeof rawPaths === 'string' ? JSON.parse(rawPaths) : (rawPaths || [])
-        if (!paths.some(isLocalPath)) return
-
-        const supabase = getSupabaseClient()
-        const updatedPaths: string[] = []
-        let uploadedAny = false
-
-        for (const path of paths) {
-            if (!isLocalPath(path)) {
-                updatedPaths.push(path)
-                continue
-            }
-
-            try {
-                const fileInfo = await FileSystem.getInfoAsync(path)
-                if (!fileInfo.exists) {
-                    logWarn('[DeploymentPhotoService] Local photo missing, dropping:', path)
-                    uploadedAny = true // path list changed
-                    continue
-                }
-
-                const filename = path.split('/').pop() || `${Date.now()}.jpg`
-                const storagePath = `${deployment.projectId}/${deployment.id}/${filename}`
-                const base64 = await FileSystem.readAsStringAsync(path, {
-                    encoding: FileSystem.EncodingType.Base64,
-                })
-                const contentType = filename.endsWith('.png') ? 'image/png' : 'image/jpeg'
-
-                const { error } = await supabase.storage
-                    .from(BUCKET)
-                    .upload(storagePath, base64ToBytes(base64).buffer as ArrayBuffer, {
-                        contentType,
-                        upsert: true,
-                    })
-
-                if (error) throw error
-
-                log('[DeploymentPhotoService] Uploaded photo:', storagePath)
-                updatedPaths.push(storagePath)
-                uploadedAny = true
-                await DeploymentPhotoService.removeLocalPhoto(path)
-            } catch (e) {
-                logError('[DeploymentPhotoService] Upload failed, will retry later:', e)
-                updatedPaths.push(path) // keep local path for retry
-            }
-        }
-
-        if (!uploadedAny) return
-
-        await database.write(async () => {
-            const fresh = await deploymentsCollection.find(deploymentId)
-            const updateOp = fresh.prepareUpdate((record) => {
-                record.cameraLocationImagePaths = updatedPaths
-                record.modifiedBy = userId
-            })
-            const outboxOp = OutboxService.recordOperation({
-                operation: 'UPDATE',
-                tableName: 'deployments',
-                recordId: fresh.id,
-                payload: mapModelToPayload(fresh),
-                userId,
-            })
-            await database.batch(updateOp, outboxOp)
-        })
-
-        SupabaseSyncService.debouncedSync()
+        pass.then(forget, forget)
+        return pass
     },
 
     /**

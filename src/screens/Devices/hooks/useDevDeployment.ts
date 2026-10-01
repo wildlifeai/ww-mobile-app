@@ -44,6 +44,7 @@ import { mdSensitivityLevel } from '../../../utils/mdSensitivity'
 import { sleep } from '../../../utils/helpers'
 import { selectCurrentOrganisation } from '../../../redux/slices/authSlice'
 import { ProjectWithDetails } from '../../../types/project'
+import { withoutArchived } from '../../../utils/projectArchive'
 
 /** A camera the operator can deploy on: one of the two firmware slots. */
 export type DeployableCamera = Exclude<CameraVariant, 'unknown'>
@@ -311,9 +312,9 @@ export const useDevDeployment = ({
         const loadProjects = async () => {
             if (!user?.id || !currentOrganisation?.id) return
             try {
-                const projects = await ProjectService.getProjectsForUserInOrganisation(
+                const projects = withoutArchived(await ProjectService.getProjectsForUserInOrganisation(
                     user.id, currentOrganisation.id
-                )
+                ))
                 setAvailableProjects(projects)
                 if (projects.length > 0 && !project) {
                     setProject(projects[0])

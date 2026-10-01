@@ -187,6 +187,15 @@ const FIRMWARE_ERROR_CODES: Record<number, string> = {
 };
 
 /**
+ * True when `md` failed because the camera refused it, `Unrecognised` from a
+ * build without the command or the firmware's own `Error:`, as opposed to a
+ * reply that never came. Kept here so no caller matches device text itself.
+ */
+export function isMdRefusal(error: unknown): boolean {
+  return error instanceof Error && /^md failed: (?:Unrecogni[sz]ed|Error:)/i.test(error.message);
+}
+
+/**
  * Exported registry of constructed commands.
  */
 export const commandRegistry = {
@@ -467,12 +476,19 @@ export const commandRegistry = {
   // Response: "MD sensitivity set to N". We keep maxRetries: 0 because
   // the sensitivity is persisted to CONFIG.TXT regardless of whether
   // the response arrives over BLE.
+  //
+  // 2 s, not 5: the Himax answers within 0.2 s, and on the HM0360 build the
+  // nRF takes that answer for its `MD <time>` motion wake and drops it
+  // (ww-hardware #52), so a longer wait only paid for a reply that never
+  // comes (#272, 23 September 2026). The RP3 build has no `md` and answers
+  // `Unrecognised` (Seeed #211); that and the firmware's own `Error:` lines
+  // are refusals, told apart from a lost reply by `isMdRefusal`.
   md: createSingleLineCommand<boolean>(
     'md',
     (level: number) => `AI md ${level}`,
     /^MD sensitivity set to/i,
     () => true,
-    { timeoutMs: 5000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Sleep/i }
+    { timeoutMs: 2000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Sleep|^Unrecogni[sz]ed|^Error:/i }
   ),
 
   erasemodel: createSingleLineCommand<boolean>(
