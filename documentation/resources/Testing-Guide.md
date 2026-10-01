@@ -189,16 +189,16 @@ the hierarchy there to find a real id before changing a selector; the `maestro-s
 
 | File | Proves | Status |
 |------|--------|--------|
-| `tests/maestro/smoke/app-startup.yaml` | The APK installs, launches, and the bundle renders the login screen. **The required check** | See the PR that landed it for the run |
-| `tests/maestro/auth-workflow.yaml` | A wrong password is refused with "Login Failed"; the right one reaches the home screen and the project list; sign out returns to the login screen | Advisory, E2E Full |
-| `tests/maestro/project-crud-workflow.yaml` | Create a project with a unique name, see it listed, rename it, archive it (the app's delete), see it gone | Advisory, E2E Full |
-| `tests/maestro/offline/sign-in-online.yaml` | Phase 1 of the offline scenario: sign in online and reach the project list | Advisory, E2E Full, via `scripts/maestro-offline.sh` |
-| `tests/maestro/offline/complete-offline-workflow.yaml` | Phase 2, in airplane mode: a cold start stays signed in (#310), shows the offline indicator, lists projects from the local database, and a project created offline is listed at once | Advisory, E2E Full, via the script |
-| `tests/maestro/offline/database-operations.yaml` | Phase 3, back online: the indicator goes, the outbox pushes the offline project and a pull keeps it; then archives it | Advisory, E2E Full, via the script |
+| `tests/maestro/smoke/app-startup.yaml` | The APK installs, launches, and the bundle renders the login screen. **The required check** | Passes, run 36934636431 (1 October 2026) |
+| `tests/maestro/auth-workflow.yaml` | A wrong password is refused with "Login Failed"; the right one reaches the home screen and the project list; sign out returns to the login screen | Passes, same run. Advisory, E2E Full |
+| `tests/maestro/project-crud-workflow.yaml` | Create a project with a unique name, see it listed, rename it, archive it (the app's delete), see it gone | Passes, same run. Advisory, E2E Full |
+| `tests/maestro/offline/sign-in-online.yaml` | Phase 1 of the offline scenario: sign in online and reach the project list | Passes, same run. Advisory, E2E Full, via `scripts/maestro-offline.sh` |
+| `tests/maestro/offline/complete-offline-workflow.yaml` | Phase 2, in airplane mode: a cold start stays signed in (#310), shows the offline indicator, lists projects from the local database, and a project created offline is listed at once | Passes, same run. Advisory, via the script |
+| `tests/maestro/offline/database-operations.yaml` | Phase 3, back online: the indicator goes, the outbox pushes the offline project and a pull keeps it; then archives it | Passes, same run. Advisory, via the script |
 | `tests/maestro/subflows/*.yaml` | Subflows: sign in, open the New Project form, archive a project by name. Not flows | Run via `runFlow` only |
 
-The status column names what each flow proves; which runs passed is in the development report
-that landed them, [`2026-10-02_e2e-real-screens`](../development%20reports/2026-10-02_e2e-real-screens/README.md).
+The run of each dispatch and what its screens showed is in the development report that landed
+them, [`2026-10-02_e2e-real-screens`](../development%20reports/2026-10-02_e2e-real-screens/README.md).
 
 ### npm Scripts
 
