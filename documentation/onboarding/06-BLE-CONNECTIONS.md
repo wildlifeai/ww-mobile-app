@@ -29,7 +29,8 @@ ever run.
   inactivity, then sleeps. After ANY disconnect, assume it is asleep and
   NOT advertising until woken (button / motion / timer).
 - The AI processor sleeps about a second after its last activity (op8),
-  so every command after that pays a wake. A screen that sends several
+  or a second past the picture interval on a camera deployed for a burst
+  (#317), so every command after that pays a wake. A screen that sends several
   commands per visit can hold it awake through `ble/session/keepAwake.ts`,
   which raises op8 for the visit and puts it back on exit, or the next
   time a hold is taken if the link dropped first. Capture Picture and the

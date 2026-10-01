@@ -587,6 +587,11 @@ export const useStartDeployment = ({
                     flash: project,
                     // The same value the screen shows the operator (#316)
                     mdSensitivity: mdSensitivityLevel(sensitivityLabel),
+                    // Pictures per trigger (op5) and their interval (op6), from
+                    // the project since #317. op5 is in RESET_PRESERVED_OPS and
+                    // op6 is reset to 500, so both are written here, and op8 is
+                    // raised past the interval when there is more than one.
+                    burst: project,
                 }, cb, opsAfterReset)
             } catch (configError) {
                 logError('[Deployment] Configuration failed:', configError)
@@ -594,28 +599,17 @@ export const useStartDeployment = ({
                 throw configError
             }
 
-            // 7b. Pictures per trigger: one. The reset cannot be relied on for
-            // this one, because op5 is in RESET_PRESERVED_OPS, so a device left
-            // at 2 by an earlier BMP deployment would stay there. Non-fatal: on
-            // failure the firmware keeps whatever the card holds. #317 will make
-            // the count a project setting; until then it is 1.
-            //
-            // The raw BMP used to be written here too, as TEST_MODE_BITS bit 1
-            // plus a second picture so the alternating file types yielded one
-            // of each. Retired on 21 September 2026, see the note by the state
-            // above. op18 is not preserved by the reset, so it is 0 by now and
-            // no longer needs writing.
+            // 7b. The raw BMP used to be written here, as TEST_MODE_BITS bit 1
+            // plus a doubled picture count so the alternating file types yielded
+            // one of each. Retired on 21 September 2026, see the note by the
+            // state above. op18 is not preserved by the reset, so it is 0 by now
+            // and no longer needs writing. To bring it back, pass
+            // `recordRawBmp: !recordJpegOnly` to configureDevice above, which
+            // doubles op5 (#317), and write op18 here:
             //
             //   const testModeBits = recordJpegOnly ? 0 : TEST_BIT_SAVE_BMP
-            //   const numPictures = recordJpegOnly ? 1 : 2
             //   await bleSession?.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TEST_MODE_BITS, value: testModeBits }))
-            //   progress.addLog(`Capture format: ${recordJpegOnly ? 'JPEG only' : 'JPG + BMP'} (${numPictures} pic${numPictures > 1 ? 's' : ''}/trigger)`)
-            try {
-                await bleSession?.execute(() => commandRegistry.setop({ index: OP_PARAMETER.NUM_PICTURES, value: 1 }))
-                progress.addLog('Pictures per trigger: 1')
-            } catch (formatError) {
-                logWarn('[Deployment] Failed to set pictures per trigger (non-fatal):', formatError)
-            }
+            //   progress.addLog(`Capture format: ${recordJpegOnly ? 'JPEG only' : 'JPEG + BMP'}`)
 
             // 7c. Light verdict for the deployment log: which camera mode the
             // deployment starts in, and when light is re-checked. Non-fatal
