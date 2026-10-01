@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useLayoutEffect, useMemo } from 'react'
 import { View, StyleSheet, ScrollView } from 'react-native'
 import { Button, ActivityIndicator, ProgressBar, IconButton, RadioButton, Checkbox } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -12,7 +12,10 @@ import { WWText } from '../../components/ui/WWText'
 import { WWSelect } from '../../components/ui/WWSelect'
 import { FileTransferProgressCard } from '../../components/FileTransferProgressCard'
 import { useFirmwareUpdate, FirmwareTarget, HimaxFirmwareSource, firmware83Filename } from './hooks/useFirmwareUpdate'
+import { useFirmwareOnPhone } from '../../hooks/useOfflineFiles'
 import Firmware from '../../database/models/Firmware'
+import { SimpleFirmwareUpdate } from './components/SimpleFirmwareUpdate'
+import { friendlyVersion } from '../../utils/firmwareWords'
 
 const TARGET_TITLES: Record<FirmwareTarget, string> = {
     ble: 'BLE Firmware Update',
@@ -53,7 +56,10 @@ export const FirmwareUpdateScreen = () => {
 
     const deviceId = route.params?.deviceId
     const target: FirmwareTarget = route.params?.target || 'himax'
-    const restrictToLatest = route.params?.restrictToLatest ?? false
+    // The Engineer Console opens this screen with engineer: true and gets the
+    // build picker, the SD-card source, file names and the step log; everyone
+    // else gets one version line, one button and one bar (#344)
+    const engineer: boolean = route.params?.engineer ?? false
     const device = useAppSelector(state => state.devices[deviceId || ''])
     
     const [himaxSource, setHimaxSource] = useState<HimaxFirmwareSource>('sdcard')
@@ -178,6 +184,13 @@ export const FirmwareUpdateScreen = () => {
         return `${meta.emoji} build ${shortBuild(single.version)} only`
     }, [latestByVariant])
 
+    // Whether the images this update would download are already on the phone,
+    // put there by the offline pre-download or an earlier update (#333). An
+    // image on the phone needs no connection to flash.
+    const onPhone = useFirmwareOnPhone(
+        target === 'himax' && latestByVariant ? [latestByVariant.rp3, latestByVariant.hm] : [latestFirmware]
+    )
+
     // Device already on the latest build (for the camera it is running)?
     const deviceUpToDate = useMemo(() => {
         if (!latestByVariant || !previousVersion) return false
@@ -203,13 +216,7 @@ export const FirmwareUpdateScreen = () => {
     const pairInDb = !!(latestByVariant?.rp3 && latestByVariant?.hm)
     const pairSource: HimaxFirmwareSource | null = pairOnSd ? 'sdcard' : (pairInDb ? 'download' : null)
 
-    const filteredOptions = useMemo(() => {
-        if (restrictToLatest) {
-            const latestDbOption = firmwareOptions.find(o => o.type === 'db')
-            return latestDbOption ? [latestDbOption] : []
-        }
-        return firmwareOptions
-    }, [firmwareOptions, restrictToLatest])
+    const filteredOptions = firmwareOptions
 
     const selectOptions = useMemo(() => {
         return filteredOptions.map(o => ({
@@ -257,6 +264,52 @@ export const FirmwareUpdateScreen = () => {
 
     const title = TARGET_TITLES[target]
     const description = TARGET_DESCRIPTIONS[target]
+
+    // One title, in the header: the simple view has no title of its own
+    useLayoutEffect(() => {
+        if (!engineer) {
+            navigation.setOptions({ title: target === 'himax' ? 'AI firmware update' : 'Bluetooth firmware update' })
+        }
+    }, [engineer, navigation, target])
+
+    if (!engineer) {
+        // The camera's own build decides which latest it is compared with
+        const latestHimax = latestByVariant
+            ? (runningVariant === 'RP3' ? latestByVariant.rp3 : latestByVariant.hm) ?? latestByVariant.hm ?? latestByVariant.rp3
+            : null
+        const latestVersion = target === 'himax' ? latestHimax?.version ?? null : latestFirmware?.version ?? null
+        const upToDate = target === 'himax'
+            ? deviceUpToDate
+            : !!latestVersion && !!previousVersion && friendlyVersion(previousVersion) === friendlyVersion(latestVersion)
+        return (
+            <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
+                <SimpleFirmwareUpdate
+                    target={target}
+                    currentVersion={previousVersion}
+                    latestVersion={latestVersion}
+                    upToDate={upToDate}
+                    isPreflightDone={isPreflightDone}
+                    canStart={target === 'himax' ? !!pairSource : !!latestFirmware}
+                    batteryLevel={batteryLevel}
+                    isBatteryLow={isBatteryLow && !isDfuMode}
+                    externalPowerConfirmed={externalPowerConfirmed}
+                    onExternalPowerChange={setExternalPowerConfirmed}
+                    isUpdating={isUpdating}
+                    isComplete={isComplete}
+                    isFailed={isFailed}
+                    phase={phase}
+                    progress={progress}
+                    pairProgress={pairProgress}
+                    errorMsg={errorMsg}
+                    newVersion={newVersion}
+                    logs={progressLogs}
+                    transfer={fileTransferProgress}
+                    onStart={() => startUpdate(target === 'himax' ? { himaxSource: pairSource ?? 'sdcard' } : {})}
+                    onDone={() => navigation.goBack()}
+                />
+            </SafeAreaView>
+        )
+    }
 
 
 
@@ -351,6 +404,21 @@ export const FirmwareUpdateScreen = () => {
                             </View>
                         )}
 
+                        {onPhone && (
+                            <View style={styles.preflightRow}>
+                                <WWText variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
+                                    On this phone
+                                </WWText>
+                                <WWText variant="bodyMedium" style={[styles.preflightValue, { color: colors.onSurfaceVariant }]}>
+                                    {onPhone.downloaded === onPhone.total
+                                        ? 'Downloaded'
+                                        : onPhone.downloaded === 0
+                                            ? 'Not downloaded'
+                                            : `${onPhone.downloaded} of ${onPhone.total} downloaded`}
+                                </WWText>
+                            </View>
+                        )}
+
                     </View>
                 )}
 
@@ -380,7 +448,7 @@ export const FirmwareUpdateScreen = () => {
                     Source is chosen automatically: SD-card images when present
                     (no transfer, ~2 min), else downloaded from the cloud and
                     sent over BLE (~10 min). */}
-                {target === 'himax' && !restrictToLatest && !isComplete && !isUpdating && (
+                {target === 'himax' && !isComplete && !isUpdating && (
                     <View style={[styles.card, { backgroundColor: colors.surfaceVariant, marginBottom: spacing }]}>
                         <WWText variant="titleSmall" style={[styles.marginBottom8, { color: colors.onSurfaceVariant }]}>
                             Update both cameras{latestLabel ? ` — ${latestLabel}` : ''}
@@ -396,7 +464,8 @@ export const FirmwareUpdateScreen = () => {
                         {!pairSource && isPreflightDone && (
                             <WWText variant="bodySmall" style={[styles.marginBottom8, { color: colors.error }]}>
                                 No firmware images available — sync the app to fetch the catalogue, or prepare the
-                                SD card from the website and reinsert it.
+                                SD card from the website, reinsert it and power cycle the camera, since a card put
+                                in while it is on is not detected until it restarts.
                             </WWText>
                         )}
                         <Button
@@ -419,8 +488,8 @@ export const FirmwareUpdateScreen = () => {
 
                 {/* ── Advanced: flash a specific image / choose the source ──
                     Collapsed to a single text row by default; the card only
-                    appears when expanded (or when Flow 1 restricts to latest). */}
-                {target === 'himax' && !isComplete && !isUpdating && !restrictToLatest && !showAdvanced && (
+                    appears when expanded. */}
+                {target === 'himax' && !isComplete && !isUpdating && !showAdvanced && (
                     <Button
                         mode="text"
                         compact
@@ -430,13 +499,11 @@ export const FirmwareUpdateScreen = () => {
                         ▸ Advanced: flash a specific image
                     </Button>
                 )}
-                {target === 'himax' && !isComplete && !isUpdating && (showAdvanced || restrictToLatest) && (
+                {target === 'himax' && !isComplete && !isUpdating && showAdvanced && (
                     <View style={[styles.card, { backgroundColor: colors.surfaceVariant, marginBottom: spacing }]}>
-                        {!restrictToLatest && (
-                            <Button mode="text" compact onPress={() => setShowAdvanced(false)}>
-                                ▾ Hide advanced
-                            </Button>
-                        )}
+                        <Button mode="text" compact onPress={() => setShowAdvanced(false)}>
+                            ▾ Hide advanced
+                        </Button>
 
                         {selectOptions.length > 0 ? (
                             <View style={styles.marginTop12}>
@@ -634,10 +701,10 @@ export const FirmwareUpdateScreen = () => {
 
                 {/* ── Action Buttons ──
                     BLE: the single Start button.
-                    Himax: shown for the advanced single-image flow (or restrictToLatest),
+                    Himax: shown for the advanced single-image flow,
                     and after a failure so Retry is always reachable. The primary
                     pair flow has its own button above. */}
-                {!isComplete && !isUpdating && (target === 'ble' || showAdvanced || restrictToLatest || isFailed) && (
+                {!isComplete && !isUpdating && (target === 'ble' || showAdvanced || isFailed) && (
                     <Button
                         mode="contained"
                         onPress={() => startUpdate({
@@ -683,6 +750,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         paddingVertical: 4,
+    },
+    preflightValue: {
+        flex: 1,
+        textAlign: 'right',
     },
     warningBanner: {
         backgroundColor: '#BF360C',

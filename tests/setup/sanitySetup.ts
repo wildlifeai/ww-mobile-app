@@ -315,6 +315,7 @@ jest.mock("react-native-paper", () => ({
         Accordion: "List.Accordion" 
     }),
     Divider: "Divider",
+    SegmentedButtons: "SegmentedButtons",
     Portal: Object.assign(({ children }: { children: any }) => children, { Host: "Portal.Host" }),
     Dialog: Object.assign(({ children }: { children: any }) => children, { Title: "Dialog.Title", Content: "Dialog.Content", Actions: "Dialog.Actions", ScrollArea: "Dialog.ScrollArea" }),
     Card: Object.assign(({ children }: { children: any }) => children, { Title: "Card.Title", Content: ({ children }: { children: any }) => children, Actions: ({ children }: { children: any }) => children }),

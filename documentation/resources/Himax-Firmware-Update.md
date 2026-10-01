@@ -83,10 +83,16 @@ Mobile App                     nRF52840                         HX6538
 | Screen / module | File | Context |
 |-----------------|------|---------|
 | Firmware Status | `FirmwareStatusScreen.tsx` | Shows BLE + Himax versions, triggers update |
-| Firmware Update | `FirmwareUpdateScreen.tsx` | Update progress UI (presentational) |
+| Firmware Update | `FirmwareUpdateScreen.tsx` | Update progress UI (presentational). Two views: the operator's, `components/SimpleFirmwareUpdate.tsx`, and the engineer's, opened with `engineer: true` |
 | **Update orchestration** | `screens/Devices/hooks/useFirmwareUpdate.ts` | **The actual flow:** UART phase listener, progress parsing, slot/transfer logic, and the post-update reset/sleep sequence. Start here when changing behaviour. |
 
-Accessible from Engineer Console → Flows → "Update Himax Firmware".
+Accessible from Engineer Console → Flows → "Update Himax Firmware", which opens the engineer view: the build picker, the SD-card or cloud source and the transfer cards. Start Monitoring's banner and Firmware Status open the operator's view (#344), which says only this:
+
+- **Before:** from which build to which ("Update from the 23 Sep build to the 30 Sep build"), and one Update button. It installs both camera images, from the SD card when they are there, otherwise from the cloud.
+- **While it runs:** one bar for the whole pair and one line, "Sending image 1 of 2 to the camera", "Installing image 2 of 2", "Restarting the camera", with the update's last six log steps under them (file names and CRCs included), so a wait of minutes shows what is happening. While an image goes to the camera, a smaller bar and a line under the log give what is across, the speed and the time left ("212 of 476 KB, 7.9 KB/s, about 38 s left"). The steps stay on screen after a failure.
+- **After:** one line, "Updated to the 30 Sep build".
+
+Why it sends two images is under [Dual-Image Update](#dual-image-update-camera-variant-pair). Why a low battery blocks it: an update takes minutes of flash writing and two restarts, and a camera that dies part way through a pair is left with its two camera images on different builds. A bench unit on USB reads its battery as a few percent (the USB rail, not a battery), so both views offer "It's on USB power, update anyway" when the battery reads low.
 
 ### Command Registration (`commandRegistry.ts`)
 
@@ -171,9 +177,9 @@ The app queries `AI slots` to learn the running variant, then flashes **the othe
 
 | Stage | Phase | Detail |
 |-------|-------|--------|
-| Download | `downloading` | Cloud source only. Skipped when flashing from the SD card. |
+| Download | `downloading` | Cloud source only. Skipped when flashing from the SD card. `FirmwareService.ensureFirmwareDownloaded` uses the copy in the phone's cache (`documentDirectory/firmware/`) when it is there at the release's size, which needs no connection. The offline pre-download keeps the latest image of each variant there after every sync, and the pre-flight card says "On this phone: Downloaded" when both are (#333). |
 | Check the card | `sending` | SD-card source only. `AI crc <file>` reads the CRC16-CCITT and size of the file already on the card, and the app compares them with the release's `firmware.crc_checksum` and `file_size_bytes` before anything touches flash. See below. |
-| Transfer | `transferring` | `runFileTransferPipeline` stages the `.IMG` into `/MANIFEST/`. The pipeline's whole-file CRC16 is reused as the `AI firmware` CRC argument. |
+| Transfer | `transferring` | `runFileTransferPipeline` stages the `.IMG` into `/MANIFEST/`. The pipeline's whole-file CRC16 is reused as the `AI firmware` CRC argument. It sends one `ver` first and refuses on [BLE firmware below the floor](File-Transfer-Protocol.md#the-ble-firmware-floor), so an old nRF needs its BLE update before the Himax one. |
 | Flash | `sending` → `flashing` | `AI firmware <file> <0xCRC>`. The phase advances to `flashing` on an 8-second timer because the HX goes silent during erase/write. |
 | Reboot | `rebooting` | `AI reset` |
 | Boundary | — | Between passes: `waitForAiReady(25000)` — waits for the device to answer again rather than racing the reboot. |

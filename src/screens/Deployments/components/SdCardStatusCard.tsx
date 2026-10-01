@@ -9,7 +9,14 @@ interface SdCardStatusCardProps {
     handleSdCardCheck: () => void
     isInitializing: boolean
     bleDeviceConnected: boolean
-    renderSdCardHelp: (props: any) => React.ReactNode
+    /**
+     * True while a check is on the wire. The button says so and cannot be
+     * tapped again; without it a re-check that returns the same figure looks
+     * like a dead button.
+     */
+    isChecking?: boolean
+    /** Optional: the Dev Deployment Test shows this card with no help button. */
+    renderSdCardHelp?: (props: any) => React.ReactNode
     styles: any
 }
 
@@ -18,9 +25,11 @@ export const SdCardStatusCard: React.FC<SdCardStatusCardProps> = ({
     handleSdCardCheck,
     isInitializing,
     bleDeviceConnected,
+    isChecking = false,
     renderSdCardHelp,
     styles,
 }) => {
+    const busy = isInitializing || !bleDeviceConnected || isChecking
     return (
         <Card style={styles.card}>
             <Card.Title
@@ -40,13 +49,13 @@ export const SdCardStatusCard: React.FC<SdCardStatusCardProps> = ({
                                     : 'SD card is nearly full - free up space'}</Text>
                             </WWText>
                         </View>
-                        <WWButton mode="outlined" onPress={handleSdCardCheck} style={styles.actionButton} disabled={isInitializing || !bleDeviceConnected}>
-                            <Text>Check Again</Text>
+                        <WWButton mode="outlined" onPress={handleSdCardCheck} style={styles.actionButton} disabled={busy} loading={isChecking}>
+                            <Text>{isChecking ? 'Checking…' : 'Check Again'}</Text>
                         </WWButton>
                     </View>
                 ) : (
-                    <WWButton mode="outlined" onPress={handleSdCardCheck} disabled={isInitializing || !bleDeviceConnected}>
-                        <Text>Check SD Card</Text>
+                    <WWButton mode="outlined" onPress={handleSdCardCheck} disabled={busy} loading={isChecking}>
+                        <Text>{isChecking ? 'Checking…' : 'Check SD Card'}</Text>
                     </WWButton>
                 )}
             </Card.Content>

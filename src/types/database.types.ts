@@ -2318,6 +2318,67 @@ export type Database = {
           },
         ]
       }
+      media_evidence: {
+        Row: {
+          computed_at: string
+          deployment_id: string
+          id: string
+          media_id: string
+          run_id: string | null
+          signal: string
+          source: string
+          source_version: string | null
+          value: number | null
+          value_text: string | null
+        }
+        Insert: {
+          computed_at?: string
+          deployment_id: string
+          id?: string
+          media_id: string
+          run_id?: string | null
+          signal: string
+          source: string
+          source_version?: string | null
+          value?: number | null
+          value_text?: string | null
+        }
+        Update: {
+          computed_at?: string
+          deployment_id?: string
+          id?: string
+          media_id?: string
+          run_id?: string | null
+          signal?: string
+          source?: string
+          source_version?: string | null
+          value?: number | null
+          value_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_media_evidence_media"
+            columns: ["media_id", "deployment_id"]
+            isOneToOne: false
+            referencedRelation: "media"
+            referencedColumns: ["id", "deployment_id"]
+          },
+          {
+            foreignKeyName: "media_evidence_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["deployment_id"]
+          },
+          {
+            foreignKeyName: "media_evidence_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_rules: {
         Row: {
           channels: string[]
@@ -3079,6 +3140,7 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           description: string | null
+          detection_threshold_pct: number
           flash_led: string
           flash_mode: string
           flash_window_minutes: number | null
@@ -3093,6 +3155,8 @@ export type Database = {
           modified_by: string | null
           name: string
           organisation_id: string
+          photo_interval_milliseconds: number
+          photos_per_trigger: number
           project_image: string | null
           record_gps_in_images: boolean
           sampling_design_id: number | null
@@ -3107,6 +3171,7 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           description?: string | null
+          detection_threshold_pct?: number
           flash_led?: string
           flash_mode?: string
           flash_window_minutes?: number | null
@@ -3121,6 +3186,8 @@ export type Database = {
           modified_by?: string | null
           name: string
           organisation_id: string
+          photo_interval_milliseconds?: number
+          photos_per_trigger?: number
           project_image?: string | null
           record_gps_in_images?: boolean
           sampling_design_id?: number | null
@@ -3135,6 +3202,7 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           description?: string | null
+          detection_threshold_pct?: number
           flash_led?: string
           flash_mode?: string
           flash_window_minutes?: number | null
@@ -3149,6 +3217,8 @@ export type Database = {
           modified_by?: string | null
           name?: string
           organisation_id?: string
+          photo_interval_milliseconds?: number
+          photos_per_trigger?: number
           project_image?: string | null
           record_gps_in_images?: boolean
           sampling_design_id?: number | null
@@ -3702,6 +3772,7 @@ export type Database = {
           deleted_at: string | null
           deployment_count: number | null
           description: string | null
+          detection_threshold_pct: number | null
           flash_led: string | null
           flash_mode: string | null
           flash_window_minutes: number | null
@@ -3718,6 +3789,8 @@ export type Database = {
           modified_by: string | null
           name: string | null
           organisation_id: string | null
+          photo_interval_milliseconds: number | null
+          photos_per_trigger: number | null
           project_image: string | null
           record_gps_in_images: boolean | null
           sampling_design_id: number | null
@@ -3735,6 +3808,7 @@ export type Database = {
           deleted_at?: string | null
           deployment_count?: never
           description?: string | null
+          detection_threshold_pct?: number | null
           flash_led?: string | null
           flash_mode?: string | null
           flash_window_minutes?: number | null
@@ -3751,6 +3825,8 @@ export type Database = {
           modified_by?: string | null
           name?: string | null
           organisation_id?: string | null
+          photo_interval_milliseconds?: number | null
+          photos_per_trigger?: number | null
           project_image?: string | null
           record_gps_in_images?: boolean | null
           sampling_design_id?: number | null
@@ -3768,6 +3844,7 @@ export type Database = {
           deleted_at?: string | null
           deployment_count?: never
           description?: string | null
+          detection_threshold_pct?: number | null
           flash_led?: string | null
           flash_mode?: string | null
           flash_window_minutes?: number | null
@@ -3784,6 +3861,8 @@ export type Database = {
           modified_by?: string | null
           name?: string | null
           organisation_id?: string | null
+          photo_interval_milliseconds?: number | null
+          photos_per_trigger?: number | null
           project_image?: string | null
           record_gps_in_images?: boolean | null
           sampling_design_id?: number | null
@@ -4071,6 +4150,22 @@ export type Database = {
           user_id: string
         }[]
       }
+      can_read_device: {
+        Args: { p_device_id: string; p_organisation_id: string }
+        Returns: boolean
+      }
+      can_read_project: {
+        Args: {
+          p_created_by: string
+          p_organisation_id: string
+          p_project_id: string
+        }
+        Returns: boolean
+      }
+      cancel_project_invitation: {
+        Args: { p_invitation_id: string }
+        Returns: undefined
+      }
       check_user_uploader_role: {
         Args: { p_org_id: string; p_user_id: string }
         Returns: boolean
@@ -4108,6 +4203,7 @@ export type Database = {
         | { Args: { schema_name: string; table_name: string }; Returns: string }
         | { Args: { table_name: string }; Returns: string }
       enablelongtransactions: { Args: never; Returns: string }
+      ensure_cloud_models: { Args: never; Returns: number }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
       expire_old_invitations: { Args: never; Returns: number }
       geometry: { Args: { "": string }; Returns: unknown }
@@ -4414,10 +4510,6 @@ export type Database = {
       soft_delete_deployment: { Args: { p_id: string }; Returns: undefined }
       soft_delete_device: { Args: { p_device_id: string }; Returns: undefined }
       soft_delete_project: { Args: { p_id: string }; Returns: undefined }
-      soft_remove_project_member: {
-        Args: { p_project_id: string; p_user_id: string }
-        Returns: undefined
-      }
       st_3dclosestpoint: {
         Args: { geom1: unknown; geom2: unknown }
         Returns: unknown
@@ -5007,6 +5099,7 @@ export type Database = {
         Args: { bucket_id: string; object_name: string }
         Returns: boolean
       }
+      sync_deleted_ids: { Args: { since: string }; Returns: Json }
       to_timestamp_ms: { Args: { epoch_ms: number }; Returns: string }
       unlockrows: { Args: { "": string }; Returns: number }
       update_project_member_role: {

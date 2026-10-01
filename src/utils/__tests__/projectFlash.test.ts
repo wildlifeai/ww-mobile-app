@@ -1,7 +1,12 @@
 import {
     DEFAULT_FLASH_LED,
     DEFAULT_FLASH_MODE,
+    FLASH_LED_OPTIONS,
+    FLASH_LED_OP_VALUE,
+    FLASH_MODE_OPTIONS,
+    FLASH_MODE_OP_VALUE,
     describeProjectFlash,
+    flashColumnsFromFields,
     formatUtcMinutes,
     resolveProjectFlash,
     resolveProjectFlashOps,
@@ -91,6 +96,44 @@ describe('projectFlash', () => {
             expect(formatUtcMinutes(0)).toBe('00:00')
             expect(formatUtcMinutes(1080)).toBe('18:00')
             expect(formatUtcMinutes(1439)).toBe('23:59')
+        })
+    })
+
+    // The form-to-columns step the project form and the Dev Deployment Test
+    // share (#301), so both store the same thing for the same fields.
+    describe('flashColumnsFromFields', () => {
+        it('carries the window only in time-of-day mode', () => {
+            expect(flashColumnsFromFields('time_of_day', 'ir', '18:00', '600')).toEqual({
+                flash_mode: 'time_of_day',
+                flash_led: 'ir',
+                flash_window_start_minutes_utc: 1080,
+                flash_window_minutes: 600,
+            })
+            expect(flashColumnsFromFields('always_on', 'white', '18:00', '600')).toEqual({
+                flash_mode: 'always_on',
+                flash_led: 'white',
+                flash_window_start_minutes_utc: null,
+                flash_window_minutes: null,
+            })
+        })
+
+        it('stores null rather than a guess for a window it cannot read', () => {
+            const columns = flashColumnsFromFields('time_of_day', 'ir', '25:99', 'soon')
+            expect(columns.flash_window_start_minutes_utc).toBeNull()
+            expect(columns.flash_window_minutes).toBeNull()
+            expect(flashColumnsFromFields('time_of_day', 'ir', '06:30', '0').flash_window_minutes).toBeNull()
+        })
+    })
+
+    describe('option lists', () => {
+        it('offer every mode and every LED exactly once, in the column vocabulary', () => {
+            expect(FLASH_MODE_OPTIONS.map(o => o.value).sort()).toEqual(Object.keys(FLASH_MODE_OP_VALUE).sort())
+            expect(FLASH_LED_OPTIONS.map(o => o.value).sort()).toEqual(Object.keys(FLASH_LED_OP_VALUE).sort())
+        })
+
+        it('lead with off and mark the light sensor as in development', () => {
+            expect(FLASH_MODE_OPTIONS[0].value).toBe('off')
+            expect(FLASH_MODE_OPTIONS.find(o => o.value === 'light_sensor')?.label).toMatch(/in development/)
         })
     })
 

@@ -173,6 +173,37 @@ export function createMultiLineCommand<T>(
   };
 }
 
+/** A BLE (nRF) firmware version as numbers, from `parseBleFirmwareVersion`. */
+export interface BleFirmwareVersion {
+  major: number;
+  minor: number;
+  patch: number;
+}
+
+const BLE_FIRMWARE_VERSION_PATTERN = /(?:^|\bV\s*)(\d{1,3})\.(\d{1,3})\.(\d{1,3})(?=$|[\s-])/i;
+
+/**
+ * Read the BLE (nRF) firmware version out of a `ver` reply.
+ *
+ * Takes the whole reply, `WW500-C02 V 00.30.51 08:16:11 Sep 18 2026`, or the
+ * token the `version` command returns from it, `00.30.51`. The nRF pads each
+ * part to two digits and the cloud's `ble` rows do not (`0.30.48`), so both
+ * forms read the same. Anything else is null, never a guess.
+ *
+ * `AI ver` answers for the Himax, a different processor with its own version
+ * scheme: never pass its reply here.
+ */
+export function parseBleFirmwareVersion(reply: string | null | undefined): BleFirmwareVersion | null {
+  if (typeof reply !== 'string') return null;
+  const match = reply.trim().match(BLE_FIRMWARE_VERSION_PATTERN);
+  if (!match) return null;
+  return {
+    major: parseInt(match[1], 10),
+    minor: parseInt(match[2], 10),
+    patch: parseInt(match[3], 10),
+  };
+}
+
 /**
  * HX6538 firmware update error codes returned by xip_update_firmware_from_sd().
  * Maps numeric codes to human-readable descriptions for field debugging.
@@ -185,6 +216,15 @@ const FIRMWARE_ERROR_CODES: Record<number, string> = {
   [-5]: 'flash verify mismatch — data written does not match source',
   [-6]: 'slot selector write failed',
 };
+
+/**
+ * True when `md` failed because the camera refused it, `Unrecognised` from a
+ * build without the command or the firmware's own `Error:`, as opposed to a
+ * reply that never came. Kept here so no caller matches device text itself.
+ */
+export function isMdRefusal(error: unknown): boolean {
+  return error instanceof Error && /^md failed: (?:Unrecogni[sz]ed|Error:)/i.test(error.message);
+}
 
 /**
  * Exported registry of constructed commands.
@@ -467,12 +507,19 @@ export const commandRegistry = {
   // Response: "MD sensitivity set to N". We keep maxRetries: 0 because
   // the sensitivity is persisted to CONFIG.TXT regardless of whether
   // the response arrives over BLE.
+  //
+  // 2 s, not 5: the Himax answers within 0.2 s, and on the HM0360 build the
+  // nRF takes that answer for its `MD <time>` motion wake and drops it
+  // (ww-hardware #52), so a longer wait only paid for a reply that never
+  // comes (#272, 23 September 2026). The RP3 build has no `md` and answers
+  // `Unrecognised` (Seeed #211); that and the firmware's own `Error:` lines
+  // are refusals, told apart from a lost reply by `isMdRefusal`.
   md: createSingleLineCommand<boolean>(
     'md',
     (level: number) => `AI md ${level}`,
     /^MD sensitivity set to/i,
     () => true,
-    { timeoutMs: 5000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Sleep/i }
+    { timeoutMs: 2000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Sleep|^Unrecogni[sz]ed|^Error:/i }
   ),
 
   erasemodel: createSingleLineCommand<boolean>(

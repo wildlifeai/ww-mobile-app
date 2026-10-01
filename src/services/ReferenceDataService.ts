@@ -7,7 +7,9 @@ import AiModelFamily from '../database/models/AiModelFamily'
 import SamplingDesign from '../database/models/SamplingDesign'
 import Firmware from '../database/models/Firmware'
 import { getSupabaseClient } from './supabase'
+import { isKnownOffline } from './connectivityWatch'
 import { log, logError } from '../utils/logger'
+import { logCloudFailure } from '../utils/networkErrors'
 
 
 /**
@@ -30,6 +32,14 @@ class ReferenceDataService {
      */
     async syncReferenceData(): Promise<void> {
         // log('📚 Syncing reference data from Supabase...')
+
+        // Nothing to pull without a connection, and the auth check below would
+        // try the server three times, each failure a red error in the dev build.
+        // AppSetupProvider pulls again on reconnect.
+        if (await isKnownOffline()) {
+            log('📚 Offline: reference data sync skipped until the connection returns')
+            return
+        }
 
         const client = getSupabaseClient()
 
@@ -67,9 +77,13 @@ class ReferenceDataService {
                 (async () => { /* log('📚 Syncing firmware...'); */ await this.syncFirmware() })(),
             ])
 
+            // The model and firmware rows have just changed: fetch their files
+            // (#333). Required here, not imported: the pre-download reads this service.
+            require('./OfflinePrefetchService').default.request('reference data')
+
             // log('✅ Reference data sync complete')
         } catch (error) {
-            logError('❌ Reference data sync failed:', error)
+            logCloudFailure('❌ Reference data sync failed:', error)
             // Don't throw - app can continue with stale data
         }
     }
@@ -87,7 +101,7 @@ class ReferenceDataService {
             .order('id')
 
         if (error) {
-            logError('Failed to fetch capture methods:', error)
+            logCloudFailure('Failed to fetch capture methods:', error)
             return
         }
 
@@ -148,7 +162,7 @@ class ReferenceDataService {
             .order('id')
 
         if (error) {
-            logError('Failed to fetch activity sensitivity:', error)
+            logCloudFailure('Failed to fetch activity sensitivity:', error)
             return
         }
 
@@ -212,7 +226,7 @@ class ReferenceDataService {
             .order('firmware_model_id')
 
         if (error) {
-            logError('Failed to fetch AI model families:', error)
+            logCloudFailure('Failed to fetch AI model families:', error)
             return
         }
 
@@ -261,11 +275,14 @@ class ReferenceDataService {
 
     private async syncAiModels(): Promise<void> {
         const supabase = getSupabaseClient()
+        // Both statuses a project can be assigned, per the backend contract.
+        // Pulling validated alone dropped deployed models, and a project using
+        // one then started monitoring with no model at all (#290).
         const { data, error } = await supabase
             .from('ai_models')
             .select('*')
             .is('deleted_at', null)
-            .eq('status', 'validated')
+            .in('status', ['validated', 'deployed'])
             .order('name')
 
         if (error) {
@@ -387,7 +404,7 @@ class ReferenceDataService {
             .order('id')
 
         if (error) {
-            logError('Failed to fetch sampling designs:', error)
+            logCloudFailure('Failed to fetch sampling designs:', error)
             return
         }
 
@@ -454,7 +471,7 @@ class ReferenceDataService {
             .order('version', { ascending: false })
 
         if (error) {
-            logError('[RefData] Failed to fetch firmware:', error)
+            logCloudFailure('[RefData] Failed to fetch firmware:', error)
             return
         }
 

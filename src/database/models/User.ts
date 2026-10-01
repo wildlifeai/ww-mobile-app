@@ -6,6 +6,7 @@ export default class User extends Model {
 
     @text('firstname') firstname!: string
     @text('surname') surname!: string
+    @text('email') email?: string
     @text('modified_by') modifiedBy!: string
 
     @readonly @date('created_at') createdAt!: number

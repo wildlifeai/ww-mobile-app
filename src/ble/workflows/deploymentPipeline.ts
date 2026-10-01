@@ -10,13 +10,17 @@ import { commandRegistry } from '../protocol/commandRegistry'
 import { awaitAeRegisters } from '../protocol/awaitAeRegisters'
 import { runFileTransferPipeline } from '../protocol/fileTransfer'
 import { crc16ccitt } from '../protocol/fileTransfer/crc16ccitt'
+import { FileTransferError } from '../protocol/fileTransfer/fileTransferTypes'
 import ReferenceDataService from '../../services/ReferenceDataService'
 import AiModelService from '../../services/AiModelService'
+import AiModel from '../../database/models/AiModel'
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
 
 import { executeResetToDefaults } from './resetToDefaults'
 import { log, logWarn } from '../../utils/logger'
 import { describeProjectFlash, ProjectFlashColumns } from '../../utils/projectFlash'
+import { describeProjectBurst, ProjectBurstColumns } from '../../utils/projectBurst'
+import { describeDetectionThreshold, ProjectDetectionThresholdColumns } from '../../utils/projectDetectionThreshold'
 
 interface ProgressCallbacks {
     addLog: (msg: string) => void
@@ -151,6 +155,53 @@ export async function measureLight(
 }
 
 /**
+ * The project's model is on neither the camera nor the card, and its files
+ * could not be downloaded. The one model failure that stops a deployment
+ * rather than warning, see step 5 of `syncAiModel` (#333).
+ */
+class ModelFilesUnavailableError extends Error {}
+
+/**
+ * Finds the project's model on the phone, with the firmware IDs it loads
+ * under, or throws a message that names what is missing. Reference data may
+ * not have synced yet, so a model not found locally gets one sync and a
+ * second look.
+ */
+async function resolveTargetModel(
+    modelId: string,
+    addLog: (msg: string) => void
+): Promise<{ model: AiModel; firmwareIds: { firmwareModelId: number; versionNumber: number } }> {
+    let model = await AiModelService.getModelById(modelId)
+
+    if (!model) {
+        addLog('Model not found locally, syncing reference data...')
+        try {
+            await ReferenceDataService.syncReferenceData()
+        } catch (e) {
+            logWarn('[Deployment] Reference sync before the model lookup failed:', e)
+        }
+        model = await AiModelService.getModelById(modelId)
+    }
+
+    if (!model) {
+        addLog(`AI model ${modelId.substring(0, 8)} not found after sync, stopping`)
+        throw new Error(
+            `This project's AI model (${modelId.substring(0, 8)}) is not on this phone, even after a sync. ` +
+            'Check the phone is online and the model is validated or deployed, then try again.'
+        )
+    }
+
+    try {
+        const firmwareIds = await ReferenceDataService.getFirmwareIds(model)
+        return { model, firmwareIds }
+    } catch (e) {
+        const reason = e instanceof Error ? e.message : String(e)
+        addLog(`AI model "${model.name}" cannot be loaded: ${reason}`)
+        throw new Error(`This project's AI model "${model.name}" cannot be loaded on the camera. ${reason}`)
+    }
+}
+
+/**
  * Step 3: Ensure the correct AI model is loaded on the device.
  *
  * Compares the device's currently loaded model (from ops[14]/ops[15]) against
@@ -159,6 +210,10 @@ export async function measureLight(
  * @param eraseStaleModels  If true and no model is assigned, erase any model
  *                          currently on the device. Used by production deployments
  *                          but not dev deployments.
+ * @param bleFirmwareVersion  The `ver` reading the caller already holds, such
+ *                          as the pre-deployment checks'. Passed to each
+ *                          transfer so a camera that clears the BLE firmware
+ *                          floor costs no extra command (#289).
  */
 export async function syncAiModel(
     device: ExtendedPeripheral,
@@ -166,35 +221,21 @@ export async function syncAiModel(
     modelId: string | null | undefined,
     { addLog, setStep, setProgress }: ProgressCallbacks,
     eraseStaleModels: boolean = false,
-    currentOps?: string[]
+    currentOps?: string[],
+    bleFirmwareVersion?: string | null
 ): Promise<void> {
     addLog('Checking AI model...')
     setStep('AI Model...')
     setProgress(0.10)
 
     if (modelId) {
+        // 1. Resolve the target model and its firmware IDs. A project that
+        // names a model must not deploy without it: this runs before the
+        // deployment is created and before anything is written to the device,
+        // so refusing here leaves both untouched (#290).
+        const target = await resolveTargetModel(modelId, addLog)
         try {
-            // 1. Resolve the target model from local WatermelonDB
-            let targetModel = await AiModelService.getModelById(modelId)
-
-            // If not found, reference data may not have synced yet, try once
-            if (!targetModel) {
-                addLog('Model not found locally, syncing reference data...')
-                await ReferenceDataService.syncReferenceData()
-                targetModel = await AiModelService.getModelById(modelId)
-            }
-
-            if (!targetModel) {
-                addLog('⚠️ Assigned AI model not found after sync, continuing without model')
-                return
-            }
-
-            // 2. Resolve firmware IDs (family ID for OP14, version for OP15)
-            const firmwareIds = await ReferenceDataService.getFirmwareIds(targetModel)
-            if (!firmwareIds) {
-                addLog('⚠️ Could not resolve firmware IDs for model, continuing without model')
-                return
-            }
+            const { model: targetModel, firmwareIds } = target
             const { firmwareModelId: numericId, versionNumber: numericVer } = firmwareIds
             const { modelExt: tflExt, labelsExt } = AiModelService.getModelFileExtensions(targetModel)
             // Uppercase: both the app's transfer validator and the firmware's
@@ -275,7 +316,10 @@ export async function syncAiModel(
                         const onCard = await session.execute(() => commandRegistry.crc(file.filename))
                         const wantHex = `0x${want.toString(16).toUpperCase().padStart(4, '0')}`
 
-                        if (onCard.crc.toUpperCase() !== wantHex || onCard.sizeBytes !== bytes.length) {
+                        // Compared as numbers: upper-casing the reply turned its
+                        // `0x` into `0X`, so every file read as different and
+                        // was sent again on every deployment (bench, 29 Sep 2026)
+                        if (parseInt(onCard.crc, 16) !== want || onCard.sizeBytes !== bytes.length) {
                             addLog(`♻️ ${file.filename} on the card does not match the model (card ${onCard.crc}, ${onCard.sizeBytes} bytes; expected ${wantHex}, ${bytes.length} bytes). Replacing it`)
                             file.clear()
                         } else {
@@ -290,11 +334,31 @@ export async function syncAiModel(
 
             // 5. Only download and transfer files that are missing
             if (!hasTfl || (!hasLabels && targetModel.labelsPath)) {
-                addLog('Downloading missing model files...')
-                setStep('Downloading model...')
+                const onPhone = await AiModelService.isDownloaded(targetModel)
+                addLog(onPhone ? 'Model files are on this phone' : 'Downloading missing model files...')
+                setStep(onPhone ? 'Reading model...' : 'Downloading model...')
                 setProgress(0.14)
 
-                const localFiles = await AiModelService.ensureFilesDownloaded(targetModel)
+                // The files have to come from somewhere, and offline the phone's
+                // cache is the only place. Until #333 a failed download was the
+                // warning below and the deployment went out without its model;
+                // the first deployment of a model somewhere without signal always
+                // did. Nothing has been written to the camera yet (every step so
+                // far is a read), and the deployment is created after this, so
+                // stopping here leaves both untouched. The offline pre-download
+                // (OfflinePrefetchService) fills this cache after each sync.
+                let localFiles: { modelUri: string, labelsUri: string | null }
+                try {
+                    localFiles = await AiModelService.ensureFilesDownloaded(targetModel)
+                } catch (downloadError) {
+                    const reason = downloadError instanceof Error ? downloadError.message : String(downloadError)
+                    logWarn('[Deployment] Model files could not be obtained:', downloadError)
+                    addLog(`AI model "${targetModel.name}" is not on the camera or this phone, and could not be downloaded (${reason}), stopping`)
+                    throw new ModelFilesUnavailableError(
+                        `This project's AI model "${targetModel.name}" could not be downloaded, ` +
+                        'and it is not on the camera or this phone. Check the phone\'s connection and start again.'
+                    )
+                }
 
                 // Transfer TFL if missing
                 if (!hasTfl) {
@@ -312,6 +376,7 @@ export async function syncAiModel(
                     await runFileTransferPipeline(device, {
                         filename: tflFilename,
                         data: modelBytes,
+                        bleFirmwareVersion,
                         onProgress: (p) => {
                             setProgress(0.14 + (p.percentage / 100) * 0.04)
                             if (p.percentage !== lastPct) {
@@ -333,6 +398,7 @@ export async function syncAiModel(
                     await runFileTransferPipeline(device, {
                         filename: labelsFilename,
                         data: labelsBytes,
+                        bleFirmwareVersion,
                         onProgress: (p) => setStep(`Transferring labels… ${p.percentage}%`)
                     })
                     addLog(`✅ ${labelsFilename} transferred`)
@@ -353,6 +419,19 @@ export async function syncAiModel(
             addLog('AI model loaded successfully')
 
         } catch (e) {
+            // Files the phone cannot get stop the deployment. A transfer or a
+            // `loadmodel` that fails stays a warning: the camera still records.
+            if (e instanceof ModelFilesUnavailableError) throw e
+            // A transfer refused over the BLE firmware stops it too, for the
+            // same reasons as the files: the refusal comes before anything is
+            // written to the camera or the deployment is created, a second
+            // attempt meets the same firmware, and the operator can fix it by
+            // updating the BLE firmware. As a warning, every deployment of that
+            // camera would go out without its model (#289).
+            if (e instanceof FileTransferError && e.reason === 'BLE_FIRMWARE_TOO_OLD') {
+                addLog('The camera\'s BLE firmware is too old to receive the model, stopping')
+                throw e
+            }
             logWarn('Failed to update AI model:', e)
             addLog('⚠️ AI model update FAILED. The deployment will record but not classify. See device log.')
         }
@@ -394,6 +473,14 @@ export async function configureDevice(
         recordGpsInImages: boolean
         gpsLocation?: { latitude: number; longitude: number; altitude?: number | null } | null
         flash?: ProjectFlashColumns | null
+        /** op17 from the project's sensitivity, see `mdSensitivityLevel`. */
+        mdSensitivity?: 1 | 2 | 3
+        /** op5, op6 and the op8 that outlasts op6, from the project (#317). Omitted leaves op5 and op6 alone. */
+        burst?: ProjectBurstColumns | null
+        /** Doubles op5 so each JPEG keeps its raw BMP. */
+        recordRawBmp?: boolean
+        /** op16 from the project's detection threshold (#342). Omitted leaves the reset's 18. */
+        detectionThreshold?: ProjectDetectionThresholdColumns | null
     },
     { addLog, setStep, setProgress }: ProgressCallbacks,
     currentOps?: string[]
@@ -420,10 +507,18 @@ export async function configureDevice(
             longitude: config.gpsLocation.longitude,
             altitude: config.gpsLocation.altitude || 0
         } : undefined,
-        flash: config.flash ?? undefined
+        flash: config.flash ?? undefined,
+        mdSensitivity: config.mdSensitivity,
+        burst: config.burst ?? undefined,
+        recordRawBmp: config.recordRawBmp,
+        detectionThreshold: config.detectionThreshold ?? undefined,
     }, currentOps)
 
     if (config.flash !== undefined) addLog(`Capture flash: ${describeProjectFlash(config.flash)}`)
+    // The awake figure is the op8 written: a burst keeps the camera up past
+    // its interval, a single picture keeps the usual 1000 ms (#317)
+    if (config.burst !== undefined) addLog(describeProjectBurst(config.burst, config.recordRawBmp))
+    if (config.detectionThreshold !== undefined) addLog(describeDetectionThreshold(config.detectionThreshold))
     addLog('Device configuration successful')
     log('[Deployment] Device configuration successful')
 }

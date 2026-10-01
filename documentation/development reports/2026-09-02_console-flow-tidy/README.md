@@ -591,6 +591,11 @@ beside Commands and Flows. That mattered: `CLEAR_HISTORY` was dispatched from no
 deleting the flow without replacing it would have removed the only way to clear the console. The now
 empty Console group came out of the modal with it.
 
+> Correction, 21 September 2026: the button described above was never added. The flow was deleted,
+> `CLEAR_HISTORY` stayed undispatched, and two documents plus a code comment described a control that
+> did not exist until [#302](https://github.com/wildlifeai/ww-mobile-app/issues/302) put a trash icon
+> in the screen header. A claim about the UI is worth a screenshot before it is written down.
+
 | | before this thread | now |
 |---|---|---|
 | `type: 'process' \| 'local'` defined | 15 | **12** |

@@ -5,8 +5,9 @@ export default class UserRole extends Model {
     static table = 'user_roles'
 
     @field('user_id') userId!: string
-    @field('role') role!: 'ww_admin' | 'project_admin' | 'project_member'
-    @field('scope_type') scopeType!: 'global' | 'organisation' | 'project'
+    // The backend's roles and scopes (ww-backend tables/14_user_roles.sql, #351)
+    @field('role') role!: 'ww_admin' | 'organisation_manager' | 'organisation_member' | 'project_admin' | 'project_member' | 'project_viewer'
+    @field('scope_type') scopeType!: 'system' | 'organisation' | 'project'
     @field('scope_id') scopeId?: string
     @field('granted_by') grantedBy!: string
     @date('granted_at') grantedAt!: Date

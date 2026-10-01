@@ -325,7 +325,13 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
     const phaseRef = useRef<UpdatePhase>('idle')
     const deviceIdRef = useRef<string | undefined>(device?.id)
 
+    // Cleared on mount as well as set on unmount: an effect that runs again
+    // (Fast Refresh, StrictMode) runs its cleanup first, and a flag only ever
+    // set to true left the hook believing it was gone. On 1 October 2026 that
+    // stopped an update after image 1's flash command with the screen frozen
+    // on "Sending", and nothing sent the reset (#344 bench).
     useEffect(() => {
+        unmountedRef.current = false
         return () => { unmountedRef.current = true }
     }, [])
 
@@ -1073,6 +1079,8 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
 
         // Mark DFU in progress so the disconnect banner is suppressed
         if (device?.id) dispatch(setDfuStatus({ id: device.id, status: true }))
+        // The offline pre-download must not delete the image this update reads
+        const releaseCache = FirmwareService.holdCache()
 
         try {
             if (target === 'ble') {
@@ -1087,6 +1095,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                 advancePhase('failed')
             }
         } finally {
+            releaseCache()
             // Clear DFU flag regardless of success/failure
             if (device?.id) dispatch(setDfuStatus({ id: device.id, status: false }))
             if (!unmountedRef.current) setIsUpdating(false)

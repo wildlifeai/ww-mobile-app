@@ -4,6 +4,10 @@ import pkg from './package.json';
 const IS_DEV = process.env.APP_VARIANT === 'development';
 const BUNDLE_ID = IS_DEV ? 'com.wildlife.wildlifewatcher.expo' : 'com.wildlife.wildlifewatcher';
 
+// Google sign-in on iOS (#350): the reversed iOS client ID, registered as a URL
+// scheme. The plugin throws without one, so a build without it leaves it out.
+const GOOGLE_IOS_URL_SCHEME = process.env.GOOGLE_IOS_URL_SCHEME?.trim();
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
     ...config,
     name: IS_DEV ? 'Wildlife Watcher (Dev)' : 'Wildlife Watcher',
@@ -26,7 +30,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ios: {
         supportsTablet: true,
         bundleIdentifier: BUNDLE_ID,
-        buildNumber: "66",
+        buildNumber: "69",
         config: {
             googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY_IOS,
         },
@@ -45,7 +49,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     android: {
         package: BUNDLE_ID,
-        versionCode: 66,
+        versionCode: 69,
         adaptiveIcon: {
             foregroundImage: "./assets/adaptive-icon.png",
             backgroundColor: "#ffffff"
@@ -94,6 +98,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         supabaseEnv: process.env.EXPO_PUBLIC_SUPABASE_ENV,
         supabaseUrl: process.env.SUPABASE_URL,
         supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
+        googleWebClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+        googleIosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
         isDevelopment: IS_DEV,
     },
     plugins: [
@@ -137,6 +143,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
             {
                 "iosApiKey": process.env.GOOGLE_MAPS_API_KEY_IOS
             }
-        ]
+        ],
+        ...(GOOGLE_IOS_URL_SCHEME
+            ? [["@react-native-google-signin/google-signin", { iosUrlScheme: GOOGLE_IOS_URL_SCHEME }] as [string, object]]
+            : [])
     ]
 });

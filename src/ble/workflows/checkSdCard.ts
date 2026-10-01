@@ -1,7 +1,12 @@
 import { BleSession } from '../session/createBleSession';
 import { commandRegistry } from '../protocol/commandRegistry';
 
-export async function checkSdCard(session: BleSession): Promise<{ totalSpaceMb: number; freeSpaceMb: number }> {
+/**
+ * Card size and free space from `AI info`, in kilobytes, the unit the device
+ * prints (`31154688 K total drive space` is a 32 GB card). Callers store them
+ * in the `sdCard...KbAtStart` columns as they are (#327).
+ */
+export async function checkSdCard(session: BleSession): Promise<{ totalSpaceKb: number; freeSpaceKb: number }> {
   // `session.execute` will automatically handle DEVICE_SLEEP interruptions natively
   const result = await session.execute<{ total?: number; free?: number; error?: string }>(
     commandRegistry.aiinfo
@@ -16,7 +21,7 @@ export async function checkSdCard(session: BleSession): Promise<{ totalSpaceMb: 
   }
 
   return {
-    totalSpaceMb: result.total,
-    freeSpaceMb: result.free
+    totalSpaceKb: result.total,
+    freeSpaceKb: result.free
   };
 }

@@ -29,9 +29,24 @@ export const SYNC_STATE_KEYS = {
     PROJECTS_LAST_PULLED_AT: 'projects_last_pulled_at',
     DEVICE_PREP_LAST_PULLED_AT: 'device_prep_last_pulled_at',
     DEPLOYMENTS_LAST_PULLED_AT: 'deployments_last_pulled_at',
+    // The account the pull watermarks above belong to (#267)
+    LAST_SYNC_USER_ID: 'last_sync_user_id',
 } as const
 
 export type SyncStateKey = typeof SYNC_STATE_KEYS[keyof typeof SYNC_STATE_KEYS]
+
+/**
+ * The "last pulled at" watermarks. They are one set for the phone, not one per
+ * account, so they only describe what the account in LAST_SYNC_USER_ID has pulled.
+ */
+export const PULL_WATERMARK_KEYS: SyncStateKey[] = [
+    SYNC_STATE_KEYS.LAST_PULL_TIMESTAMP,
+    SYNC_STATE_KEYS.USER_ROLES_LAST_PULLED_AT,
+    SYNC_STATE_KEYS.PROJECTS_LAST_PULLED_AT,
+    SYNC_STATE_KEYS.DEVICES_LAST_PULLED_AT,
+    SYNC_STATE_KEYS.DEVICE_PREP_LAST_PULLED_AT,
+    SYNC_STATE_KEYS.DEPLOYMENTS_LAST_PULLED_AT,
+]
 
 class SyncStateService {
     private readonly STORAGE_PREFIX = '@wildlifewatcher:sync:'

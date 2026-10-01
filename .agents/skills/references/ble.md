@@ -26,8 +26,25 @@ day are in [traps.md](traps.md).
   `type: 'command'` entry belongs to no group. **`FlowsReferenceModal` has the same shape and
   no equivalent guard**, so `type: 'process'` entries can still go missing silently. When you
   add one, open the modal and confirm it renders.
+- **A console command never fills in a value for the operator.** A `COMMANDS` entry whose
+  `writeCommand` takes arguments declares them as `params`; the Commands list asks for each and
+  sends nothing until they check out, and `useEngineerConsoleActions` refuses one that arrives
+  without them. `md` used to default to level 0, which the firmware saves to op17 and which
+  turns motion triggering off (#300). `src/components/__tests__/commandArgs.test.ts` fails when
+  a command with `params` gains a default. A one-tap entry with fixed arguments, such as
+  `capture_one`, builds its string from the registry, so the golden test pins its bytes.
+- **`readRegex` and `expectedPattern` on `COMMANDS` entries are read by nothing.** They
+  describe the reply for a human; the console writes raw and matches nothing. Fixing one changes
+  no behaviour, and a reply that matters belongs in `commandRegistry.ts`.
 - **`commandQueue` does not exist.** The queue is `bleTransportController.ts`. Old docs and
   comments still name the former.
+- **Cancelling stops the command, and frees the queue at once.** Pass `signal` to
+  `session.execute`. The transport aborts the task's own signal wherever it marks it cancelled,
+  `clearAll()` included, and `runCommand` drops its listeners and timeout (#257). Before that a
+  cancelled command lived on for its full timeout, two minutes for `aifirmware`, and a retryable
+  one could write again after a disconnect. The flip side: a cancelled command that was already
+  sent no longer holds the queue, so the next one can reach the nRF while the Himax is still
+  answering. Cancel when giving up on the device, not to tidy away a poll about to finish.
 
 ## Connecting, sleeping, waking
 
@@ -37,10 +54,19 @@ day are in [traps.md](traps.md).
   heartbeat path. A deferred sleep-timer restore was briefly wired into the connect path on
   3 September 2026 and removed the same day for this reason. It now waits for the next hold.
 - **The device sleeps aggressively.** Deep Power Down after about 1000 ms of inactivity, and
-  the BLE link drops after about 60 s, which is why the heartbeat is 58 s. After *any*
+  the BLE link drops after 60 s with nothing sent either way. The heartbeat pings after 30 s of
+  air silence, `HEARTBEAT_IDLE_MS`: at 58 s a JS timer running late lost the link six times in
+  one session (#312). Only air traffic restarts it, because only that restarts the nRF's timer,
+  and the RSSI read it falls back to while paused never reaches the nRF at all. After *any*
   disconnect assume the device is asleep and not advertising until woken by button, motion or
   timer, and budget minutes: after a timeout disconnect on 4 September 2026 the nRF did not
   advertise again for two and a half, and a connect attempt inside that gap simply timed out.
+- **Ending a deployment does not wait on a sleeping camera.** While monitoring, the Himax may not
+  answer the wake at all, and every step then sat out its timeout and retries: about 40 s under a
+  "Disconnecting" spinner (#293). `session/endDeploymentSession.ts` probes once, skips every later
+  `AI` command after the first timeout, caps the lot at 20 s, and lets `dis` through because the
+  nRF answers it. The operator is told the camera was left running. Reuse it for any other flow
+  whose device steps are optional.
 - **A stale scan entry will hang you.** Auto-connect only trusts a device seen in the current
   scan session, the `lastSeen` gate. A just-disconnected device lingers in cache and
   connecting to it hangs until timeout.
@@ -84,15 +110,31 @@ day are in [traps.md](traps.md).
   that should use it, which is why the pre-capture `waitForSleep` is not an optimisation to
   remove, and it must send nothing while waiting, because every command restarts the timer. A
   20 s hold with `slots` polling, tried on 3 September 2026, meant a camera switch never reset.
+  The HM0360's motion rate, op11, is programmed on the way into that sleep. The motion test got
+  its sleep for free from `md`'s 5 s timeout until #272 started skipping `md`, so it now waits
+  for one explicitly before the capture (#274).
   Whether the firmware should apply on `setop` instead is Charles's decision in Seeed #209.
 - **op8 is a field setting, so go through `ble/session/keepAwake.ts`.** It is written to
   CONFIG.TXT, and a device left raised stays awake that long after every motion capture in the
-  field. `acquire` raises op8, 3 s for Capture Picture, and records the original on disk;
-  `release` puts it back; and anything a dropped link left owed is restored the next time a
-  flow takes a hold on that device. Nothing is written at connect time. Never `setop 8` from a
-  screen and never keep the original only in a ref, which the Motion Detection stream still
-  does (#271). While `keepAwake.holds(deviceId)` the capture path sends `txfile` straight after
+  field. `acquire` raises op8, 3 s for Capture Picture and the interval plus 2 s for the motion
+  test, and records the original on disk; `release` puts it back; and anything a dropped link
+  left owed is restored the next time a flow takes a hold on that device. Nothing is written at
+  connect time. Never `setop 8` from a screen and never keep the original only in a ref, which
+  the motion test did until #271. The one exception is a deployment, which sets op8 as the
+  field value (above 1000 for a burst, #317) and calls `keepAwake.forget` first, so no hold or
+  owed restore from before it can write the old value back. Every way out of a flow must release its holds, failures
+  included: a hold left in memory makes the next `acquire` a no-op. While `keepAwake.holds(deviceId)` the capture path sends `txfile` straight after
   `Captured` instead of paying a wake: 22 s to 13 s for the same picture.
+- **op11 is a field setting too, and the motion test holds it through
+  `ble/session/mdIntervalHold.ts`** at the test interval (#274). Raised on a stopped camera it
+  turns motion capture back on, so it differs from keepAwake in three ways: the owed record goes
+  to disk before the raise, since a write whose reply is lost may have landed; the test's cleanup
+  pays a restore left owed as well as releasing its own hold; and a deployment calls `forget`
+  before writing op11, because it writes the same 1000 ms the Start Monitoring card tests at and
+  an owed restore cannot tell the two apart. Any other flow that writes op11 to a value a test
+  could hold needs the same `forget`. With the detector armed through the setup sleep, a motion
+  wake can take and report a capture of its own first, so the test counts grids and ends only
+  after its own `About to capture` (bench, 1 October 2026).
 - **The app runs ahead of the firmware on op indices, deliberately.** op32, `CAM_RESOLUTION`,
   exists here before it ships on the device. Guard on the array length before touching a high
   index, the way `useCapturePicture` does for the white balance gains, rather than reading it
@@ -104,6 +146,17 @@ day are in [traps.md](traps.md).
   word `Sleep`. The app never sees the numbers, so there is nothing to parse and the cache
   above is the only app-side answer. Getting them forwarded is a firmware ask, and it would
   delete the cache.
+- **The deployment reset does not touch op5.** `RESET_PRESERVED_OPS` keeps `NUM_PICTURES`
+  alongside the counters, so a device left at 2 pictures per trigger by an earlier BMP
+  deployment stays at 2 through every reset. Both deployment flows write op5 themselves for
+  that reason. op18 is not preserved and is 0 after the reset. Noted on 21 September 2026
+  while retiring the BMP option, where "the reset handles it" was true for one of the two
+  parameters and wrong for the other. op6 is not preserved either: the reset sets 500, and
+  since #317 Start Monitoring writes op5 and op6 from the project, through
+  `utils/projectBurst.ts`, with op5 doubled when the raw BMP is recorded and op8 raised to
+  op6 + 1000 when op5 is above 1. op16, the model threshold, is reset to 18 too, so a value
+  set from the console does not survive a deployment; since #342 both deployment flows write
+  it from the project's `detection_threshold_pct`, through `utils/projectDetectionThreshold.ts`.
 
 ## Captures, light and telemetry
 

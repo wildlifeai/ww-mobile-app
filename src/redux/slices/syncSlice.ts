@@ -10,6 +10,7 @@
  */
 
 import { createSlice, PayloadAction } from "@reduxjs/toolkit"
+import { logout } from "./authSlice"
 // import { RootState } from "../index" // Circular dependency
 
 // Define local state type to avoid circular dependency
@@ -233,6 +234,11 @@ const syncSlice = createSlice({
 				state.overall = "pending"
 			}
 		},
+	},
+	extraReducers: (builder) => {
+		// The next account to sign in has not synced yet, so the scanner must not
+		// route on the previous account's initial sync (#267)
+		builder.addCase(logout, () => initialState)
 	},
 })
 

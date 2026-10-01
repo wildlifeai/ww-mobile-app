@@ -275,9 +275,9 @@ Centralized hook that eliminates duplicate scan orchestration code:
 
 | Feature | Implementation |
 |---|---|
-| **Burst cycling** | 3-second scans via `startScan(3)`, 300ms gap between bursts |
+| **Burst cycling** | 3-second scans via `startScan(3)`, 300ms gap between bursts, on the loop's own timer |
 | **Active flag** | Consumer passes `active: boolean` — loop starts/stops reactively |
-| **Scan lock** | `scanLockRef` prevents double-start races (500ms cooldown) |
+| **No `isScanning` dependency** | The next burst is never re-armed off Redux `isScanning`. It used to be, and a late `BleManagerStopScan` from `startScan`'s own stop could leave the loop dead after one burst while the screen said it was scanning (#346) |
 | **Cache flush** | `flushBleCache()` clears Redux + Android native BLE cache |
 
 **`flushBleCache()` sequence:**
@@ -505,9 +505,10 @@ stateDiagram-v2
 
 **Key features:**
 - **No echo dependency:** Unlike the legacy manager, there is no echo-waiting phase. The command matches against `successMatcher` / `failureMatcher` directly.
-- **Retry with policy:** Each command defines its own `retryPolicy` (max retries and optional delay). `DEVICE_DISCONNECTED` and `CONFIG_ERROR` are non-retryable.
+- **Retry with policy:** Each command defines its own `retryPolicy` (max retries and optional delay). `DEVICE_DISCONNECTED`, `CONFIG_ERROR` and `COMMAND_CANCELLED` are non-retryable.
 - **Queue state broadcasting:** Emits `QUEUE_STATE_CHANGED` events so UI can show busy/idle state.
 - **Disconnect fail-fast:** On `DEVICE_SIGNAL(DISCONNECT)`, calls `clearAll()` — rejecting every queued and active command instantly instead of letting each time out.
+- **Cancellation reaches the command:** the transport hands each task an `AbortSignal` and aborts it wherever the task becomes `CANCELLED`: `clearAll()`, which `session.reset()` and the Motion Detection stream also call, and the caller's own `signal`. `runCommand` then rejects with `COMMAND_CANCELLED`, removing its listeners and its timeout at once. Until #257 only the caller's promise was rejected; the command kept its listeners and timeout for up to its full timeout, two minutes for `aifirmware`, and a retryable one could write again after the cancel. A dropped task that settles late also no longer frees the queue slot of the command that started after it.
 - **CONFIG_ERROR pass-through:** On `CONFIG_ERROR`, the queue does NOT pause (that would deadlock). The command pipeline rejects the active command immediately.
 - **Built-in transport lock:** `acquireLock()` / `releaseLock()` for exclusive operations (file transfer, firmware flash). The queue rejects non-holder commands while locked.
 - **Post-completion drain:** 10ms inter-command buffer (`POST_COMPLETION_DRAIN_WINDOW_MS`) allows trailing response characters to flush before the next command's listener attaches.
@@ -552,7 +553,11 @@ const gpsSet = await session.execute(() => commandRegistry.setgps(gpsString))
 
 **Holding the device awake:** a screen that sends several commands per visit can raise the device's inactivity timeout (op8) for the visit with `keepAwake.acquire(session, deviceId)` and put it back with `release`. The original value is kept on disk as well as in memory; if the link dropped before the release, it is written back the next time a flow takes a hold on that device, because op8 is a persisted field setting, not a session one. Nothing is written at connect time: connecting, and the Engineer Console, must change nothing on the device. While a hold is active, `keepAwake.holds(deviceId)` lets a flow skip its waits for sleep. Capture Picture is the first user.
 
-**Files:** [createBleSession.ts](../../src/ble/session/createBleSession.ts), [keepAwake.ts](../../src/ble/session/keepAwake.ts)
+**Cancelling:** `execute(cmd, { signal })` takes an `AbortSignal`. Aborting it rejects the caller with `Command cancelled` and stops the command underneath, whether it is still queued or already waiting for its reply (#257). Cancelling a command that is already out frees the queue at once, so the next command can reach the nRF while the Himax is still answering the cancelled one. Cancel when you are giving up on the device, not to tidy up a poll that is about to finish: `useDeploymentMonitor` stops scheduling its poll instead.
+
+**Ending a deployment:** `createEndDeploymentSession(device, { onGiveUp })` wraps a session for the camera's side of ending a deployment (#293). The first command is a probe with no retry, the first `AI` command that times out gives up on the camera and every later one is skipped unsent, and all of them share a 20 s budget. Commands the nRF answers itself, `dis` among them, pass straight through.
+
+**Files:** [createBleSession.ts](../../src/ble/session/createBleSession.ts), [keepAwake.ts](../../src/ble/session/keepAwake.ts), [endDeploymentSession.ts](../../src/ble/session/endDeploymentSession.ts)
 
 ---
 
@@ -718,7 +723,7 @@ Standard post-connection procedure:
 
 ### 14. BLE Heartbeat (`useBleHeartbeat`)
 
-Prevents device disconnection due to the firmware's 60-second BLE inactivity timeout. Implemented as a **pure inactivity timer** — any incoming BLE event resets a 58-second countdown.
+Prevents device disconnection due to the firmware's 60-second BLE inactivity timeout. Implemented as a **pure inactivity timer**: any line or binary packet received, or raw write sent, restarts a 30-second countdown (`BLE_PROTOCOL_TIMINGS.HEARTBEAT_IDLE_MS`), and when it runs out the app sends `get heartbeat`, which the nRF answers itself without waking the Himax. Two rules behind it (#312). The margin is half the window because a JS timer fires late whenever the thread is busy, and a 58-second ping lost the link six times in one bench session. And only air traffic counts, because the nRF restarts its own timer only on a write it receives or a notification it sends; the app's local events, such as the queue going idle after a command timed out, used to restart this countdown too. While a long-running operation has paused the heartbeat, the fallback RSSI read is answered by the phone's radio and does not keep the link up.
 
 **Mounted in:** `ListenToBleEngineProvider` — active whenever any device is connected.
 
@@ -781,9 +786,9 @@ Native BleManagerDisconnectPeripheral
 | Layer | Guardrail | File |
 |---|---|---|
 | Disconnect Signal | `DEVICE_SIGNAL(DISCONNECT)` emitted first in disconnect handler | `useBleListeners.tsx` |
-| Transport Controller | `clearAll()` on `DISCONNECT` — rejects all pending commands instantly | `bleTransportController.ts` |
-| Command Pipeline | Subscribes to `DISCONNECT` → `idempotentReject('DEVICE_DISCONNECTED')` | `runCommandPipeline.ts` |
-| Retry Pipeline | `DEVICE_DISCONNECTED` and `CONFIG_ERROR` are non-retryable — skip retry loop | `runCommandPipeline.ts` |
+| Transport Controller | `clearAll()` on `DISCONNECT`, rejects all pending commands instantly and aborts the running one's signal | `bleTransportController.ts` |
+| Command Pipeline | Subscribes to `DISCONNECT` → `idempotentReject('DEVICE_DISCONNECTED')`, and to its task's abort → `COMMAND_CANCELLED` | `runCommandPipeline.ts` |
+| Retry Pipeline | `DEVICE_DISCONNECTED`, `CONFIG_ERROR` and `COMMAND_CANCELLED` are non-retryable, so they skip the retry loop | `runCommandPipeline.ts` |
 | Session | `execute()` checks `peripheral.connected` before enqueue | `createBleSession.ts` |
 | Transport | `writeToDevice` returns early if `!peripheral.connected` | `transport.ts:17` |
 | Transport | `writeBinaryToDevice` throws `'Device disconnected'` | `transport.ts:85` |
@@ -826,6 +831,7 @@ src/
 │   │   ├── textStreamScope.ts      # Scoped text line listener (auto-cleanup)
 │   │   ├── fileTransfer/           # BLE file transfer to SD card
 │   │   │   ├── runFileTransferPipeline.ts  # Core ACK state machine
+│   │   │   ├── bleFirmwareFloor.ts         # BLE firmware floor for the window, checked before FILE_START
 │   │   │   ├── fileTransferPackets.ts      # Binary packet builders
 │   │   │   ├── fileTransferTypes.ts        # Types, error codes, retry policies
 │   │   │   ├── ackMatcher.ts               # Strict ACK validation

@@ -86,7 +86,7 @@ export const useEngineerConnect = () => {
             setConnectingDevice(null)
             dispatch(setEngineerConsoleActive(false))
             stopScan()
-            navigation.navigate('FirmwareUpdateScreen', { deviceId: device.id, target: 'ble' })
+            navigation.navigate('FirmwareUpdateScreen', { deviceId: device.id, target: 'ble', engineer: true })
             return
         }
 

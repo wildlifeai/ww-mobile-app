@@ -1,0 +1,164 @@
+diff --git a/node_modules/react-native-paper/lib/commonjs/components/Menu/Menu.js b/node_modules/react-native-paper/lib/commonjs/components/Menu/Menu.js
+index 0b9a9df..779c46b 100644
+--- a/node_modules/react-native-paper/lib/commonjs/components/Menu/Menu.js
++++ b/node_modules/react-native-paper/lib/commonjs/components/Menu/Menu.js
+@@ -161,6 +161,9 @@ const Menu = ({
+     isBrowser() && document.removeEventListener('keyup', handleKeypress);
+   }, [handleKeypress]);
+   const attachListeners = React.useCallback(() => {
++    // wildlife.ai patch, 22 September 2026: one set of listeners at a time
++    // (`show` can run more than once per opening). See src/components/Menu/Menu.tsx.
++    removeListeners();
+     backHandlerSubscriptionRef.current = (0, _addEventListener.addEventListener)(_BackHandler.BackHandler, 'hardwareBackPress', handleDismiss);
+     dimensionsSubscriptionRef.current = (0, _addEventListener.addEventListener)(_reactNative.Dimensions, 'change', handleDismiss);
+     _reactNative.Platform.OS === 'web' && document.addEventListener('keyup', handleKeypress);
+@@ -254,28 +257,19 @@ const Menu = ({
+   }, [anchor, attachListeners, measureAnchorLayout, theme]);
+   const hide = React.useCallback(() => {
+     removeListeners();
+-    const {
+-      animation
+-    } = theme;
+-    _reactNative.Animated.timing(opacityAnimationRef.current, {
+-      toValue: 0,
+-      duration: ANIMATION_DURATION * animation.scale,
+-      easing: EASING,
+-      useNativeDriver: true
+-    }).start(({
+-      finished
+-    }) => {
+-      if (finished) {
+-        setMenuLayout({
+-          width: 0,
+-          height: 0
+-        });
+-        setRendered(false);
+-        prevRendered.current = false;
+-        focusFirstDOMNode(anchorRef.current);
+-      }
++    // wildlife.ai patch, 22 September 2026: the Portal content is already
++    // unmounted when this runs, and the fade's completion callback was not
++    // reliable on Fabric, leaving `prevRendered` true and the next open
++    // invisible. Bookkeeping at once. See src/components/Menu/Menu.tsx.
++    opacityAnimationRef.current.setValue(0);
++    setMenuLayout({
++      width: 0,
++      height: 0
+     });
+-  }, [removeListeners, theme]);
++    setRendered(false);
++    prevRendered.current = false;
++    focusFirstDOMNode(anchorRef.current);
++  }, [removeListeners]);
+   const updateVisibility = React.useCallback(async display => {
+     // Menu is rendered in Portal, which updates items asynchronously
+     // We need to do the same here so that the ref is up-to-date
+diff --git a/node_modules/react-native-paper/lib/module/components/Menu/Menu.js b/node_modules/react-native-paper/lib/module/components/Menu/Menu.js
+index 46a45f4..a6142db 100644
+--- a/node_modules/react-native-paper/lib/module/components/Menu/Menu.js
++++ b/node_modules/react-native-paper/lib/module/components/Menu/Menu.js
+@@ -153,6 +153,9 @@ const Menu = ({
+     isBrowser() && document.removeEventListener('keyup', handleKeypress);
+   }, [handleKeypress]);
+   const attachListeners = React.useCallback(() => {
++    // wildlife.ai patch, 22 September 2026: one set of listeners at a time
++    // (`show` can run more than once per opening). See src/components/Menu/Menu.tsx.
++    removeListeners();
+     backHandlerSubscriptionRef.current = addEventListener(BackHandler, 'hardwareBackPress', handleDismiss);
+     dimensionsSubscriptionRef.current = addEventListener(Dimensions, 'change', handleDismiss);
+     Platform.OS === 'web' && document.addEventListener('keyup', handleKeypress);
+@@ -246,28 +249,19 @@ const Menu = ({
+   }, [anchor, attachListeners, measureAnchorLayout, theme]);
+   const hide = React.useCallback(() => {
+     removeListeners();
+-    const {
+-      animation
+-    } = theme;
+-    Animated.timing(opacityAnimationRef.current, {
+-      toValue: 0,
+-      duration: ANIMATION_DURATION * animation.scale,
+-      easing: EASING,
+-      useNativeDriver: true
+-    }).start(({
+-      finished
+-    }) => {
+-      if (finished) {
+-        setMenuLayout({
+-          width: 0,
+-          height: 0
+-        });
+-        setRendered(false);
+-        prevRendered.current = false;
+-        focusFirstDOMNode(anchorRef.current);
+-      }
++    // wildlife.ai patch, 22 September 2026: the Portal content is already
++    // unmounted when this runs, and the fade's completion callback was not
++    // reliable on Fabric, leaving `prevRendered` true and the next open
++    // invisible. Bookkeeping at once. See src/components/Menu/Menu.tsx.
++    opacityAnimationRef.current.setValue(0);
++    setMenuLayout({
++      width: 0,
++      height: 0
+     });
+-  }, [removeListeners, theme]);
++    setRendered(false);
++    prevRendered.current = false;
++    focusFirstDOMNode(anchorRef.current);
++  }, [removeListeners]);
+   const updateVisibility = React.useCallback(async display => {
+     // Menu is rendered in Portal, which updates items asynchronously
+     // We need to do the same here so that the ref is up-to-date
+diff --git a/node_modules/react-native-paper/src/components/Menu/Menu.tsx b/node_modules/react-native-paper/src/components/Menu/Menu.tsx
+index 55922c1..303e71f 100644
+--- a/node_modules/react-native-paper/src/components/Menu/Menu.tsx
++++ b/node_modules/react-native-paper/src/components/Menu/Menu.tsx
+@@ -263,6 +263,11 @@ const Menu = ({
+   }, [handleKeypress]);
+ 
+   const attachListeners = React.useCallback(() => {
++    // wildlife.ai patch, 22 September 2026: `show` runs more than once per
++    // opening when the parent re-renders while the menu animates in, and each
++    // run added another back-button and dimensions listener that only the
++    // last removal cleared. One set at a time.
++    removeListeners();
+     backHandlerSubscriptionRef.current = addEventListener(
+       BackHandler,
+       'hardwareBackPress',
+@@ -370,22 +375,21 @@ const Menu = ({
+   const hide = React.useCallback(() => {
+     removeListeners();
+ 
+-    const { animation } = theme;
+-
+-    Animated.timing(opacityAnimationRef.current, {
+-      toValue: 0,
+-      duration: ANIMATION_DURATION * animation.scale,
+-      easing: EASING,
+-      useNativeDriver: true,
+-    }).start(({ finished }) => {
+-      if (finished) {
+-        setMenuLayout({ width: 0, height: 0 });
+-        setRendered(false);
+-        prevRendered.current = false;
+-        focusFirstDOMNode(anchorRef.current);
+-      }
+-    });
+-  }, [removeListeners, theme]);
++    // wildlife.ai patch, 22 September 2026. By the time `hide` runs, `rendered`
++    // is already false and the Portal content is unmounted (the effects below
++    // flip `rendered` first, then call `updateVisibility(rendered)`), so the
++    // fade that used to be here animated a value with no view attached. Its
++    // completion callback did not come back reliably on Fabric, `prevRendered`
++    // stayed true, the next `show` was skipped, and the menu re-opened
++    // invisible: arrow up, nothing drawn, two more taps to recover. Seen on
++    // every react-native-paper-dropdown on Android. The bookkeeping now
++    // happens at once, and the opacity is set rather than animated.
++    opacityAnimationRef.current.setValue(0);
++    setMenuLayout({ width: 0, height: 0 });
++    setRendered(false);
++    prevRendered.current = false;
++    focusFirstDOMNode(anchorRef.current);
++  }, [removeListeners]);
+ 
+   const updateVisibility = React.useCallback(
+     async (display: boolean) => {

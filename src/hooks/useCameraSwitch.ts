@@ -16,6 +16,12 @@ export type { CameraVariant } from '../utils/cameraVariant'
 interface UseCameraSwitchOptions {
     device: ExtendedPeripheral | undefined
     onError?: (error: Error) => void
+    /**
+     * Every stage message, as it is set. For callers that run a switch inside
+     * their own progress dialog rather than rendering `stage`: the Dev
+     * Deployment Test switches camera as its first pipeline step (#301).
+     */
+    onStage?: (stage: string) => void
 }
 
 interface UseCameraSwitchReturn {
@@ -70,7 +76,7 @@ const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, m
  * Light Sensor flow) - when that is on, a manual selection here may be
  * reverted at the device's next light check, so the UI warns about it.
  */
-export const useCameraSwitch = ({ device, onError }: UseCameraSwitchOptions): UseCameraSwitchReturn => {
+export const useCameraSwitch = ({ device, onError, onStage }: UseCameraSwitchOptions): UseCameraSwitchReturn => {
     const [activeCamera, setActiveCamera] = useState<CameraVariant>('unknown')
     const [otherSlotCamera, setOtherSlotCamera] = useState<CameraVariant>('unknown')
     const [autoSwitchOn, setAutoSwitchOn] = useState<boolean | null>(null)
@@ -84,6 +90,13 @@ export const useCameraSwitch = ({ device, onError }: UseCameraSwitchOptions): Us
         unmountedRef.current = false
         return () => { unmountedRef.current = true }
     }, [])
+
+    // Stage text goes to this hook's state for the screens that render it, and
+    // to `onStage` for the ones that show it in a progress dialog of their own.
+    const announce = useCallback((next: string) => {
+        if (!unmountedRef.current) setStage(next)
+        onStage?.(next)
+    }, [onStage])
 
     const querySlots = useCallback(async () => {
         if (!device) throw new Error('No device connected')
@@ -105,7 +118,7 @@ export const useCameraSwitch = ({ device, onError }: UseCameraSwitchOptions): Us
 
     const refresh = useCallback(async () => {
         setIsBusy(true)
-        setStage('Checking cameras…')
+        announce('Checking cameras…')
         try {
             await querySlots()
         } catch (e) {
@@ -128,7 +141,7 @@ export const useCameraSwitch = ({ device, onError }: UseCameraSwitchOptions): Us
         } catch (e) {
             logWarn('[useCameraSwitch] getops (op26) query failed:', e)
         }
-    }, [querySlots, device])
+    }, [querySlots, device, announce])
 
     const switchTo = useCallback(async (target: CameraVariant): Promise<boolean> => {
         if (!device) {
@@ -141,7 +154,7 @@ export const useCameraSwitch = ({ device, onError }: UseCameraSwitchOptions): Us
         setIsBusy(true)
         try {
             // Confirm what is currently running (also wakes the device)
-            setStage('Checking cameras…')
+            announce('Checking cameras…')
             const { running, other } = await querySlots()
 
             if (running === target) {
@@ -165,18 +178,18 @@ export const useCameraSwitch = ({ device, onError }: UseCameraSwitchOptions): Us
             }
 
             // Flip the slot selector; the device resets at its next sleep
-            if (!unmountedRef.current) setStage(`Switching to ${target}…`)
+            announce(`Switching to ${target}…`)
             log(`[useCameraSwitch] switching from ${running} to ${target}`)
             const session = createBleSession(device)
             await session.execute(() => commandRegistry.switchslot())
 
             // Send nothing until it has slept: the reset happens on the way
             // into DPD, and any command before that only postpones it.
-            if (!unmountedRef.current) setStage('Waiting for the camera to sleep, then restart (up to 30 s)…')
+            announce('Waiting for the camera to sleep, then restart (up to 30 s)…')
             const slept = await session.waitForSleep(RESET_SLEEP_TIMEOUT_MS)
             let woke = false
             if (slept) {
-                if (!unmountedRef.current) setStage('Camera restarting…')
+                announce('Camera restarting…')
                 woke = await session.waitForWake(BOOT_WAKE_TIMEOUT_MS)
             } else {
                 logWarn(`[useCameraSwitch] no Sleep within ${RESET_SLEEP_TIMEOUT_MS}ms; polling instead`)
@@ -188,7 +201,7 @@ export const useCameraSwitch = ({ device, onError }: UseCameraSwitchOptions): Us
             for (let attempt = 1; attempt <= VERIFY_POLL_ATTEMPTS; attempt++) {
                 // Stop polling if the screen went away mid-switch
                 if (unmountedRef.current) return false
-                setStage(`Checking the camera (${attempt}/${VERIFY_POLL_ATTEMPTS})…`)
+                announce(`Checking the camera (${attempt}/${VERIFY_POLL_ATTEMPTS})…`)
                 if (attempt > 1 || !woke) await delay(VERIFY_POLL_DELAY_MS)
                 try {
                     const check = await querySlots()
@@ -217,7 +230,7 @@ export const useCameraSwitch = ({ device, onError }: UseCameraSwitchOptions): Us
                 setStage('')
             }
         }
-    }, [device, onError, querySlots])
+    }, [device, onError, querySlots, announce])
 
     return { activeCamera, otherSlotCamera, autoSwitchOn, isBusy, stage, refresh, switchTo }
 }

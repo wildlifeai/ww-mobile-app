@@ -1,7 +1,6 @@
 import { useState, useCallback, useMemo } from "react"
 import { Alert } from "react-native"
 import { useForm } from "react-hook-form"
-import { useAppNavigation } from "../../../hooks/useAppNavigation"
 import { useAppSelector } from "../../../redux"
 import { logError } from '../../../utils/logger'
 import {
@@ -27,7 +26,7 @@ export interface ProjectFormData {
 	activity_detection_sensitivity_id: string
 	timelapse_interval_seconds: string
 	model_id: string
-	is_archived: boolean
+	record_gps_in_images: boolean
 	lorawan_required: boolean
 	flash_mode: string
 	flash_led: string
@@ -35,9 +34,24 @@ export interface ProjectFormData {
 	flash_window_minutes: string
 }
 
-export const useProjectDetails = (projectId: string, initialEditMode = false) => {
-	const navigation = useAppNavigation()
+/**
+ * Asks before archiving and resolves with the answer, so the save can wait for
+ * it. Dismissing the alert counts as Cancel.
+ */
+const confirmArchive = (): Promise<boolean> =>
+	new Promise((resolve) => {
+		Alert.alert(
+			"Archive Project",
+			"Are you sure you want to archive this project? To unarchive projects you will need to contact the Wildlife Watcher team.",
+			[
+				{ text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+				{ text: "Continue", style: "destructive", onPress: () => resolve(true) },
+			],
+			{ cancelable: true, onDismiss: () => resolve(false) },
+		)
+	})
 
+export const useProjectDetails = (projectId: string, initialEditMode = false) => {
 	// State
 	const [isEditMode, setIsEditMode] = useState(initialEditMode)
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -84,7 +98,7 @@ export const useProjectDetails = (projectId: string, initialEditMode = false) =>
 			activity_detection_sensitivity_id: "",
 			timelapse_interval_seconds: "",
 			model_id: "",
-			is_archived: false,
+			record_gps_in_images: false,
 			lorawan_required: false,
 			flash_mode: "off",
 			flash_led: "ir",
@@ -102,7 +116,9 @@ export const useProjectDetails = (projectId: string, initialEditMode = false) =>
 			activity_detection_sensitivity_id: project.activity_detection_sensitivity_id?.toString() || "",
 			timelapse_interval_seconds: project.timelapse_interval_seconds?.toString() || "",
 			model_id: project.model_id || "__none__",
-			is_archived: project.is_archived || project.is_active === false,
+			// Missing until September 2026: Edit Project showed the box unticked
+			// whatever the project held, and saving dropped any change to it
+			record_gps_in_images: project.record_gps_in_images || false,
 			lorawan_required: project.lorawan_required || false,
 			// Whatever the row holds, normalised: a value outside the check
 			// constraint resolves to the app's fallback rather than showing an
@@ -164,74 +180,79 @@ export const useProjectDetails = (projectId: string, initialEditMode = false) =>
 		setIsEditMode(false)
 	}, [reset])
 
+	/**
+	 * Resolves true once the project is written, false when the write failed
+	 * (which has already been shown). The caller leaves the screen only on true.
+	 *
+	 * There is no refetch: updateProject invalidates this project's tag, which
+	 * refreshes getProjectById for every screen still showing it. A refetch here
+	 * threw once the Edit screen had gone and turned a written project into
+	 * "Update Failed" (#191).
+	 */
 	const handleSave = useCallback(
-		async (data: ProjectFormData) => {
-			const performSave = async () => {
-				try {
-					await updateProject({
-						id: projectId,
-						updates: {
-							name: data.name.trim(),
-							description: data.description.trim() || null,
-							sampling_design_id: data.sampling_design_id ? Number(data.sampling_design_id) : null,
-							website: data.website.trim() || null,
-							is_baited: data.is_baited,
-							is_monitoring_marked_individuals: data.is_monitoring_marked_individuals,
-							capture_method_id: data.capture_method_id ? Number(data.capture_method_id) : null,
-							activity_detection_sensitivity_id: data.activity_detection_sensitivity_id ? Number(data.activity_detection_sensitivity_id) : null,
-							timelapse_interval_seconds: data.timelapse_interval_seconds ? Number(data.timelapse_interval_seconds) : null,
-							model_id: (data.model_id && data.model_id !== '__none__') ? data.model_id : null,
-							is_active: !data.is_archived,
-							is_archived: data.is_archived,
-							lorawan_required: data.lorawan_required,
-							flash_mode: data.flash_mode,
-							flash_led: data.flash_led,
-							flash_window_start_minutes_utc: data.flash_mode === 'time_of_day'
-								? parseUtcMinutes(data.flash_window_start_minutes_utc)
-								: null,
-							flash_window_minutes: data.flash_mode === 'time_of_day' && data.flash_window_minutes
-								? Number(data.flash_window_minutes)
-								: null,
-						},
-					}).unwrap()
-
-					setIsEditMode(false)
-					refetch()
-					if (data.is_archived) {
-						navigation.goBack() // Exit to projects list if archived
-					}
-				} catch (err) {
-					logError("Failed to update project:", err)
-					Alert.alert(
-						"Update Failed",
-						"Failed to update project. Please try again.",
-						[{ text: "OK" }],
-					)
-				}
-			}
-
-			// Intercept if they are archiving the project
-			if (data.is_archived && project?.is_active) {
+		async (data: ProjectFormData): Promise<boolean> => {
+			try {
+				await updateProject({
+					id: projectId,
+					updates: {
+						name: data.name.trim(),
+						description: data.description.trim() || null,
+						sampling_design_id: data.sampling_design_id ? Number(data.sampling_design_id) : null,
+						website: data.website.trim() || null,
+						is_baited: data.is_baited,
+						is_monitoring_marked_individuals: data.is_monitoring_marked_individuals,
+						capture_method_id: data.capture_method_id ? Number(data.capture_method_id) : null,
+						activity_detection_sensitivity_id: data.activity_detection_sensitivity_id ? Number(data.activity_detection_sensitivity_id) : null,
+						timelapse_interval_seconds: data.timelapse_interval_seconds ? Number(data.timelapse_interval_seconds) : null,
+						model_id: (data.model_id && data.model_id !== '__none__') ? data.model_id : null,
+						record_gps_in_images: data.record_gps_in_images,
+						lorawan_required: data.lorawan_required,
+						flash_mode: data.flash_mode,
+						flash_led: data.flash_led,
+						flash_window_start_minutes_utc: data.flash_mode === 'time_of_day'
+							? parseUtcMinutes(data.flash_window_start_minutes_utc)
+							: null,
+						flash_window_minutes: data.flash_mode === 'time_of_day' && data.flash_window_minutes
+							? Number(data.flash_window_minutes)
+							: null,
+					},
+				}).unwrap()
+			} catch (err) {
+				logError("Failed to update project:", err)
 				Alert.alert(
-					"Archive Project",
-					"Are you sure you want to archive this project? To unarchive projects you will need to contact the Wildlife Watcher team.",
-					[
-						{ text: "Cancel", style: "cancel" },
-						{
-							text: "Continue",
-							style: "destructive",
-							onPress: performSave,
-						},
-					]
+					"Update Failed",
+					"Failed to update project. Please try again.",
+					[{ text: "OK" }],
 				)
-				return // Early return, saving will happen inside onPress
+				return false
 			}
 
-			// Normal save
-			await performSave()
+			setIsEditMode(false)
+			return true
 		},
-		[projectId, updateProject, refetch, project, navigation],
+		[projectId, updateProject],
 	)
+
+	/**
+	 * Archiving takes a project out of the app, so it is its own action rather
+	 * than one of the project's settings (#191). Asks first, and resolves true
+	 * only once the project is written; the caller then leaves the screen.
+	 */
+	const handleArchive = useCallback(async (): Promise<boolean> => {
+		const confirmed = await confirmArchive()
+		if (!confirmed) return false
+		try {
+			await updateProject({
+				id: projectId,
+				updates: { is_active: false, is_archived: true },
+			}).unwrap()
+		} catch (err) {
+			logError("Failed to archive project:", err)
+			Alert.alert("Archive Failed", "The project was not archived. Please try again.", [{ text: "OK" }])
+			return false
+		}
+		return true
+	}, [projectId, updateProject])
 
 	const handleRemoveMember = useCallback(
 		async (userId: string) => {
@@ -300,6 +321,7 @@ export const useProjectDetails = (projectId: string, initialEditMode = false) =>
 		handleEdit,
 		handleCancelEdit,
 		handleSave,
+		handleArchive,
 		handleRemoveMember,
 		getLabel,
 	}

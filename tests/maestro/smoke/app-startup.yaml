@@ -5,9 +5,13 @@
 # because a required check must not fail for a test id nobody verified.
 # The fuller flows under tests/maestro/ run on the `full-e2e` label.
 #
-# appId is the debug variant: build.gradle applies `.expo` to the debug
-# applicationId, and the `ci` EAS profile is a development client.
-appId: com.wildlife.wildlifewatcher.expo
+# appId comes from the run (`-e APP_ID=...`). A PR into main builds the
+# `staging` EAS profile, a release build that installs as
+# com.wildlife.wildlifewatcher; every other run builds `ci`, a development
+# client, which build.gradle gives the debug `.expo` suffix. A fixed `.expo`
+# failed the release PR #366 on 1 October 2026: "Package
+# com.wildlife.wildlifewatcher.expo is not installed".
+appId: ${APP_ID}
 ---
 - launchApp
 - takeScreenshot: startup

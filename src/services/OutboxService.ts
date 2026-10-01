@@ -304,6 +304,22 @@ class OutboxService {
     }
 
     /**
+     * Get all orphaned operations: changes made on this phone to a project the
+     * server no longer has for this account (#330). They are kept, never
+     * retried, and error_message names the project. For a screen to list.
+     */
+    async getOrphanedOperations(): Promise<SyncOutbox[]> {
+        try {
+            return await database.get<SyncOutbox>('sync_outbox')
+                .query(Q.where('status', 'orphaned'))
+                .fetch()
+        } catch (error) {
+            logError('[OutboxService] Error getting orphaned operations:', error)
+            return []
+        }
+    }
+
+    /**
      * Clean up synced operations older than specified days
      * Keeps database size manageable
      */
@@ -341,6 +357,7 @@ class OutboxService {
         synced: number
         failed: number
         conflict: number
+        orphaned: number
         total: number
     }> {
         try {
@@ -352,6 +369,7 @@ class OutboxService {
                 synced: all.filter(op => op.status === 'synced').length,
                 failed: all.filter(op => op.status === 'failed').length,
                 conflict: all.filter(op => op.status === 'conflict').length,
+                orphaned: all.filter(op => op.status === 'orphaned').length,
                 total: all.length,
             }
 
@@ -364,6 +382,7 @@ class OutboxService {
                 synced: 0,
                 failed: 0,
                 conflict: 0,
+                orphaned: 0,
                 total: 0,
             }
         }

@@ -1,5 +1,4 @@
 import { View, StyleSheet } from 'react-native'
-import { OfflineIndicator } from '../../components/ui/OfflineIndicator'
 import { ActivityIndicator, Button, Text, IconButton, ProgressBar, useTheme } from 'react-native-paper'
 import { Image } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -41,8 +40,6 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
 
         return (
             <SafeAreaView style={styles.container} edges={['top']}>
-                <OfflineIndicator />
-
                 <View style={styles.centerContent}>
                     <View style={styles.graphicContainer}>
                         <Image 
@@ -89,7 +86,6 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
-            <OfflineIndicator />
             <View style={styles.container}>
                 <View style={styles.headerContainer}>
                     <IconButton
@@ -240,9 +236,15 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         textAlign: 'center',
     },
+    // The illustration is the only part of the column allowed to shrink. On a
+    // small phone or with a large font the centred column is taller than the
+    // space: it used to spill upwards over the title (#176), and since the
+    // overflow was hidden it clipped the picture's top and, with a large font,
+    // the button at the bottom instead.
     graphicContainer: {
         width: '100%',
-        maxHeight: 200,
+        height: 200,
+        flexShrink: 1,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 20,

@@ -24,7 +24,6 @@ import { useExtendedTheme } from "../../../theme"
 import { DeploymentService, DEPLOYMENT_STATUS } from "../../../services/DeploymentService"
 import type Deployment from "../../../database/models/Deployment"
 import { log } from '../../../utils/logger'
-import { OfflineIndicator } from '../../../components/ui/OfflineIndicator'
 
 
 interface MapState {
@@ -250,11 +249,6 @@ const MapScreenComponent: React.FC<Props> = ({ deployments, selectedDeploymentId
 			{/* Header Background Gradient/Overlay - Status Bar Only */}
 			<View style={[styles.headerBackground, { height: insets.top, backgroundColor: colors.surface }]} />
 
-			{/* Offline Indicator - overlays top of map */}
-			<View style={[styles.offlineOverlay, { top: insets.top }]}>
-				<OfflineIndicator />
-			</View>
-
 			{/* Custom Header with Hamburger Button - Top Left */}
 			<IconButton
 				icon="menu"
@@ -352,12 +346,6 @@ const styles = StyleSheet.create({
 		left: 0,
 		right: 0,
 		zIndex: 1,
-	},
-	offlineOverlay: {
-		position: "absolute",
-		left: 0,
-		right: 0,
-		zIndex: 2,
 	},
 })
 

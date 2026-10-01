@@ -23,7 +23,12 @@ interface MonitorStats {
 const MAX_LOG_ENTRIES = 200
 const IMAGE_COUNT_POLL_INTERVAL_MS = 60000 // Poll every 60 seconds — frequent polling wakes AI processor from DPD and resets HM0360 MD
 
-export const useDeploymentMonitor = (device: ExtendedPeripheral | null, deploymentStartTime?: Date | string | null) => {
+export const useDeploymentMonitor = (
+    device: ExtendedPeripheral | null,
+    deploymentStartTime?: Date | string | null,
+    options?: { pausePolling?: boolean },
+) => {
+    const pausePolling = options?.pausePolling ?? false
     const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([])
     const [stats, setStats] = useState<MonitorStats>({
         photoCount: 0,
@@ -48,7 +53,7 @@ export const useDeploymentMonitor = (device: ExtendedPeripheral | null, deployme
 
     // 1. Poll IMAGES_COUNT from device periodically
     useEffect(() => {
-        if (!device?.id || !device?.connected) return
+        if (!device?.id || !device?.connected || pausePolling) return
 
         let isMounted = true
         const deviceRef = device
@@ -56,7 +61,13 @@ export const useDeploymentMonitor = (device: ExtendedPeripheral | null, deployme
         const fetchImageCount = async () => {
             try {
                 const session = createBleSession(deviceRef)
-                const value = await session.execute(() => commandRegistry.getop(OP_PARAMETER.IMAGES_COUNT))
+                // One attempt: the next poll is a minute away anyway, and a poll
+                // shares the queue with everything else. Against a camera that
+                // did not answer, its retry held Stop Monitoring's `dis` for
+                // 16 s (#293). A poll in flight is left to finish rather than
+                // cancelled, so the next command never reaches the nRF while the
+                // Himax is still answering this one.
+                const value = await session.execute(() => commandRegistry.getop(OP_PARAMETER.IMAGES_COUNT), { maxRetries: 0 })
                 if (value !== null && isMounted) {
                     const count = parseInt(value, 10)
                     if (!isNaN(count)) {
@@ -81,7 +92,7 @@ export const useDeploymentMonitor = (device: ExtendedPeripheral | null, deployme
         }
     // Use stable references to avoid re-triggering on every Redux device update
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [device?.id, device?.connected])
+    }, [device?.id, device?.connected, pausePolling])
 
     // 2. Track time active
     useEffect(() => {

@@ -9,7 +9,14 @@ interface BatteryLevelCardProps {
     handleBatteryCheck: () => void
     isInitializing: boolean
     bleDeviceConnected: boolean
-    renderBatteryHelp: (props: any) => React.ReactNode
+    /**
+     * True while a check is on the wire. The button says so and cannot be
+     * tapped again; without it a re-check that returns the same figure looks
+     * like a dead button.
+     */
+    isChecking?: boolean
+    /** Optional: the Dev Deployment Test shows this card with no help button. */
+    renderBatteryHelp?: (props: any) => React.ReactNode
     styles: any
 }
 
@@ -18,9 +25,11 @@ export const BatteryLevelCard: React.FC<BatteryLevelCardProps> = ({
     handleBatteryCheck,
     isInitializing,
     bleDeviceConnected,
+    isChecking = false,
     renderBatteryHelp,
     styles,
 }) => {
+    const busy = isInitializing || !bleDeviceConnected || isChecking
     return (
         <Card style={styles.card}>
             <Card.Title
@@ -36,13 +45,13 @@ export const BatteryLevelCard: React.FC<BatteryLevelCardProps> = ({
                                 <Text>{batteryLevel > 30 ? 'Battery level sufficient' : 'Battery level low - charge before monitoring'}</Text>
                             </WWText>
                         </View>
-                        <WWButton mode="outlined" onPress={handleBatteryCheck} style={styles.actionButton} disabled={isInitializing || !bleDeviceConnected}>
-                            <Text>Check Again</Text>
+                        <WWButton mode="outlined" onPress={handleBatteryCheck} style={styles.actionButton} disabled={busy} loading={isChecking}>
+                            <Text>{isChecking ? 'Checking…' : 'Check Again'}</Text>
                         </WWButton>
                     </View>
                 ) : (
-                    <WWButton mode="outlined" onPress={handleBatteryCheck} disabled={isInitializing || !bleDeviceConnected}>
-                        <Text>Check Battery Level</Text>
+                    <WWButton mode="outlined" onPress={handleBatteryCheck} disabled={busy} loading={isChecking}>
+                        <Text>{isChecking ? 'Checking…' : 'Check Battery Level'}</Text>
                     </WWButton>
                 )}
             </Card.Content>

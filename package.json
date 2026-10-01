@@ -1,6 +1,6 @@
 {
   "name": "wildlifewatcher",
-  "version": "0.0.66",
+  "version": "0.0.69",
   "private": true,
   "scripts": {
     "android": "npm run android:doctor && npm run types:cloud-dev && npm run db:sync-schema && npm run schema:generate && npx expo run:android",
@@ -55,7 +55,7 @@
     "build:ios-sanity": "npx expo prebuild --no-install && npx pod-install && xcodebuild -workspace ios/*.xcworkspace -scheme wildlifewatcher -showBuildSettings",
     "postinstall": "npx patch-package && npm run validate:deps",
     "prepare": "node -e \"if(process.env.CI||process.env.EAS_BUILD)process.exit(0)\" && npx husky",
-    "test:maestro:smoke": "maestro test tests/maestro/smoke/",
+    "test:maestro:smoke": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/smoke/",
     "test:maestro:full": "maestro test tests/maestro/"
   },
   "dependencies": {
@@ -64,6 +64,7 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/geolocation": "^3.4.0",
     "@react-native-community/netinfo": "^11.3.1",
+    "@react-native-google-signin/google-signin": "^16.1.5",
     "@react-navigation/native": "^6.1.12",
     "@react-navigation/native-stack": "^6.9.20",
     "@reduxjs/toolkit": "^2.5.0",

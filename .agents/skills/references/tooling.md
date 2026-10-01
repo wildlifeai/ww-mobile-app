@@ -59,6 +59,16 @@ shell boundary, and none of them reproduced in a Linux container.
   The shape that works: **no path filter, every job always runs and reports**, and a first
   `changes` job diffs the PR against its base and sets an output the expensive steps guard on
   with `if:`. One check name, produced once, by the workflow that owns it.
+- **The `console.log` gate is a grep, and it reads comments.** `quality-gate-validation`
+  fails on the text `console.log` anywhere in `src/` outside `__tests__/` and `logger.ts`, so a
+  comment that names it fails CI exactly like a call. #337's first run failed on a comment in
+  `utils/networkErrors.ts`. Describe it in other words in prose.
+- **"Accessing the Jest environment after it has been torn down" after a button press.** The
+  root `afterEach` in `tests/setup/sanitySetup.ts` switches to real timers before RNTL's
+  cleanup unmounts, so the store notification RTK auto-batches for the unmounted mutation goes
+  out on a real `requestAnimationFrame` and fires after teardown. The tests pass, but the line
+  is noise. Unmount in the test's own `afterEach` (`screen.unmount()`, then
+  `jest.runOnlyPendingTimers()`), as `GoogleSignIn.integration.test.tsx` does (1 October 2026).
 - **The coverage floor is a ratchet, not a target.** `quality-gate-validation` fails below
   20% statements, set just under the 21.29% measured on 21 September 2026. Until then the
   awk checked `< 10` while the message claimed 70. Raise the floor by hand when coverage

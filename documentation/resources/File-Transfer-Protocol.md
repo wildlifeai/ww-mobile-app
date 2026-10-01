@@ -6,18 +6,32 @@
 
 The mobile app sends files over BLE NUS as chunked binary packets through the nRF52, which relays them via I2C to the HX6538 for SD card storage.
 
-The default transport is **credit-based streaming with cumulative ACKs** — the app keeps up to `windowSize` packets in flight and the device acknowledges in order, cumulatively. Stop-and-wait (`windowSize: 1`) is retained as a fallback for pre-FIFO firmware.
+The default transport is **credit-based streaming with cumulative ACKs**: the app keeps up to `windowSize` packets in flight and the device acknowledges in order, cumulatively. It needs BLE (nRF) firmware at or above the floor below, and the app refuses a transfer to anything older. Stop-and-wait (`windowSize: 1`) is not a fallback: it is for protocol testing only.
 
 | | Value | Source |
 |---|---|---|
-| Default window | **12** | [`runFileTransferPipeline.ts`](../../src/ble/protocol/fileTransfer/runFileTransferPipeline.ts) — `requestedWindowSize ?? 12` |
+| Default window | **12** | [`runFileTransferPipeline.ts`](../../src/ble/protocol/fileTransfer/runFileTransferPipeline.ts), `requestedWindowSize ?? 12` |
 | ACK mode | cumulative, in order | same file, DATA phase |
-| Fallback | stop-and-wait when `windowSize <= 1` | same file |
+| BLE firmware floor | **0.30.47** | `MIN_BLE_FIRMWARE_FOR_TRANSFER` in [`bleFirmwareFloor.ts`](../../src/ble/protocol/fileTransfer/bleFirmwareFloor.ts) |
+| Stop-and-wait | only when a caller passes `windowSize: 1` | `runFileTransferPipeline.ts` |
 
-**Protocol version:** v1 (no version byte in packets). Wire format is unchanged between window sizes — only the app's send pacing differs, so a windowed app against stop-and-wait firmware still completes (slowly) via ACK-timeout retries.
+**Protocol version:** v1 (no version byte in packets). Wire format is unchanged between window sizes, and only the app's send pacing differs, so nothing in the packets tells the app which relay it is talking to. The `ver` string is the only signal, which is why the floor below reads it.
 
 > [!IMPORTANT]
 > Do **not** call `requestConnectionPriority(HIGH)` mid-transfer. It desyncs the nRF↔HX I2C link (measured, 2026-07-10). The priority request belongs at connect time only.
+
+### The BLE firmware floor
+
+0.30.47 (ww-hardware #27) is the first BLE firmware with the 16-slot relay FIFO and cumulative acks. Older firmware, such as 0.23.x on ww-hardware `main`, has one relay slot. A windowed app against it does **not** complete, slowly or otherwise: the nRF drops the packets its slot cannot take with a console log line only, no `ftx err`, the next packet during a relay resets its AI state machine to SLEEP and loses the ack in flight, and the transfer hangs until the silence timeout (#289). The windowed path has no per-packet ACK timeout to retry with. Stop-and-wait would suit that firmware, but it stalls on 0.30.47 and later, which ack every 4th packet, so the app gates on the version instead of falling back.
+
+Before `FILE_START`, for any window above 1, the pipeline decides on the camera's BLE firmware version:
+
+- **The caller's reading clears the floor** (`bleFirmwareVersion`, such as the pre-deployment checks' `ver`): it streams, with no extra command.
+- **Otherwise it sends one `ver`**, with no retry, and the answer wins over the caller's reading. A reading can be stale: Start Monitoring keeps its pre-deployment one across a BLE update made from that screen. If `ver` goes unanswered, the caller's reading stands.
+- **Below the floor** it refuses with `BLE_FIRMWARE_TOO_OLD`, before the transport lock, so no file packet is sent: "This camera's BLE firmware is 0.23.29, and sending files to it needs 0.30.47 or later. Update the BLE firmware first, then try again."
+- **Unknown** (no reading and `ver` unanswered) it streams with the window. If the camera then goes silent before acknowledging a window's worth of packets, the `DEVICE_SILENT` error says so: "The camera acknowledged 1 of the 13 packets sent, then went silent. Its BLE firmware version could not be read, and it may be older than 0.30.47, which does not support streamed transfers. If it is, update the BLE firmware, then try again."
+
+The BLE firmware update itself goes over Nordic DFU, not this pipeline, so it is never gated. In a deployment, a refused model transfer stops the start the way model files the phone cannot get do, see `syncAiModel`.
 
 ---
 
@@ -54,7 +68,7 @@ App                          nRF52                        HX6538
 | **Silence watchdog** | No `ftx`-prefixed activity for `SILENCE_TIMEOUT_MS` aborts the session |
 | **Abort on repeat timeout** | 3 consecutive ACK timeouts abort the transfer |
 
-Setting `windowSize: 1` restores strict stop-and-wait: one packet, then wait for its ACK. That path still exists for firmware without the nRF packet FIFO.
+Setting `windowSize: 1` restores strict stop-and-wait: one packet, then wait for its ACK. It skips the BLE firmware check, since it is the one mode firmware below the floor can take, and it stalls on 0.30.47 and later, which ack every 4th packet. Only the File Transfer Test screen offers it.
 
 ---
 
@@ -137,16 +151,17 @@ Augment:    2 bytes of 0x00 appended after data
 
 1. **Validates filename** — rejects if not 8.3 uppercase format
 2. **Validates file size** — rejects if > 10MB
-3. **Computes CRC-16** over file data before transfer starts
-4. **Pauses heartbeat** for the entire transfer session
-5. **Acquires exclusive transport lock** — rejects all other BLE commands
-6. **Sends FILE_START** with `write()` (with BLE response confirmation)
-7. **Streams FILE_DATA chunks** with `writeWithoutResponse()`, keeping ≤ `windowSize` packets unacknowledged
-8. **Retries** on ACK timeout, aborting after 3 consecutive timeouts
-9. **Sends FILE_END** with `write()` (with BLE response confirmation)
-10. **Waits for `ftx done`** before declaring success
-11. **Releases lock, resumes heartbeat** in `finally` block
-12. **Aborts immediately** on disconnect, user cancel, or 3 consecutive timeouts
+3. **Checks the BLE firmware floor**, for one `ver` at most, and refuses below it. See [The BLE firmware floor](#the-ble-firmware-floor)
+4. **Computes CRC-16** over file data before transfer starts
+5. **Pauses heartbeat** for the entire transfer session
+6. **Acquires exclusive transport lock**, rejecting all other BLE commands
+7. **Sends FILE_START** with `write()` (with BLE response confirmation)
+8. **Streams FILE_DATA chunks** with `writeWithoutResponse()`, keeping ≤ `windowSize` packets unacknowledged
+9. **Retries** on ACK timeout in stop-and-wait only, aborting after 3 consecutive timeouts. The window has no per-packet ACK timeout: the silence timeout ends a stalled stream
+10. **Sends FILE_END** with `write()` (with BLE response confirmation)
+11. **Waits for `ftx done`** before declaring success
+12. **Releases lock, resumes heartbeat** in `finally` block
+13. **Aborts immediately** on disconnect, user cancel, or 3 consecutive timeouts
 
 ### Retry Behavior
 
@@ -267,6 +282,8 @@ fileTx AI resp: 'ack end' state=1     ← CRC verified → "ftx done"
 
 | Symptom | Likely Cause |
 |---------|-------------|
+| "This camera's BLE firmware is ..., and sending files to it needs ..." before anything is sent | BLE firmware below the floor. Update it over DFU, then try again |
+| "The camera acknowledged N of the M packets sent, then went silent" | `ver` went unanswered and the relay stopped acking early, as firmware below the floor does. Read `ver` from the Engineer Console and update the BLE firmware if it is old |
 | `ftx err 1` immediately | Device in ACTIVE state from previous failed transfer — disconnect and reconnect |
 | `ftx err 3` | Filename not 8.3 uppercase |
 | `ftx err 4` | I2C bus failure between nRF52 and HX6538 |
@@ -281,6 +298,7 @@ fileTx AI resp: 'ack end' state=1     ← CRC verified → "ftx done"
 | File | Purpose |
 |------|---------|
 | `src/ble/protocol/fileTransfer/runFileTransferPipeline.ts` | Transfer orchestration |
+| `src/ble/protocol/fileTransfer/bleFirmwareFloor.ts` | The BLE firmware floor, its check and its two messages |
 | `src/ble/protocol/fileTransfer/fileTransferPackets.ts` | Packet framing and serialization |
 | `src/ble/protocol/fileTransfer/ackMatcher.ts` | ACK matching for reliable delivery |
 | `src/ble/protocol/fileTransfer/crc16ccitt.ts` | CRC-16 checksum implementation |
@@ -289,4 +307,4 @@ fileTx AI resp: 'ack end' state=1     ← CRC verified → "ftx done"
 
 ---
 
-*Last Updated: May 16, 2026*
+*Last Updated: September 30, 2026*

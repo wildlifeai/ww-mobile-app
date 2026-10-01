@@ -27,11 +27,24 @@ file is the list of things that look like an app bug and are not, and the revers
   only when the image task starts, so the write lands at the next wake. `AI enable` and
   `AI disable` change both. To turn the camera on *now*, write op10 **and** send `AI enable`.
   The inverse of this trap is documented on the firmware side.
+- **A slot switch does not check that the camera for that image answers, and `AI slots`
+  will not tell you either.** On WILD-SIFK, 22 September 2026, `AI switchslot` to the RP3
+  slot was accepted (`Switched to slot 1 ('RP3 (day/colour)'). Reset scheduled.`), the image
+  booted, printed `Main camera not present at 0x1a` and `Camera system disabled.`, raised
+  self-test bit 8, and `AI slots` reported it running RP3 all the same. The Dev Deployment
+  Test's first camera-switch leg went on to transfer a model to a device that could not take
+  a picture. The IMX708 is fitted: it stayed silent at 0x1a for the first four minutes and
+  seven boots after the switch, then answered on every boot from 09:51:44, cause unknown
+  (unfiled). `slots` reports labels, not hardware, so nothing before the switch can know; the
+  dev deployment reads the post-boot self-test after the switch, and bit 8 switches back and
+  aborts. Any other flow that switches slots needs the same check, and a warm wake reports
+  0x0000 for a sensor that was missing at boot, so the check has to read the boot's own line.
 - **A selected flash does not mean a flash.** op13 only chooses the LED; the firmware fires it
   on a capture only when its last light decision, op25, was DARK, and the check after every
   capture rewrites op25. In a lit room the LED never fires whatever the app selected, and that
   is not an app bug. Before touching the app, isolate it in three console commands:
-  `AI flash 50 500` lights the white LED directly, proving hardware and command path;
+  `AI flash 50 500` lights the white LED directly, proving hardware and command path, and
+  quietly stores 500 in op12, the RP3 capture flash length, which the next sleep saves;
   `AI getop 25` shows the gate; and `AI setop 25 1` followed by `AI capture 1 500` proves the
   capture path can fire it. Bench-proven 3 September 2026. Capture Picture forces it for now by
   writing op25 = 1 before a capture with a flash chosen, marked `TODO(flash-mode-op)` in
@@ -43,7 +56,11 @@ file is the list of things that look like an app bug and are not, and the revers
 - **A multi-image capture with a gap above op8 is cut short by the device** (Seeed #208).
   Images after the first never come, `Captured` is never sent, and the app receives `Sleep`
   instead. Keep any `capture N interval` below op8, and treat a `Sleep` during a capture as the
-  end of it rather than waiting on the 30 s timeout.
+  end of it rather than waiting on the 30 s timeout. A deployed burst is the same capture: the
+  firmware sleeps in `handleEventForWaitForTimer` when op8 runs out before op6, and its
+  `config_file.md` says op6 must be less than op8. Since #317 Start Monitoring writes
+  op8 = op6 + 1000 whenever op5 is above 1, so anything that writes op8 after the deployment
+  (a hold's release, a restore owed to keepAwake) would cut every burst back to one picture.
 - **A device that prints `IMAGE task unhandled event 'Image Event Inactivity' in
   'Uninitialised'` once a second is stuck awake, and only a power cycle brings it back.**
   Firmware race on `ae_review` e8b7feb5: the inactivity timer fired while the IF task was
@@ -55,6 +72,103 @@ file is the list of things that look like an app bug and are not, and the revers
   in the loop the nRF parks in SELFTEST and drops every app command, so the console goes silent
   as well, and a `setop` inside the same window is acknowledged with `Set OpParam N = V` and
   never saved (#207), so that reply is not proof a value survived a sleep.
+- **A card put back into a running device stays missing until it is power cycled.** WILD-SIFK,
+  22 September 2026: the SD card was pulled with the Himax in DPD and put back, the next warm
+  boot printed `Mounting FatFS on SD card 	Card Ready` and then, 0.6 s later,
+  `SD card initialisation failed (reason 3)`, FatFS `FR_NOT_READY` from `disk_initialize`. The
+  card answers electrically but never reaches the identification state without a clean power
+  ramp. Self-test bit 11 stays set on every wake after that, so the app is right to keep the
+  blocker up, and repeating `selftest` will never clear it. Only a cold boot will. Expect the
+  same in the field whenever anyone swaps a card without cutting power. Since #325 every message
+  that reports bit 11 tells the operator to power cycle, using `SD_CARD_POWER_CYCLE_HINT` in
+  `utils/deviceSelfTest.ts`; a new one should use it too.
+- **Ignore the battery percentage on a bench unit, it is reading the USB rail.** A WW500 powered
+  over USB on the bench reports numbers like `Battery = 3076mV 2%` that say nothing about any
+  cell, so a low reading there is not a reason to stop, charge anything or doubt a result.
+  Raising it as a risk mid-run has wasted time more than once. On the bench, only treat the
+  battery as real when the unit is deliberately running from a cell.
+- **`AI md N` never answers over BLE, and the wait the app then pays is the nRF, not the
+  Himax.** The Himax replies `MD sensitivity set to N` within 0.2 s, but the nRF's prefix table
+  of Himax-originated messages matches it against `"MD "`, the motion-wake announcement, raises
+  `Wake (MD)` while it is still waiting for that very reply, logs `UNHANDLED event Wake (MD) in
+  PROCESSING` and drops it (ww-hardware #52; nRF 0.30.51, 23 September 2026). On the RP3 slot
+  the command is refused with `Unrecognised` instead (Seeed #211), and that reply gets through.
+  The level is persisted in op17 either way, so since #272 the motion test skips `md` when the
+  op table it has just read already holds the level, waits 2 s rather than 5 when it does send,
+  and shows a refusal (`isMdRefusal`) or a lost reply on the card instead of swallowing it. A
+  lost reply on the HM0360 build usually means the level did land; the next run's `getop -1`
+  shows it.
+- **op19 is not the number of images on the card.** It counts the files in the current
+  `IMAGES.NNN` folder, and the firmware starts a new folder at the first boot after it passes
+  100 (`directory_manager.c`, `generateImageDirName`), setting op19 back to 0. The live
+  monitor's Stored tile shows op19, so it climbs to about 101 and drops to 0, which testers
+  reported as a counting bug (#192). op0, the image sequence number, is the running total, but
+  it also counts captures whose save was skipped (op18 bit 3, an AE-check wake). A true count
+  needs a firmware counter; until then do not present op19 as a total.
+
+## Screens and navigation
+
+- **The stack's header is `components/NavigationBar.tsx`, not the native one, so a header
+  option it does not render is dropped without a warning.** `headerRight` was dropped that
+  way until 21 September 2026 (#302): the screen set it, the type-check passed, and the phone
+  showed nothing. `headerTitleAlign: 'left'` was ignored the same way. Both are honoured now;
+  anything else (`headerTitle` components, `headerStyle`) still has to be added there before a
+  screen can rely on it. Check the phone, not the option name.
+- **The "Offline Mode" banner is drawn once, above the navigation, so never add one to a
+  screen.** `OfflineAwareRoot` in `components/ui/OfflineIndicator.tsx` renders it under the status
+  bar and puts the navigation in a nested `SafeAreaProvider`, which measures insets for its own
+  frame: below the banner the top inset is 0, so headers, `SafeAreaView` and
+  `useSafeAreaInsets().top` leave no second gap. Until September 2026 some screens placed the
+  banner by hand and the stack header drew an "Offline" chip, and the bench saw one form on one
+  screen and the other on the next. Take the top inset from `useSafeAreaInsets()`, never from
+  `StatusBar.currentHeight`, or a screen will leave room for a status bar the banner sits under.
+  A test fails if any other file renders `OfflineIndicator` or calls `useNetInfo`. A screen
+  that has to know at a tap, such as Invite refusing to send offline, asks `isKnownOffline()` in
+  `services/connectivityWatch.ts` at that moment instead of following the connection.
+- **A paper `Menu` that re-opens with the arrow up and nothing drawn is
+  `patches/react-native-paper+5.14.5.patch`, not the screen.** Every `WWSelect` is a
+  `react-native-paper-dropdown` over paper's `Menu`, and on Android (Fabric) the Menu's close
+  path animated a fade on a value whose view was already unmounted; the completion callback
+  did not come back, `prevRendered` stayed true, and the next open skipped `show()`. The
+  symptom was three taps to re-open any dropdown right after a selection, on every screen,
+  22 September 2026. The patch does the close bookkeeping at once and keeps one set of
+  back-button and dimensions listeners. Metro loads paper from `src/`, so the patch carries
+  `src/` and both `lib/` builds. If paper is upgraded, re-check the reopen before dropping it.
+- **An `Alert.alert` confirmation returns at once, and RTK Query's `refetch()` throws once its
+  screen has gone.** Archiving a project showed "Update Failed" from May to September 2026
+  (#191): the save returned before the user answered, Edit Project went back underneath the
+  alert, and Continue wrote the project and then called `refetch()` on the unmounted query,
+  which throws `Cannot refetch a query that has not been started yet.` Wrap a confirmation in a
+  promise and await it before anything navigates, and do not refetch after a mutation whose
+  `invalidatesTags` already covers the query.
+- **An "unmounted" ref must be cleared on mount, not only set on unmount.** Fast Refresh and
+  StrictMode run an effect's cleanup and then the effect again, so a ref only ever set to `true`
+  leaves a mounted hook believing it is gone. `useFirmwareUpdate` did that on 1 October 2026:
+  after a hot reload with the screen open, an update transferred image 1, sent the flash command
+  and then stopped without a word, the screen frozen on "Sending" and the reset never sent.
+- **A field for someone else's email address must not be an email-type field, or Android offers
+  the phone's saved logins.** Invite Member's address field opened Google Password Manager's
+  saved-password sheet on the first tap after each launch (#363), and picking one would have
+  invited the wrong person. `autoComplete="off"`, `importantForAutofill="no"` and
+  `textContentType="none"` were not enough on a Pixel (1 October 2026): Android still asked
+  Google to fill a `keyboardType="email-address"` field marked "no". Only the plain keyboard
+  stopped it, so the field has all four; test a change on a fresh launch, because once the sheet
+  has been dismissed the session stops offering and every variant looks fixed.
+
+- **A screen left in the stack under a flow keeps rendering, and the Engineer Console is
+  under every flow it opens.** Until 22 September 2026 `BleConsoleOutput` rebuilt its whole
+  history, every line a touchable with three texts in a plain ScrollView, on every BLE line.
+  By the thousandth line each line cost the JS thread about 1.3 s: the nRF sent `Wake`,
+  `Error bits` and `Set OpParam` within 0.8 s of a `setop` and the app received them 1.3 s
+  apart, so one `setop` took 6 s and a dev deployment start took 90 s for commands the device
+  answered in under a second. It is a FlatList of memoised rows now, capped at 500 entries,
+  and the console effect finds new lines by identity rather than by count, which had gone
+  silent once the Redux log hit its 1000-entry trim. The same cost was #273, the app a minute
+  behind the device during a motion test: re-measured on 23 September 2026 with the fix in,
+  the app received each frame 0.07 to 0.65 s after the Himax printed it and "Captured" 0.25 s
+  after it was sent, at 1 s and at 0.5 s intervals. Before blaming the device or BLE for a
+  slow flow, measure the gap between consecutive `RAW_RX` lines in logcat: the device's
+  replies are timestamped on the nRF console, the app's arrivals in logcat.
 
 ## File transfer
 
@@ -69,17 +183,17 @@ file is the list of things that look like an app bug and are not, and the revers
   ww-hardware #34 with the proof: the nRF already gates that logging off for uploads, and the
   same 241-byte packets went five times faster that way on the same device. The app's 1.1 KB/s
   countdown model stands until the gate covers downloads.
-- **The transfer window only works on nRF firmware 0.30.47 and later.** The app streams up to
-  12 packets ahead by default, in `runFileTransferPipeline.ts`, which the nRF's 16-slot FIFO,
-  0.30.47 and later, ww-hardware #27, absorbs. On pre-FIFO firmware there is one relay slot:
-  the surplus packets are dropped with a log-only warning, an in-flight-ack race resets the AI
-  state machine to SLEEP, and the transfer hangs to the 15 s silence timeout with **no
-  `ftx err`**, reporting only "no transfer response for 15s". It does not fail fast, and it does
-  not complete via retries, because the windowed path has no per-packet ACK timeout. The window
-  must be gated on the `ver` string; until then a board on old firmware has to be DFU'd to
-  0.30.48 first. Filed as #289. The comment at `runFileTransferPipeline.ts` lines 109 to 111
-  and `File-Transfer-Protocol.md`, which claim it "fails fast with an ftx error" and "completes
-  slowly via ACK-timeout retries", both describe this wrongly.
+- **The transfer window only works on nRF firmware 0.30.47 and later, and the app refuses
+  anything older.** On pre-FIFO firmware (0.23.x on ww-hardware `main`) the surplus packets are
+  dropped with a log-only warning, an in-flight-ack race resets the AI state machine to SLEEP,
+  and the transfer hangs to the 15 s silence timeout with **no `ftx err`** (Charles Palmer,
+  5 September 2026, #289). Since #289 the pipeline reads `ver` before `FILE_START` and refuses
+  below `MIN_BLE_FIRMWARE_FOR_TRANSFER`, so "This camera's BLE firmware is ..., and sending
+  files to it needs ..." is the gate working, not a bug: DFU the nRF and retry. When `ver` goes
+  unanswered it streams anyway, and "The camera acknowledged N of the M packets sent, then went
+  silent" is the likely old-firmware face. Do not reach for `windowSize: 1` as a fix: it suits
+  that firmware and stalls on 0.30.47 and later. The rules are in
+  [File-Transfer-Protocol.md](../../../documentation/resources/File-Transfer-Protocol.md#the-ble-firmware-floor).
 - **Nothing may be sent while an image is streaming in, and a flow must stop when its screen
   goes.** The nRF forwards any command to the Himax at once, restarts its binary packet
   counter, and the reply comes only when the file has finished: a `slots` sent mid-stream drew
@@ -115,6 +229,22 @@ file is the list of things that look like an app bug and are not, and the revers
   keystore's SHA-1 registered against `.expo` in the Google Maps key, or maps break in those
   builds. And `.expo` is not in the website's `assetlinks.json`, so App Links to
   `wildlifewatcher.ai/reset-password` will not open a debug build.
+- **`npm run android:local` ends in an error after a good install.** Expo CLI takes the package
+  name from `app.config.ts`, which has no `.expo` suffix, so once Gradle has installed the debug
+  app it fails with `No development build (com.wildlife.wildlifewatcher)` and takes Metro down
+  with it. The app on the phone is fine. Start Metro on its own
+  (`npx expo start --dev-client --port 8081`), run `adb reverse tcp:8081 tcp:8081`, and open the
+  app with the dev-client link alone:
+  `adb shell am start -a android.intent.action.VIEW -d "wildlifewatcher://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081" com.wildlife.wildlifewatcher.expo`.
+  Starting `MainActivity` first and sending the link a moment later crashed the dev launcher in
+  September 2026. In Git Bash, prefix `adb shell` commands that carry a path or a URL with
+  `MSYS_NO_PATHCONV=1`, or MSYS rewrites them.
+- **A new native library is missing from every binary built before it.** Metro serves the new
+  JS to an old dev client all the same. `@react-native-google-signin/google-signin` looks up its
+  native module as it loads (`TurboModuleRegistry.getEnforcing`), so importing it at the top of
+  a file would crash such a build at launch. `signInWithGoogle` requires it at the tap and treats
+  a failure as "not set up in this build" (#350, 1 October 2026). Do the same for the next
+  native library, until every build in use carries it.
 - **Installing on Windows** is in AGENTS.md: `npm install --ignore-scripts` then
   `npx patch-package`, because `maestro`'s postinstall aborts a plain install, and skipping
   `postinstall` alone leaves `patches/` unapplied, which breaks the native build later.
@@ -150,3 +280,22 @@ file is the list of things that look like an app bug and are not, and the revers
   command runs, so a failure destroys the committed version. This wiped
   `src/types/database.types.ts`, 169 KB down to a 217-byte error blob, and only surfaced two
   steps later as a confusing `schema:generate` crash.
+- **Agent worktrees under `.claude/worktrees` start from `main`, not `dev`.** `main` is the
+  default branch, so an agent given worktree isolation begins at `origin/main`. Check
+  `git log -1` and reset to the intended base before editing. Inside one, `npm test` finds 0
+  tests on Windows, because Jest reads the `\.` of `\.claude` in `<rootDir>` as a glob escape:
+  pass the five `testMatch` globs from `jest.config.js` with `<rootDir>` swapped for `**`, as
+  `npx jest --testMatch "**/src/**/__tests__/**/*.{js,jsx,ts,tsx}" ...`, and check that
+  `--listTests` counts every test file on disk. `--testMatch` takes every argument after it as
+  another glob, so a file path appended after it runs the whole suite; to run one file, make its
+  name the glob. In the main checkout Jest also picks
+  up the worktrees' copies of every test, so add `--modulePathIgnorePatterns=<rootDir>/.claude/`
+  **after** any test paths: the option swallows the paths that follow it and silently turns
+  them into ignore patterns. An isolated agent may not run git against another worktree
+  (`git -C`, `GIT_DIR` and `GIT_WORK_TREE` are refused), so to carry another worktree's
+  uncommitted work over, copy its changed files into your own worktree checked out at the same
+  base commit and take the diff there (30 September 2026).
+- **A worktree's `node_modules` is usually a junction to the main checkout's.** Unlink it on its
+  own (`cmd /c rmdir <worktree>\node_modules`) before `git worktree remove`. A recursive delete,
+  such as PowerShell 5.1's `Remove-Item -Recurse`, can follow the junction and empty the real
+  one.

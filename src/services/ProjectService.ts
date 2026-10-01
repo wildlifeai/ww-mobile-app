@@ -10,7 +10,7 @@
 import { Q } from '@nozbe/watermelondb'
 import database from '../database'
 import Project from '../database/models/Project'
-import { getSupabaseClient } from "./supabase"
+import { getStoredUserId } from "./auth"
 import OutboxService from './OutboxService'
 import SupabaseSyncService from './SupabaseSyncService'
 import type {
@@ -20,9 +20,13 @@ import type {
 	CreateProjectInput,
 } from "../types/project"
 import UserRoleService from './UserRoleService'
+import InvitationService from './InvitationService'
 import UserRole from '../database/models/UserRole'
+import { managedOrganisationIds, projectRoleIds, seesEverything, seesOrganisation } from './roleAccess'
 import { log, logError } from '../utils/logger'
 import { DEFAULT_FLASH_LED, DEFAULT_FLASH_MODE } from '../utils/projectFlash'
+import { DEFAULT_PHOTO_INTERVAL_MS, DEFAULT_PHOTOS_PER_TRIGGER, resolveProjectBurst } from '../utils/projectBurst'
+import { DEFAULT_DETECTION_THRESHOLD_PCT, resolveDetectionThresholdPct } from '../utils/projectDetectionThreshold'
 
 
 class ProjectService {
@@ -49,35 +53,22 @@ class ProjectService {
 				Q.where('is_active', true)
 			).fetch()
 
-			// 2. Build set of accessible project IDs
-			const projectIds = new Set<string>()
-
-			// Check for global admin
-			const isGlobalAdmin = userRoles.some(r => r.scopeType === 'global')
-			if (isGlobalAdmin) {
-				// Return all projects
+			// 2. Build set of accessible project IDs, by the backend's role
+			// rules (services/roleAccess.ts, #351)
+			if (seesEverything(userRoles)) {
 				const allProjects = await this.projectsCollection.query().fetch()
 				return await Promise.all(allProjects.map(p => this.enrichProjectWithDetails(p)))
 			}
 
-			// Process other roles
-			for (const role of userRoles) {
-				if (role.scopeType === 'project' && role.scopeId) {
-					projectIds.add(role.scopeId)
-				} else if (role.scopeType === 'organisation' && role.scopeId) {
-					// Only fetch all projects if user is an Admin in this organisation
-					// 'project_admin' at organisation scope = Organisation Admin
-					// 'ww_admin' = System Admin (already handled by global check, but safely included here)
-					if (role.role === 'project_admin' || role.role === 'ww_admin') {
-						const orgProjects = await this.projectsCollection.query(
-							Q.where('organisation_id', role.scopeId),
-							Q.where('is_active', true)
-						).fetch()
-						orgProjects.forEach(p => projectIds.add(p.id))
-					}
-					// If they are just 'organisation_member' (or similar), they get NO projects from this role.
-					// They must rely on specific 'project' scoped roles.
-				}
+			const projectIds = projectRoleIds(userRoles)
+			// An organisation manager sees every project of the organisation,
+			// with or without a role on it
+			for (const organisationId of managedOrganisationIds(userRoles)) {
+				const orgProjects = await this.projectsCollection.query(
+					Q.where('organisation_id', organisationId),
+					Q.where('is_active', true)
+				).fetch()
+				orgProjects.forEach(p => projectIds.add(p.id))
 			}
 
 			// 3. Optimistic UI: Also fetch projects created by the user locally
@@ -123,44 +114,20 @@ class ProjectService {
 				Q.where('is_active', true)
 			).fetch()
 
-			// 2. Check for Admin privileges
-
-
-			// Checking UserRole definition: role is 'ww_admin' | 'project_admin' | 'project_member'
-			// Typically admin is handled via specific checks.
-			// Let's assume 'ww_admin' is global.
-			// 'project_admin' at organisation scope might be the "Org Admin".
-			// Let's verify what 'organisation_member' maps to.
-			// The log says: "role": "organisation_member" in the fetch output, but that might be from a different view.
-			// In UserRole.ts, roles are 'ww_admin' | 'project_admin' | 'project_member'.
-			// If scopeType is 'organisation', 'project_admin' likely means Organisation Admin.
-
-			// Let's be safe: if they have 'project_admin' (which seems to be the highest non-global role) at ORG scope, they see all.
-			// If they are 'ww_admin', they see all.
-
-			const hasFullAccess = userRoles.some(r =>
-				r.scopeType === 'global' ||
-				(r.scopeType === 'organisation' && r.scopeId === organisationId && r.role === 'project_admin') ||
-				(r.scopeType === 'organisation' && r.scopeId === organisationId && r.role === 'ww_admin')
-			)
+			// 2. Every project of the organisation for its manager or a ww_admin,
+			// by the backend's role rules (services/roleAccess.ts, #351)
+			const hasFullAccess = seesOrganisation(userRoles, organisationId)
 
 			if (hasFullAccess) {
-				log("✅ User has full access (Admin), fetching all projects in org")
+				log("✅ User sees the whole organisation, fetching all its projects")
 				const allProjects = await this.projectsCollection.query(
 					Q.where('organisation_id', organisationId)
 				).fetch()
 				return await Promise.all(allProjects.map(p => this.enrichProjectWithDetails(p)))
 			}
 
-			// 3. Filter specific projects
-			// Find all roles with scope_type='project'
-			const accessibleProjectIds = new Set<string>()
-
-			userRoles.forEach(r => {
-				if (r.scopeType === 'project' && r.scopeId) {
-					accessibleProjectIds.add(r.scopeId)
-				}
-			})
+			// 3. Filter specific projects: the project-scope roles
+			const accessibleProjectIds = projectRoleIds(userRoles)
 
 			// 4. Also always include projects created by the user in this organisation (Optimistic UI)
 			// This covers the case where the user just created a project but the 'admin' role hasn't synced back from server yet.
@@ -280,6 +247,13 @@ class ProjectService {
 					project.flashLed = input.flash_led ?? DEFAULT_FLASH_LED
 					project.flashWindowStartMinutesUtc = input.flash_window_start_minutes_utc ?? null
 					project.flashWindowMinutes = input.flash_window_minutes ?? null
+					// The table defaults too: the app has no control for these,
+					// the website owns them (#317). Sent on this insert only;
+					// updates leave them out.
+					project.photosPerTrigger = DEFAULT_PHOTOS_PER_TRIGGER
+					project.photoIntervalMilliseconds = DEFAULT_PHOTO_INTERVAL_MS
+					// The detection threshold likewise (#342): 57%, op16 18
+					project.detectionThresholdPct = DEFAULT_DETECTION_THRESHOLD_PCT
 				})
 
 
@@ -297,8 +271,25 @@ class ProjectService {
 
 					log("✅ Outbox record prepared, executing batch...")
 
+					// The creator is this project's admin from the start. On the server
+					// the on_project_created trigger grants it, but offline nothing did,
+					// so every role check treated the creator as a stranger to their own
+					// project until a sync. This row is local only and never queued:
+					// the server makes its own, and syncUserRoles later updates this
+					// row in place, since it matches roles by user and scope, not id.
+					const creatorRole = database.collections.get<UserRole>('user_roles').prepareCreate(role => {
+						role.userId = currentUserId
+						role.role = 'project_admin'
+						role.scopeType = 'project'
+						role.scopeId = newProject!.id
+						role.grantedBy = currentUserId
+						role.grantedAt = new Date()
+						role.isActive = true
+						role.modifiedBy = currentUserId
+					})
+
 					// 3. Execute batch
-					await database.batch(newProject, outboxOp)
+					await database.batch(newProject, outboxOp, creatorRole)
 
 					log("✅ Batch executed successfully - project and outbox record created")
 				} catch (outboxError) {
@@ -337,6 +328,7 @@ class ProjectService {
 
 			const project = await this.projectsCollection.find(projectId)
 			const currentUserId = await this.getCurrentUserId()
+			const before = this.mapModelToType(project)
 
 			await database.write(async () => {
 				// 1. Prepare project update
@@ -362,12 +354,25 @@ class ProjectService {
 					if (currentUserId) p.modifiedBy = currentUserId
 				})
 
-				// 2. Prepare outbox record
+				// 2. Prepare outbox record, carrying only what this edit changed.
+				// push_changes keeps any column the payload leaves out, so a stale
+				// copy on the phone no longer overwrites a newer value set on the
+				// website: on 29 September a Sinbad edit sent the whole record and
+				// put back model_id null and GPS off over the website's change (#330).
+				const after = this.mapModelToType(project)
+				const changed = Object.fromEntries(
+					Object.entries(after).filter(([key, value]) => value !== (before as Record<string, unknown>)[key])
+				)
+				// The burst columns (#317) and the detection threshold (#342) never
+				// go out on an update: the website is their only editor
+				delete changed.photos_per_trigger
+				delete changed.photo_interval_milliseconds
+				delete changed.detection_threshold_pct
 				const outboxOp = OutboxService.recordOperation({
 					operation: 'UPDATE',
 					tableName: 'projects',
 					recordId: project.id,
-					payload: this.mapModelToType(project),
+					payload: { ...changed, id: project.id, modified_by: after.modified_by, updated_at: after.updated_at },
 					userId: currentUserId || undefined,
 				})
 
@@ -467,8 +472,11 @@ class ProjectService {
 	}
 
 	/**
-	 * Add member to project
-	 * Delegates to UserRoleService
+	 * Add member to project, by inviting their email address
+	 * Goes through the send_project_invitation RPC, which never looks the
+	 * invitee up (#308). Looking them up in public.users told the caller
+	 * whether an account existed, and could not invite anyone who had not
+	 * signed up yet. The invitation waits until that email signs in.
 	 */
 	async addProjectMember(
 		projectId: string,
@@ -479,28 +487,7 @@ class ProjectService {
 			const currentUserId = await this.getCurrentUserId()
 			if (!currentUserId) throw new Error("User not authenticated")
 
-			// 1. Find user by email
-			const { data: user, error: userError } = await getSupabaseClient()
-				.from('users')
-				.select('id')
-				.eq('email', email)
-				.single()
-
-			if (userError || !user) {
-				throw new Error(`User with email ${email} not found`)
-			}
-
-			// 2. Add member via UserRoleService
-			const result = await UserRoleService.addProjectMember({
-				project_id: projectId,
-				user_id: user.id,
-				role,
-				granted_by: currentUserId
-			})
-
-			if (!result.success) {
-				throw new Error(result.error || "Failed to add project member")
-			}
+			await InvitationService.sendInvitation(projectId, email, role)
 		} catch (error) {
 			logError("Failed to add project member:", error)
 			throw error
@@ -534,10 +521,11 @@ class ProjectService {
 	// --- Private Helpers ---
 
 	private async getCurrentUserId(): Promise<string | null> {
-		// Use getSession() instead of getUser() - works offline by reading from AsyncStorage
-		// getUser() tries to verify with server, which fails when offline
-		const { data: { session } } = await getSupabaseClient().auth.getSession()
-		return session?.user?.id || null
+		// Straight from the stored session. getSession() refreshes an expired
+		// token first, which offline costs about 26 s of retries and then answers
+		// null, so every local project read waited and lost the user (#310).
+		// getUser() is worse: it always asks the server.
+		return getStoredUserId()
 	}
 
 	private async enrichProjectWithDetails(model: Project): Promise<ProjectWithDetails> {
@@ -607,6 +595,8 @@ class ProjectService {
 				flash_led: model.flashLed || DEFAULT_FLASH_LED,
 				flash_window_start_minutes_utc: model.flashWindowStartMinutesUtc ?? null,
 				flash_window_minutes: model.flashWindowMinutes ?? null,
+				...burstColumns(model),
+				detection_threshold_pct: detectionThresholdColumn(model),
 				// Computed fields
 				member_count: memberCount,
 				deployment_count: deploymentCount,
@@ -650,8 +640,27 @@ class ProjectService {
 			flash_led: model.flashLed || DEFAULT_FLASH_LED,
 			flash_window_start_minutes_utc: model.flashWindowStartMinutesUtc ?? null,
 			flash_window_minutes: model.flashWindowMinutes ?? null,
+			...burstColumns(model),
+			detection_threshold_pct: detectionThresholdColumn(model),
 		}
 	}
 }
+
+/**
+ * The two burst columns off a local record, always inside the backend's CHECK
+ * ranges: this is also the create push payload, and a value outside them (0 is
+ * what WatermelonDB keeps in a number column nobody wrote) would fail the push.
+ */
+const burstColumns = (model: Project): { photos_per_trigger: number, photo_interval_milliseconds: number } => {
+	const { photosPerTrigger, intervalMs } = resolveProjectBurst({
+		photos_per_trigger: model.photosPerTrigger,
+		photo_interval_milliseconds: model.photoIntervalMilliseconds,
+	})
+	return { photos_per_trigger: photosPerTrigger, photo_interval_milliseconds: intervalMs }
+}
+
+/** The detection threshold off a local record, inside the CHECK range for the same reason (#342). */
+const detectionThresholdColumn = (model: Project): number =>
+	resolveDetectionThresholdPct({ detection_threshold_pct: model.detectionThresholdPct })
 
 export default new ProjectService()

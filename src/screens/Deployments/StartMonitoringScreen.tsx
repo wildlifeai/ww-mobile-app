@@ -23,8 +23,11 @@ import { DeploymentMonitorView } from './components/DeploymentMonitorView'
 
 import { useStartDeployment } from './hooks/useStartDeployment'
 import { useFirmwareStatus } from '../Devices/hooks/useFirmwareStatus'
+import { useModelOnPhone } from '../../hooks/useOfflineFiles'
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
 import { resolveProjectFlash, shortFlashLabel } from '../../utils/projectFlash'
+import { SD_CARD_POWER_CYCLE_HINT } from '../../utils/deviceSelfTest'
+import { shortBurstLabel } from '../../utils/projectBurst'
 
 
 type StartMonitoringDetailsRouteProp = RouteProp<RootStackParamList, 'StartMonitoringDetailsStep'>;
@@ -54,7 +57,8 @@ export const StartMonitoringDetailsStep = () => {
         // Advanced Settings
         batteryLevel, sdCardStatus,
         handleBatteryCheck, handleSdCardCheck,
-        recordJpegOnly, setRecordJpegOnly,
+        isCheckingBattery, isCheckingSdCard,
+        // recordJpegOnly, setRecordJpegOnly, retired 21 September 2026 (see useStartDeployment)
         isMonitoring, handleMonitorDisconnect, handleStopMonitoring, isStoppingMonitoring,
         deploymentStartTime,
         // DFU control
@@ -141,10 +145,20 @@ export const StartMonitoringDetailsStep = () => {
         const model = aiModels.find(m => m.id === project.model_id)
         return model ? `${model.name} v${model.version}` : null
     }, [project?.model_id, aiModels])
+    // Offline, a model the phone does not have stops the start unless the
+    // camera already carries it (#333), so say which it is before the press
+    const modelOnPhone = useModelOnPhone(project?.model_id)
 
     const hasCameraError = useMemo(() => {
         const warnings = initErrors.deviceHealth || []
         return warnings.some(w => w.includes('Camera Error') || w.includes('Camera system not enabled') || w.includes('Neural Network Error'))
+    }, [initErrors.deviceHealth])
+
+    // A missing card blocks on its own since #303, and the blocker below says
+    // so instead of blaming the camera.
+    const hasSdCardError = useMemo(() => {
+        const warnings = initErrors.deviceHealth || []
+        return warnings.some(w => /no sd card/i.test(w))
     }, [initErrors.deviceHealth])
 
     const renderProjectSettingsRight = useCallback((props: any) => (
@@ -212,19 +226,21 @@ export const StartMonitoringDetailsStep = () => {
                     />
                 )}
 
-                {/* AI Processor Failure — Critical Blocker */}
+                {/* AI Processor Failure, or no SD card: the critical blocker */}
                 {aiProcessorFailed && (
                     <View style={{ backgroundColor: '#FFEBEE', marginBottom: 16, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#EF5350' }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                             <WWIcon source="alert-octagon" size={24} color="#C62828" />
                             <Text variant="titleSmall" style={{ color: '#C62828', marginLeft: 8, flex: 1, fontWeight: 'bold' }}>
-                                {hasCameraError ? 'Critical AI Processor Error' : 'AI Processor Not Responding'}
+                                {hasSdCardError ? 'No SD Card' : hasCameraError ? 'Critical AI Processor Error' : 'AI Processor Not Responding'}
                             </Text>
                         </View>
                         <Text variant="bodySmall" style={{ color: '#C62828', marginBottom: 8 }}>
-                            {hasCameraError 
-                                ? 'The AI processor has reported a critical camera or hardware error. Starting monitoring is blocked. Please check the camera module connections or hardware configuration.'
-                                : 'The AI processor (camera module) did not wake up after multiple attempts. The device cannot start monitoring without it. Please go back and try reconnecting to the device.'}
+                            {hasSdCardError
+                                ? `The device reports no SD card. Every image and setting a deployment writes goes to the card, so monitoring cannot start without one. ${SD_CARD_POWER_CYCLE_HINT}`
+                                : hasCameraError
+                                    ? 'The AI processor has reported a critical camera or hardware error. Starting monitoring is blocked. Please check the camera module connections or hardware configuration.'
+                                    : 'The AI processor (camera module) did not wake up after multiple attempts. The device cannot start monitoring without it. Please go back and try reconnecting to the device.'}
                         </Text>
                         <Button
                             mode="contained"
@@ -256,7 +272,7 @@ export const StartMonitoringDetailsStep = () => {
                             textColor="#FFFFFF"
                             onPress={() => {
                                 isDfuInProgress.current = true
-                                navigation.navigate('FirmwareStatusScreen', { deviceId: bleDeviceId!, restrictToLatest: true })
+                                navigation.navigate('FirmwareStatusScreen', { deviceId: bleDeviceId! })
                             }}
                         >
                             <Text style={{ color: '#FFFFFF' }}>Update Firmware</Text>
@@ -329,7 +345,23 @@ export const StartMonitoringDetailsStep = () => {
                                 <Text variant="labelSmall" style={styles.featureLabel}>{shortFlashLabel(project)}</Text>
                             </View>
                             )}
+                            {/* Pictures per trigger, written as op5 (#317) */}
+                            {project && (
+                            <View style={styles.featureIcon}>
+                                <WWIcon source="camera-burst" size={22} color={theme.colors.onSurfaceVariant} />
+                                <Text variant="labelSmall" style={styles.featureLabel}>{shortBurstLabel(project)}</Text>
+                            </View>
+                            )}
                         </View>
+
+                        {modelOnPhone && (
+                            <Text
+                                variant="labelSmall"
+                                style={[styles.modelOnPhone, { color: modelOnPhone === 'ready' ? theme.colors.onSurfaceVariant : theme.colors.error }]}
+                            >
+                                {modelOnPhone === 'ready' ? 'Model ready on this phone' : 'Model not downloaded: connect to download'}
+                            </Text>
+                        )}
 
                     </Card.Content>
                 </Card>
@@ -371,8 +403,10 @@ export const StartMonitoringDetailsStep = () => {
                     sdCardStatus={sdCardStatus}
                     handleBatteryCheck={handleBatteryCheck}
                     handleSdCardCheck={handleSdCardCheck}
-                    recordJpegOnly={recordJpegOnly}
-                    setRecordJpegOnly={setRecordJpegOnly}
+                    isCheckingBattery={isCheckingBattery}
+                    isCheckingSdCard={isCheckingSdCard}
+                    // recordJpegOnly={recordJpegOnly}
+                    // setRecordJpegOnly={setRecordJpegOnly}
                     isInitializing={isInitializing}
                     bleDeviceConnected={!!bleDevice?.connected}
                     theme={theme}
@@ -383,7 +417,7 @@ export const StartMonitoringDetailsStep = () => {
                         if (id) {
                             // Suppress the disconnect alert during BLE DFU
                             isDfuInProgress.current = true
-                            navigation.navigate('FirmwareUpdateScreen', { deviceId: id, target, restrictToLatest: true })
+                            navigation.navigate('FirmwareUpdateScreen', { deviceId: id, target })
                         }
                     }}
                 />
@@ -454,6 +488,10 @@ const styles = StyleSheet.create({
     },
     featureLabel: {
         opacity: 0.7,
+        textAlign: 'center',
+    },
+    modelOnPhone: {
+        marginTop: 8,
         textAlign: 'center',
     },
     projectSelectContainer: {

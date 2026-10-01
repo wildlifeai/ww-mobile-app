@@ -103,7 +103,9 @@ On this screen:
 
 ### User Form
 
-The screen is organized into cards:
+The screen is organized into cards. Each card explains itself through its help button, not
+through a subtitle under the title: the standing descriptions were removed on 22 September
+2026 so the cards stay short on a phone screen. Put new explanation in the help text.
 
 **1. Associated Project** (always visible)
 
@@ -111,6 +113,7 @@ The screen is organized into cards:
 |---------|-------|
 | Project Selector (`WWSelect`) | Dropdown to pick or switch the attached project. Dynamically recalculates capture method, sensitivity, and feature icons. |
 | Feature Icons Row | Visual indicators: 🔄 Activity Detection, ⏱ Timelapse, 📡 LoRaWAN, 🛰 GPS in images, 🧠 AI Model |
+| Model readiness line | Only when the project has a model: "Model ready on this phone", or "Model not downloaded: connect to download". Offline, a start with a model the phone lacks stops unless the camera already carries it (#333). Refreshes when the pre-download lands the files. |
 
 **2. LoRaWAN Section** (only if `project.lorawan_required`)
 
@@ -124,25 +127,34 @@ The screen is organized into cards:
 |---------|-------|
 | Notes (`TextInput`, multiline) | Free-text field for deployment conditions, observations, bait usage, etc. |
 
-**4. Advanced Settings** (collapsible accordion)
+**4. Take a photo of the Watcher** (always visible)
 
 | Element | Notes |
 |---------|-------|
+| Photo picker (`DeploymentPhotosSection`) | Camera or gallery. The shots are stored on the deployment record so anyone in the project can find the camera again. The help button carries the guidance on which photos to take. |
+
+**5. Advanced Settings** (collapsible accordion)
+
+The cards sit in the order below. Camera View comes first because the operator aims the
+camera before naming the site.
+
+| Element | Notes |
+|---------|-------|
+| Camera View Image | Live preview via `CameraViewSection` |
 | Site Name | Dropdown of nearby past deployment locations (auto-selected closest), or free-text input for new sites. Used as both `name` and `locationName` for the deployment record. |
 | Camera Height (cm) | Numeric input for height from ground |
-| Camera View Image | Collapsible live preview via `CameraViewSection` |
 | Motion Detection Test | Collapsible 16×16 grid via `DeploymentMotionDetectionSection` (Activity Detection projects only) |
 | Battery Level | Manual check button → reads `battery` via BLE |
 | SD Card Status | Manual check button → reads `aiinfo` via BLE |
 | Firmware Status | Shows BLE + Himax firmware versions with update buttons → `FirmwareUpdateScreen` |
 
-**5. Firmware Warning Banner** (conditional, shown when any firmware is outdated)
+**6. Firmware Warning Banner** (conditional, shown when any firmware is outdated)
 
 | Element | Notes |
 |---------|-------|
-| Warning banner | Orange banner with "Update Firmware" button navigating to `FirmwareStatusScreen` with `restrictToLatest: true` (which hides developer version selection dropdowns to keep the operator flow clean and simple). Non-blocking, user can proceed without updating. |
+| Warning banner | Orange banner with "Update Firmware" button navigating to `FirmwareStatusScreen`: one line per chip, and Update opens the operator's view of the update, from which build to which, one button, one bar and one status line while it runs with the update's last steps under them, one result line (#344). The build picker and the SD-card source are the Engineer Console's view. Non-blocking, user can proceed without updating. |
 
-Project settings (capture method, sensitivity, timelapse interval, GPS image tagging) are inherited from the selected project and displayed as feature icons. The user can switch projects at any time via the dropdown.
+Project settings (capture method, sensitivity, timelapse interval, GPS image tagging, capture flash, pictures per trigger) are inherited from the selected project and displayed as feature icons. The user can switch projects at any time via the dropdown.
 
 ### Start Deployment Sequence
 
@@ -150,13 +162,13 @@ When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeplo
 
 | Step | Action | Detail |
 |------|--------|--------|
-| 1 | AI Model Sync | Checks SD card (`dir`) for existing model files before downloading. Only transfers missing files via BLE. Always issues `erasemodel` → `loadmodel` if OPs mismatch. Retries reference data sync if model not found locally. Runs **before** time sync to stay within the firmware's 1000ms IMAGE task inactivity window. |
+| 1 | AI Model Sync | Checks SD card (`dir`) for existing model files before downloading. Only transfers missing files via BLE. Always issues `erasemodel` → `loadmodel` if OPs mismatch. Retries reference data sync if model not found locally, and **stops the deployment** if the project's model is still missing or has no firmware IDs (#290), or if it is on neither the camera (op14/op15) nor the card and its files cannot be had from the phone's cache or a download (#333), or if the transfer is refused because the camera's BLE firmware is below the [transfer floor](../resources/File-Transfer-Protocol.md#the-ble-firmware-floor) (#289). All three stops come before the deployment is created or anything is written to the device. A failed transfer or `loadmodel` once the files are in hand stays a warning. The files are normally already on the phone: the [offline pre-download](./03-DATA-AND-SYNC.md#files-for-the-field) fetches them after each sync. Runs **before** time sync to stay within the firmware's 1000ms IMAGE task inactivity window. |
 | 2 | Time Sync | `setutc`, see [BLE Command Reference](./04-ENGINEER-CONSOLE.md#ble-command-reference). Handled by BLE module (not AI processor). |
 | 3 | Snapshot Data | Reads `battery`, `network` (if LoRaWAN required), `ver` for deployment record metadata |
 | 4 | Create DB Record | `DeploymentService.createDeployment()` → `OutboxService` → `SupabaseSyncService` |
 | 5 | Reset to Defaults | `pipeline.resetOps()` calls `executeResetToDefaults()`, shared workflow that intelligently resets parameters, skips tracking counters, and clears AI models. |
-| 6 | Configure Device | `pipeline.configureDevice()`, applies [capture method OPs](./04-ENGINEER-CONSOLE.md#capture-method-op-mapping), deployment ID, GPS, and the project's [capture flash](#c-configure-capture-flash). It configures against the op table **`resetOps` returned**, not the pre-reset snapshot |
-| 6b | Capture Format | `TEST_MODE_BITS` (OP 18) and `NUM_PICTURES` (OP 5). JPEG only by default; the advanced toggle adds the raw BMP, which needs 2 pics/trigger to yield one of each. Non-fatal |
+| 6 | Configure Device | `pipeline.configureDevice()`, applies [capture method OPs](./04-ENGINEER-CONSOLE.md#capture-method-op-mapping), deployment ID, GPS, the project's capture flash, its pictures per trigger and its detection threshold (C, D and E under [Device Configuration](#device-configuration-usedeploymentconfiguration)). It configures against the op table **`resetOps` returned**, not the pre-reset snapshot |
+| 6b | Raw BMP (retired) | The raw BMP option that sat here (OP 18 bit 1) was retired on 21 September 2026 and its code is commented out; OP 18 is not preserved, so the reset leaves it 0. Restoring it means passing `recordRawBmp` to step 6, which doubles OP 5 |
 | 6c | Light Verdict and camera | Reads the op table and `AI slots`, and **only measures when something will consume the verdict** (OP 26 or OP 34 = 1). When it does, `pipeline.measureLight()` sends `AI light`, about a second and no photo. Reports DARK/BRIGHT, **names the camera this deployment keeps**, and warns when the project's flash does not suit it (#321). Non-fatal |
 | 6d | Model Verification | Reads OP 14/15 and says loudly whether the NN is armed, guarding silent modelless starts. Reuses the table 6c already read back rather than asking again: everything between the two is a read, so the second `getop -1` returned identical bytes and cost about 300 ms of every deployment, measured on the bench on 21 September 2026. Falls back to its own read when 6c got nothing. Non-fatal |
 | 7 | Live Monitor | Transitions to `DeploymentMonitorView` (remains connected) |
@@ -174,7 +186,7 @@ When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeplo
 > Every line the progress dialog shows also goes to the logger, prefixed `[DeploymentLog]`. The dialog auto-transitions to the live monitor when the deployment finishes, so this is the only copy that survives a field report or a bench capture.
 
 > [!NOTE]
-> Live monitoring after step 7 polls `AI getop 19` once a minute for the stored-image count; the poll is owned by `DeploymentMonitorView`'s single `useDeploymentMonitor` instance, which also feeds the activity log. Each poll wakes the Himax.
+> Live monitoring after step 7 polls `AI getop 19` once a minute for the stored-image count; the poll is owned by `DeploymentMonitorView`'s single `useDeploymentMonitor` instance, which also feeds the activity log. Each poll wakes the Himax. It makes one attempt, and it stops while the deployment is ending, because it shares the queue with the end sequence (#293).
 
 ### OP Factory Reset (`pipeline.resetOps` / `executeResetToDefaults`)
 
@@ -193,16 +205,20 @@ The shared steps:
 
 ### Device Configuration (`useDeploymentConfiguration`)
 
-`configure()` performs a single `AI getop -1` bulk fetch at the start, then passes the cached result to both sub-steps below. Only parameters that differ from the target value are actually written.
+`configure()` performs a single `AI getop -1` bulk fetch at the start, then passes the cached result to each sub-step below. Only parameters that differ from the target value are actually written.
 
 **A. Set Deployment ID:**
 ```
 AI setdid <deployment-uuid>
 AI setop 20 0    (reset IMAGES_FILE_INDEX counter)
 AI setop 19 0    (reset IMAGES_COUNT counter)
-setgps <lat>,<lng>,<alt>    (if recordGpsInImages is enabled)
-setgps 0,0,0               (if recordGpsInImages is disabled / privacy mode)
+AI setgps 45°30'0.00"_S_167°45'0.00"_E_320.50_Above   (if recordGpsInImages is enabled)
+AI setgps 0°0'0.00"_N_0°0'0.00"_E_0.00_Above           (if recordGpsInImages is disabled / privacy mode)
 ```
+
+`formatGPSString` owns this format everywhere, the reset's zeroing included. The firmware turns
+underscores into spaces and needs six fields; the decimal `lat,lng,alt` sent here before #315 was
+one token it discarded, while still answering `Device GPS set`.
 
 > [!IMPORTANT]
 > The legacy OP-based deployment ID approach (`setop 20..27` with UUID chunks) has been removed, firmware no longer supports those parameters. OP 19 and OP 20 are now image directory counters.
@@ -230,6 +246,59 @@ flash off and no night IR. The reset before this step writes op13 = 0 and
 op34 = 0, which is why step 6 must diff against the post-reset table: against
 the older snapshot, a device that already held the project's flash before the
 reset would have had both writes skipped and stayed dark.
+
+**D. Configure Pictures per Trigger:** the project's two burst columns, for motion
+and timelapse alike, and the OP 8 they need (#317):
+
+```
+AI setop 5 <1 to 10>       (NUM_PICTURES, from projects.photos_per_trigger; twice that with the raw BMP)
+AI setop 6 <200 to 2000>   (PICTURE_INTERVAL in ms, from projects.photo_interval_milliseconds)
+AI setop 8 <OP 6 + 1000>   (INTERVAL_BEFORE_DPD in ms, when OP 5 is above 1; otherwise it stays 1000)
+```
+
+The mapping lives in [`src/utils/projectBurst.ts`](../../src/utils/projectBurst.ts),
+and the deployment log says `Pictures per trigger: 3, 1000 ms apart (awake 2000 ms)`,
+or `Pictures per trigger: 1 (awake 1000 ms)`, where the awake figure is the OP 8
+written. The project counts the JPEGs the user sees. With the raw BMP recorded the
+firmware alternates JPEG and BMP through the same count, so OP 5 is doubled; Start
+Monitoring records JPEG only since 21 September 2026. OP 5 is in
+`RESET_PRESERVED_OPS`, so the reset leaves the card's old count, and OP 6 is reset
+to 500, which is why both are written here.
+
+OP 8 is raised because the firmware sleeps while it waits for the next picture once
+OP 8 has run out, and the rest of the burst is lost
+([Seeed#208](https://github.com/wildlifeai/Seeed_Grove_Vision_AI_Module_V2/issues/208),
+`handleEventForWaitForTimer` in `image_task.c`; its `config_file.md` says OP 6 must
+be less than OP 8). The capture method (B) writes 1000 first, and this step comes
+after it so its value is the one that stays; each write is recorded in the table the
+later steps compare against. Nothing after it in the deployment writes OP 8. The
+cost is battery: the camera stays up a second past the interval after every
+trigger. Before writing, `configure()` calls `keepAwake.forget`, so a hold still
+open on the screen (the motion test) or a restore owed by a dropped link cannot
+put 1000 back later. The Dev Deployment Test screen writes its own OP 5 and leaves
+OP 6 at the reset's 500 and OP 8 at 1000.
+
+**E. Configure Detection Threshold:** the project's `detection_threshold_pct`, as the
+model's threshold (#342):
+
+```
+AI setop 16 <0 to 126>   (MODEL_THRESHOLD, ceil(projects.detection_threshold_pct * 2.56) - 128)
+```
+
+The mapping lives in
+[`src/utils/projectDetectionThreshold.ts`](../../src/utils/projectDetectionThreshold.ts),
+and the deployment log says `Detection threshold: 57% (op16 18)`. The Himax compares
+the target class's int8 softmax output, scale 1/256 and zero point -128, with OP 16,
+so OP 16 = q means probability (q + 128) / 256, and the formula gives the smallest q
+that reaches the percent: 50% is 0, the lowest the camera can be set, and 99% is 126.
+The column's 50 to 99 CHECK is mirrored, and a value outside it deploys as 57.
+
+The default, 57%, is OP 16 = 18, the factory value the reset (step 5) has just
+written, so a project on it writes nothing here and deploys exactly as before #342.
+Until then nothing else wrote OP 16, so a threshold set on the bench was lost at the
+next deployment. It is written whatever the model; with none on the device the
+firmware never reads it. The Dev Deployment Test screen writes the selected project's
+threshold the same way.
 
 ---
 
@@ -278,6 +347,9 @@ A single [bulk fetch](./04-ENGINEER-CONSOLE.md#op-bulk-fetch-optimization-ai-get
 > [!IMPORTANT]
 > **Optimised quiesce** (`optimized=true`) only disables the camera. Skips re-enabling, interval clearing, and stabilisation delays.
 
+> [!NOTE]
+> **The camera's steps are best effort and capped** (#293), through `createEndDeploymentSession` in `src/ble/session/endDeploymentSession.ts`. The bulk fetch is a probe: one attempt, no retry. The first step the Himax does not answer gives up on the camera, and every later `AI` step is skipped without being sent. All of them together get 20 s. `dis` is exempt, because the nRF answers it itself. When the camera is given up on, the dialog says "Camera not answering" at once and ends on "Ended. The camera did not answer, so it keeps taking pictures", held for 6 s instead of 1.5 s: the record is ended, but the camera keeps this deployment's settings and goes on capturing. Before this, a camera asleep in its motion loop cost each step its full timeout and retries, about 40 s under a "Disconnecting" spinner (bench, 5 September 2026).
+
 ### Force End (Disconnected Device)
 
 If the device is not connected, the user can "Force End (Database Only)":
@@ -305,8 +377,12 @@ If the device is not connected, the user can "Force End (Database Only)":
 | "GPS Accuracy Too Low" | Weak signal (dense canopy) | Move to clearing for fix, then return |
 | "Deployment Initialisation Failed" | Device handshake timeout | Re-connect and keep phone close |
 | "Failed to Set Deployment ID" | BLE write error or AI NACK | Keep phone within 1m; app falls back to GPS-only |
-| "No SD Card Detected" | Stale selftest bits (false positive) | App now masks stale AI bits (8-15) before AI processor is woken. If warning persists after reconnection, the SD card is genuinely missing. |
-| "AI model update failed" | Reference data not synced or cloud download failed | Pipeline now retries sync automatically. If still failing, check internet connectivity; model file may need manual upload to Supabase storage. |
+| "No SD Card Detected" | Stale selftest bits (false positive) | App now masks stale AI bits (8-15) before AI processor is woken. If warning persists after reconnection, the SD card is genuinely missing, or was put in while the camera was on (next row). |
+| "No SD Card" stays after the card is put back | A card inserted into a powered camera is never mounted: the warm boot fails FatFS `disk_initialize` with `FR_NOT_READY`, and bit 11 stays set on every wake | Power cycle the camera (unplug it or remove the battery), then reconnect. Checking again cannot clear it. Every message that reports bit 11 says so since #325. |
+| "AI model update FAILED" | The files were on the phone but the transfer to the card or the `loadmodel` failed. The deployment carries on and records without classifying | Reconnect with the phone close to the camera and run the deployment again. |
+| "This project's AI model ... is not on this phone" | The model did not come down with the reference data: phone offline, or the model is not `validated` or `deployed` | Get the phone online and start again, which syncs first. If it persists, check the model's status on the website. |
+| "This camera's BLE firmware is ..., and sending files to it needs ... or later" | The model has to be sent to the card and the camera's BLE firmware predates the relay FIFO the transfer needs ([the floor](../resources/File-Transfer-Protocol.md#the-ble-firmware-floor)) | Update the BLE firmware, then start again. Nothing was written to the camera. |
+| "This project's AI model "..." could not be downloaded" | The model is not on the camera or its card, and the phone could not download its files. Offline, it was assigned after the phone's last sync or the pre-download had not finished; online, the download itself failed | Check the connection, wait for the sync (the Start Monitoring screen then says "Model ready on this phone"), and start again. Nothing was written to the camera. |
 
 ### End Deployment
 
@@ -315,6 +391,7 @@ If the device is not connected, the user can "Force End (Database Only)":
 | "No Active Deployment" | Device not deployed or already ended | Verify correct device; check deployment list |
 | "Failed to Clear Deployment ID" | BLE write failure after 3 retries | Use "Force End"; manually reset via [Engineer Console](./04-ENGINEER-CONSOLE.md) |
 | "Connection Lost" before end | Device out of range or battery dead | Use "Force End (Database Only)" |
+| "Camera not answering" | The Himax did not answer the probe, usually asleep in its motion loop; the record is ended but the camera keeps capturing | Wake the camera with its button, reconnect, and clear it from the [Engineer Console](./04-ENGINEER-CONSOLE.md) |
 
 ---
 

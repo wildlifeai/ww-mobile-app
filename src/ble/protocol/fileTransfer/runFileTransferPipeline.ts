@@ -13,6 +13,8 @@
  *   - User cancel via AbortSignal
  *   - Silence timeout is transfer-scoped (ftx lines only)
  *   - FILE_START uses 10s timeout for cold-start overhead
+ *   - A windowed transfer checks the BLE firmware floor before FILE_START
+ *     (bleFirmwareFloor.ts), for one `ver` at most
  *   - All outcomes produce FileTransferLog
  */
 
@@ -30,6 +32,12 @@ import { isValid83Filename } from './filenameValidator'
 import { buildFileStartPacket, buildFileDataPacket, buildFileEndPacket } from './fileTransferPackets'
 import { matchAck, logIgnoredAck, ExpectedAck } from './ackMatcher'
 import {
+  MIN_BLE_FIRMWARE_FOR_TRANSFER,
+  checkBleFirmwareForTransfer,
+  bleFirmwareTooOldMessage,
+  silenceOnUnknownFirmwareMessage,
+} from './bleFirmwareFloor'
+import {
   FileTransferOptions,
   FileTransferResult,
   FileTransferProgress,
@@ -41,7 +49,7 @@ import {
   SILENCE_TIMEOUT_MS,
   MAX_CONSECUTIVE_TIMEOUTS,
 } from './fileTransferTypes'
-import { log, logError } from '../../../utils/logger'
+import { log, logError, logWarn } from '../../../utils/logger'
 
 // Same pattern as NativeModulesSection.tsx — Metro bundles package.json at build time
 const appVersion: string = require('../../../../package.json').version ?? '0.0.0'
@@ -102,13 +110,16 @@ export async function runFileTransferPipeline(
   options: FileTransferOptions,
 ): Promise<FileTransferResult> {
   const { filename, data, onProgress, abortSignal, windowSize: requestedWindowSize } = options
-  // Default to the sliding window. Firmware >= 0.30.47 forwards only every 4th
+  // Default to the sliding window. Firmware at or above
+  // MIN_BLE_FIRMWARE_FOR_TRANSFER (bleFirmwareFloor.ts) forwards only every 4th
   // data-ack (cumulative acks, FILETX_ACK_EVERY), so the old stop-and-wait
   // default DEADLOCKS against it: the app waits for an ack the nRF is holding
   // back until 3 more packets arrive. Any window > 4 is safe; 12 matches the
-  // nRF's 16-slot relay FIFO with headroom. On pre-FIFO firmware a deep window
-  // fails fast with an ftx error (prompting the BLE firmware update) rather
-  // than hanging. Callers should only override this for protocol testing.
+  // nRF's 16-slot relay FIFO with headroom. Firmware below that floor has no
+  // FIFO and does not fail fast: it drops the surplus packets without an ftx
+  // error and the transfer hangs until the silence timeout. So any window > 1
+  // is checked against the floor below and refused before FILE_START (#289).
+  // Callers should only override this for protocol testing.
   const windowSize = requestedWindowSize ?? 12
 
   // iOS: use write-WITH-response for every transfer packet. CoreBluetooth
@@ -149,6 +160,25 @@ export async function runFileTransferPipeline(
     throw new FileTransferError('VALIDATION_FAILED', `File too large (${(data.length / 1024 / 1024).toFixed(1)} MB). Maximum is ${MAX_TRANSFER_SIZE_BYTES / 1024 / 1024} MB.`)
   }
 
+  // ── BLE firmware floor (#289) ──────────────────────────────────
+  // A window needs the nRF's relay FIFO. Checked before the lock and before
+  // FILE_START, so a refusal costs at most one `ver` and sends no file packet.
+  // An unreadable version goes ahead, and an early silence then says why.
+  // Stop-and-wait is what firmware below the floor can take, so a caller that
+  // asks for it is not checked.
+  let bleFirmwareUnknown = false
+  if (windowSize > 1) {
+    const firmware = await checkBleFirmwareForTransfer(peripheral, options.bleFirmwareVersion, abortSignal)
+    if (abortSignal?.aborted) {
+      throw new FileTransferError('ABORTED', 'Transfer cancelled')
+    }
+    if (firmware.verdict === 'too_old') {
+      logWarn(`[FileTransfer] ${transferId}: refused ${filename}, BLE firmware ${firmware.version} is below ${MIN_BLE_FIRMWARE_FOR_TRANSFER}`)
+      throw new FileTransferError('BLE_FIRMWARE_TOO_OLD', bleFirmwareTooOldMessage(firmware.version))
+    }
+    bleFirmwareUnknown = firmware.verdict === 'unknown'
+  }
+
   // ── Compute CRC before acquiring lock ───────────────────────────
   const crc = crc16ccitt(data)
   const totalPackets = Math.ceil(data.length / MAX_PAYLOAD_BYTES)
@@ -179,6 +209,7 @@ export async function runFileTransferPipeline(
   // ── Progress state ─────────────────────────────────────────────
   let bytesSent = 0
   let packetsAcked = 0
+  let packetsSent = 0 // windowed path only, for the silence diagnosis
   let wrapCycles = 0
   let wirePacketNum = 0
   let disconnectOccurred = false
@@ -249,13 +280,18 @@ export async function runFileTransferPipeline(
   function resetSilenceTimer() {
     if (silenceTimer) clearTimeout(silenceTimer)
     silenceTimer = setTimeout(() => {
-      silenceReject?.(
-        new FileTransferError(
-          'DEVICE_SILENT',
-          'No transfer response for 15 seconds — device may be stuck',
-        ),
-      )
+      silenceReject?.(new FileTransferError('DEVICE_SILENT', describeSilence()))
     }, SILENCE_TIMEOUT_MS)
+  }
+
+  // Firmware below the floor fails this way: a few acks, then nothing. With
+  // the version unreadable, a silence before a window's worth of acks is
+  // reported as that, not as a stuck device (#289).
+  function describeSilence(): string {
+    if (bleFirmwareUnknown && packetsSent > 0 && packetsAcked < windowSize) {
+      return silenceOnUnknownFirmwareMessage(packetsAcked, packetsSent)
+    }
+    return 'No transfer response for 15 seconds, device may be stuck'
   }
 
   const silencePromise = new Promise<never>((_resolve, reject) => {
@@ -402,6 +438,7 @@ export async function runFileTransferPipeline(
       // Reset progress state for this attempt
       bytesSent = 0
       packetsAcked = 0
+      packetsSent = 0
       wrapCycles = 0
       wirePacketNum = 0
       ackTimes.length = 0
@@ -613,6 +650,7 @@ export async function runFileTransferPipeline(
               while (nextToSend < total && (nextToSend - (highestAckedIndex + 1)) < windowSize) {
                 await writeBinaryToDevice(peripheral, preBuiltPackets[nextToSend].packet, writeWithResponse, WRITE_TIMEOUT_MS)
                 nextToSend++
+                packetsSent = nextToSend
               }
 
               // (Progress is emitted reactively in onFtxAck as acks land.)

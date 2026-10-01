@@ -41,12 +41,17 @@ class InvitationService {
         role: 'project_admin' | 'project_member' = 'project_member'
     ): Promise<string> {
         try {
-            log('📨 Sending invitation:', { projectId, inviteeEmail, role })
+            // The RPC stores the address as given, and the invitee's side matches
+            // it exactly against their JWT email, which Supabase keeps in lower
+            // case: an invitation to "Tama@ww.org" would never be found (#308)
+            const email = inviteeEmail.trim().toLowerCase()
+
+            log('📨 Sending invitation:', { projectId, inviteeEmail: email, role })
 
             const supabase = getSupabaseClient()
             const { data, error } = await supabase.rpc('send_project_invitation' as any, {
                 p_project_id: projectId,
-                p_invitee_email: inviteeEmail,
+                p_invitee_email: email,
                 p_role: role,
             })
 
@@ -135,6 +140,27 @@ class InvitationService {
             logError('❌ Failed to fetch local invitations:', error)
             return []
         }
+    }
+
+    /**
+     * Withdraw a pending invitation (#364). Project admins only: the server
+     * raises 42501 for anyone else, and P0002 once the invitation has been
+     * answered or has expired. Server-only, so nothing is queued offline.
+     */
+    async cancelInvitation(invitationId: string): Promise<void> {
+        log('🚫 Cancelling invitation:', invitationId)
+
+        const supabase = getSupabaseClient()
+        const { error } = await supabase.rpc('cancel_project_invitation' as any, {
+            p_invitation_id: invitationId,
+        })
+
+        if (error) {
+            logError('❌ Failed to cancel invitation:', error)
+            throw error
+        }
+
+        log('✅ Invitation cancelled')
     }
 
     /**
@@ -307,6 +333,16 @@ class InvitationService {
             return 0
         }
     }
+}
+
+/**
+ * What to tell the admin when cancel_project_invitation refuses (#364), by the
+ * SQLSTATE it raises; anything else is most likely the connection.
+ */
+export const describeCancelInvitationError = (error: { code?: string } | null | undefined): string => {
+    if (error?.code === 'P0002') return 'It had already been accepted, declined or had expired. The list now shows what is still pending.'
+    if (error?.code === '42501') return 'Only project admins can cancel invitations. Nothing was changed.'
+    return 'Could not reach the server, so it may not have been cancelled. Refresh the list to check.'
 }
 
 export default new InvitationService()

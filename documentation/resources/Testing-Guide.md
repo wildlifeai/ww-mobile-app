@@ -133,7 +133,10 @@ every run while Maestro ran nothing: four of the five flows named a package that
 installed, `auth-workflow.yaml` had no `appId` at all, and run 35493842313 shows an empty
 `~/.maestro/tests/` under a green tick. The flows are now pointed at the real debug package,
 `com.wildlife.wildlifewatcher.expo`, but the four fuller ones have never passed against real
-screens and stay advisory until one does.
+screens and stay advisory until one does. The smoke flow takes its package from the run instead:
+a PR into main builds the release-type `staging` profile, which installs as
+`com.wildlife.wildlifewatcher`, so the job passes that, and the debug package otherwise;
+`npm run test:maestro:smoke` passes the debug one.
 
 ### Existing Test Flows
 
@@ -253,6 +256,29 @@ maestro cloud tests/maestro/auth-workflow.yaml
 
 ---
 
+## Testing offline by hand (Android)
+
+The Maestro offline flows have never run, so offline behaviour is checked on a phone, with a
+debug build over USB. Four things decide whether the test means anything:
+
+1. **Airplane mode is not offline.** Android turns Wi-Fi back on near a remembered network. Turn
+   off "Turn on Wi-Fi automatically", keep Bluetooth on for the camera, and confirm before every
+   test: `adb shell ping -c 1 -W 2 8.8.8.8` must fail, and
+   `adb shell dumpsys connectivity | grep "Active default network"` must say `none`.
+2. **Metro keeps working offline** through `adb reverse tcp:8081 tcp:8081`. A USB drop clears
+   it, so run it again after any reconnect.
+3. **An expired sign-in** is simulated by setting the phone's clock two hours ahead, since access
+   tokens last an hour. A cold start offline should reach the Scanner within seconds and log
+   `Staying signed in offline` (#310).
+4. **Put the clock back on automatic before going online.** With the clock ahead, every new token
+   looks expired and the app refreshes in a loop.
+
+Check the queue, not the screen: the app's WatermelonDB file is readable with
+`adb exec-out run-as com.wildlife.wildlifewatcher.expo cat watermelon.db` (and
+`watermelon.db-wal`), and `sync_outbox` holds every queued change with its status.
+
+---
+
 ## CI/CD
 
 The `quality-gate-validation.yml` GitHub Action runs on all PRs:
@@ -281,7 +307,7 @@ The backend seeds **17 pre-configured user accounts** across 4 organisations for
 ### Quick Login Reference
 
 > [!NOTE]
-> "Org Manager" below is **not** a `UserRole` value. The app has exactly three: `ww_admin`, `project_admin`, `project_member` ([authSlice.ts](../../src/redux/slices/authSlice.ts)). "Org Manager" describes a `project_admin` granted at **organisation** scope (`user_roles.scope_type = 'organisation'`) rather than against a single project — hence the wider reach in the seed data. The permission matrix below has three columns for that reason.
+> "Org Manager" below is the `organisation_manager` role at organisation scope. The project list, devices and deployments follow the backend's role rules (`services/roleAccess.ts`, #351): a manager sees every project of the organisation, `ww_admin` (system scope) sees everything, and the project roles cover their own project only. The permission matrix below predates those roles and has three columns.
 
 | Role | User | Email | Organisation | Use For |
 |------|------|-------|--------------|---------|

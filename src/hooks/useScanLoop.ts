@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useCallback } from 'react'
 import { Platform } from 'react-native'
 import BleManager from 'react-native-ble-manager'
 
@@ -47,25 +47,33 @@ export const useScanLoop = ({ active, scanDfu = false }: UseScanLoopOptions) => 
     const { startScan, stopScan } = useBleActions()
     const isScanning = useAppSelector(s => s.scanning.isScanning)
     const dispatch = useAppDispatch()
-    const scanLockRef = useRef(false)
 
     // ── Scan burst cycling ──
+    // Driven by its own timer, one burst every BURST_DURATION_S plus the gap
+    // for as long as `active` holds. It used to re-arm only when Redux
+    // `isScanning` changed, and startScan's own stopScan() raises a late
+    // BleManagerStopScan that could flip it inside the old 500 ms lock: the
+    // re-armed burst was skipped, nothing changed again, and the loop stopped
+    // after one 3 s burst while the screen still said it was scanning, so a
+    // camera switched on after that was never found (#346). startScan stops a
+    // burst still running before it starts the next.
     useEffect(() => {
         if (!active) return
-        if (scanLockRef.current) return
-        if (isScanning) return // Burst still running, wait for it to finish
+        let cancelled = false
+        let timer: ReturnType<typeof setTimeout> | undefined
+        const burst = () => {
+            if (cancelled) return
+            log('[ScanLoop] Starting scan burst')
+            startScan(BURST_DURATION_S, scanDfu)
+            timer = setTimeout(burst, BURST_DURATION_S * 1000 + INTER_BURST_DELAY_MS)
+        }
+        timer = setTimeout(burst, INTER_BURST_DELAY_MS)
 
-        const timer = setTimeout(() => {
-            if (active && !scanLockRef.current) {
-                scanLockRef.current = true
-                log('[ScanLoop] Starting scan burst')
-                startScan(BURST_DURATION_S, scanDfu)
-                setTimeout(() => { scanLockRef.current = false }, 500)
-            }
-        }, INTER_BURST_DELAY_MS)
-
-        return () => clearTimeout(timer)
-    }, [active, isScanning, startScan, scanDfu])
+        return () => {
+            cancelled = true
+            if (timer) clearTimeout(timer)
+        }
+    }, [active, startScan, scanDfu])
 
     /**
      * Flush stale BLE state before starting a new scan session.

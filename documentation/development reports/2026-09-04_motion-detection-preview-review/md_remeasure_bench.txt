@@ -1,0 +1,1893 @@
+# Motion detection test timing, WILD-SIFK, dev build with Metro, re-measure of ww-mobile-app #273 after #326
+# Started 2026-09-23 09:53:19. Times are MM:SS.mmm from the start of the capture.
+# himax = COM6 @ 921600 (given)
+# nrf   = COM5 @ 115200 (given)
+#
+[01:58.249] nrf   | <info> app: Conn params applied: interval 156 units (195ms), timeout 4000ms
+[02:00.098] app   | TX Hex: 4149206765746f70202d31
+[02:00.098] app   | [BLE Heartbeat] ✓ Active for WILD-SIFK
+[02:00.274] app   | Written AI getop -1 to the device WILD-SIFK (09:55:21-103)
+[02:00.397] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[02:00.397] nrf   | <info> app: AI processor is in DPD. Waking it. (getop -1)
+[02:00.397] himax | 1st BL Modem Build DATE=Jan 17 2025, Version: 2.12
+[02:00.397] himax | Compiler Version: ARM GNU, 14.3.1 20250623
+[02:00.397] himax | **** WW500 MD. (WW500_C02) Built: 05:31:27 Sep 15 2026 ****
+[02:00.397] himax | Git branch: 'dev' bcb45deb
+[02:00.397] himax | Compiler Version: ARM GNU, 14.3.1 20250623
+[02:00.397] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[02:00.397] himax | Camera: HM0360
+[02:00.397] himax | PCA9574 present at 0x20
+[02:00.397] himax | Initialised LED Flash
+[02:00.397] himax | HM0360 present at 0x24
+[02:00.397] himax | Main camera present at 0x24
+[02:00.397] himax | ### Warm Boot ###
+[02:00.397] himax | Woke at 2024:01:01 00:00:03 
+[02:00.397] himax | BLE wake
+[02:00.397] himax | Initialising FreeRTOS tasks
+[02:00.397] himax | Created task 'CLI' Priority 4
+[02:00.397] himax | Created task 'IFTask' Priority 3
+[02:00.397] himax | Created task 'FAT' Priority 2
+[02:00.397] himax | Created task 'IMAGE' Priority 1
+[02:00.397] himax | FreeRTOS scheduler started.
+[02:00.397] himax | Starting CLI Task
+[02:00.397] himax | Enter 'help' to view a list of available commands.
+[02:00.397] himax | cmd> Starting IFTask
+[02:00.397] himax | I2C slave instance 0 configured at address 0x62
+[02:00.397] himax | I2C buffers have 256 bytes, payload is 244
+[02:00.397] himax | Starting FatFS Task
+[02:00.699] himax | Mounting FatFS on SD card OK
+[02:00.699] himax | Directory '/MANIFEST' exists
+[02:00.699] himax | SD card initialised. CWD is '0:/'
+[02:00.699] himax | Loading configuration: CWD is '0:/MANIFEST'
+[02:00.699] himax | 'CONFIG.TXT' found. (Next image #184), camera enabled. Flash brightness 50
+[02:00.699] himax | Retaining existing images directory (9 <= 100) '/MEDIA/859b722a/IMAGES.000'
+[02:00.699] himax | Directory '/MEDIA/859b722a/IMAGES.000' exists
+[02:00.699] himax | FatFs setup took 208ms
+[02:00.699] himax | Inactivity period set at 1000ms
+[02:00.699] himax | Starting Image Task
+[02:00.699] himax | Image 640 x 480. Raw buffer 460800. JPEG buffer 115860. JPEG compression x4
+[02:00.699] himax | Initialising HM0360 at 0x24 (p.u. delay 1ms)
+[02:00.699] himax | Memory allocated: 460800 for raw buffer, 115860 for JPEG, 100 for JPEG header
+[02:00.699] himax |    Inhibiting MD
+[02:00.699] himax |    Changing mode from 2 to 0 with nFrames=0, sleepTime=0 sleepCount = 0xffff
+[02:00.699] himax | HM0360 MD sensitivity 1
+[02:00.699] himax | [LS] In ledFlashSetFlashModeFromOpParam with 2 Mode 2
+[02:00.699] himax | Initialising NN with 2412/ETHOS-U 2411 library. Arena size 524288
+[02:00.699] himax | Ethos-U55 device initialised
+[02:00.699] himax | Looking for model '1V1.TFL' in flash or SD card
+[02:00.699] himax | Flash ID 0xEF initialised
+[02:00.699] himax | Model file name in flash is '1V1.TFL'
+[02:00.699] himax | Flash already contains model '1V1.TFL'; loading from flash.
+[02:00.699] himax | There are 2 classes (2)
+[02:00.699] himax | Initialised neural network.
+[02:00.699] himax | Image sensor and data path initialised for camera HM0360
+[02:00.699] himax |   Camera system enabled.
+[02:00.699] himax |   Neural network enabled.
+[02:00.699] himax |   Flash LED(s) in use: 2
+[02:00.699] himax |   Flash brightness: 50%
+[02:00.699] himax |   Flash is currently armed.
+[02:00.699] himax |   MD disabled.
+[02:00.699] himax |   Timelapse disabled.
+[02:00.699] himax | Sending 31 bytes: Header 4, payload 25, checksum 2 'Wake 2024-01-01T00:00:04Z'
+[02:00.717] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: Wake
+[02:00.897] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: Error bits = 0x0000
+[02:01.001] himax | Received I2C message.
+[02:01.001] himax | MKL62BA command received: 'selftest'
+[02:01.001] himax | selfTest 0000
+[02:01.001] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[02:01.001] himax | Received I2C message.
+[02:01.001] himax | MKL62BA command received: 'getop -1'
+[02:01.001] himax | OpParams 184 61 33 17 336 3 500 0 1000 50 1 0 100 2 1 1 18 1 0 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0 
+[02:01.001] himax | Sending 113 bytes: Header 4, payload 107, checksum 2 'OpParams 184 61 33 17 336 3 500 0 1000 50 1 0 100 2 1 1 18 1 0 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0 '
+[02:01.001] nrf   | <info> app: I2C RX payload 25/250 bytes. Response type is 4. CRC OK (0x15F7)
+[02:01.001] nrf   | <info> app: BLE and AI time differ by 550s - too much!
+[02:01.001] nrf   | <info> app: AI state changed from SLEEP to WOKEN
+[02:01.001] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[02:01.001] nrf   | <info> app: AI State machine scheduler called with event 8 'Send SelfTest'
+[02:01.001] nrf   | Sending 'selftest' to AI processor (4 ctrl bytes, 8 payload, 2 CRC)<info> app: OK
+[02:01.001] nrf   | <info> app: AI state changed from WOKEN to SELFTEST
+[02:01.001] nrf   | <info> app: I2C RX payload 13/250 bytes. Response type is 4. CRC OK (0x7FB8)
+[02:01.001] nrf   | <info> app: AI self test bits = 0x0000 (all bits now 0x0000)
+[02:01.001] nrf   | <info> app: Can't send UTC
+[02:01.001] nrf   | <info> app: AI state changed from SELFTEST to IDLE
+[02:01.001] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[02:01.001] nrf   | <info> app: AI State machine scheduler called with event 12 'Msg to AI'
+[02:01.001] nrf   | Sending 'getop -1' to AI processor (4 ctrl bytes, 8 payload, 2 CRC)<info> app: AI state changed from IDLE to PROCESSING
+[02:01.001] nrf   | <info> app: I2C RX payload 107/250 bytes. Response type is 4. CRC OK (0xA97C)
+[02:01.001] nrf   | <info> app: AI processor replies: 'OpParams 184 61 33 17 336 3 500 0 1000 50 1 0 100 2 1 1 18 1 0 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0 '
+[02:01.001] nrf   | <info> app: AI state changed from PROCESSING to IDLE
+[02:01.001] nrf   | BLE out: Sent 108 bytes: 'OpParams 184 61 33 17 336 3 500 0 1000 50 1 0 100 2 1 1 18 1 0 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0 '
+[02:01.099] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: OpParams 184 61 33 17 336 3 500 0 1000 50 1 0 100 2 1 1 18 1 0 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0 
+[02:01.198] app   | [MotionDetectionSection] Flash controls seeded from op21=2 op22=50
+[02:01.931] himax | Inactive for 1000ms
+[02:01.931] himax | Saved state to SD card. Image sequence number = 184
+[02:01.931] himax | Image task ready to sleep.
+[02:01.931] himax | Sending 110 bytes: Header 4, payload 104, checksum 2 'Sleep 184 61 33 17 336 3 500 0 1000 50 1 0 100 2 1 1 18 1 0 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0 '
+[02:01.931] himax | IF task ready to sleep.
+[02:01.931] himax | Preparing HM0360 for MD:   HM0360 Motion Detection off.
+[02:01.931] himax |    Inhibiting MD
+[02:01.931] himax |    Changing mode from 0 to 2 with nFrames=1, sleepTime=0 sleepCount = 0xffff
+[02:01.931] himax |  No LED flashes.
+[02:01.931] himax | >>> Entering DPD at 2024:01:01 00:00:05
+[02:02.082] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: Sleep
+[02:02.245] nrf   | <info> app: I2C RX payload 104/250 bytes. Response type is 4. CRC OK (0x2888)
+[02:02.245] nrf   | <info> app: AI processor sends stats: '184 61 33 17 336 3 500 0 1000 50 1 0 100 2 1 1 18 1 0 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0 '
+[02:02.245] nrf   | <info> app: AI state changed from IDLE to SLEEP
+[02:02.245] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[02:08.782] app   | [MotionDetectionSection] Starting test: sensitivity=1, interval=1000ms, photos=20, flash=2, brightness=50
+[02:08.798] app   | [MotionDetectionStream] Starting MD test: sensitivity=1, interval=1000ms
+[02:08.798] app   | TX Hex: 4149206765746f70202d31
+[02:08.882] app   | Written AI getop -1 to the device WILD-SIFK (09:55:29-712)
+[02:08.933] himax | 1st BL Modem Build DATE=Jan 17 2025, Version: 2.12
+[02:08.933] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[02:08.933] nrf   | <info> app: AI processor is in DPD. Waking it. (getop -1)
+[02:09.239] himax | Compiler Version: ARM GNU, 14.3.1 20250623
+[02:09.239] himax | **** WW500 MD. (WW500_C02) Built: 05:31:27 Sep 15 2026 ****
+[02:09.239] himax | Git branch: 'dev' bcb45deb
+[02:09.239] himax | Compiler Version: ARM GNU, 14.3.1 20250623
+[02:09.239] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[02:09.239] himax | Camera: HM0360
+[02:09.239] himax | PCA9574 present at 0x20
+[02:09.239] himax | Initialised LED Flash
+[02:09.239] himax | HM0360 present at 0x24
+[02:09.239] himax | Main camera present at 0x24
+[02:09.239] himax | ### Warm Boot ###
+[02:09.239] himax | Woke at 2024:01:01 00:00:05 
+[02:09.239] himax | BLE wake
+[02:09.239] himax | Initialising FreeRTOS tasks
+[02:09.239] himax | Created task 'CLI' Priority 4
+[02:09.239] himax | Created task 'IFTask' Priority 3
+[02:09.239] himax | Created task 'FAT' Priority 2
+[02:09.239] himax | Created task 'IMAGE' Priority 1
+[02:09.239] himax | FreeRTOS scheduler started.
+[02:09.239] himax | Starting CLI Task
+[02:09.239] himax | Enter 'help' to view a list of available commands.
+[02:09.239] himax | cmd> Starting IFTask
+[02:09.239] himax | I2C slave instance 0 configured at address 0x62
+[02:09.239] himax | I2C buffers have 256 bytes, payload is 244
+[02:09.239] himax | Starting FatFS Task
+[02:09.239] himax | Mounting FatFS on SD card OK
+[02:09.239] himax | Directory '/MANIFEST' exists
+[02:09.239] himax | SD card initialised. CWD is '0:/'
+[02:09.239] himax | Loading configuration: CWD is '0:/MANIFEST'
+[02:09.239] himax | 'CONFIG.TXT' found. (Next image #184), camera enabled. Flash brightness 50
+[02:09.239] himax | Retaining existing images directory (9 <= 100) '/MEDIA/859b722a/IMAGES.000'
+[02:09.239] himax | Directory '/MEDIA/859b722a/IMAGES.000' exists
+[02:09.239] himax | FatFs setup took 203ms
+[02:09.239] himax | Inactivity period set at 1000ms
+[02:09.239] himax | Starting Image Task
+[02:09.239] himax | Image 640 x 480. Raw buffer 460800. JPEG buffer 115860. JPEG compression x4
+[02:09.239] himax | Initialising HM0360 at 0x24 (p.u. delay 1ms)
+[02:09.239] himax | Memory allocated: 460800 for raw buffer, 115860 for JPEG, 100 for JPEG header
+[02:09.239] himax |    Inhibiting MD
+[02:09.239] himax |    Changing mode from 2 to 0 with nFrames=0, sleepTime=0 sleepCount = 0xffff
+[02:09.239] himax | HM0360 MD sensitivity 1
+[02:09.239] himax | [LS] In ledFlashSetFlashModeFromOpParam with 2 Mode 2
+[02:09.239] himax | Initialising NN with 2412/ETHOS-U 2411 library. Arena size 524288
+[02:09.239] himax | Ethos-U55 device initialised
+[02:09.239] himax | Looking for model '1V1.TFL' in flash or SD card
+[02:09.239] himax | Flash ID 0xEF initialised
+[02:09.239] himax | Model file name in flash is '1V1.TFL'
+[02:09.239] himax | Flash already contains model '1V1.TFL'; loading from flash.
+[02:09.239] himax | There are 2 classes (2)
+[02:09.239] himax | Initialised neural network.
+[02:09.239] himax | Image sensor and data path initialised for camera HM0360
+[02:09.239] himax |   Camera system enabled.
+[02:09.239] himax |   Neural network enabled.
+[02:09.239] himax |   Flash LED(s) in use: 2
+[02:09.239] himax |   Flash brightness: 50%
+[02:09.239] himax |   Flash is currently armed.
+[02:09.239] himax |   MD disabled.
+[02:09.239] himax |   Timelapse disabled.
+[02:09.239] himax | Sending 31 bytes: Header 4, payload 25, checksum 2 'Wake 2024-01-01T00:00:05Z'
+[02:09.288] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: Wake
+[02:09.288] app   | [OpCache] dropped on wake for F5:3F:88:C6:81:06
+[02:09.489] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: Error bits = 0x0000
+[02:09.549] himax | Received I2C message.
+[02:09.549] himax | MKL62BA command received: 'selftest'
+[02:09.549] himax | selfTest 0000
+[02:09.549] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[02:09.549] himax | Received I2C message.
+[02:09.549] himax | MKL62BA command received: 'getop -1'
+[02:09.549] himax | OpParams 184 61 33 17 337 3 500 0 1000 50 1 0 100 2 1 1 18 1 0 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0 
+[02:09.549] himax | Sending 113 bytes: Header 4, payload 107, checksum 2 'OpParams 184 61 33 17 337 3 500 0 1000 50 1 0 100 2 1 1 18 1 0 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0 '
+[02:09.549] nrf   | <info> app: I2C RX payload 25/250 bytes. Response type is 4. CRC OK (0x26C6)
+[02:09.549] nrf   | <info> app: BLE and AI time differ by 558s - too much!
+[02:09.549] nrf   | <info> app: AI state changed from SLEEP to WOKEN
+[02:09.549] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[02:09.549] nrf   | <info> app: AI State machine scheduler called with event 8 'Send SelfTest'
+[02:09.549] nrf   | Sending 'selftest' to AI processor (4 ctrl bytes, 8 payload, 2 CRC)<info> app: OK
+[02:09.549] nrf   | <info> app: AI state changed from WOKEN to SELFTEST
+[02:09.549] nrf   | <info> app: I2C RX payload 13/250 bytes. Response type is 4. CRC OK (0x7FB8)
+[02:09.549] nrf   | <info> app: AI self test bits = 0x0000 (all bits now 0x0000)
+[02:09.549] nrf   | <info> app: Can't send UTC
+[02:09.549] nrf   | <info> app: AI state changed from SELFTEST to IDLE
+[02:09.549] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[02:09.549] nrf   | <info> app: AI State machine scheduler called with event 12 'Msg to AI'
+[02:09.549] nrf   | Sending 'getop -1' to AI processor (4 ctrl bytes, 8 payload, 2 CRC)<info> app: AI state changed from IDLE to PROCESSING
+[02:09.549] nrf   | <info> app: I2C RX payload 107/250 bytes. Response type is 4. CRC OK (0x4781)
+[02:09.549] nrf   | <info> app: AI processor replies: 'OpParams 184 61 33 17 337 3 500 0 1000 50 1 0 100 2 1 1 18 1 0 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0 '
+[02:09.549] nrf   | <info> app: AI state changed from PROCESSING to IDLE
+[02:09.549] nrf   | BLE out: Sent 108 bytes: 'OpParams 184 61 33 17 337 3 500 0 1000 50 1 0 100 2 1 1 18 1 0 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0 '
+[02:09.689] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: OpParams 184 61 33 17 337 3 500 0 1000 50 1 0 100 2 1 1 18 1 0 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0 
+[02:09.813] app   | [MotionDetectionStream] Current OPs: 184 61 33 17 337 3 500 0 1000 50 1 0 100 2 1 1 18 1 0 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0
+[02:09.813] app   | [MotionDetectionStream] Setting test mode bits via session
+[02:09.814] app   | TX Hex: 4149207365746f702031382038
+[02:09.841] app   | Written AI setop 18 8 to the device WILD-SIFK (09:55:30-672)
+[02:10.065] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: Set OpParam 18 = 8
+[02:10.163] nrf   | BLE in: Received  13 bytes 'AI setop 18 8'
+[02:10.163] nrf   | Sending 'setop 18 8' to AI processor (4 ctrl bytes, 10 payload, 2 CRC)<info> app: AI state changed from IDLE to PROCESSING
+[02:10.163] nrf   | <info> app: I2C RX payload 18/250 bytes. Response type is 4. CRC OK (0x17F8)
+[02:10.163] nrf   | <info> app: AI processor replies: 'Set OpParam 18 = 8'
+[02:10.163] nrf   | <info> app: AI state changed from PROCESSING to IDLE
+[02:10.163] nrf   | BLE out: Sent  19 bytes: 'Set OpParam 18 = 8'
+[02:10.163] himax | Received I2C message.
+[02:10.163] himax | MKL62BA command received: 'setop 18 8'
+[02:10.163] himax | Set OpParam 18 = 8
+[02:10.163] himax | Sending 24 bytes: Header 4, payload 18, checksum 2 'Set OpParam 18 = 8'
+[02:10.163] himax | Config saved (op params persisted).
+[02:10.216] app   | [FlashHold] flash on F5:3F:88:C6:81:06 already in mode 2, nothing to put back
+[02:10.216] app   | [MotionDetectionStream] Setting INTERVAL_BEFORE_DPD=3000 to prevent sleep during test
+[02:10.217] app   | TX Hex: 4149207365746f7020382033303030
+[02:10.241] app   | Written AI setop 8 3000 to the device WILD-SIFK (09:55:31-071)
+[02:10.464] himax | Received I2C message.
+[02:10.464] himax | MKL62BA command received: 'setop 8 3000'
+[02:10.464] himax | Set OpParam 8 = 3000
+[02:10.464] himax | Sending 26 bytes: Header 4, payload 20, checksum 2 'Set OpParam 8 = 3000'
+[02:10.464] himax | Config saved (op params persisted).
+[02:10.464] nrf   | BLE in: Received  15 bytes 'AI setop 8 3000'
+[02:10.464] nrf   | Sending 'setop 8 3000' to AI processor (4 ctrl bytes, 12 payload, 2 CRC)<info> app: AI state changed from IDLE to PROCESSING
+[02:10.464] nrf   | <info> app: I2C RX payload 20/250 bytes. Response type is 4. CRC OK (0x1E26)
+[02:10.464] nrf   | <info> app: AI processor replies: 'Set OpParam 8 = 3000'
+[02:10.464] nrf   | <info> app: AI state changed from PROCESSING to IDLE
+[02:10.464] nrf   | BLE out: Sent  21 bytes: 'Set OpParam 8 = 3000'
+[02:10.466] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: Set OpParam 8 = 3000
+[02:10.566] app   | [MotionDetectionStream] Setting MD sensitivity to 1
+[02:10.566] app   | TX Hex: 4149206d642031
+[02:10.587] app   | Written AI md 1 to the device WILD-SIFK (09:55:31-418)
+[02:10.765] himax | Received I2C message.
+[02:10.765] himax | MKL62BA command received: 'md 1'
+[02:10.765] himax | HM0360 MD sensitivity 1
+[02:10.765] himax | MD sensitivity set to 1
+[02:10.765] himax | Sending 29 bytes: Header 4, payload 23, checksum 2 'MD sensitivity set to 1'
+[02:10.766] nrf   | BLE in: Received   7 bytes 'AI md 1'
+[02:10.766] nrf   | Sending 'md 1' to AI processor (4 ctrl bytes, 4 payload, 2 CRC)<info> app: AI state changed from IDLE to PROCESSING
+[02:10.766] nrf   | <info> app: I2C RX payload 23/250 bytes. Response type is 4. CRC OK (0x2216)
+[02:10.766] nrf   | <info> app: UNHANDLED event Wake (MD) in PROCESSING
+[02:10.766] nrf   | <info> app: AI state changed from PROCESSING to SLEEP
+[02:11.998] himax | Inactive for 1000ms
+[02:11.998] himax | Saved state to SD card. Image sequence number = 184
+[02:11.998] himax | Image task ready to sleep.
+[02:11.998] himax | Sending 110 bytes: Header 4, payload 104, checksum 2 'Sleep 184 61 33 17 337 3 500 0 3000 50 1 0 100 2 1 1 18 1 8 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0 '
+[02:11.998] himax | IF task ready to sleep.
+[02:11.998] himax | Preparing HM0360 for MD:   HM0360 Motion Detection off.
+[02:11.998] himax |    Inhibiting MD
+[02:11.998] himax |    Changing mode from 0 to 2 with nFrames=1, sleepTime=0 sleepCount = 0xffff
+[02:11.998] himax |  No LED flashes.
+[02:11.998] himax | >>> Entering DPD at 2024:01:01 00:00:08
+[02:11.998] nrf   | <info> app: I2C RX payload 104/250 bytes. Response type is 4. CRC OK (0xC979)
+[02:15.582] app   | [MotionDetectionStream] md command failed (non-critical)
+[02:15.597] app   | [MotionDetectionStream] Sending capture command (attempt 1/4)
+[02:15.597] app   | TX Hex: 414920636170747572652032302031303030
+[02:15.614] app   | Written AI capture 20 1000 to the device WILD-SIFK (09:55:36-450)
+[02:15.963] nrf   | BLE in: Received  18 bytes 'AI capture 20 1000'
+[02:15.963] nrf   | <info> app: AI processor is in DPD. Waking it. (capture 20 1000)
+[02:15.963] himax | 1st BL Modem Build DATE=Jan 17 2025, Version: 2.12
+[02:15.963] himax | Compiler Version: ARM GNU, 14.3.1 20250623
+[02:15.963] himax | **** WW500 MD. (WW500_C02) Built: 05:31:27 Sep 15 2026 ****
+[02:15.963] himax | Git branch: 'dev' bcb45deb
+[02:15.963] himax | Compiler Version: ARM GNU, 14.3.1 20250623
+[02:15.963] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[02:15.963] himax | Camera: HM0360
+[02:15.963] himax | PCA9574 present at 0x20
+[02:15.963] himax | Initialised LED Flash
+[02:15.963] himax | HM0360 present at 0x24
+[02:15.963] himax | Main camera present at 0x24
+[02:15.963] himax | ### Warm Boot ###
+[02:15.963] himax | Woke at 2024:01:01 00:00:08 
+[02:15.963] himax | BLE wake
+[02:15.963] himax | Initialising FreeRTOS tasks
+[02:15.963] himax | Created task 'CLI' Priority 4
+[02:15.963] himax | Created task 'IFTask' Priority 3
+[02:15.963] himax | Created task 'FAT' Priority 2
+[02:15.963] himax | Created task 'IMAGE' Priority 1
+[02:15.963] himax | FreeRTOS scheduler started.
+[02:15.963] himax | Starting CLI Task
+[02:15.963] himax | Enter 'help' to view a list of available commands.
+[02:15.963] himax | cmd> Starting IFTask
+[02:15.963] himax | I2C slave instance 0 configured at address 0x62
+[02:15.963] himax | I2C buffers have 256 bytes, payload is 244
+[02:15.963] himax | Starting FatFS Task
+[02:16.129] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: Wake
+[02:16.131] app   | [OpCache] dropped on wake for F5:3F:88:C6:81:06
+[02:16.216] himax | Mounting FatFS on SD card OK
+[02:16.216] himax | Directory '/MANIFEST' exists
+[02:16.216] himax | SD card initialised. CWD is '0:/'
+[02:16.216] himax | Loading configuration: CWD is '0:/MANIFEST'
+[02:16.216] himax | 'CONFIG.TXT' found. (Next image #184), camera enabled. Flash brightness 50
+[02:16.216] himax | Retaining existing images directory (9 <= 100) '/MEDIA/859b722a/IMAGES.000'
+[02:16.216] himax | Directory '/MEDIA/859b722a/IMAGES.000' exists
+[02:16.216] himax | FatFs setup took 206ms
+[02:16.216] himax | Inactivity period set at 3000ms
+[02:16.216] himax | Starting Image Task
+[02:16.216] himax | Image 640 x 480. Raw buffer 460800. JPEG buffer 115860. JPEG compression x4
+[02:16.216] himax | Initialising HM0360 at 0x24 (p.u. delay 1ms)
+[02:16.216] himax | Memory allocated: 460800 for raw buffer, 115860 for JPEG, 100 for JPEG header
+[02:16.216] himax |    Inhibiting MD
+[02:16.216] himax |    Changing mode from 2 to 0 with nFrames=0, sleepTime=0 sleepCount = 0xffff
+[02:16.216] himax | HM0360 MD sensitivity 1
+[02:16.216] himax | [LS] In ledFlashSetFlashModeFromOpParam with 2 Mode 2
+[02:16.216] himax | Initialising NN with 2412/ETHOS-U 2411 library. Arena size 524288
+[02:16.216] himax | Ethos-U55 device initialised
+[02:16.216] himax | Looking for model '1V1.TFL' in flash or SD card
+[02:16.216] himax | Flash ID 0xEF initialised
+[02:16.216] himax | Model file name in flash is '1V1.TFL'
+[02:16.216] himax | Flash already contains model '1V1.TFL'; loading from flash.
+[02:16.216] himax | There are 2 classes (2)
+[02:16.216] himax | Initialised neural network.
+[02:16.216] himax | Image sensor and data path initialised for camera HM0360
+[02:16.216] himax |   Camera system enabled.
+[02:16.216] himax |   Neural network enabled.
+[02:16.216] himax |   Flash LED(s) in use: 2
+[02:16.216] himax |   Flash brightness: 50%
+[02:16.216] himax |   Flash is currently armed.
+[02:16.216] himax |   MD disabled.
+[02:16.216] himax |   Timelapse disabled.
+[02:16.216] himax | Sending 31 bytes: Header 4, payload 25, checksum 2 'Wake 2024-01-01T00:00:08Z'
+[02:16.216] himax | Received I2C message.
+[02:16.216] himax | MKL62BA command received: 'selftest'
+[02:16.216] himax | selfTest 0000
+[02:16.216] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[02:16.216] himax | Received I2C message.
+[02:16.216] himax | MKL62BA command received: 'capture 20 1000'
+[02:16.216] himax | About to capture 20 images with an interval of '1000' milliseconds
+[02:16.216] himax | Sending 72 bytes: Header 4, payload 66, checksum 2 'About to capture 20 images with an interval of '1000' milliseconds'
+[02:16.367] himax | Images to capture: 20
+[02:16.367] himax | Interval: 1000ms
+[02:16.367] himax |    Interval of 1000ms gives sleep count = 0x8030
+[02:16.367] himax |    Changing mode from 0 to 2 with nFrames=1, sleepTime=1000 sleepCount = 0x8030
+[02:16.367] himax | Class 'no person': 41.1% (raw: -46)
+[02:16.367] himax | Class 'person': 59.0% (raw: 46)
+[02:16.367] himax | Class 0 'no person' = logit -46
+[02:16.367] himax | Class 1 'person' = logit 46
+[02:16.367] himax | TARGET OBJECT DETECTED!
+[02:16.367] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:16.367] himax | Score 46/128 (Threshold 18)
+[02:16.367] himax | HM0360 AE regs:
+[02:16.367] himax | Sending 123 bytes: Header 4, payload 117, checksum 2 'HM0360 AE regs:
+[02:16.367] himax | HM0360 motion in 0 blocks:
+[02:16.367] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 0 blocks:
+[02:16.516] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: Error bits = 0x0000
+[02:16.567] nrf   | <info> app: I2C RX payload 25/250 bytes. Response type is 4. CRC OK (0x509A)
+[02:16.567] nrf   | <info> app: BLE and AI time differ by 562s - too much!
+[02:16.567] nrf   | <info> app: AI state changed from SLEEP to WOKEN
+[02:16.567] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[02:16.567] nrf   | <info> app: AI State machine scheduler called with event 8 'Send SelfTest'
+[02:16.567] nrf   | Sending 'selftest' to AI processor (4 ctrl bytes, 8 payload, 2 CRC)<info> app: OK
+[02:16.567] nrf   | <info> app: AI state changed from WOKEN to SELFTEST
+[02:16.567] nrf   | <info> app: I2C RX payload 13/250 bytes. Response type is 4. CRC OK (0x7FB8)
+[02:16.567] nrf   | <info> app: AI self test bits = 0x0000 (all bits now 0x0000)
+[02:16.567] nrf   | <info> app: Can't send UTC
+[02:16.567] nrf   | <info> app: AI state changed from SELFTEST to IDLE
+[02:16.567] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[02:16.567] nrf   | <info> app: AI State machine scheduler called with event 12 'Msg to AI'
+[02:16.567] nrf   | Sending 'capture 20 1000' to AI processor (4 ctrl bytes, 15 payload, 2 CRC)<info> app: AI state changed from IDLE to PROCESSING
+[02:16.567] nrf   | <info> app: I2C RX payload 66/250 bytes. Response type is 4. CRC OK (0xD10C)
+[02:16.567] nrf   | <info> app: AI processor replies: 'About to capture 20 images with an interval of '1000' milliseconds'
+[02:16.567] nrf   | <info> app: AI state changed from PROCESSING to IDLE
+[02:16.567] nrf   | BLE out: Sent  67 bytes: 'About to capture 20 images with an interval of '1000' milliseconds'
+[02:16.567] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:16.567] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:16.567] nrf   | <info> app: I2C RX payload 117/250 bytes. Response type is 4. CRC OK (0x5DE0)
+[02:16.598] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: About to capture 20 images with an interval of '1000' milliseconds
+[02:16.648] app   | [MotionDetectionStream] Capture confirmed on attempt 1
+[02:16.648] app   | [MotionDetectionStream] Capture 20 frames @ 1000ms — firmware running.
+[02:16.648] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:16.681] himax | Skipping file save.
+[02:16.715] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:16.715] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 125 lines
+[02:16.715] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:16.715] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:16.715] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 86
+[02:16.715] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:16.797] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 0 blocks:
+[02:16.797] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:16.881] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[02:16.881] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x7C2A)
+[02:16.881] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[02:16.881] nrf   | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:17.295] himax | Class 'no person': 40.2% (raw: -51)
+[02:17.295] himax | Class 'person': 60.0% (raw: 51)
+[02:17.295] himax | Class 0 'no person' = logit -51
+[02:17.295] himax | Class 1 'person' = logit 51
+[02:17.295] himax | TARGET OBJECT DETECTED!
+[02:17.295] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:17.295] himax | Score 51/128 (Threshold 18)
+[02:17.295] himax | HM0360 AE regs:
+[02:17.295] himax | Sending 123 bytes: Header 4, payload 117, checksum 2 'HM0360 AE regs:
+[02:17.490] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:17.556] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:17.557] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 125 lines
+[02:17.558] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:17.558] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:17.558] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 88
+[02:17.558] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:17.598] himax | HM0360 motion in 0 blocks:
+[02:17.598] himax | 00 00 00 00 00 00 00 
+[02:17.598] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 0 blocks:
+[02:17.598] himax | Skipping file save.
+[02:17.665] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 0 blocks:
+[02:17.665] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:17.782] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:17.782] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:17.782] nrf   | <info> app: I2C RX payload 117/250 bytes. Response type is 4. CRC OK (0x29DE)
+[02:17.782] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[02:17.782] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x7C2A)
+[02:17.782] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[02:17.782] nrf   | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:18.329] himax | Class 'no person': 41.1% (raw: -46)
+[02:18.329] himax | Class 'person': 59.0% (raw: 46)
+[02:18.329] himax | Class 0 'no person' = logit -46
+[02:18.329] himax | Class 1 'person' = logit 46
+[02:18.329] himax | TARGET OBJECT DETECTED!
+[02:18.329] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:18.329] himax | Score 46/128 (Threshold 18)
+[02:18.329] himax | HM0360 AE regs:
+[02:18.329] himax | Sending 123 bytes: Header 4, payload 117, checksum 2 'HM0360 AE regs:
+[02:18.329] himax | HM0360 motion in 0 blocks:
+[02:18.329] himax |  00 00 00 00 00 00 00 
+[02:18.329] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 0 blocks:
+[02:18.329] himax | Skipping file save.
+[02:18.466] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:18.552] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:18.553] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 117 lines
+[02:18.554] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:18.557] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:18.558] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 92
+[02:18.558] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: N
+[02:18.633] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 0 blocks:
+[02:18.633] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:18.697] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:18.697] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:18.697] nrf   | <info> app: I2C RX payload 117/250 bytes. Response type is 4. CRC OK (0x15F5)
+[02:18.697] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[02:18.697] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x7C2A)
+[02:18.697] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[02:18.697] nrf   | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:19.315] himax | Class 'no person': 46.3% (raw: -19)
+[02:19.315] himax | Class 'person': 54.0% (raw: 19)
+[02:19.315] himax | Class 0 'no person' = logit -19
+[02:19.315] himax | Class 1 'person' = logit 19
+[02:19.315] himax | TARGET OBJECT DETECTED!
+[02:19.315] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:19.315] himax | Score 19/128 (Threshold 18)
+[02:19.315] himax | HM0360 AE regs:
+[02:19.315] himax | Sending 123 bytes: Header 4, payload 117, checksum 2 'HM0360 AE regs:
+[02:19.315] himax | HM0360 motion in 14 blocks:
+[02:19.315] himax | Sending 130 bytes: Header 4, payload 124, checksum 2 'HM0360 motion in 14 blocks:
+[02:19.315] himax | Skipping file save.
+[02:19.432] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:19.531] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:19.531] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 104 lines
+[02:19.531] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:19.531] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:19.531] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 77
+[02:19.531] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:19.612] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:19.612] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:19.612] nrf   | <info> app: I2C RX payload 117/250 bytes. Response type is 4. CRC OK (0x8E8C)
+[02:19.612] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[02:19.612] nrf   | <info> app: I2C RX payload 124/250 bytes. Response type is 4. CRC OK (0x4C26)
+[02:19.612] nrf   | BLE out: Sent 125 bytes: 'HM0360 motion in 14 blocks:
+[02:19.612] nrf   | 00 f2 00 50 00 e8 00 10 00 40 00 80 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:19.631] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 14 blocks:
+[02:19.631] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 f2 00 50 00 e8 00 10 00 40 00 80 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:20.314] himax | Class 'no person': 39.0% (raw: -57)
+[02:20.314] himax | Class 'person': 61.0% (raw: 57)
+[02:20.314] himax | Class 0 'no person' = logit -57
+[02:20.314] himax | Class 1 'person' = logit 57
+[02:20.314] himax | TARGET OBJECT DETECTED!
+[02:20.314] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:20.314] himax | Score 57/128 (Threshold 18)
+[02:20.314] himax | HM0360 AE regs:
+[02:20.314] himax | Sending 123 bytes: Header 4, payload 117, checksum 2 'HM0360 AE regs:
+[02:20.314] himax | HM0360 motion in 15 blocks:
+[02:20.314] himax | Sending 130 bytes: Header 4, payload 124, checksum 2 'HM0360 motion in 15 blocks:
+[02:20.314] himax | Skipping file save.
+[02:20.397] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:20.499] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:20.499] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 104 lines
+[02:20.499] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:20.499] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:20.499] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 80
+[02:20.499] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:20.531] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:20.531] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:20.531] nrf   | <info> app: I2C RX payload 117/250 bytes. Response type is 4. CRC OK (0x8133)
+[02:20.531] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[02:20.531] nrf   | <info> app: I2C RX payload 124/250 bytes. Response type is 4. CRC OK (0xBFD0)
+[02:20.531] nrf   | BLE out: Sent 125 bytes: 'HM0360 motion in 15 blocks:
+[02:20.531] nrf   | 00 73 00 50 00 ec 00 10 00 40 00 80 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:20.612] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 15 blocks:
+[02:20.613] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 73 00 50 00 ec 00 10 00 40 00 80 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:21.302] himax | Class 'no person': 39.4% (raw: -55)
+[02:21.302] himax | Class 'person': 61.0% (raw: 55)
+[02:21.302] himax | Class 0 'no person' = logit -55
+[02:21.302] himax | Class 1 'person' = logit 55
+[02:21.302] himax | TARGET OBJECT DETECTED!
+[02:21.302] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:21.302] himax | Score 55/128 (Threshold 18)
+[02:21.302] himax | HM0360 AE regs:
+[02:21.302] himax | Sending 123 bytes: Header 4, payload 117, checksum 2 'HM0360 AE regs:
+[02:21.302] himax | HM0360 motion in 0 blocks:
+[02:21.302] himax |  00 00 00 00 00 00 00 
+[02:21.302] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 0 blocks:
+[02:21.302] himax | Skipping file save.
+[02:21.387] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:21.495] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:21.495] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 104 lines
+[02:21.498] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:21.498] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:21.500] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 82
+[02:21.500] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:21.600] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 0 blocks:
+[02:21.612] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:21.762] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:21.762] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:21.762] nrf   | <info> app: I2C RX payload 117/250 bytes. Response type is 4. CRC OK (0x2D2C)
+[02:21.762] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[02:21.762] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x7C2A)
+[02:21.762] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[02:21.762] nrf   | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:22.231] himax | Class 'no person': 40.0% (raw: -53)
+[02:22.231] himax | Class 'person': 60.2% (raw: 53)
+[02:22.365] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:22.365] himax | Class 0 'no person' = logit -53
+[02:22.365] himax | Class 1 'person' = logit 53
+[02:22.365] himax | TARGET OBJECT DETECTED!
+[02:22.365] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:22.365] himax | Score 53/128 (Threshold 18)
+[02:22.365] himax | HM0360 AE regs:
+[02:22.365] himax | Sending 123 bytes: Header 4, payload 117, checksum 2 'HM0360 AE regs:
+[02:22.365] himax | HM0360 motion in 0 blocks:
+[02:22.365] himax | 00 00 00 00 00 00 00 
+[02:22.365] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 0 blocks:
+[02:22.365] himax | Skipping file save.
+[02:22.666] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:22.666] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:22.666] nrf   | <info> app: I2C RX payload 117/250 bytes. Response type is 4. CRC OK (0xF333)
+[02:22.666] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[02:22.666] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x7C2A)
+[02:22.666] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[02:22.666] nrf   | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:22.763] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:22.766] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 104 lines
+[02:22.766] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:22.766] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:22.766] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 83
+[02:22.766] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:22.925] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 0 blocks:
+[02:22.929] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:23.131] app   | 'VirtualizedList: You have a large list that is slow to update - make sure your renderItem function renders components that follow React performance best practices like PureComponent, shouldComponentUpdate, etc.', { dt: 627, prevDt: 765, contentLength: 5601.52392578125 }
+[02:23.279] himax | Class 'no person': 40.2% (raw: -51)
+[02:23.279] himax | Class 'person': 60.0% (raw: 51)
+[02:23.279] himax | Class 0 'no person' = logit -51
+[02:23.279] himax | Class 1 'person' = logit 51
+[02:23.279] himax | TARGET OBJECT DETECTED!
+[02:23.279] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:23.279] himax | Score 51/128 (Threshold 18)
+[02:23.279] himax | HM0360 AE regs:
+[02:23.279] himax | Sending 123 bytes: Header 4, payload 117, checksum 2 'HM0360 AE regs:
+[02:23.279] himax | HM0360 motion in 0 blocks:
+[02:23.279] himax | 0 00 00 00 00 00 00 
+[02:23.279] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 0 blocks:
+[02:23.318] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:23.520] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:23.520] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 104 lines
+[02:23.531] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:23.531] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:23.531] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 83
+[02:23.531] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:23.582] himax | Skipping file save.
+[02:23.582] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:23.582] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:23.582] nrf   | <info> app: I2C RX payload 117/250 bytes. Response type is 4. CRC OK (0xF333)
+[02:23.582] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[02:23.582] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x7C2A)
+[02:23.582] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[02:23.582] nrf   | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:23.698] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 0 blocks:
+[02:23.698] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:24.265] himax | Class 'no person': 46.0% (raw: -21)
+[02:24.265] himax | Class 'person': 54.1% (raw: 21)
+[02:24.265] himax | Class 0 'no person' = logit -21
+[02:24.265] himax | Class 1 'person' = logit 21
+[02:24.265] himax | TARGET OBJECT DETECTED!
+[02:24.265] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:24.265] himax | Score 21/128 (Threshold 18)
+[02:24.265] himax | HM0360 AE regs:
+[02:24.265] himax | Sending 123 bytes: Header 4, payload 117, checksum 2 'HM0360 AE regs:
+[02:24.265] himax | HM0360 motion in 26 blocks:
+[02:24.265] himax | 0 00 00 00 00 00 00 
+[02:24.265] himax | Sending 130 bytes: Header 4, payload 124, checksum 2 'HM0360 motion in 26 blocks:
+[02:24.265] himax | Skipping file save.
+[02:24.316] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:24.482] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:24.482] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 104 lines
+[02:24.482] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:24.482] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:24.497] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 77
+[02:24.497] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:24.512] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:24.512] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:24.512] nrf   | <info> app: I2C RX payload 117/250 bytes. Response type is 4. CRC OK (0x8E8C)
+[02:24.512] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[02:24.512] nrf   | <info> app: I2C RX payload 124/250 bytes. Response type is 4. CRC OK (0x23C7)
+[02:24.512] nrf   | BLE out: Sent 125 bytes: 'HM0360 motion in 26 blocks:
+[02:24.512] nrf   | 30 0b 30 14 30 e4 00 06 80 00 00 00 40 00 00 00 80 00 00 be 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:24.616] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 26 blocks:
+[02:24.617] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 30 0b 30 14 30 e4 00 06 80 00 00 00 40 00 00 00 80 00 00 be 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:25.265] himax | Class 'no person': 40.0% (raw: -52)
+[02:25.265] himax | Class 'person': 60.0% (raw: 52)
+[02:25.265] himax | Class 0 'no person' = logit -52
+[02:25.265] himax | Class 1 'person' = logit 52
+[02:25.265] himax | TARGET OBJECT DETECTED!
+[02:25.265] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:25.265] himax | Score 52/128 (Threshold 18)
+[02:25.265] himax | HM0360 AE regs:
+[02:25.265] himax | Sending 123 bytes: Header 4, payload 117, checksum 2 'HM0360 AE regs:
+[02:25.265] himax | HM0360 motion in 23 blocks:
+[02:25.265] himax |  00 00 00 00 00 00 00 
+[02:25.265] himax | Sending 130 bytes: Header 4, payload 124, checksum 2 'HM0360 motion in 23 blocks:
+[02:25.265] himax | Skipping file save.
+[02:25.281] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:25.664] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:25.664] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 104 lines
+[02:25.664] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:25.664] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:25.664] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 83
+[02:25.664] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:25.729] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:25.729] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:25.729] nrf   | <info> app: I2C RX payload 117/250 bytes. Response type is 4. CRC OK (0xF333)
+[02:25.729] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[02:25.729] nrf   | <info> app: I2C RX payload 124/250 bytes. Response type is 4. CRC OK (0x26CD)
+[02:25.729] nrf   | BLE out: Sent 125 bytes: 'HM0360 motion in 23 blocks:
+[02:25.729] nrf   | 30 0b 30 14 30 64 00 06 00 00 00 00 00 00 00 00 80 00 00 be 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:25.849] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 23 blocks:
+[02:25.849] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 30 0b 30 14 30 64 00 06 00 00 00 00 00 00 00 00 80 00 00 be 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:26.249] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:26.257] himax | Class 'no person': 42.0% (raw: -43)
+[02:26.257] himax | Class 'person': 58.3% (raw: 43)
+[02:26.257] himax | Class 0 'no person' = logit -43
+[02:26.257] himax | Class 1 'person' = logit 43
+[02:26.257] himax | TARGET OBJECT DETECTED!
+[02:26.257] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:26.257] himax | Score 43/128 (Threshold 18)
+[02:26.257] himax | HM0360 AE regs:
+[02:26.257] himax | Sending 123 bytes: Header 4, payload 117, checksum 2 'HM0360 AE regs:
+[02:26.257] himax | HM0360 motion in 0 blocks:
+[02:26.257] himax | 0 00 00 00 00 00 00 
+[02:26.257] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 0 blocks:
+[02:26.257] himax | Skipping file save.
+[02:26.431] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:26.448] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 104 lines
+[02:26.448] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:26.448] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:26.448] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 84
+[02:26.448] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:26.598] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 0 blocks:
+[02:26.607] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:26.633] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:26.633] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:26.633] nrf   | <info> app: I2C RX payload 117/250 bytes. Response type is 4. CRC OK (0xC92C)
+[02:26.633] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[02:26.633] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x7C2A)
+[02:26.633] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[02:26.633] nrf   | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:27.249] himax | Class 'no person': 41.0% (raw: -47)
+[02:27.249] himax | Class 'person': 59.1% (raw: 47)
+[02:27.249] himax | Class 0 'no person' = logit -47
+[02:27.249] himax | Class 1 'person' = logit 47
+[02:27.249] himax | TARGET OBJECT DETECTED!
+[02:27.249] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:27.249] himax | Score 47/128 (Threshold 18)
+[02:27.249] himax | HM0360 AE regs:
+[02:27.249] himax | Sending 123 bytes: Header 4, payload 117, checksum 2 'HM0360 AE regs:
+[02:27.249] himax | HM0360 motion in 0 blocks:
+[02:27.249] himax | 0 00 00 00 00 00 00 
+[02:27.249] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 0 blocks:
+[02:27.249] himax | Skipping file save.
+[02:27.434] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:27.549] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:27.549] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:27.549] nrf   | <info> app: I2C RX payload 117/250 bytes. Response type is 4. CRC OK (0xC92C)
+[02:27.549] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[02:27.549] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x7C2A)
+[02:27.549] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[02:27.549] nrf   | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:27.609] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:27.610] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 104 lines
+[02:27.613] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:27.615] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:27.615] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 84
+[02:27.615] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:27.770] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 0 blocks:
+[02:27.771] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:28.233] himax | Class 'no person': 37.4% (raw: -66)
+[02:28.233] himax | Class 'person': 63.0% (raw: 66)
+[02:28.233] himax | Class 0 'no person' = logit -66
+[02:28.233] himax | Class 1 'person' = logit 66
+[02:28.233] himax | TARGET OBJECT DETECTED!
+[02:28.233] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:28.233] himax | Score 66/128 (Threshold 18)
+[02:28.233] himax | HM0360 AE regs:
+[02:28.233] himax | Sending 123 bytes: Header 4, payload 117, checksum 2 'HM0360 AE regs:
+[02:28.233] himax | HM0360 motion in 1 blocks:
+[02:28.233] himax | 0 00 00 00 00 00 00 
+[02:28.233] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 1 blocks:
+[02:28.233] himax | Skipping file save.
+[02:28.399] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:28.480] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:28.480] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:28.480] nrf   | <info> app: I2C RX payload 117/250 bytes. Response type is 4. CRC OK (0x1733)
+[02:28.480] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[02:28.480] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x49AD)
+[02:28.480] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 1 blocks:
+[02:28.480] nrf   | 00 00 00 80 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:28.565] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:28.565] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 104 lines
+[02:28.579] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:28.581] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:28.582] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 85
+[02:28.583] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:28.732] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 1 blocks:
+[02:28.732] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 80 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:29.221] himax | Class 'no person': 40.0% (raw: -53)
+[02:29.221] himax | Class 'person': 60.2% (raw: 53)
+[02:29.221] himax | Class 0 'no person' = logit -53
+[02:29.221] himax | Class 1 'person' = logit 53
+[02:29.221] himax | TARGET OBJECT DETECTED!
+[02:29.221] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:29.221] himax | Score 53/128 (Threshold 18)
+[02:29.221] himax | HM0360 AE regs:
+[02:29.221] himax | Sending 123 bytes: Header 4, payload 117, checksum 2 'HM0360 AE regs:
+[02:29.221] himax | HM0360 motion in 1 blocks:
+[02:29.221] himax | 0 00 00 00 00 00 00 
+[02:29.221] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 1 blocks:
+[02:29.221] himax | Skipping file save.
+[02:29.378] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:29.548] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:29.548] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 104 lines
+[02:29.548] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:29.548] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:29.548] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 85
+[02:29.562] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:29.697] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:29.697] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:29.697] nrf   | <info> app: I2C RX payload 117/250 bytes. Response type is 4. CRC OK (0x1733)
+[02:29.697] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[02:29.697] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x49AD)
+[02:29.697] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 1 blocks:
+[02:29.697] nrf   | 00 00 00 80 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:29.715] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 1 blocks:
+[02:29.715] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 80 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:30.216] himax | Class 'no person': 41.0% (raw: -48)
+[02:30.216] himax | Class 'person': 59.3% (raw: 48)
+[02:30.216] himax | Class 0 'no person' = logit -48
+[02:30.216] himax | Class 1 'person' = logit 48
+[02:30.216] himax | TARGET OBJECT DETECTED!
+[02:30.216] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:30.216] himax | Score 48/128 (Threshold 18)
+[02:30.216] himax | HM0360 AE regs:
+[02:30.216] himax | Sending 123 bytes: Header 4, payload 117, checksum 2 'HM0360 AE regs:
+[02:30.216] himax | HM0360 motion in 1 blocks:
+[02:30.216] himax | 0 00 00 00 00 00 00 00 
+[02:30.216] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 1 blocks:
+[02:30.216] himax | Skipping file save.
+[02:30.349] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:30.517] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:30.517] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 104 lines
+[02:30.517] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:30.517] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:30.517] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 86
+[02:30.517] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:30.615] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:30.615] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:30.615] nrf   | <info> app: I2C RX payload 117/250 bytes. Response type is 4. CRC OK (0x6533)
+[02:30.615] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[02:30.615] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x2BF6)
+[02:30.615] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 1 blocks:
+[02:30.615] nrf   | 00 00 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:30.681] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 1 blocks:
+[02:30.681] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:31.147] himax | Class 'no person': 34.0% (raw: -85)
+[02:31.147] himax | Class 'person': 66.0% (raw: 85)
+[02:31.147] himax | Class 0 'no person' = logit -85
+[02:31.147] himax | Class 1 'person' = logit 85
+[02:31.147] himax | TARGET OBJECT DETECTED!
+[02:31.147] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:31.332] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:31.448] himax | Score 85/128 (Threshold 18)
+[02:31.448] himax | HM0360 AE regs:
+[02:31.448] himax | Sending 123 bytes: Header 4, payload 117, checksum 2 'HM0360 AE regs:
+[02:31.448] himax | HM0360 motion in 18 blocks:
+[02:31.448] himax |  00 00 00 00 00 00 00 
+[02:31.448] himax | Sending 130 bytes: Header 4, payload 124, checksum 2 'HM0360 motion in 18 blocks:
+[02:31.448] himax | Skipping file save.
+[02:31.499] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:31.499] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 104 lines
+[02:31.499] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:31.499] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:31.499] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 86
+[02:31.512] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:31.531] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:31.531] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:31.531] nrf   | <info> app: I2C RX payload 117/250 bytes. Response type is 4. CRC OK (0x6533)
+[02:31.531] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[02:31.531] nrf   | <info> app: I2C RX payload 124/250 bytes. Response type is 4. CRC OK (0x6F68)
+[02:31.531] nrf   | BLE out: Sent 125 bytes: 'HM0360 motion in 18 blocks:
+[02:31.531] nrf   | 00 20 00 40 00 60 00 12 00 00 00 71 00 70 00 42 00 20 00 18 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:31.665] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 18 blocks:
+[02:31.665] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 20 00 40 00 60 00 12 00 00 00 71 00 70 00 42 00 20 00 18 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:32.198] himax | Class 'no person': 43.0% (raw: -38)
+[02:32.198] himax | Class 'person': 57.4% (raw: 38)
+[02:32.198] himax | Class 0 'no person' = logit -38
+[02:32.198] himax | Class 1 'person' = logit 38
+[02:32.198] himax | TARGET OBJECT DETECTED!
+[02:32.198] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:32.198] himax | Score 38/128 (Threshold 18)
+[02:32.198] himax | HM0360 AE regs:
+[02:32.198] himax | Sending 123 bytes: Header 4, payload 117, checksum 2 'HM0360 AE regs:
+[02:32.198] himax | HM0360 motion in 22 blocks:
+[02:32.198] himax | Sending 130 bytes: Header 4, payload 124, checksum 2 'HM0360 motion in 22 blocks:
+[02:32.198] himax | Skipping file save.
+[02:32.311] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:32.446] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:32.446] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:32.446] nrf   | <info> app: I2C RX payload 117/250 bytes. Response type is 4. CRC OK (0x6533)
+[02:32.446] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[02:32.446] nrf   | <info> app: I2C RX payload 124/250 bytes. Response type is 4. CRC OK (0x4CCE)
+[02:32.446] nrf   | BLE out: Sent 125 bytes: 'HM0360 motion in 22 blocks:
+[02:32.446] nrf   | 00 a0 00 20 00 01 00 12 00 20 00 73 00 f0 00 52 00 20 00 18 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:32.465] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:32.465] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 104 lines
+[02:32.479] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:32.480] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:32.481] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 86
+[02:32.481] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:32.638] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 22 blocks:
+[02:32.639] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 a0 00 20 00 01 00 12 00 20 00 73 00 f0 00 52 00 20 00 18 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:33.128] himax | Class 'no person': 43.0% (raw: -37)
+[02:33.128] himax | Class 'person': 57.2% (raw: 37)
+[02:33.128] himax | Class 0 'no person' = logit -37
+[02:33.128] himax | Class 1 'person' = logit 37
+[02:33.128] himax | TARGET OBJECT DETECTED!
+[02:33.128] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:33.280] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:33.431] himax | Score 37/128 (Threshold 18)
+[02:33.431] himax | HM0360 AE regs:
+[02:33.431] himax | Sending 123 bytes: Header 4, payload 117, checksum 2 'HM0360 AE regs:
+[02:33.431] himax | HM0360 motion in 3 blocks:
+[02:33.431] himax | 0 00 00 00 00 00 00 
+[02:33.431] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 3 blocks:
+[02:33.432] himax | Skipping file save.
+[02:33.454] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:33.456] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 104 lines
+[02:33.457] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:33.459] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:33.461] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 86
+[02:33.464] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:33.617] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 3 blocks:
+[02:33.617] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 60 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:33.679] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:33.679] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:33.679] nrf   | <info> app: I2C RX payload 117/250 bytes. Response type is 4. CRC OK (0x6533)
+[02:33.679] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[02:33.679] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x51AC)
+[02:33.679] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 3 blocks:
+[02:33.679] nrf   | 00 60 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:34.180] himax | Class 'no person': 43.4% (raw: -34)
+[02:34.180] himax | Class 'person': 57.0% (raw: 34)
+[02:34.180] himax | Class 0 'no person' = logit -34
+[02:34.180] himax | Class 1 'person' = logit 34
+[02:34.180] himax | TARGET OBJECT DETECTED!
+[02:34.180] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:34.180] himax | Score 34/128 (Threshold 18)
+[02:34.180] himax | HM0360 AE regs:
+[02:34.180] himax | Sending 123 bytes: Header 4, payload 117, checksum 2 'HM0360 AE regs:
+[02:34.181] himax | HM0360 motion in 2 blocks:
+[02:34.181] himax |  00 00 00 00 00 00 00 
+[02:34.181] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 2 blocks:
+[02:34.181] himax | Skipping file save.
+[02:34.254] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:34.431] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:34.445] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 104 lines
+[02:34.445] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:34.449] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:34.449] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 87
+[02:34.449] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:34.582] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:34.582] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:34.582] nrf   | <info> app: I2C RX payload 117/250 bytes. Response type is 4. CRC OK (0xBB2C)
+[02:34.582] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[02:34.582] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x91C5)
+[02:34.582] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 2 blocks:
+[02:34.582] nrf   | 00 40 00 40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:34.599] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 2 blocks:
+[02:34.614] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 40 00 40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:35.098] himax |    Inhibiting MD
+[02:35.098] himax |    Changing mode from 2 to 0 with nFrames=0, sleepTime=0 sleepCount = 0xffff
+[02:35.166] himax | Class 'no person': 41.3% (raw: -45)
+[02:35.166] himax | Class 'person': 59.0% (raw: 45)
+[02:35.166] himax | Class 0 'no person' = logit -45
+[02:35.166] himax | Class 1 'person' = logit 45
+[02:35.166] himax | TARGET OBJECT DETECTED!
+[02:35.166] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:35.166] himax | Score 45/128 (Threshold 18)
+[02:35.166] himax | HM0360 AE regs:
+[02:35.166] himax | Sending 123 bytes: Header 4, payload 117, checksum 2 'HM0360 AE regs:
+[02:35.166] himax | HM0360 motion in 1 blocks:
+[02:35.166] himax |  00 00 00 00 00 00 00 
+[02:35.166] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 1 blocks:
+[02:35.166] himax | Skipping file save.
+[02:35.231] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:35.412] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:35.415] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 104 lines
+[02:35.416] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:35.416] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:35.419] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 87
+[02:35.421] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:35.480] himax | Current captures completed: 20
+[02:35.480] himax | Average file write time 0ms
+[02:35.480] himax | Total frames captured since last reset: 20
+[02:35.480] himax | Sending 56 bytes: Header 4, payload 50, checksum 2 'Captured 20 images. Last is  (File write 0ms avg.)'
+[02:35.498] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:35.498] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:35.498] nrf   | <info> app: I2C RX payload 117/250 bytes. Response type is 4. CRC OK (0xBB2C)
+[02:35.498] nrf   | BLE out: Sent 118 bytes: 'HM0360 AE regs:
+[02:35.498] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x0A3F)
+[02:35.498] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 1 blocks:
+[02:35.498] nrf   | 00 00 00 40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:35.498] nrf   | <info> app: I2C RX payload 50/250 bytes. Response type is 4. CRC OK (0xF51F)
+[02:35.498] nrf   | BLE out: Sent  51 bytes: 'Captured 20 images. Last is  (File write 0ms avg.)'
+[02:35.569] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 1 blocks:
+[02:35.579] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:35.732] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: Captured 20 images. Last is  (File write 0ms avg.)
+[02:35.732] app   | [MotionDetectionStream] Firmware capture sequence completed naturally.
+[02:35.732] app   | [MotionDetectionStream] Command queue cleared — ready for next test.
+[02:35.745] app   | TX Hex: 4149207365746f702031382030
+[02:36.005] app   | Written AI setop 18 0 to the device WILD-SIFK (09:55:56-833)
+[02:36.007] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: Set OpParam 18 = 0
+[02:36.097] himax | Received I2C message.
+[02:36.097] himax | MKL62BA command received: 'setop 18 0'
+[02:36.097] himax | Set OpParam 18 = 0
+[02:36.097] himax | Sending 24 bytes: Header 4, payload 18, checksum 2 'Set OpParam 18 = 0'
+[02:36.097] himax | Config saved (op params persisted).
+[02:36.113] nrf   | BLE in: Received  13 bytes 'AI setop 18 0'
+[02:36.113] nrf   | Sending 'setop 18 0' to AI processor (4 ctrl bytes, 10 payload, 2 CRC)<info> app: AI state changed from IDLE to PROCESSING
+[02:36.113] nrf   | <info> app: I2C RX payload 18/250 bytes. Response type is 4. CRC OK (0x96F0)
+[02:36.113] nrf   | <info> app: AI processor replies: 'Set OpParam 18 = 0'
+[02:36.113] nrf   | <info> app: AI state changed from PROCESSING to IDLE
+[02:36.113] nrf   | BLE out: Sent  19 bytes: 'Set OpParam 18 = 0'
+[02:36.247] app   | [MotionDetectionStream] TEST_MODE_BITS reset to 0
+[02:36.247] app   | TX Hex: 4149207365746f7020382031303030
+[02:36.280] app   | Written AI setop 8 1000 to the device WILD-SIFK (09:55:57-109)
+[02:36.398] himax | Received I2C message.
+[02:36.398] himax | MKL62BA command received: 'setop 8 1000'
+[02:36.398] himax | Set OpParam 8 = 1000
+[02:36.581] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: Set OpParam 8 = 1000
+[02:36.713] himax | Sending 26 bytes: Header 4, payload 20, checksum 2 'Set OpParam 8 = 1000'
+[02:36.713] himax | Config saved (op params persisted).
+[02:36.716] nrf   | BLE in: Received  15 bytes 'AI setop 8 1000'
+[02:36.716] nrf   | Sending 'setop 8 1000' to AI processor (4 ctrl bytes, 12 payload, 2 CRC)<info> app: AI state changed from IDLE to PROCESSING
+[02:36.716] nrf   | <info> app: I2C RX payload 20/250 bytes. Response type is 4. CRC OK (0xF34E)
+[02:36.716] nrf   | <info> app: AI processor replies: 'Set OpParam 8 = 1000'
+[02:36.716] nrf   | <info> app: AI state changed from PROCESSING to IDLE
+[02:36.716] nrf   | BLE out: Sent  21 bytes: 'Set OpParam 8 = 1000'
+[02:36.866] app   | [MotionDetectionStream] INTERVAL_BEFORE_DPD reset to 1000
+[02:39.697] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: Sleep
+[02:39.763] himax | Inactive for 3000ms
+[02:39.763] himax | Saved state to SD card. Image sequence number = 204
+[02:39.763] himax | Image task ready to sleep.
+[02:39.763] himax | Sending 110 bytes: Header 4, payload 104, checksum 2 'Sleep 204 81 53 17 338 3 500 0 1000 50 1 0 100 2 1 1 18 1 0 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0 '
+[02:39.763] himax | IF task ready to sleep.
+[02:39.763] himax | Preparing HM0360 for MD:   HM0360 Motion Detection off.
+[02:39.763] himax |    Inhibiting MD
+[02:39.763] himax |    Changing mode from 0 to 2 with nFrames=1, sleepTime=0 sleepCount = 0xffff
+[02:39.763] himax |  No LED flashes.
+[02:39.763] himax | >>> Entering DPD at 2024:01:01 00:00:33
+[02:39.763] nrf   | <info> app: I2C RX payload 104/250 bytes. Response type is 4. CRC OK (0x96D3)
+[02:39.763] nrf   | <info> app: AI processor sends stats: '204 81 53 17 338 3 500 0 1000 50 1 0 100 2 1 1 18 1 0 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0 '
+[02:39.763] nrf   | <info> app: Positive NN events has increased from 33 to 53!
+[02:39.763] nrf   | <info> app: AI state changed from IDLE to SLEEP
+[02:39.763] nrf   | BLE out: Sent   6 bytes: 'Sleep'
+[02:39.763] nrf   | <info> app: Bumping state machine with 'Debounced Sensor' (Current state: JOIN FAILED)
+[02:39.763] nrf   | <info> app:  Sensor events ignored - JOIN FAILED.
+[02:42.815] app   | [MotionDetectionSection] Starting test: sensitivity=1, interval=500ms, photos=20, flash=2, brightness=50
+[02:42.815] app   | [MotionDetectionStream] Starting MD test: sensitivity=1, interval=500ms
+[02:42.830] app   | TX Hex: 4149206765746f70202d31
+[02:42.948] app   | Written AI getop -1 to the device WILD-SIFK (09:56:03-776)
+[02:43.432] himax | 1st BL Modem Build DATE=Jan 17 2025, Version: 2.12
+[02:43.432] himax | Compiler Version: ARM GNU, 14.3.1 20250623
+[02:43.432] himax | **** WW500 MD. (WW500_C02) Built: 05:31:27 Sep 15 2026 ****
+[02:43.432] himax | Git branch: 'dev' bcb45deb
+[02:43.432] himax | Compiler Version: ARM GNU, 14.3.1 20250623
+[02:43.432] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[02:43.432] himax | Camera: HM0360
+[02:43.432] himax | PCA9574 present at 0x20
+[02:43.432] himax | Initialised LED Flash
+[02:43.432] himax | HM0360 present at 0x24
+[02:43.432] himax | Main camera present at 0x24
+[02:43.432] himax | ### Warm Boot ###
+[02:43.432] himax | Woke at 2024:01:01 00:00:33 
+[02:43.432] himax | BLE wake
+[02:43.432] himax | Initialising FreeRTOS tasks
+[02:43.432] himax | Created task 'CLI' Priority 4
+[02:43.432] himax | Created task 'IFTask' Priority 3
+[02:43.432] himax | Created task 'FAT' Priority 2
+[02:43.432] himax | Created task 'IMAGE' Priority 1
+[02:43.432] himax | FreeRTOS scheduler started.
+[02:43.432] himax | Starting CLI Task
+[02:43.432] himax | Enter 'help' to view a list of available commands.
+[02:43.432] himax | cmd> Starting IFTask
+[02:43.432] himax | I2C slave instance 0 configured at address 0x62
+[02:43.432] himax | I2C buffers have 256 bytes, payload is 244
+[02:43.432] himax | Starting FatFS Task
+[02:43.432] nrf   | BLE in: Received  11 bytes 'AI getop -1'
+[02:43.432] nrf   | <info> app: AI processor is in DPD. Waking it. (getop -1)
+[02:43.616] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: Wake
+[02:43.702] himax | Mounting FatFS on SD card OK
+[02:43.702] himax | Directory '/MANIFEST' exists
+[02:43.702] himax | SD card initialised. CWD is '0:/'
+[02:43.702] himax | Loading configuration: CWD is '0:/MANIFEST'
+[02:43.702] himax | 'CONFIG.TXT' found. (Next image #204), camera enabled. Flash brightness 50
+[02:43.702] himax | Retaining existing images directory (9 <= 100) '/MEDIA/859b722a/IMAGES.000'
+[02:43.702] himax | Directory '/MEDIA/859b722a/IMAGES.000' exists
+[02:43.702] himax | FatFs setup took 203ms
+[02:43.702] himax | Inactivity period set at 1000ms
+[02:43.702] himax | Starting Image Task
+[02:43.702] himax | Image 640 x 480. Raw buffer 460800. JPEG buffer 115860. JPEG compression x4
+[02:43.702] himax | Initialising HM0360 at 0x24 (p.u. delay 1ms)
+[02:43.702] himax | Memory allocated: 460800 for raw buffer, 115860 for JPEG, 100 for JPEG header
+[02:43.702] himax |    Inhibiting MD
+[02:43.702] himax |    Changing mode from 2 to 0 with nFrames=0, sleepTime=0 sleepCount = 0xffff
+[02:43.702] himax | HM0360 MD sensitivity 1
+[02:43.702] himax | [LS] In ledFlashSetFlashModeFromOpParam with 2 Mode 2
+[02:43.702] himax | Initialising NN with 2412/ETHOS-U 2411 library. Arena size 524288
+[02:43.702] himax | Ethos-U55 device initialised
+[02:43.702] himax | Looking for model '1V1.TFL' in flash or SD card
+[02:43.702] himax | Flash ID 0xEF initialised
+[02:43.702] himax | Model file name in flash is '1V1.TFL'
+[02:43.702] himax | Flash already contains model '1V1.TFL'; loading from flash.
+[02:43.702] himax | There are 2 classes (2)
+[02:43.702] himax | Initialised neural network.
+[02:43.702] himax | Image sensor and data path initialised for camera HM0360
+[02:43.702] himax |   Camera system enabled.
+[02:43.702] himax |   Neural network enabled.
+[02:43.702] himax |   Flash LED(s) in use: 2
+[02:43.702] himax |   Flash brightness: 50%
+[02:43.702] himax |   Flash is currently armed.
+[02:43.702] himax |   MD disabled.
+[02:43.702] himax |   Timelapse disabled.
+[02:43.702] himax | Sending 31 bytes: Header 4, payload 25, checksum 2 'Wake 2024-01-01T00:00:33Z'
+[02:43.702] himax | Received I2C message.
+[02:43.702] himax | MKL62BA command received: 'selftest'
+[02:43.702] himax | selfTest 0000
+[02:43.702] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[02:43.702] himax | Received I2C message.
+[02:43.702] himax | MKL62BA command received: 'getop -1'
+[02:43.702] himax | OpParams 204 81 53 17 339 3 500 0 1000 50 1 0 100 2 1 1 18 1 0 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0 
+[02:43.702] himax | Sending 113 bytes: Header 4, payload 107, checksum 2 'OpParams 204 81 53 17 339 3 500 0 1000 50 1 0 100 2 1 1 18 1 0 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0 '
+[02:43.816] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: Error bits = 0x0000
+[02:44.046] nrf   | <info> app: I2C RX payload 25/250 bytes. Response type is 4. CRC OK (0xD530)
+[02:44.046] nrf   | <info> app: BLE and AI time differ by 564s - too much!
+[02:44.046] nrf   | <info> app: AI state changed from SLEEP to WOKEN
+[02:44.046] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[02:44.046] nrf   | <info> app: AI State machine scheduler called with event 8 'Send SelfTest'
+[02:44.046] nrf   | Sending 'selftest' to AI processor (4 ctrl bytes, 8 payload, 2 CRC)<info> app: OK
+[02:44.046] nrf   | <info> app: AI state changed from WOKEN to SELFTEST
+[02:44.046] nrf   | <info> app: I2C RX payload 13/250 bytes. Response type is 4. CRC OK (0x7FB8)
+[02:44.046] nrf   | <info> app: AI self test bits = 0x0000 (all bits now 0x0000)
+[02:44.046] nrf   | <info> app: Can't send UTC
+[02:44.046] nrf   | <info> app: AI state changed from SELFTEST to IDLE
+[02:44.046] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[02:44.046] nrf   | <info> app: AI State machine scheduler called with event 12 'Msg to AI'
+[02:44.046] nrf   | Sending 'getop -1' to AI processor (4 ctrl bytes, 8 payload, 2 CRC)<info> app: AI state changed from IDLE to PROCESSING
+[02:44.046] nrf   | <info> app: I2C RX payload 107/250 bytes. Response type is 4. CRC OK (0xF9DA)
+[02:44.046] nrf   | <info> app: AI processor replies: 'OpParams 204 81 53 17 339 3 500 0 1000 50 1 0 100 2 1 1 18 1 0 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0 '
+[02:44.046] nrf   | <info> app: AI state changed from PROCESSING to IDLE
+[02:44.046] nrf   | BLE out: Sent 108 bytes: 'OpParams 204 81 53 17 339 3 500 0 1000 50 1 0 100 2 1 1 18 1 0 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0 '
+[02:44.082] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: OpParams 204 81 53 17 339 3 500 0 1000 50 1 0 100 2 1 1 18 1 0 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0 
+[02:44.321] app   | [MotionDetectionStream] Current OPs: 204 81 53 17 339 3 500 0 1000 50 1 0 100 2 1 1 18 1 0 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0
+[02:44.321] app   | [MotionDetectionStream] Setting test mode bits via session
+[02:44.321] app   | TX Hex: 4149207365746f702031382038
+[02:44.321] app   | Written AI setop 18 8 to the device WILD-SIFK (09:56:05-154)
+[02:44.581] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: Set OpParam 18 = 8
+[02:44.628] himax | Received I2C message.
+[02:44.628] himax | MKL62BA command received: 'setop 18 8'
+[02:44.628] himax | Set OpParam 18 = 8
+[02:44.628] himax | Sending 24 bytes: Header 4, payload 18, checksum 2 'Set OpParam 18 = 8'
+[02:44.628] himax | Config saved (op params persisted).
+[02:44.662] nrf   | BLE in: Received  13 bytes 'AI setop 18 8'
+[02:44.662] nrf   | Sending 'setop 18 8' to AI processor (4 ctrl bytes, 10 payload, 2 CRC)<info> app: AI state changed from IDLE to PROCESSING
+[02:44.662] nrf   | <info> app: I2C RX payload 18/250 bytes. Response type is 4. CRC OK (0x17F8)
+[02:44.662] nrf   | <info> app: AI processor replies: 'Set OpParam 18 = 8'
+[02:44.662] nrf   | <info> app: AI state changed from PROCESSING to IDLE
+[02:44.662] nrf   | BLE out: Sent  19 bytes: 'Set OpParam 18 = 8'
+[02:44.914] app   | [FlashHold] flash on F5:3F:88:C6:81:06 already in mode 2, nothing to put back
+[02:44.914] app   | [MotionDetectionStream] Setting INTERVAL_BEFORE_DPD=2500 to prevent sleep during test
+[02:44.914] app   | TX Hex: 4149207365746f7020382032353030
+[02:44.966] app   | Written AI setop 8 2500 to the device WILD-SIFK (09:56:05-798)
+[02:45.173] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: Set OpParam 8 = 2500
+[02:45.243] himax | Received I2C message.
+[02:45.243] himax | MKL62BA command received: 'setop 8 2500'
+[02:45.243] himax | Set OpParam 8 = 2500
+[02:45.243] himax | Sending 26 bytes: Header 4, payload 20, checksum 2 'Set OpParam 8 = 2500'
+[02:45.243] himax | Config saved (op params persisted).
+[02:45.265] nrf   | BLE in: Received  15 bytes 'AI setop 8 2500'
+[02:45.265] nrf   | Sending 'setop 8 2500' to AI processor (4 ctrl bytes, 12 payload, 2 CRC)<info> app: AI state changed from IDLE to PROCESSING
+[02:45.265] nrf   | <info> app: I2C RX payload 20/250 bytes. Response type is 4. CRC OK (0x8362)
+[02:45.265] nrf   | <info> app: AI processor replies: 'Set OpParam 8 = 2500'
+[02:45.265] nrf   | <info> app: AI state changed from PROCESSING to IDLE
+[02:45.265] nrf   | BLE out: Sent  21 bytes: 'Set OpParam 8 = 2500'
+[02:45.447] app   | [MotionDetectionStream] Setting MD sensitivity to 1
+[02:45.450] app   | TX Hex: 4149206d642031
+[02:45.481] app   | Written AI md 1 to the device WILD-SIFK (09:56:06-309)
+[02:45.847] himax | Received I2C message.
+[02:45.847] himax | MKL62BA command received: 'md 1'
+[02:45.847] himax | HM0360 MD sensitivity 1
+[02:45.847] himax | MD sensitivity set to 1
+[02:45.847] himax | Sending 29 bytes: Header 4, payload 23, checksum 2 'MD sensitivity set to 1'
+[02:45.880] nrf   | BLE in: Received   7 bytes 'AI md 1'
+[02:45.880] nrf   | Sending 'md 1' to AI processor (4 ctrl bytes, 4 payload, 2 CRC)<info> app: AI state changed from IDLE to PROCESSING
+[02:45.880] nrf   | <info> app: I2C RX payload 23/250 bytes. Response type is 4. CRC OK (0x2216)
+[02:45.880] nrf   | <info> app: UNHANDLED event Wake (MD) in PROCESSING
+[02:45.880] nrf   | <info> app: AI state changed from PROCESSING to SLEEP
+[02:46.762] himax | Inactive for 1000ms
+[02:46.762] himax | Saved state to SD card. Image sequence number = 204
+[02:46.762] himax | Image task ready to sleep.
+[02:46.762] himax | Sending 110 bytes: Header 4, payload 104, checksum 2 'Sleep 204 81 53 17 339 3 500 0 2500 50 1 0 100 2 1 1 18 1 8 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0 '
+[02:46.762] himax | IF task ready to sleep.
+[02:46.762] himax | Preparing HM0360 for MD:   HM0360 Motion Detection off.
+[02:46.762] himax |    Inhibiting MD
+[02:46.762] himax |    Changing mode from 0 to 2 with nFrames=1, sleepTime=0 sleepCount = 0xffff
+[02:46.762] himax |  No LED flashes.
+[02:46.762] himax | >>> Entering DPD at 2024:01:01 00:00:36
+[02:46.795] nrf   | <info> app: I2C RX payload 104/250 bytes. Response type is 4. CRC OK (0x5B82)
+[02:50.465] app   | [MotionDetectionStream] md command failed (non-critical)
+[02:50.465] app   | [MotionDetectionStream] Sending capture command (attempt 1/4)
+[02:50.465] app   | TX Hex: 4149206361707475726520323020353030
+[02:50.581] app   | Written AI capture 20 500 to the device WILD-SIFK (09:56:11-416)
+[02:50.729] himax | 1st BL Modem Build DATE=Jan 17 2025, Version: 2.12
+[02:50.729] himax | Compiler Version: ARM GNU, 14.3.1 20250623
+[02:50.729] himax | **** WW500 MD. (WW500_C02) Built: 05:31:27 Sep 15 2026 ****
+[02:50.729] himax | Git branch: 'dev' bcb45deb
+[02:50.729] himax | Compiler Version: ARM GNU, 14.3.1 20250623
+[02:50.729] himax | Wakeup_event = 0x0000, WakeupEvt1 = 0x0001 WAKE signal
+[02:50.729] himax | Camera: HM0360
+[02:50.729] himax | PCA9574 present at 0x20
+[02:50.729] himax | Initialised LED Flash
+[02:50.729] himax | HM0360 present at 0x24
+[02:50.729] himax | Main camera present at 0x24
+[02:50.729] himax | ### Warm Boot ###
+[02:50.729] himax | Woke at 2024:01:01 00:00:36 
+[02:50.729] himax | BLE wake
+[02:50.729] himax | Initialising FreeRTOS tasks
+[02:50.729] himax | Created task 'CLI' Priority 4
+[02:50.729] himax | Created task 'IFTask' Priority 3
+[02:50.729] himax | Created task 'FAT' Priority 2
+[02:50.729] himax | Created task 'IMAGE' Priority 1
+[02:50.729] himax | FreeRTOS scheduler started.
+[02:50.729] himax | Starting CLI Task
+[02:50.729] himax | Enter 'help' to view a list of available commands.
+[02:50.729] himax | cmd> Starting IFTask
+[02:50.729] himax | I2C slave instance 0 configured at address 0x62
+[02:50.729] himax | I2C buffers have 256 bytes, payload is 244
+[02:50.729] himax | Starting FatFS Task
+[02:50.765] nrf   | BLE in: Received  17 bytes 'AI capture 20 500'
+[02:50.765] nrf   | <info> app: AI processor is in DPD. Waking it. (capture 20 500)
+[02:51.030] himax | Mounting FatFS on SD card OK
+[02:51.030] himax | Directory '/MANIFEST' exists
+[02:51.030] himax | SD card initialised. CWD is '0:/'
+[02:51.030] himax | Loading configuration: CWD is '0:/MANIFEST'
+[02:51.030] himax | 'CONFIG.TXT' found. (Next image #204), camera enabled. Flash brightness 50
+[02:51.030] himax | Retaining existing images directory (9 <= 100) '/MEDIA/859b722a/IMAGES.000'
+[02:51.030] himax | Directory '/MEDIA/859b722a/IMAGES.000' exists
+[02:51.030] himax | FatFs setup took 203ms
+[02:51.030] himax | Inactivity period set at 2500ms
+[02:51.030] himax | Starting Image Task
+[02:51.030] himax | Image 640 x 480. Raw buffer 460800. JPEG buffer 115860. JPEG compression x4
+[02:51.030] himax | Initialising HM0360 at 0x24 (p.u. delay 1ms)
+[02:51.030] himax | Memory allocated: 460800 for raw buffer, 115860 for JPEG, 100 for JPEG header
+[02:51.030] himax |    Inhibiting MD
+[02:51.030] himax |    Changing mode from 2 to 0 with nFrames=0, sleepTime=0 sleepCount = 0xffff
+[02:51.030] himax | HM0360 MD sensitivity 1
+[02:51.030] himax | [LS] In ledFlashSetFlashModeFromOpParam with 2 Mode 2
+[02:51.030] himax | Initialising NN with 2412/ETHOS-U 2411 library. Arena size 524288
+[02:51.030] himax | Ethos-U55 device initialised
+[02:51.030] himax | Looking for model '1V1.TFL' in flash or SD card
+[02:51.030] himax | Flash ID 0xEF initialised
+[02:51.030] himax | Model file name in flash is '1V1.TFL'
+[02:51.030] himax | Flash already contains model '1V1.TFL'; loading from flash.
+[02:51.030] himax | There are 2 classes (2)
+[02:51.030] himax | Initialised neural network.
+[02:51.030] himax | Image sensor and data path initialised for camera HM0360
+[02:51.030] himax |   Camera system enabled.
+[02:51.030] himax |   Neural network enabled.
+[02:51.030] himax |   Flash LED(s) in use: 2
+[02:51.030] himax |   Flash brightness: 50%
+[02:51.030] himax |   Flash is currently armed.
+[02:51.030] himax |   MD disabled.
+[02:51.030] himax |   Timelapse disabled.
+[02:51.030] himax | Sending 31 bytes: Header 4, payload 25, checksum 2 'Wake 2024-01-01T00:00:37Z'
+[02:51.030] himax | Received I2C message.
+[02:51.030] himax | MKL62BA command received: 'selftest'
+[02:51.030] himax | selfTest 0000
+[02:51.030] himax | Sending 19 bytes: Header 4, payload 13, checksum 2 'selfTest 0000'
+[02:51.030] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: Wake
+[02:51.030] app   | [OpCache] dropped on wake for F5:3F:88:C6:81:06
+[02:51.197] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: Error bits = 0x0000
+[02:51.247] himax | Received I2C message.
+[02:51.247] himax | MKL62BA command received: 'capture 20 500'
+[02:51.247] himax | About to capture 20 images with an interval of '500' milliseconds
+[02:51.247] himax | Sending 71 bytes: Header 4, payload 65, checksum 2 'About to capture 20 images with an interval of '500' milliseconds'
+[02:51.247] himax | Images to capture: 20
+[02:51.247] himax | Interval: 500ms
+[02:51.247] himax |    Interval of 500ms gives sleep count = 0x4018
+[02:51.247] himax |    Changing mode from 0 to 2 with nFrames=1, sleepTime=500 sleepCount = 0x4018
+[02:51.247] himax | Class 'no person': 44.0% (raw: -31)
+[02:51.247] himax | Class 'person': 56.0% (raw: 31)
+[02:51.247] himax | Class 0 'no person' = logit -31
+[02:51.247] himax | Class 1 'person' = logit 31
+[02:51.247] himax | TARGET OBJECT DETECTED!
+[02:51.247] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:51.247] himax | Score 31/128 (Threshold 18)
+[02:51.247] himax | HM0360 AE regs:
+[02:51.247] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'HM0360 AE regs:
+[02:51.381] nrf   | <info> app: I2C RX payload 25/250 bytes. Response type is 4. CRC OK (0x19F4)
+[02:51.381] nrf   | <info> app: BLE and AI time differ by 568s - too much!
+[02:51.381] nrf   | <info> app: AI state changed from SLEEP to WOKEN
+[02:51.381] nrf   | BLE out: Sent   5 bytes: 'Wake'
+[02:51.381] nrf   | <info> app: AI State machine scheduler called with event 8 'Send SelfTest'
+[02:51.381] nrf   | Sending 'selftest' to AI processor (4 ctrl bytes, 8 payload, 2 CRC)<info> app: OK
+[02:51.381] nrf   | <info> app: AI state changed from WOKEN to SELFTEST
+[02:51.381] nrf   | <info> app: I2C RX payload 13/250 bytes. Response type is 4. CRC OK (0x7FB8)
+[02:51.381] nrf   | <info> app: AI self test bits = 0x0000 (all bits now 0x0000)
+[02:51.381] nrf   | <info> app: Can't send UTC
+[02:51.381] nrf   | <info> app: AI state changed from SELFTEST to IDLE
+[02:51.381] nrf   | BLE out: Sent  20 bytes: 'Error bits = 0x0000'
+[02:51.381] nrf   | <info> app: AI State machine scheduler called with event 12 'Msg to AI'
+[02:51.381] nrf   | Sending 'capture 20 500' to AI processor (4 ctrl bytes, 14 payload, 2 CRC)<info> app: AI state changed from IDLE to PROCESSING
+[02:51.381] nrf   | <info> app: I2C RX payload 65/250 bytes. Response type is 4. CRC OK (0x8AA3)
+[02:51.381] nrf   | <info> app: AI processor replies: 'About to capture 20 images with an interval of '500' milliseconds'
+[02:51.381] nrf   | <info> app: AI state changed from PROCESSING to IDLE
+[02:51.381] nrf   | BLE out: Sent  66 bytes: 'About to capture 20 images with an interval of '500' milliseconds'
+[02:51.381] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:51.381] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:51.381] nrf   | <info> app: I2C RX payload 116/250 bytes. Response type is 4. CRC OK (0xF094)
+[02:51.398] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: About to capture 20 images with an interval of '500' milliseconds
+[02:51.531] app   | [MotionDetectionStream] Capture confirmed on attempt 1
+[02:51.531] app   | [MotionDetectionStream] Capture 20 frames @ 500ms — firmware running.
+[02:51.531] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:51.562] himax | HM0360 motion in 0 blocks:
+[02:51.562] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 0 blocks:
+[02:51.562] himax | Skipping file save.
+[02:51.631] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:51.631] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 97 lines
+[02:51.631] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:51.631] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:51.631] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 84
+[02:51.631] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:51.688] nrf   | BLE out: Sent 117 bytes: 'HM0360 AE regs:
+[02:51.688] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x7C2A)
+[02:51.688] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[02:51.688] nrf   | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:51.713] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 0 blocks:
+[02:51.713] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:51.751] himax | Class 'no person': 46.0% (raw: -21)
+[02:51.751] himax | Class 'person': 54.1% (raw: 21)
+[02:51.751] himax | Class 0 'no person' = logit -21
+[02:51.751] himax | Class 1 'person' = logit 21
+[02:51.751] himax | TARGET OBJECT DETECTED!
+[02:51.751] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:51.751] himax | Score 21/128 (Threshold 18)
+[02:51.751] himax | HM0360 AE regs:
+[02:51.751] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'HM0360 AE regs:
+[02:51.751] himax | HM0360 motion in 0 blocks:
+[02:51.751] himax | 00 00 00 00 00 00 00 
+[02:51.751] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 0 blocks:
+[02:51.751] himax | Skipping file save.
+[02:51.885] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:51.996] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:51.996] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:51.996] nrf   | <info> app: I2C RX payload 116/250 bytes. Response type is 4. CRC OK (0xF094)
+[02:51.996] nrf   | BLE out: Sent 117 bytes: 'HM0360 AE regs:
+[02:51.996] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x7C2A)
+[02:51.996] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[02:51.996] nrf   | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:52.000] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:52.000] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 97 lines
+[02:52.000] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:52.000] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:52.014] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 84
+[02:52.014] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:52.097] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 0 blocks:
+[02:52.099] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:52.273] himax | Class 'no person': 48.0% (raw: -10)
+[02:52.273] himax | Class 'person': 52.0% (raw: 10)
+[02:52.273] himax | Class 0 'no person' = logit -10
+[02:52.273] himax | Class 1 'person' = logit 10
+[02:52.273] himax | Target object not detected.
+[02:52.273] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN-'
+[02:52.273] himax | Score 10/128 (Threshold 18)
+[02:52.273] himax | HM0360 AE regs:
+[02:52.273] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'HM0360 AE regs:
+[02:52.273] himax | HM0360 motion in 0 blocks:
+[02:52.273] himax | 0 00 00 00 00 00 00 
+[02:52.273] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 0 blocks:
+[02:52.273] himax | Skipping file save.
+[02:52.374] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN-
+[02:52.529] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:52.531] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 97 lines
+[02:52.531] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:52.531] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:52.531] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 84
+[02:52.531] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:52.612] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0x8658)
+[02:52.612] nrf   | BLE out: Sent   4 bytes: 'NN-'
+[02:52.612] nrf   | <info> app: I2C RX payload 116/250 bytes. Response type is 4. CRC OK (0xF094)
+[02:52.612] nrf   | BLE out: Sent 117 bytes: 'HM0360 AE regs:
+[02:52.612] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x7C2A)
+[02:52.612] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[02:52.612] nrf   | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:52.782] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 0 blocks:
+[02:52.782] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:52.782] himax | Class 'no person': 49.0% (raw: -5)
+[02:52.782] himax | Class 'person': 51.0% (raw: 5)
+[02:52.782] himax | Class 0 'no person' = logit -5
+[02:52.782] himax | Class 1 'person' = logit 5
+[02:52.782] himax | Target object not detected.
+[02:52.782] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN-'
+[02:52.782] himax | Score 5/128 (Threshold 18)
+[02:52.782] himax | HM0360 AE regs:
+[02:52.782] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'HM0360 AE regs:
+[02:52.782] himax | HM0360 motion in 0 blocks:
+[02:52.782] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 0 blocks:
+[02:52.782] himax | Skipping file save.
+[02:52.932] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN-
+[02:53.152] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:53.164] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 97 lines
+[02:53.164] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:53.164] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:53.164] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 84
+[02:53.164] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:53.215] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0x8658)
+[02:53.215] nrf   | BLE out: Sent   4 bytes: 'NN-'
+[02:53.215] nrf   | <info> app: I2C RX payload 116/250 bytes. Response type is 4. CRC OK (0xF094)
+[02:53.215] nrf   | BLE out: Sent 117 bytes: 'HM0360 AE regs:
+[02:53.215] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x7C2A)
+[02:53.215] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[02:53.215] nrf   | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:53.299] himax | Class 'no person': 45.1% (raw: -25)
+[02:53.299] himax | Class 'person': 55.0% (raw: 25)
+[02:53.299] himax | Class 0 'no person' = logit -25
+[02:53.299] himax | Class 1 'person' = logit 25
+[02:53.299] himax | TARGET OBJECT DETECTED!
+[02:53.299] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:53.299] himax | Score 25/128 (Threshold 18)
+[02:53.299] himax | HM0360 AE regs:
+[02:53.299] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'HM0360 AE regs:
+[02:53.299] himax | HM0360 motion in 34 blocks:
+[02:53.299] himax | 0 00 00 00 00 
+[02:53.299] himax | Sending 130 bytes: Header 4, payload 124, checksum 2 'HM0360 motion in 34 blocks:
+[02:53.299] himax | Skipping file save.
+[02:53.326] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 0 blocks:
+[02:53.329] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:53.446] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:53.520] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:53.520] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:53.520] nrf   | <info> app: I2C RX payload 116/250 bytes. Response type is 4. CRC OK (0x6694)
+[02:53.520] nrf   | BLE out: Sent 117 bytes: 'HM0360 AE regs:
+[02:53.520] nrf   | <info> app: I2C RX payload 124/250 bytes. Response type is 4. CRC OK (0x512F)
+[02:53.521] nrf   | BLE out: Sent 125 bytes: 'HM0360 motion in 34 blocks:
+[02:53.521] nrf   | 00 20 10 00 a0 fd 00 12 c0 00 68 0c 08 04 c8 3a 00 05 70 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:53.564] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:53.564] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 97 lines
+[02:53.564] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:53.578] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:53.580] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 81
+[02:53.581] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:53.732] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 34 blocks:
+[02:53.732] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 20 10 00 a0 fd 00 12 c0 00 68 0c 08 04 c8 3a 00 05 70 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:53.813] himax | Class 'no person': 34.0% (raw: -85)
+[02:53.813] himax | Class 'person': 66.0% (raw: 85)
+[02:53.813] himax | Class 0 'no person' = logit -85
+[02:53.813] himax | Class 1 'person' = logit 85
+[02:53.813] himax | TARGET OBJECT DETECTED!
+[02:53.813] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:53.813] himax | Score 85/128 (Threshold 18)
+[02:53.813] himax | HM0360 AE regs:
+[02:53.813] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'HM0360 AE regs:
+[02:53.813] himax | HM0360 motion in 59 blocks:
+[02:53.813] himax | 0 10 18 00 00 
+[02:53.813] himax | Sending 130 bytes: Header 4, payload 124, checksum 2 'HM0360 motion in 59 blocks:
+[02:53.814] himax | Skipping file save.
+[02:53.947] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:54.105] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:54.105] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 97 lines
+[02:54.105] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:54.112] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:54.114] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 84
+[02:54.114] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:54.131] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:54.131] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:54.131] nrf   | <info> app: I2C RX payload 116/250 bytes. Response type is 4. CRC OK (0xF094)
+[02:54.131] nrf   | BLE out: Sent 117 bytes: 'HM0360 AE regs:
+[02:54.131] nrf   | <info> app: I2C RX payload 124/250 bytes. Response type is 4. CRC OK (0xC7E4)
+[02:54.131] nrf   | BLE out: Sent 125 bytes: 'HM0360 motion in 59 blocks:
+[02:54.131] nrf   | 00 60 90 00 80 fd 00 12 c0 04 68 cd 4c 1c 08 12 a0 04 b0 00 50 00 70 80 7c 20 04 70 10 18 00 00 '
+[02:54.231] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 59 blocks:
+[02:54.231] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 60 90 00 80 fd 00 12 c0 04 68 cd 4c 1c 08 12 a0 04 b0 00 50 00 70 80 7c 20 04 70 10 18 00 00 
+[02:54.327] himax | Class 'no person': 41.3% (raw: -45)
+[02:54.327] himax | Class 'person': 59.0% (raw: 45)
+[02:54.327] himax | Class 0 'no person' = logit -45
+[02:54.327] himax | Class 1 'person' = logit 45
+[02:54.327] himax | TARGET OBJECT DETECTED!
+[02:54.327] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:54.327] himax | Score 45/128 (Threshold 18)
+[02:54.327] himax | HM0360 AE regs:
+[02:54.327] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'HM0360 AE regs:
+[02:54.327] himax | HM0360 motion in 42 blocks:
+[02:54.327] himax | 8 10 1c 00 00 
+[02:54.327] himax | Sending 130 bytes: Header 4, payload 124, checksum 2 'HM0360 motion in 42 blocks:
+[02:54.327] himax | Skipping file save.
+[02:54.340] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:54.540] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:54.542] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 97 lines
+[02:54.543] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:54.546] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:54.548] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 85
+[02:54.549] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:54.632] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 42 blocks:
+[02:54.632] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 40 00 00 00 00 00 00 00 c0 00 10 c0 0e a0 03 80 01 40 00 f0 8c 7c b1 24 78 10 1c 00 00 
+[02:54.746] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:54.746] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:54.746] nrf   | <info> app: I2C RX payload 116/250 bytes. Response type is 4. CRC OK (0x2E8B)
+[02:54.746] nrf   | BLE out: Sent 117 bytes: 'HM0360 AE regs:
+[02:54.746] nrf   | <info> app: I2C RX payload 124/250 bytes. Response type is 4. CRC OK (0x5CEF)
+[02:54.746] nrf   | BLE out: Sent 125 bytes: 'HM0360 motion in 42 blocks:
+[02:54.746] nrf   | 00 00 00 40 00 00 00 00 00 00 00 c0 00 10 c0 0e a0 03 80 01 40 00 f0 8c 7c b1 24 78 10 1c 00 00 '
+[02:54.838] himax | Class 'no person': 44.0% (raw: -31)
+[02:54.838] himax | Class 'person': 56.0% (raw: 31)
+[02:54.838] himax | Class 0 'no person' = logit -31
+[02:54.838] himax | Class 1 'person' = logit 31
+[02:54.838] himax | TARGET OBJECT DETECTED!
+[02:54.838] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:54.838] himax | Score 31/128 (Threshold 18)
+[02:54.838] himax | HM0360 AE regs:
+[02:54.838] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'HM0360 AE regs:
+[02:54.838] himax | HM0360 motion in 1 blocks:
+[02:54.838] himax | 00 00 00 00 
+[02:54.838] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 1 blocks:
+[02:54.838] himax | Skipping file save.
+[02:54.909] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:55.048] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:55.048] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:55.048] nrf   | <info> app: I2C RX payload 116/250 bytes. Response type is 4. CRC OK (0x2E8B)
+[02:55.048] nrf   | BLE out: Sent 117 bytes: 'HM0360 AE regs:
+[02:55.048] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x9D8A)
+[02:55.048] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 1 blocks:
+[02:55.048] nrf   | 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:55.048] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:55.048] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 97 lines
+[02:55.048] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:55.048] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:55.061] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 85
+[02:55.064] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:55.312] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 1 blocks:
+[02:55.315] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:55.348] himax | Class 'no person': 45.0% (raw: -28)
+[02:55.348] himax | Class 'person': 55.4% (raw: 28)
+[02:55.348] himax | Class 0 'no person' = logit -28
+[02:55.348] himax | Class 1 'person' = logit 28
+[02:55.348] himax | TARGET OBJECT DETECTED!
+[02:55.348] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:55.348] himax | Score 28/128 (Threshold 18)
+[02:55.348] himax | HM0360 AE regs:
+[02:55.348] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'HM0360 AE regs:
+[02:55.348] himax | HM0360 motion in 0 blocks:
+[02:55.348] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 0 blocks:
+[02:55.348] himax | Skipping file save.
+[02:55.598] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:55.662] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:55.662] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:55.662] nrf   | <info> app: I2C RX payload 116/250 bytes. Response type is 4. CRC OK (0x2E8B)
+[02:55.662] nrf   | BLE out: Sent 117 bytes: 'HM0360 AE regs:
+[02:55.662] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x7C2A)
+[02:55.662] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[02:55.662] nrf   | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:55.748] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:55.748] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 97 lines
+[02:55.748] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:55.748] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:55.748] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 85
+[02:55.748] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:55.848] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 0 blocks:
+[02:55.848] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:55.864] himax | Class 'no person': 52.0% (raw: 8)
+[02:55.864] himax | Class 'person': 48.4% (raw: -8)
+[02:55.864] himax | Class 0 'no person' = logit 8
+[02:55.864] himax | Class 1 'person' = logit -8
+[02:55.864] himax | Target object not detected.
+[02:55.864] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN-'
+[02:55.864] himax | Score -8/128 (Threshold 18)
+[02:55.864] himax | HM0360 AE regs:
+[02:55.864] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'HM0360 AE regs:
+[02:55.864] himax | HM0360 motion in 1 blocks:
+[02:55.864] himax |  00 00 00 00 
+[02:55.864] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 1 blocks:
+[02:55.864] himax | Skipping file save.
+[02:56.082] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN-
+[02:56.198] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:56.198] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 97 lines
+[02:56.212] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:56.213] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:56.216] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 85
+[02:56.216] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:56.264] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0x8658)
+[02:56.264] nrf   | BLE out: Sent   4 bytes: 'NN-'
+[02:56.264] nrf   | <info> app: I2C RX payload 116/250 bytes. Response type is 4. CRC OK (0x2E8B)
+[02:56.264] nrf   | BLE out: Sent 117 bytes: 'HM0360 AE regs:
+[02:56.264] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x0A3F)
+[02:56.264] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 1 blocks:
+[02:56.264] nrf   | 00 00 00 40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:56.298] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 1 blocks:
+[02:56.303] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:56.380] himax | Class 'no person': 49.0% (raw: -5)
+[02:56.380] himax | Class 'person': 51.0% (raw: 5)
+[02:56.380] himax | Class 0 'no person' = logit -5
+[02:56.380] himax | Class 1 'person' = logit 5
+[02:56.380] himax | Target object not detected.
+[02:56.380] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN-'
+[02:56.380] himax | Score 5/128 (Threshold 18)
+[02:56.380] himax | HM0360 AE regs:
+[02:56.380] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'HM0360 AE regs:
+[02:56.380] himax | HM0360 motion in 0 blocks:
+[02:56.380] himax | 0 00 00 00 
+[02:56.380] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 0 blocks:
+[02:56.380] himax | Skipping file save.
+[02:56.465] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN-
+[02:56.548] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:56.548] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 97 lines
+[02:56.548] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:56.548] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:56.548] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 85
+[02:56.548] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:56.699] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 0 blocks:
+[02:56.699] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:56.865] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0x8658)
+[02:56.865] nrf   | BLE out: Sent   4 bytes: 'NN-'
+[02:56.865] nrf   | <info> app: I2C RX payload 116/250 bytes. Response type is 4. CRC OK (0x2E8B)
+[02:56.865] nrf   | BLE out: Sent 117 bytes: 'HM0360 AE regs:
+[02:56.865] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x7C2A)
+[02:56.865] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[02:56.865] nrf   | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:56.895] himax | Class 'no person': 48.0% (raw: -11)
+[02:56.895] himax | Class 'person': 52.1% (raw: 11)
+[02:56.895] himax | Class 0 'no person' = logit -11
+[02:56.895] himax | Class 1 'person' = logit 11
+[02:56.895] himax | Target object not detected.
+[02:56.895] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN-'
+[02:56.895] himax | Score 11/128 (Threshold 18)
+[02:56.895] himax | HM0360 AE regs:
+[02:56.895] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'HM0360 AE regs:
+[02:56.895] himax | HM0360 motion in 0 blocks:
+[02:56.895] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 0 blocks:
+[02:56.895] himax | Skipping file save.
+[02:57.065] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN-
+[02:57.177] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0x8658)
+[02:57.177] nrf   | BLE out: Sent   4 bytes: 'NN-'
+[02:57.177] nrf   | <info> app: I2C RX payload 116/250 bytes. Response type is 4. CRC OK (0x2E8B)
+[02:57.177] nrf   | BLE out: Sent 117 bytes: 'HM0360 AE regs:
+[02:57.177] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x7C2A)
+[02:57.177] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[02:57.177] nrf   | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:57.231] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:57.231] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 97 lines
+[02:57.237] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:57.237] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:57.237] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 85
+[02:57.237] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:57.398] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 0 blocks:
+[02:57.398] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:57.398] himax | Class 'no person': 50.4% (raw: 2)
+[02:57.398] himax | Class 'person': 50.0% (raw: -2)
+[02:57.398] himax | Class 0 'no person' = logit 2
+[02:57.398] himax | Class 1 'person' = logit -2
+[02:57.398] himax | Target object not detected.
+[02:57.398] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN-'
+[02:57.398] himax | Score -2/128 (Threshold 18)
+[02:57.398] himax | HM0360 AE regs:
+[02:57.398] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'HM0360 AE regs:
+[02:57.398] himax | HM0360 motion in 0 blocks:
+[02:57.398] himax | 0 00 00 00 
+[02:57.398] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 0 blocks:
+[02:57.398] himax | Skipping file save.
+[02:57.548] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN-
+[02:57.681] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:57.681] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 97 lines
+[02:57.681] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:57.695] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:57.697] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 85
+[02:57.697] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:57.781] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0x8658)
+[02:57.781] nrf   | BLE out: Sent   4 bytes: 'NN-'
+[02:57.781] nrf   | <info> app: I2C RX payload 116/250 bytes. Response type is 4. CRC OK (0x2E8B)
+[02:57.781] nrf   | BLE out: Sent 117 bytes: 'HM0360 AE regs:
+[02:57.781] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x7C2A)
+[02:57.781] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[02:57.781] nrf   | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:57.781] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 0 blocks:
+[02:57.781] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:57.920] himax | Class 'no person': 31.4% (raw: -100)
+[02:57.920] himax | Class 'person': 69.0% (raw: 100)
+[02:57.920] himax | Class 0 'no person' = logit -100
+[02:57.920] himax | Class 1 'person' = logit 100
+[02:57.920] himax | TARGET OBJECT DETECTED!
+[02:57.920] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:57.920] himax | Score 100/128 (Threshold 18)
+[02:57.920] himax | HM0360 AE regs:
+[02:57.920] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'HM0360 AE regs:
+[02:57.920] himax | HM0360 motion in 47 blocks:
+[02:57.920] himax | 05 3a 02 00 00 
+[02:57.920] himax | Sending 130 bytes: Header 4, payload 124, checksum 2 'HM0360 motion in 47 blocks:
+[02:57.920] himax | Skipping file save.
+[02:58.015] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:58.148] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:58.154] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 97 lines
+[02:58.156] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:58.156] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:58.163] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 74
+[02:58.164] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:58.248] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 47 blocks:
+[02:58.248] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 60 18 00 28 00 10 70 00 1c 00 00 60 00 2f 00 1c 40 1b 80 12 40 00 00 0a 3a 12 05 3a 02 00 00 
+[02:58.397] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:58.397] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:58.397] nrf   | <info> app: I2C RX payload 116/250 bytes. Response type is 4. CRC OK (0xC534)
+[02:58.397] nrf   | BLE out: Sent 117 bytes: 'HM0360 AE regs:
+[02:58.397] nrf   | <info> app: I2C RX payload 124/250 bytes. Response type is 4. CRC OK (0xFF2C)
+[02:58.397] nrf   | BLE out: Sent 125 bytes: 'HM0360 motion in 47 blocks:
+[02:58.397] nrf   | 00 60 18 00 28 00 10 70 00 1c 00 00 60 00 2f 00 1c 40 1b 80 12 40 00 00 0a 3a 12 05 3a 02 00 00 '
+[02:58.431] himax | Class 'no person': 40.4% (raw: -50)
+[02:58.431] himax | Class 'person': 60.0% (raw: 50)
+[02:58.431] himax | Class 0 'no person' = logit -50
+[02:58.431] himax | Class 1 'person' = logit 50
+[02:58.431] himax | TARGET OBJECT DETECTED!
+[02:58.431] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:58.431] himax | Score 50/128 (Threshold 18)
+[02:58.431] himax | HM0360 AE regs:
+[02:58.431] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'HM0360 AE regs:
+[02:58.431] himax | HM0360 motion in 52 blocks:
+[02:58.431] himax | 72 02 00 00 
+[02:58.431] himax | Sending 130 bytes: Header 4, payload 124, checksum 2 'HM0360 motion in 52 blocks:
+[02:58.431] himax | Skipping file save.
+[02:58.447] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:58.679] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:58.681] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 97 lines
+[02:58.681] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:58.681] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:58.681] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 86
+[02:58.695] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:58.697] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:58.697] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:58.697] nrf   | <info> app: I2C RX payload 116/250 bytes. Response type is 4. CRC OK (0x5C8B)
+[02:58.697] nrf   | BLE out: Sent 117 bytes: 'HM0360 AE regs:
+[02:58.697] nrf   | <info> app: I2C RX payload 124/250 bytes. Response type is 4. CRC OK (0x042F)
+[02:58.697] nrf   | BLE out: Sent 125 bytes: 'HM0360 motion in 52 blocks:
+[02:58.697] nrf   | 00 20 18 40 28 00 10 72 00 1c 40 00 e0 01 2f 00 18 00 3b 80 12 44 00 02 08 3a 32 05 72 02 00 00 '
+[02:58.865] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 52 blocks:
+[02:58.865] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 20 18 40 28 00 10 72 00 1c 40 00 e0 01 2f 00 18 00 3b 80 12 44 00 02 08 3a 32 05 72 02 00 00 
+[02:58.947] himax | Class 'no person': 42.3% (raw: -40)
+[02:58.947] himax | Class 'person': 58.0% (raw: 40)
+[02:58.947] himax | Class 0 'no person' = logit -40
+[02:58.947] himax | Class 1 'person' = logit 40
+[02:58.947] himax | TARGET OBJECT DETECTED!
+[02:58.947] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:58.947] himax | Score 40/128 (Threshold 18)
+[02:58.947] himax | HM0360 AE regs:
+[02:58.947] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'HM0360 AE regs:
+[02:58.947] himax | HM0360 motion in 0 blocks:
+[02:58.947] himax | 0 00 00 00 00 
+[02:58.947] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 0 blocks:
+[02:58.947] himax | Skipping file save.
+[02:59.016] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:59.216] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:59.216] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 97 lines
+[02:59.216] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:59.230] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:59.232] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 86
+[02:59.232] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:59.314] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:59.314] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:59.314] nrf   | <info> app: I2C RX payload 116/250 bytes. Response type is 4. CRC OK (0x5C8B)
+[02:59.314] nrf   | BLE out: Sent 117 bytes: 'HM0360 AE regs:
+[02:59.314] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x7C2A)
+[02:59.314] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[02:59.314] nrf   | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:59.398] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 0 blocks:
+[02:59.398] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:59.448] himax | Class 'no person': 44.0% (raw: -33)
+[02:59.448] himax | Class 'person': 56.4% (raw: 33)
+[02:59.448] himax | Class 0 'no person' = logit -33
+[02:59.448] himax | Class 1 'person' = logit 33
+[02:59.448] himax | TARGET OBJECT DETECTED!
+[02:59.448] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:59.448] himax | Score 33/128 (Threshold 18)
+[02:59.448] himax | HM0360 AE regs:
+[02:59.448] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'HM0360 AE regs:
+[02:59.448] himax | HM0360 motion in 0 blocks:
+[02:59.448] himax |  00 00 00 00 
+[02:59.448] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 0 blocks:
+[02:59.448] himax | Skipping file save.
+[02:59.587] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[02:59.712] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[02:59.714] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 97 lines
+[02:59.715] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[02:59.715] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[02:59.715] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 86
+[02:59.715] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[02:59.813] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 0 blocks:
+[02:59.815] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[02:59.916] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[02:59.916] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[02:59.916] nrf   | <info> app: I2C RX payload 116/250 bytes. Response type is 4. CRC OK (0x5C8B)
+[02:59.916] nrf   | BLE out: Sent 117 bytes: 'HM0360 AE regs:
+[02:59.916] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x7C2A)
+[02:59.916] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[02:59.916] nrf   | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[02:59.973] himax | Class 'no person': 44.0% (raw: -32)
+[02:59.973] himax | Class 'person': 56.2% (raw: 32)
+[02:59.973] himax | Class 0 'no person' = logit -32
+[02:59.973] himax | Class 1 'person' = logit 32
+[02:59.973] himax | TARGET OBJECT DETECTED!
+[02:59.973] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[02:59.973] himax | Score 32/128 (Threshold 18)
+[02:59.973] himax | HM0360 AE regs:
+[02:59.973] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'HM0360 AE regs:
+[02:59.973] himax | HM0360 motion in 0 blocks:
+[02:59.973] himax | 00 00 00 00 
+[02:59.973] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 0 blocks:
+[02:59.973] himax | Skipping file save.
+[03:00.006] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[03:00.175] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[03:00.180] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 97 lines
+[03:00.180] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[03:00.188] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[03:00.188] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 86
+[03:00.188] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[03:00.229] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[03:00.229] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[03:00.229] nrf   | <info> app: I2C RX payload 116/250 bytes. Response type is 4. CRC OK (0x5C8B)
+[03:00.229] nrf   | BLE out: Sent 117 bytes: 'HM0360 AE regs:
+[03:00.229] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x7C2A)
+[03:00.229] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[03:00.229] nrf   | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[03:00.364] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 0 blocks:
+[03:00.364] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[03:00.482] himax | Class 'no person': 44.2% (raw: -30)
+[03:00.482] himax | Class 'person': 56.0% (raw: 30)
+[03:00.482] himax | Class 0 'no person' = logit -30
+[03:00.482] himax | Class 1 'person' = logit 30
+[03:00.482] himax | TARGET OBJECT DETECTED!
+[03:00.482] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN+'
+[03:00.482] himax | Score 30/128 (Threshold 18)
+[03:00.482] himax | HM0360 AE regs:
+[03:00.482] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'HM0360 AE regs:
+[03:00.482] himax | HM0360 motion in 0 blocks:
+[03:00.482] himax |  00 00 00 00 
+[03:00.482] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 0 blocks:
+[03:00.482] himax | Skipping file save.
+[03:00.565] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN+
+[03:00.697] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[03:00.697] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 97 lines
+[03:00.697] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[03:00.697] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[03:00.697] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 86
+[03:00.714] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[03:00.849] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0xE69E)
+[03:00.849] nrf   | BLE out: Sent   4 bytes: 'NN+'
+[03:00.849] nrf   | <info> app: I2C RX payload 116/250 bytes. Response type is 4. CRC OK (0x5C8B)
+[03:00.849] nrf   | BLE out: Sent 117 bytes: 'HM0360 AE regs:
+[03:00.849] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0x7C2A)
+[03:00.849] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 0 blocks:
+[03:00.849] nrf   | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[03:00.863] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 0 blocks:
+[03:00.863] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[03:01.000] himax |    Inhibiting MD
+[03:01.000] himax |    Changing mode from 2 to 0 with nFrames=0, sleepTime=0 sleepCount = 0xffff
+[03:01.000] himax | Class 'no person': 47.5% (raw: -13)
+[03:01.000] himax | Class 'person': 53.0% (raw: 13)
+[03:01.000] himax | Class 0 'no person' = logit -13
+[03:01.000] himax | Class 1 'person' = logit 13
+[03:01.000] himax | Target object not detected.
+[03:01.000] himax | Sending 9 bytes: Header 4, payload 3, checksum 2 'NN-'
+[03:01.000] himax | Score 13/128 (Threshold 18)
+[03:01.000] himax | HM0360 AE regs:
+[03:01.000] himax | Sending 122 bytes: Header 4, payload 116, checksum 2 'HM0360 AE regs:
+[03:01.000] himax | HM0360 motion in 8 blocks:
+[03:01.000] himax | 00 00 00 00 
+[03:01.000] himax | Sending 129 bytes: Header 4, payload 123, checksum 2 'HM0360 motion in 8 blocks:
+[03:01.000] himax | Skipping file save.
+[03:01.164] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: NN-
+[03:01.312] himax | Current captures completed: 20
+[03:01.312] himax | Average file write time 0ms
+[03:01.312] himax | Total frames captured since last reset: 20
+[03:01.312] himax | Sending 56 bytes: Header 4, payload 50, checksum 2 'Captured 20 images. Last is  (File write 0ms avg.)'
+[03:01.329] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 AE regs:
+[03:01.330] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Integration time = 97 lines
+[03:01.335] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Analog gain = 0
+[03:01.335] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   Digital gain = 64
+[03:01.345] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AE Mean = 86
+[03:01.347] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06:   AEConverged?: Y
+[03:01.464] nrf   | <info> app: I2C RX payload 3/250 bytes. Response type is 4. CRC OK (0x8658)
+[03:01.464] nrf   | BLE out: Sent   4 bytes: 'NN-'
+[03:01.464] nrf   | <info> app: I2C RX payload 116/250 bytes. Response type is 4. CRC OK (0x5C8B)
+[03:01.464] nrf   | BLE out: Sent 117 bytes: 'HM0360 AE regs:
+[03:01.464] nrf   | <info> app: I2C RX payload 123/250 bytes. Response type is 4. CRC OK (0xF328)
+[03:01.464] nrf   | BLE out: Sent 124 bytes: 'HM0360 motion in 8 blocks:
+[03:01.464] nrf   | 00 f0 00 4e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 '
+[03:01.464] nrf   | <info> app: I2C RX payload 50/250 bytes. Response type is 4. CRC OK (0xF51F)
+[03:01.464] nrf   | BLE out: Sent  51 bytes: 'Captured 20 images. Last is  (File write 0ms avg.)'
+[03:01.648] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: HM0360 motion in 8 blocks:
+[03:01.648] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: 00 f0 00 4e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+[03:01.814] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: Captured 20 images. Last is  (File write 0ms avg.)
+[03:01.815] app   | [MotionDetectionStream] Firmware capture sequence completed naturally.
+[03:01.815] app   | [MotionDetectionStream] Command queue cleared — ready for next test.
+[03:01.815] app   | TX Hex: 4149207365746f702031382030
+[03:02.065] app   | Written AI setop 18 0 to the device WILD-SIFK (09:56:22-902)
+[03:02.080] nrf   | BLE in: Received  13 bytes 'AI setop 18 0'
+[03:02.080] nrf   | Sending 'setop 18 0' to AI processor (4 ctrl bytes, 10 payload, 2 CRC)<info> app: AI state changed from IDLE to PROCESSING
+[03:02.080] nrf   | <info> app: I2C RX payload 18/250 bytes. Response type is 4. CRC OK (0x96F0)
+[03:02.080] nrf   | <info> app: AI processor replies: 'Set OpParam 18 = 0'
+[03:02.080] nrf   | <info> app: AI state changed from PROCESSING to IDLE
+[03:02.080] nrf   | BLE out: Sent  19 bytes: 'Set OpParam 18 = 0'
+[03:02.114] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: Set OpParam 18 = 0
+[03:02.215] himax | Received I2C message.
+[03:02.215] himax | MKL62BA command received: 'setop 18 0'
+[03:02.215] himax | Set OpParam 18 = 0
+[03:02.215] himax | Sending 24 bytes: Header 4, payload 18, checksum 2 'Set OpParam 18 = 0'
+[03:02.215] himax | Config saved (op params persisted).
+[03:02.298] app   | [MotionDetectionStream] TEST_MODE_BITS reset to 0
+[03:02.298] app   | TX Hex: 4149207365746f7020382031303030
+[03:02.315] app   | Written AI setop 8 1000 to the device WILD-SIFK (09:56:23-151)
+[03:02.530] himax | Received I2C message.
+[03:02.530] himax | MKL62BA command received: 'setop 8 1000'
+[03:02.530] himax | Set OpParam 8 = 1000
+[03:02.530] himax | Sending 26 bytes: Header 4, payload 20, checksum 2 'Set OpParam 8 = 1000'
+[03:02.683] nrf   | BLE in: Received  15 bytes 'AI setop 8 1000'
+[03:02.683] nrf   | Sending 'setop 8 1000' to AI processor (4 ctrl bytes, 12 payload, 2 CRC)<info> app: AI state changed from IDLE to PROCESSING
+[03:02.683] nrf   | <info> app: I2C RX payload 20/250 bytes. Response type is 4. CRC OK (0xF34E)
+[03:02.683] nrf   | <info> app: AI processor replies: 'Set OpParam 8 = 1000'
+[03:02.683] nrf   | <info> app: AI state changed from PROCESSING to IDLE
+[03:02.683] nrf   | BLE out: Sent  21 bytes: 'Set OpParam 8 = 1000'
+[03:02.731] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: Set OpParam 8 = 1000
+[03:02.832] himax | Config saved (op params persisted).
+[03:02.920] app   | [MotionDetectionStream] INTERVAL_BEFORE_DPD reset to 1000
+[03:05.264] app   | [useBleListeners] RAW_RX received for F5:3F:88:C6:81:06: Sleep
+[03:05.278] himax | Inactive for 2500ms
+[03:05.278] himax | Saved state to SD card. Image sequence number = 224
+[03:05.278] himax | Image task ready to sleep.
+[03:05.278] himax | Sending 111 bytes: Header 4, payload 105, checksum 2 'Sleep 224 101 66 17 340 3 500 0 1000 50 1 0 100 2 1 1 18 1 0 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0 '
+[03:05.278] himax | IF task ready to sleep.
+[03:05.278] himax | Preparing HM0360 for MD:   HM0360 Motion Detection off.
+[03:05.278] himax |    Inhibiting MD
+[03:05.278] himax |    Changing mode from 0 to 2 with nFrames=1, sleepTime=0 sleepCount = 0xffff
+[03:05.278] himax |  No LED flashes.
+[03:05.278] himax | >>> Entering DPD at 2024:01:01 00:00:51
+[03:05.432] nrf   | <info> app: I2C RX payload 105/250 bytes. Response type is 4. CRC OK (0x05D0)
+[03:05.432] nrf   | <info> app: AI processor sends stats: '224 101 66 17 340 3 500 0 1000 50 1 0 100 2 1 1 18 1 0 9 0 2 50 65 0 0 0 286 326 1 110 1 0 0 2 0 0 '
+[03:05.432] nrf   | <info> app: Positive NN events has increased from 53 to 66!
+[03:05.432] nrf   | <info> app: Uplink inhibited - 25596/60000 ms since last uplink
+[03:05.432] nrf   | <info> app: AI state changed from IDLE to SLEEP
+[03:05.432] nrf   | BLE out: Sent   6 bytes: 'Sleep'

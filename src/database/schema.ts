@@ -12,7 +12,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 403,
+    version: 405,
     tables: [
         tableSchema({
             name: 'account_deletion_requests',
@@ -636,6 +636,27 @@ export default appSchema({
             ],
         }),
         tableSchema({
+            name: 'media_evidence',
+            columns: [
+                { name: 'computed_at', type: 'string' },
+                { name: 'deployment_id', type: 'string', isIndexed: true },
+                { name: 'media_id', type: 'string', isIndexed: true },
+                { name: 'run_id', type: 'string', isOptional: true, isIndexed: true },
+                { name: 'signal', type: 'string' },
+                { name: 'source', type: 'string' },
+                { name: 'source_version', type: 'string', isOptional: true },
+                { name: 'value', type: 'number', isOptional: true },
+                { name: 'value_text', type: 'string', isOptional: true },
+                // System & Sync Fields
+                { name: 'created_at', type: 'number' },
+                { name: 'updated_at', type: 'number' },
+                { name: 'deleted_at', type: 'number' },
+                { name: '_version', type: 'number' },
+                { name: '_custom_sync_status', type: 'string', isOptional: true },
+                { name: 'modified_by', type: 'string' },
+            ],
+        }),
+        tableSchema({
             name: 'notification_rules',
             columns: [
                 { name: 'channels', type: 'string' },
@@ -790,6 +811,7 @@ export default appSchema({
                 { name: 'capture_method_id', type: 'number', isOptional: true, isIndexed: true },
                 { name: 'created_by', type: 'string', isOptional: true },
                 { name: 'description', type: 'string', isOptional: true },
+                { name: 'detection_threshold_pct', type: 'number' },
                 { name: 'flash_led', type: 'string' },
                 { name: 'flash_mode', type: 'string' },
                 { name: 'flash_window_minutes', type: 'number', isOptional: true },
@@ -802,6 +824,8 @@ export default appSchema({
                 { name: 'model_id', type: 'string', isOptional: true, isIndexed: true },
                 { name: 'name', type: 'string' },
                 { name: 'organisation_id', type: 'string', isIndexed: true },
+                { name: 'photo_interval_milliseconds', type: 'number' },
+                { name: 'photos_per_trigger', type: 'number' },
                 { name: 'project_image', type: 'string', isOptional: true },
                 { name: 'record_gps_in_images', type: 'boolean' },
                 { name: 'sampling_design_id', type: 'number', isOptional: true, isIndexed: true },

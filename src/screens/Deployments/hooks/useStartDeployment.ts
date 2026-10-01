@@ -15,13 +15,14 @@ import FirmwareService from '../../../services/FirmwareService'
 import { useBleSession } from '../../../hooks/useBleSession'
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { checkSdCard } from '../../../ble/workflows/checkSdCard'
+import { sleep } from '../../../utils/helpers'
 import { selfTestCache } from '../../../ble/protocol/selfTestCache'
-import { parseSelfTestBits, SelfTestBit } from '../../../utils/deviceSelfTest'
+import { parseSelfTestBits, SelfTestBit, SD_CARD_POWER_CYCLE_HINT } from '../../../utils/deviceSelfTest'
 import { useBleActions } from '../../../providers/BleEngineProvider'
 import { useDeploymentConfiguration } from '../../../hooks/useDeploymentConfiguration'
 import { useBle } from '../../../hooks/useBle'
 import { useGPSLocation } from '../../../hooks/useGPSLocation'
-import { useDeviceSettings, OP_PARAMETER, TEST_BIT_SAVE_BMP } from '../../../hooks/useDeviceSettings'
+import { useDeviceSettings, OP_PARAMETER } from '../../../hooks/useDeviceSettings'
 import { useDeploymentProgress } from '../../../hooks/useDeploymentProgress'
 import { useMonitoringActions } from '../../../hooks/useMonitoringActions'
 import * as pipeline from '../../../ble/workflows/deploymentPipeline'
@@ -33,6 +34,8 @@ import { InitPayload } from '../../../navigation/types'
 import { calculateDistance } from '../../../utils/gpsUtils'
 import { CAMERA_VARIANT_LABELS, CameraVariant, parseVariant } from '../../../utils/cameraVariant'
 import { checkFlashAgainstCamera } from '../../../utils/flashCameraMatch'
+import { mdSensitivityLevel } from '../../../utils/mdSensitivity'
+import { withoutArchived } from '../../../utils/projectArchive'
 
 interface UseStartDeploymentParams {
     deviceId?: string
@@ -88,11 +91,16 @@ export const useStartDeployment = ({
     // Phone photos of the deployment site (local file:// paths until uploaded)
     const [deploymentPhotoPaths, setDeploymentPhotoPaths] = useState<string[]>([])
 
-    // Capture format: JPEG only by default (Victor, 5 September 2026). The raw
-    // BMP was a quality trial (bmp-ingestion-analysis.md) and costs a second
-    // picture per trigger, so it is now opt-in from the advanced settings
-    // rather than what every deployment writes.
-    const [recordJpegOnly, setRecordJpegOnly] = useState(true)
+    // Capture format used to be a choice here: JPEG only, or JPEG plus a raw
+    // BMP. The BMP was a quality trial (bmp-ingestion-analysis.md), the
+    // default until 5 September 2026 and opt-in from the advanced settings
+    // after that. Retired on 21 September 2026 (Victor): it doubled the
+    // captures and the card usage for pictures nobody compared any more.
+    // Commented out rather than deleted, with `TEST_BIT_SAVE_BMP` still in
+    // useDeviceSettings, until it is certain nothing wants it back; the
+    // matching card is commented out in AdvancedSettingsSection.
+    //
+    //   const [recordJpegOnly, setRecordJpegOnly] = useState(true)
 
     const [submitting, setSubmitting] = useState(false)
     const [project, setProject] = useState<any>(null)
@@ -184,7 +192,7 @@ export const useStartDeployment = ({
                 
                 if (user?.id && currentOrganisation?.id) {
                     const projs = await ProjectService.getProjectsForUserInOrganisation(user.id, currentOrganisation.id)
-                    setAvailableProjects(projs)
+                    setAvailableProjects(withoutArchived(projs))
                 }
 
                 if (proj && proj.capture_method_id) {
@@ -430,12 +438,19 @@ export const useStartDeployment = ({
             return
         }
         if (aiProcessorFailed) {
-            const hasCameraError = initErrors.deviceHealth?.some(w => w.includes('Camera Error') || w.includes('Camera system not enabled') || w.includes('Neural Network Error'))
+            const health = initErrors.deviceHealth ?? []
+            // A missing card blocks on its own since #303: the deployment has
+            // nowhere to write. Named first so the operator is told about the
+            // card and not about the camera.
+            const hasSdCardError = health.some(w => /no sd card/i.test(w))
+            const hasCameraError = health.some(w => w.includes('Camera Error') || w.includes('Camera system not enabled') || w.includes('Neural Network Error'))
             Alert.alert(
-                hasCameraError ? 'Critical AI Processor Error' : 'AI Processor Not Responding',
-                hasCameraError 
-                    ? 'The AI processor has reported a critical camera or hardware error. Starting monitoring is blocked. Please check the camera module connections or hardware configuration.'
-                    : 'The AI processor did not wake up during pre-deployment checks. The device cannot start monitoring. Please try reconnecting or check the hardware.',
+                hasSdCardError ? 'No SD Card' : hasCameraError ? 'Critical AI Processor Error' : 'AI Processor Not Responding',
+                hasSdCardError
+                    ? `The device reports no SD card. Every image and setting a deployment writes goes to the card, so monitoring cannot start without one. ${SD_CARD_POWER_CYCLE_HINT}`
+                    : hasCameraError
+                        ? 'The AI processor has reported a critical camera or hardware error. Starting monitoring is blocked. Please check the camera module connections or hardware configuration.'
+                        : 'The AI processor did not wake up during pre-deployment checks. The device cannot start monitoring. Please try reconnecting or check the hardware.',
                 [{ text: 'OK' }]
             )
             return
@@ -464,7 +479,8 @@ export const useStartDeployment = ({
             // a 1000ms inactivity timer that shuts down the IMAGE task. setutc is handled
             // by the BLE module (not the AI processor), so it does NOT reset this timer.
             // If syncTime runs first, the IMAGE task dies before loadmodel arrives.
-            await pipeline.syncAiModel(bleDevice, bleSession, project.model_id, cb, true, currentOps)
+            // The pre-deployment checks' `ver` spares the model transfer its own (#289)
+            await pipeline.syncAiModel(bleDevice, bleSession, project.model_id, cb, true, currentOps, initPayload?.deviceFirmwareVersion)
             await pipeline.syncTime(bleSession, cb)
 
             // 4. Gather snapshot data (unique to production deployment)
@@ -570,6 +586,16 @@ export const useStartDeployment = ({
                     recordGpsInImages: project.record_gps_in_images || false,
                     gpsLocation,
                     flash: project,
+                    // The same value the screen shows the operator (#316)
+                    mdSensitivity: mdSensitivityLevel(sensitivityLabel),
+                    // Pictures per trigger (op5) and their interval (op6), from
+                    // the project since #317. op5 is in RESET_PRESERVED_OPS and
+                    // op6 is reset to 500, so both are written here, and op8 is
+                    // raised past the interval when there is more than one.
+                    burst: project,
+                    // The detection threshold (op16), from the project since
+                    // #342. The reset sets op16 to 18, which is the default 57%.
+                    detectionThreshold: project,
                 }, cb, opsAfterReset)
             } catch (configError) {
                 logError('[Deployment] Configuration failed:', configError)
@@ -577,25 +603,17 @@ export const useStartDeployment = ({
                 throw configError
             }
 
-            // 7b. Capture format: one JPEG per trigger by default. Turning the
-            // advanced "Record JPEG only" toggle off adds the raw BMP, which
-            // TEST_BIT_SAVE_BMP produces by alternating file types, so it needs
-            // 2 pics/trigger to yield one of each. The BMP was a quality trial
-            // (bmp-ingestion-analysis.md) and was the default until 5 September
-            // 2026; it doubles the captures and the card usage, so it is now
-            // opt-in. Non-fatal: on failure the firmware keeps its clean-slate
-            // defaults, which are JPEG only anyway. The hi-res option that used
-            // to sit here (op32) went with the firmware's ae_review build,
-            // which reserves that parameter.
-            try {
-                const testModeBits = recordJpegOnly ? 0 : TEST_BIT_SAVE_BMP
-                const numPictures = recordJpegOnly ? 1 : 2
-                await bleSession?.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TEST_MODE_BITS, value: testModeBits }))
-                await bleSession?.execute(() => commandRegistry.setop({ index: OP_PARAMETER.NUM_PICTURES, value: numPictures }))
-                progress.addLog(`Capture format: ${recordJpegOnly ? 'JPEG only' : 'JPG + BMP'} (${numPictures} pic${numPictures > 1 ? 's' : ''}/trigger)`)
-            } catch (formatError) {
-                logWarn('[Deployment] Failed to set capture format (non-fatal):', formatError)
-            }
+            // 7b. The raw BMP used to be written here, as TEST_MODE_BITS bit 1
+            // plus a doubled picture count so the alternating file types yielded
+            // one of each. Retired on 21 September 2026, see the note by the
+            // state above. op18 is not preserved by the reset, so it is 0 by now
+            // and no longer needs writing. To bring it back, pass
+            // `recordRawBmp: !recordJpegOnly` to configureDevice above, which
+            // doubles op5 (#317), and write op18 here:
+            //
+            //   const testModeBits = recordJpegOnly ? 0 : TEST_BIT_SAVE_BMP
+            //   await bleSession?.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TEST_MODE_BITS, value: testModeBits }))
+            //   progress.addLog(`Capture format: ${recordJpegOnly ? 'JPEG only' : 'JPEG + BMP'}`)
 
             // 7c. Light verdict for the deployment log: which camera mode the
             // deployment starts in, and when light is re-checked. Non-fatal
@@ -802,7 +820,7 @@ export const useStartDeployment = ({
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false
         }
-    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total, aiProcessorFailed, initPayload?.deviceFirmwareVersion, initErrors.deviceHealth, deploymentPhotoPaths, recordJpegOnly])
+    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total, aiProcessorFailed, initPayload?.deviceFirmwareVersion, initErrors.deviceHealth, deploymentPhotoPaths, sensitivityLabel])
 
     const handleFinishDismiss = useCallback(() => {
         progress.setIsFinishing(false)
@@ -825,8 +843,17 @@ export const useStartDeployment = ({
         setHelpVisible(false)
     }, [])
 
+    // Each check shows on its button while it is on the wire, for at least
+    // MIN_CHECKING_MS: `battery` answers in under a quarter of a second, and a
+    // re-check that lands on the same figure otherwise looks like a dead button.
+    const MIN_CHECKING_MS = 600
+    const [isCheckingBattery, setIsCheckingBattery] = useState(false)
+    const [isCheckingSdCard, setIsCheckingSdCard] = useState(false)
+
     const handleBatteryCheck = useCallback(async () => {
         if (!bleDevice || !bleDevice.connected) return
+        const started = Date.now()
+        setIsCheckingBattery(true)
         try {
             const batteryLevelValue = await bleSession?.execute(commandRegistry.battery)
             if (batteryLevelValue) {
@@ -835,17 +862,22 @@ export const useStartDeployment = ({
         } catch (error) {
             logError('Battery check failed:', error)
             Alert.alert('Error', 'Failed to check battery level')
+        } finally {
+            await sleep(Math.max(0, MIN_CHECKING_MS - (Date.now() - started)))
+            setIsCheckingBattery(false)
         }
-    }, [bleDevice, bleSession])  
+    }, [bleDevice, bleSession])
 
     const handleSdCardCheck = useCallback(async () => {
         if (!bleDevice || !bleDevice.connected) return
+        const started = Date.now()
+        setIsCheckingSdCard(true)
         try {
             // SHADOW MODE: Try new architecture
             if (bleSession) {
                 try {
                     const sdStatus = await checkSdCard(bleSession)
-                    setSdCardStatus({ total: sdStatus.totalSpaceMb, free: sdStatus.freeSpaceMb })
+                    setSdCardStatus({ total: sdStatus.totalSpaceKb, free: sdStatus.freeSpaceKb })
                     return
                 } catch (err: any) {
                     // Try to determine the exact cause from the self-test bits. The
@@ -859,7 +891,7 @@ export const useStartDeployment = ({
                         }
                         // eslint-disable-next-line no-bitwise
                         if (bits !== null && (bits & (1 << SelfTestBit.AI_NO_SD_CARD))) {
-                            Alert.alert('No SD Card Detected', 'The device reports no SD card is inserted.', [{ text: 'OK' }])
+                            Alert.alert('No SD Card Detected', `The device reports no SD card. ${SD_CARD_POWER_CYCLE_HINT}`, [{ text: 'OK' }])
                             setSdCardStatus(null)
                             return
                         }
@@ -878,6 +910,9 @@ export const useStartDeployment = ({
         } catch (error) {
             logError('SD card check failed:', error)
             Alert.alert('Error', 'Failed to check SD card status')
+        } finally {
+            await sleep(Math.max(0, MIN_CHECKING_MS - (Date.now() - started)))
+            setIsCheckingSdCard(false)
         }
     }, [bleSession]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -907,8 +942,9 @@ export const useStartDeployment = ({
         // Advanced Settings Exports
         batteryLevel, sdCardStatus,
         handleBatteryCheck, handleSdCardCheck,
-        // Capture format (advanced): JPG+BMP default, opt out to JPEG only
-        recordJpegOnly, setRecordJpegOnly,
+        isCheckingBattery, isCheckingSdCard,
+        // Capture format (advanced), retired 21 September 2026, see the state above
+        //   recordJpegOnly, setRecordJpegOnly,
         // DFU control
         isDfuInProgress,
     }
