@@ -10,6 +10,7 @@ import { useAppDispatch } from "../../../redux"
 import { setCredentials, triggerTutorial } from "../../../redux/slices/authSlice"
 import { useAppNavigation } from "../../../hooks/useAppNavigation"
 import { WWText } from "../../../components/ui/WWText"
+import { GoogleSignInButton } from "../../../components/GoogleSignInButton"
 import * as SecureStore from 'expo-secure-store'
 import { useState, useEffect } from "react"
 import { KEYBOARD_AVOID_PADDING } from "../../../constants/layout"
@@ -197,6 +198,8 @@ export const Login = () => {
 					>
 						<Text>Login</Text>
 					</Button>
+
+					<GoogleSignInButton disabled={isLoading} />
 
 					<Button
 						mode="text"

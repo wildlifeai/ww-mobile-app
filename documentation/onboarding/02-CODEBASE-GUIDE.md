@@ -90,6 +90,7 @@ components/
 ├── NavigationBar.tsx      # Header bar
 ├── AppDrawer.tsx          # Side drawer menu
 ├── OrgSwitcher.tsx        # Organisation switcher
+├── GoogleSignInButton.tsx # "Continue with Google" on Login and Register
 └── SideNavigation.tsx     # Drawer content (includes Engineer Console trigger)
 ```
 

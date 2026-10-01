@@ -114,5 +114,6 @@ The coverage floor is a ratchet at 20%: it only moves up, by hand.
 | Capture Picture | `documentation/resources/Capture-Picture.md`: the capture in order, the 3 s hold, what applies at wake, and the flash hold that arms the LED for the visit |
 | Device flows | `documentation/onboarding/05-DEVICE-FLOWS.md`, `06-BLE-CONNECTIONS.md` |
 | Offline/sync | `documentation/onboarding/03-DATA-AND-SYNC.md` |
+| Sign-in, sessions, Google sign-in and its setup | `documentation/resources/Authentication-Implementation-Guide.md` |
 | Developer settings, Dev Build Info, first-run tutorial | `documentation/resources/Developer-Settings.md` |
 | How the code got this way | `documentation/development reports/` |

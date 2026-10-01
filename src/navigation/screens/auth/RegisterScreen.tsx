@@ -10,6 +10,7 @@ import { useAppDispatch } from "../../../redux"
 import { setCredentials, triggerTutorial } from "../../../redux/slices/authSlice"
 import { useAppNavigation } from "../../../hooks/useAppNavigation"
 import { WWText } from "../../../components/ui/WWText"
+import { GoogleSignInButton } from "../../../components/GoogleSignInButton"
 import { KEYBOARD_AVOID_PADDING } from "../../../constants/layout"
 import { logError } from '../../../utils/logger'
 
@@ -216,6 +217,8 @@ export const Register = () => {
 					>
 						<Text>Register</Text>
 					</Button>
+
+					<GoogleSignInButton disabled={isLoading} />
 
 					<Button
 						mode="text"

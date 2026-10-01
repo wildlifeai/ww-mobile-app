@@ -31,7 +31,8 @@ version for humans is
   `send_project_invitation`, so the Invite card tells the user it needs a connection instead of
   calling. Role changes and removals are the same (#335): `UserRoleService` asks
   `isKnownOffline()` before `update_project_member_role` or `remove_project_member` and sends
-  nothing offline. The Members screen offline shows what the phone has (you, plus the member
+  nothing offline. Google sign-in too (#350): `signInWithGoogle` asks before it opens Google's
+  sheet. The Members screen offline shows what the phone has (you, plus the member
   cache) and raises no Alert: the offline banner is the one offline signal. Screens that read
   `user.profile` must allow it to be undefined, since it comes from the cloud.
 - **Never write `user_roles` from the app** (#335). RLS refused the insert and the update, and

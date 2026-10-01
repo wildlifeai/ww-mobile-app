@@ -41,10 +41,12 @@ else                     → Main app (Home, Devices, Projects, etc.)
 | File | Purpose |
 |------|---------|
 | `src/providers/AuthProvider.tsx` | Session bootstrap + auth listener → Redux |
-| `src/services/auth.ts` | Supabase auth functions (login, register, logout, password reset, org fetching) |
+| `src/services/auth.ts` | Supabase auth functions (login, Google sign-in, register, logout, password reset, org fetching) |
 | `src/services/supabase.ts` | Supabase client factory with environment switching |
 | `src/redux/slices/authSlice.ts` | Auth state, types, roles, permissions, org management |
-| `src/redux/api/auth/index.ts` | RTK Query mutations (`useLoginMutation`, `useRegisterMutation`) |
+| `src/redux/api/auth/index.ts` | RTK Query mutations (`useLoginMutation`, `useGoogleSignInMutation`, `useRegisterMutation`) |
+| `src/config/googleSignIn.ts` | The Google client IDs this build carries, and whether to offer Google sign-in |
+| `src/components/GoogleSignInButton.tsx` | "Continue with Google" on Login and Register |
 | `src/redux/api/auth/types.ts` | Request types; re-exports auth types from `authSlice` |
 | `src/navigation/index.tsx` | Navigation gate (auth/main conditional rendering) |
 | `src/navigation/linking.ts` | Deep link configuration |
@@ -105,6 +107,7 @@ Standalone exported functions (not a class):
 | Function | Purpose |
 |----------|---------|
 | `login(credentials)` | Sign in with email/password via Supabase, fetches user orgs |
+| `signInWithGoogle()` | Native Google sign-in, then `signInWithIdToken`; null when the user cancels. See [Google sign-in](#google-sign-in) |
 | `register(credentials)` | Create account, handles email confirmation flow |
 | `logout()` | Sign out from Supabase |
 | `getCurrentSession()` | Get existing session, transforms to `AuthResponse`; offline, falls back to the stored session |
@@ -120,11 +123,11 @@ Standalone exported functions (not a class):
 
 ### RTK Query Integration
 
-Login and register are exposed as RTK Query mutations in `src/redux/api/auth/index.ts`:
+Login, Google sign-in and register are exposed as RTK Query mutations in `src/redux/api/auth/index.ts`:
 
 ```tsx
 // These call the standalone functions from auth.ts
-export const { useLoginMutation, useRegisterMutation } = authApi
+export const { useLoginMutation, useGoogleSignInMutation, useRegisterMutation } = authApi
 ```
 
 Screens use these hooks for loading/error state management, then dispatch `setCredentials()` on success.
@@ -283,16 +286,85 @@ All screens use `WWScreenView`, React Hook Form (`useForm`), and `Field`/`WWText
 - RTK Query: `useLoginMutation()` → dispatches `setCredentials` on success
 - **Remember me**: persists email to `expo-secure-store`
 - Navigates to `Register` and `ForgotPassword`
+- **Continue with Google** below Login, when configured; see [Google sign-in](#google-sign-in)
 
 ### RegisterScreen
 - RTK Query: `useRegisterMutation()` with fields: name, email, organization (optional), password, confirm
 - **Email confirmation**: checks `response.isPendingConfirmation` → shows alert directing to email, navigates to Login
 - Otherwise dispatches `setCredentials` for immediate login
+- **Continue with Google** below Register, the same button as on Login
 
 ### ForgotPasswordScreen
 - **Dual mode** based on `route.params`:
   - **Request mode** (default): calls `resetPassword(email)` → shows "check email" alert
   - **Reset mode** (has `token` param from deep link): shows password + confirm fields, calls `updatePasswordWithToken()`, then `getCurrentSession()` → `setCredentials`
+
+---
+
+## Google sign-in
+
+Native sign-in ([#350](https://github.com/wildlifeai/ww-mobile-app/issues/350)) with
+`@react-native-google-signin/google-signin`: Google's own sheet gives an ID token, and
+`supabase.auth.signInWithIdToken({ provider: 'google', token })` turns it into a Supabase
+session. `signInWithGoogle()` then returns the same `AuthResponse` as
+`login()`, and `GoogleSignInButton` dispatches `triggerTutorial` and `setCredentials` as
+LoginScreen does, so organisations, the tutorial and the sync follow exactly as for a password
+sign-in. The server side (the provider, the `users` row, the General organisation, linking to
+an existing account with the same email) is described in #350.
+
+| Case | What the user sees |
+|------|--------------------|
+| No `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`, or on iOS no `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | No button |
+| The binary was built without the library (an older dev client) | "not set up in this version of the app". The library looks up its native module as it loads, so `auth.ts` requires it at the tap instead of importing it, which would crash such a build at launch |
+| Offline (`isKnownOffline()`) | "No connection", like the app's other server-only actions, and Google's sheet does not open |
+| Supabase unreachable after Google's sheet | "No connection" too |
+| The user closes Google's sheet | Nothing |
+| Google Play services missing or out of date (Android) | Google's update dialog where it can, then a message to update or sign in with email |
+| Supabase refuses the token | "The server did not accept the Google sign-in", with Supabase's reason |
+
+After each attempt the app signs out of Google's own session (`GoogleSignin.signOut()`), so
+the next tap offers the account picker again. The Supabase session is the only one the app
+keeps.
+
+**No password.** A Google-only account has none, and nothing in the app needs one: Forgot
+Password and the Profile screen's Reset Password both send a recovery email, and its link lets
+the user set a password.
+
+**iOS nonce, undecided.** Supabase checks the ID token's nonce on iOS unless *Skip nonce
+checks* is on for its Google provider. Version 16.1.5 of the library takes no nonce in its free
+API (`ConfigureParams`, `SignInParams`), so iOS needs either that switch, or a nonce passed
+through both calls with a different sign-in API. Android is unaffected.
+
+### Setup
+
+Nothing works until all of this is done, and the last step is a new build: the library is
+native code, so a JS reload on an existing dev client is not enough.
+
+1. **Android OAuth clients**, in the Google Cloud project that holds the web client. One client
+   takes one package name and one SHA-1, so create one per package and signing key:
+   - `com.wildlife.wildlifewatcher` with the EAS keystore's SHA-1 (`eas credentials -p android`)
+     and the Play App Signing key's SHA-1 (Play Console, App integrity, App signing).
+   - `com.wildlife.wildlifewatcher.expo`, the debug package, with the SHA-1 of each key that
+     signs it: the EAS keystore for EAS `development` builds, and `android/app/debug.keystore`
+     for local ones (`keytool -list -v -keystore android/app/debug.keystore -alias
+     androiddebugkey -storepass android`).
+2. **iOS OAuth clients**, for the bundle IDs `com.wildlife.wildlifewatcher` and
+   `com.wildlife.wildlifewatcher.expo` (`APP_VARIANT=development`). Each client's reversed ID,
+   `com.googleusercontent.apps.<id>`, is that build's URL scheme.
+3. **Supabase, on dev and staging**: Authentication, Sign In / Providers, Google, *Client IDs*.
+   Keep the web client ID first and add the Android and iOS client IDs after it,
+   comma-separated. Decide the iOS nonce there too (above).
+4. **Environment variables**, in `.env.development` (or `.env.local`) and in each EAS
+   environment that builds the app, as plain text: the IDs are not secret, and an
+   `EXPO_PUBLIC_` variable cannot be a secret ([Expo-EAS-Guide.md](Expo-EAS-Guide.md#environment-variables)).
+   The three are in [.env.example](../../.env.example):
+   - `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`, the web client. Unset, the button is hidden.
+   - `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`, the iOS client matching the build's bundle ID.
+   - `GOOGLE_IOS_URL_SCHEME`, that client's reversed ID. Build time only: `app.config.ts`
+     registers the library's config plugin only when it is set, because the plugin throws
+     without it.
+5. **A new dev client**: `npm run android` locally, or an EAS `development` build. Test on dev
+   first. While Google's consent screen is in *Testing*, only its listed test users can sign in.
 
 ---
 
@@ -315,4 +387,4 @@ All screens use `WWScreenView`, React Hook Form (`useForm`), and `Field`/`WWText
 
 ---
 
-**Last Updated**: 2026-03-26
+**Last Updated**: 2026-10-01
