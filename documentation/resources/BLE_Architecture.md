@@ -831,6 +831,7 @@ src/
 │   │   ├── textStreamScope.ts      # Scoped text line listener (auto-cleanup)
 │   │   ├── fileTransfer/           # BLE file transfer to SD card
 │   │   │   ├── runFileTransferPipeline.ts  # Core ACK state machine
+│   │   │   ├── bleFirmwareFloor.ts         # BLE firmware floor for the window, checked before FILE_START
 │   │   │   ├── fileTransferPackets.ts      # Binary packet builders
 │   │   │   ├── fileTransferTypes.ts        # Types, error codes, retry policies
 │   │   │   ├── ackMatcher.ts               # Strict ACK validation

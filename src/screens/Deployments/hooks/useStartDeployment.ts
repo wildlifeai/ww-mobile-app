@@ -478,7 +478,8 @@ export const useStartDeployment = ({
             // a 1000ms inactivity timer that shuts down the IMAGE task. setutc is handled
             // by the BLE module (not the AI processor), so it does NOT reset this timer.
             // If syncTime runs first, the IMAGE task dies before loadmodel arrives.
-            await pipeline.syncAiModel(bleDevice, bleSession, project.model_id, cb, true, currentOps)
+            // The pre-deployment checks' `ver` spares the model transfer its own (#289)
+            await pipeline.syncAiModel(bleDevice, bleSession, project.model_id, cb, true, currentOps, initPayload?.deviceFirmwareVersion)
             await pipeline.syncTime(bleSession, cb)
 
             // 4. Gather snapshot data (unique to production deployment)
