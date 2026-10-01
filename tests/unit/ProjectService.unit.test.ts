@@ -236,6 +236,88 @@ describe('ProjectService Unit Test', () => {
         expect(payload).not.toHaveProperty('organisation_id');
     });
 
+    // Pictures per trigger and their interval (#317). The website is their only
+    // editor: the phone sends them when it inserts a project, where the
+    // backend's CHECK constraints reject a value outside 1 to 10 and 200 to
+    // 2000, and never on an update, where push_changes keeps the stored value
+    // for a missing key.
+    describe('burst columns in the push payload', () => {
+        const payloadOf = () => (OutboxService.recordOperation as jest.Mock).mock.calls[0][0].payload
+
+        it('creates a project with the table defaults and pushes them', async () => {
+            const created = await ProjectService.createProject({ name: 'P', organisation_id: 'org-1' });
+
+            expect(payloadOf()).toEqual(expect.objectContaining({
+                photos_per_trigger: 3,
+                photo_interval_milliseconds: 1000,
+            }))
+            expect(created.photos_per_trigger).toBe(3)
+            expect(created.photo_interval_milliseconds).toBe(1000)
+        });
+
+        it('never pushes a create value the CHECK constraints would reject', async () => {
+            // 0 is what WatermelonDB keeps in a number column nobody wrote
+            mockCollection.prepareCreate.mockImplementation((cb: any) => {
+                const model: any = { id: 'p0', name: 'P', createdAt: 1, updatedAt: 1, _isEditing: true };
+                cb(model);
+                model.photosPerTrigger = 0;
+                model.photoIntervalMilliseconds = 0;
+                return model;
+            });
+
+            await ProjectService.createProject({ name: 'P', organisation_id: 'org-1' });
+
+            expect(payloadOf()).toEqual(expect.objectContaining({
+                photos_per_trigger: 3,
+                photo_interval_milliseconds: 1000,
+            }))
+        });
+
+        const projectHolding = (photosPerTrigger: number, photoIntervalMilliseconds: number) => {
+            const project: any = {
+                id: 'test-project-id',
+                name: 'Test Project',
+                createdAt: 1620000000000,
+                updatedAt: 1620000000000,
+                photosPerTrigger,
+                photoIntervalMilliseconds,
+                _isEditing: true,
+            };
+            project.prepareUpdate = jest.fn((cb) => {
+                cb(project);
+                return project;
+            });
+            mockCollection.find.mockResolvedValue(project);
+            return project;
+        };
+
+        it('leaves both out of an update payload, so a stale phone cannot overwrite the website', async () => {
+            const project = projectHolding(5, 800);
+
+            const updated = await ProjectService.updateProject('test-project-id', { name: 'Renamed' });
+
+            const payload = payloadOf()
+            expect(payload.name).toBe('Renamed')
+            expect(payload).not.toHaveProperty('photos_per_trigger')
+            expect(payload).not.toHaveProperty('photo_interval_milliseconds')
+            // The local record and what the caller gets back still carry them
+            expect(project.photosPerTrigger).toBe(5)
+            expect(updated.photos_per_trigger).toBe(5)
+            expect(updated.photo_interval_milliseconds).toBe(800)
+        });
+
+        it('does not apply them locally from an update either, the website being their only editor', async () => {
+            const project = projectHolding(5, 800);
+
+            await ProjectService.updateProject('test-project-id', { photos_per_trigger: 2, photo_interval_milliseconds: 1500 });
+
+            expect(project.photosPerTrigger).toBe(5)
+            expect(project.photoIntervalMilliseconds).toBe(800)
+            expect(payloadOf()).not.toHaveProperty('photos_per_trigger')
+            expect(payloadOf()).not.toHaveProperty('photo_interval_milliseconds')
+        });
+    });
+
     it('should batch deleteProject operations', async () => {
         // Mock find to return a project
         const mockProject: any = {

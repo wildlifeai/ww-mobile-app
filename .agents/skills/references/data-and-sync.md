@@ -144,11 +144,18 @@ Until August 2026 it incremented on *every* run, making the number a build count
 402 without 402 schema changes. Hence two habits: docs point at `schema.ts` rather than quoting
 a number, and any version below about 402 in an older document means nothing.
 
-- **Never hand-edit the version downwards.** WatermelonDB migrates on a version increase; a
-  number lower than the on-device database triggers a reset. If you want to discard a bump,
-  make sure no device has already run that build.
-- When the version *does* increase, add the matching migration in `src/database/migrations.ts`.
-  The generator prints a reminder.
+- **There are no migrations, so any version change resets the local database.** The adapter
+  in `src/database/index.ts` configures none on purpose: the database is a sync cache, and
+  after the reset the next sync pulls everything again, new columns included, because
+  `SupabaseSyncService.resetSyncState` finds `last_pull_timestamp` gone from the database and
+  clears every sync state cached in AsyncStorage. An incremental pull would not: a backend
+  column added with a default does not move `updated_at`, so existing rows would keep
+  WatermelonDB's 0 until something else changed them. The cost is the outbox, lost with the
+  rest, so sync before installing a build that bumps it. Schema 403 to 404 on 1 October 2026
+  (#317) was one.
+- **Never hand-edit the version downwards, or reuse a number.** A device whose database
+  already carries that number is not reset and keeps the old table shape. If you want to
+  discard a bump, make sure no device has already run that build.
 - Line endings matter here: git restores `schema.ts` as CRLF on Windows while the generator
   emits LF, so any comparison against it must normalise first.
 

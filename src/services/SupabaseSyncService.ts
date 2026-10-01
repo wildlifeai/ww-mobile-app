@@ -15,6 +15,7 @@ import type Deployment from '../database/models/Deployment'
 import { log, logError, logWarn } from '../utils/logger'
 import { logCloudFailure } from '../utils/networkErrors'
 import { DEFAULT_FLASH_LED, DEFAULT_FLASH_MODE } from '../utils/projectFlash'
+import { DEFAULT_PHOTO_INTERVAL_MS, DEFAULT_PHOTOS_PER_TRIGGER } from '../utils/projectBurst'
 
 
 import { setGlobalSyncing, markInitialSyncComplete } from '../redux/slices/syncSlice'
@@ -1431,6 +1432,10 @@ class SupabaseSyncService {
                         rec.flashLed = row.flash_led ?? DEFAULT_FLASH_LED
                         rec.flashWindowStartMinutesUtc = row.flash_window_start_minutes_utc ?? undefined
                         rec.flashWindowMinutes = row.flash_window_minutes ?? undefined
+                        // Pictures per trigger and their interval, written as op5
+                        // and op6 by the deployment (#317)
+                        rec.photosPerTrigger = row.photos_per_trigger ?? DEFAULT_PHOTOS_PER_TRIGGER
+                        rec.photoIntervalMilliseconds = row.photo_interval_milliseconds ?? DEFAULT_PHOTO_INTERVAL_MS
                         // Pulled since #285: a GPS setting changed on the website never
                         // reached the phone, so its deployments zeroed GPS regardless
                         rec.recordGpsInImages = row.record_gps_in_images ?? false
@@ -1462,6 +1467,8 @@ class SupabaseSyncService {
                         rec.flashLed = row.flash_led ?? DEFAULT_FLASH_LED
                         rec.flashWindowStartMinutesUtc = row.flash_window_start_minutes_utc ?? undefined
                         rec.flashWindowMinutes = row.flash_window_minutes ?? undefined
+                        rec.photosPerTrigger = row.photos_per_trigger ?? DEFAULT_PHOTOS_PER_TRIGGER
+                        rec.photoIntervalMilliseconds = row.photo_interval_milliseconds ?? DEFAULT_PHOTO_INTERVAL_MS
                         // Pulled since #285: a GPS setting changed on the website never
                         // reached the phone, so its deployments zeroed GPS regardless
                         rec.recordGpsInImages = row.record_gps_in_images ?? false

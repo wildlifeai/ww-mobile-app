@@ -24,6 +24,7 @@ import InvitationService from './InvitationService'
 import UserRole from '../database/models/UserRole'
 import { log, logError } from '../utils/logger'
 import { DEFAULT_FLASH_LED, DEFAULT_FLASH_MODE } from '../utils/projectFlash'
+import { DEFAULT_PHOTO_INTERVAL_MS, DEFAULT_PHOTOS_PER_TRIGGER, resolveProjectBurst } from '../utils/projectBurst'
 
 
 class ProjectService {
@@ -281,6 +282,11 @@ class ProjectService {
 					project.flashLed = input.flash_led ?? DEFAULT_FLASH_LED
 					project.flashWindowStartMinutesUtc = input.flash_window_start_minutes_utc ?? null
 					project.flashWindowMinutes = input.flash_window_minutes ?? null
+					// The table defaults too: the app has no control for these,
+					// the website owns them (#317). Sent on this insert only;
+					// updates leave them out.
+					project.photosPerTrigger = DEFAULT_PHOTOS_PER_TRIGGER
+					project.photoIntervalMilliseconds = DEFAULT_PHOTO_INTERVAL_MS
 				})
 
 
@@ -390,6 +396,10 @@ class ProjectService {
 				const changed = Object.fromEntries(
 					Object.entries(after).filter(([key, value]) => value !== (before as Record<string, unknown>)[key])
 				)
+				// The burst columns never go out on an update: the website is their
+				// only editor (#317)
+				delete changed.photos_per_trigger
+				delete changed.photo_interval_milliseconds
 				const outboxOp = OutboxService.recordOperation({
 					operation: 'UPDATE',
 					tableName: 'projects',
@@ -617,6 +627,7 @@ class ProjectService {
 				flash_led: model.flashLed || DEFAULT_FLASH_LED,
 				flash_window_start_minutes_utc: model.flashWindowStartMinutesUtc ?? null,
 				flash_window_minutes: model.flashWindowMinutes ?? null,
+				...burstColumns(model),
 				// Computed fields
 				member_count: memberCount,
 				deployment_count: deploymentCount,
@@ -660,8 +671,22 @@ class ProjectService {
 			flash_led: model.flashLed || DEFAULT_FLASH_LED,
 			flash_window_start_minutes_utc: model.flashWindowStartMinutesUtc ?? null,
 			flash_window_minutes: model.flashWindowMinutes ?? null,
+			...burstColumns(model),
 		}
 	}
+}
+
+/**
+ * The two burst columns off a local record, always inside the backend's CHECK
+ * ranges: this is also the create push payload, and a value outside them (0 is
+ * what WatermelonDB keeps in a number column nobody wrote) would fail the push.
+ */
+const burstColumns = (model: Project): { photos_per_trigger: number, photo_interval_milliseconds: number } => {
+	const { photosPerTrigger, intervalMs } = resolveProjectBurst({
+		photos_per_trigger: model.photosPerTrigger,
+		photo_interval_milliseconds: model.photoIntervalMilliseconds,
+	})
+	return { photos_per_trigger: photosPerTrigger, photo_interval_milliseconds: intervalMs }
 }
 
 export default new ProjectService()
