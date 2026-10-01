@@ -167,7 +167,7 @@ When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeplo
 | 3 | Snapshot Data | Reads `battery`, `network` (if LoRaWAN required), `ver` for deployment record metadata |
 | 4 | Create DB Record | `DeploymentService.createDeployment()` → `OutboxService` → `SupabaseSyncService` |
 | 5 | Reset to Defaults | `pipeline.resetOps()` calls `executeResetToDefaults()`, shared workflow that intelligently resets parameters, skips tracking counters, and clears AI models. |
-| 6 | Configure Device | `pipeline.configureDevice()`, applies [capture method OPs](./04-ENGINEER-CONSOLE.md#capture-method-op-mapping), deployment ID, GPS, the project's capture flash and its pictures per trigger (C and D under [Device Configuration](#device-configuration-usedeploymentconfiguration)). It configures against the op table **`resetOps` returned**, not the pre-reset snapshot |
+| 6 | Configure Device | `pipeline.configureDevice()`, applies [capture method OPs](./04-ENGINEER-CONSOLE.md#capture-method-op-mapping), deployment ID, GPS, the project's capture flash, its pictures per trigger and its detection threshold (C, D and E under [Device Configuration](#device-configuration-usedeploymentconfiguration)). It configures against the op table **`resetOps` returned**, not the pre-reset snapshot |
 | 6b | Raw BMP (retired) | The raw BMP option that sat here (OP 18 bit 1) was retired on 21 September 2026 and its code is commented out; OP 18 is not preserved, so the reset leaves it 0. Restoring it means passing `recordRawBmp` to step 6, which doubles OP 5 |
 | 6c | Light Verdict and camera | Reads the op table and `AI slots`, and **only measures when something will consume the verdict** (OP 26 or OP 34 = 1). When it does, `pipeline.measureLight()` sends `AI light`, about a second and no photo. Reports DARK/BRIGHT, **names the camera this deployment keeps**, and warns when the project's flash does not suit it (#321). Non-fatal |
 | 6d | Model Verification | Reads OP 14/15 and says loudly whether the NN is armed, guarding silent modelless starts. Reuses the table 6c already read back rather than asking again: everything between the two is a read, so the second `getop -1` returned identical bytes and cost about 300 ms of every deployment, measured on the bench on 21 September 2026. Falls back to its own read when 6c got nothing. Non-fatal |
@@ -270,13 +270,35 @@ OP 8 has run out, and the rest of the burst is lost
 ([Seeed#208](https://github.com/wildlifeai/Seeed_Grove_Vision_AI_Module_V2/issues/208),
 `handleEventForWaitForTimer` in `image_task.c`; its `config_file.md` says OP 6 must
 be less than OP 8). The capture method (B) writes 1000 first, and this step comes
-last so its value is the one that stays; each write is recorded in the table the
+after it so its value is the one that stays; each write is recorded in the table the
 later steps compare against. Nothing after it in the deployment writes OP 8. The
 cost is battery: the camera stays up a second past the interval after every
 trigger. Before writing, `configure()` calls `keepAwake.forget`, so a hold still
 open on the screen (the motion test) or a restore owed by a dropped link cannot
 put 1000 back later. The Dev Deployment Test screen writes its own OP 5 and leaves
 OP 6 at the reset's 500 and OP 8 at 1000.
+
+**E. Configure Detection Threshold:** the project's `detection_threshold_pct`, as the
+model's threshold (#342):
+
+```
+AI setop 16 <0 to 126>   (MODEL_THRESHOLD, ceil(projects.detection_threshold_pct * 2.56) - 128)
+```
+
+The mapping lives in
+[`src/utils/projectDetectionThreshold.ts`](../../src/utils/projectDetectionThreshold.ts),
+and the deployment log says `Detection threshold: 57% (op16 18)`. The Himax compares
+the target class's int8 softmax output, scale 1/256 and zero point -128, with OP 16,
+so OP 16 = q means probability (q + 128) / 256, and the formula gives the smallest q
+that reaches the percent: 50% is 0, the lowest the camera can be set, and 99% is 126.
+The column's 50 to 99 CHECK is mirrored, and a value outside it deploys as 57.
+
+The default, 57%, is OP 16 = 18, the factory value the reset (step 5) has just
+written, so a project on it writes nothing here and deploys exactly as before #342.
+Until then nothing else wrote OP 16, so a threshold set on the bench was lost at the
+next deployment. It is written whatever the model; with none on the device the
+firmware never reads it. The Dev Deployment Test screen writes the selected project's
+threshold the same way.
 
 ---
 

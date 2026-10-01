@@ -20,6 +20,7 @@ import { executeResetToDefaults } from './resetToDefaults'
 import { log, logWarn } from '../../utils/logger'
 import { describeProjectFlash, ProjectFlashColumns } from '../../utils/projectFlash'
 import { describeProjectBurst, ProjectBurstColumns } from '../../utils/projectBurst'
+import { describeDetectionThreshold, ProjectDetectionThresholdColumns } from '../../utils/projectDetectionThreshold'
 
 interface ProgressCallbacks {
     addLog: (msg: string) => void
@@ -478,6 +479,8 @@ export async function configureDevice(
         burst?: ProjectBurstColumns | null
         /** Doubles op5 so each JPEG keeps its raw BMP. */
         recordRawBmp?: boolean
+        /** op16 from the project's detection threshold (#342). Omitted leaves the reset's 18. */
+        detectionThreshold?: ProjectDetectionThresholdColumns | null
     },
     { addLog, setStep, setProgress }: ProgressCallbacks,
     currentOps?: string[]
@@ -508,12 +511,14 @@ export async function configureDevice(
         mdSensitivity: config.mdSensitivity,
         burst: config.burst ?? undefined,
         recordRawBmp: config.recordRawBmp,
+        detectionThreshold: config.detectionThreshold ?? undefined,
     }, currentOps)
 
     if (config.flash !== undefined) addLog(`Capture flash: ${describeProjectFlash(config.flash)}`)
     // The awake figure is the op8 written: a burst keeps the camera up past
     // its interval, a single picture keeps the usual 1000 ms (#317)
     if (config.burst !== undefined) addLog(describeProjectBurst(config.burst, config.recordRawBmp))
+    if (config.detectionThreshold !== undefined) addLog(describeDetectionThreshold(config.detectionThreshold))
     addLog('Device configuration successful')
     log('[Deployment] Device configuration successful')
 }
