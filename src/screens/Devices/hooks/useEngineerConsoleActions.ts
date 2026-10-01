@@ -129,11 +129,11 @@ export const useEngineerConsoleActions = ({
             return
         }
         if (cmdName === CommandNames.UPDATE_HIMAX_FIRMWARE) {
-            navigation.navigate('FirmwareUpdateScreen', { deviceId: device?.id, target: 'himax' })
+            navigation.navigate('FirmwareUpdateScreen', { deviceId: device?.id, target: 'himax', engineer: true })
             return
         }
         if (cmdName === CommandNames.UPDATE_BLE_FIRMWARE) {
-            navigation.navigate('FirmwareUpdateScreen', { deviceId: device?.id, target: 'ble' })
+            navigation.navigate('FirmwareUpdateScreen', { deviceId: device?.id, target: 'ble', engineer: true })
             return
         }
         if (cmdName === CommandNames.FILE_TRANSFER_TEST) {
@@ -145,7 +145,7 @@ export const useEngineerConsoleActions = ({
             return
         }
         if (cmdName === CommandNames.FIRMWARE_STATUS) {
-            navigation.navigate('FirmwareStatusScreen', { deviceId: device?.id })
+            navigation.navigate('FirmwareStatusScreen', { deviceId: device?.id, engineer: true })
             return
         }
         if (cmdName === CommandNames.RESET_TO_DEFAULTS) {

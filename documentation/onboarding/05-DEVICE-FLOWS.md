@@ -152,7 +152,7 @@ camera before naming the site.
 
 | Element | Notes |
 |---------|-------|
-| Warning banner | Orange banner with "Update Firmware" button navigating to `FirmwareStatusScreen` with `restrictToLatest: true` (which hides developer version selection dropdowns to keep the operator flow clean and simple). Non-blocking, user can proceed without updating. |
+| Warning banner | Orange banner with "Update Firmware" button navigating to `FirmwareStatusScreen`: one line per chip, and Update opens the operator's view of the update, from which build to which, one button, one bar and one status line while it runs with the update's last steps under them, one result line (#344). The build picker and the SD-card source are the Engineer Console's view. Non-blocking, user can proceed without updating. |
 
 Project settings (capture method, sensitivity, timelapse interval, GPS image tagging, capture flash, pictures per trigger) are inherited from the selected project and displayed as feature icons. The user can switch projects at any time via the dropdown.
 

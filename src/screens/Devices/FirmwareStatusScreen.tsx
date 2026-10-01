@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native'
-import { Button, ActivityIndicator, Divider } from 'react-native-paper'
+import { Button, ActivityIndicator } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRoute, useNavigation, useIsFocused } from '@react-navigation/native'
 
@@ -8,6 +8,7 @@ import { useExtendedTheme } from '../../theme'
 import { useAppSelector } from '../../redux'
 import { WWText } from '../../components/ui/WWText'
 import { useFirmwareStatus, FirmwareComponentStatus } from './hooks/useFirmwareStatus'
+import { friendlyVersion } from '../../utils/firmwareWords'
 
 interface FirmwareComponentCardProps {
     title: string
@@ -16,54 +17,39 @@ interface FirmwareComponentCardProps {
     spacing: number
     isChecking: boolean
     isConnected: boolean
+    /** Opened from the Engineer Console: Update stays offered when up to date */
+    engineer: boolean
     onUpdate: () => void
 }
 
-const FirmwareComponentCard = ({ title, status, colors, spacing, isChecking, isConnected, onUpdate }: FirmwareComponentCardProps) => (
+/** "Up to date: 30 Sep build", or "23 Sep build, update available" (#344) */
+const statusLine = (status: FirmwareComponentStatus): string => {
+    const current = status.currentVersion && status.currentVersion !== 'Unknown'
+        ? friendlyVersion(status.currentVersion)
+        : null
+    if (!status.currentVersion) return 'Checking…'
+    if (status.isOutdated) return current ? `${current}, update available` : 'Update available'
+    return current ? `Up to date: ${current}` : 'Version unknown'
+}
+
+const FirmwareComponentCard = ({ title, status, colors, spacing, isChecking, isConnected, engineer, onUpdate }: FirmwareComponentCardProps) => (
     <View style={[styles.card, { backgroundColor: colors.surfaceVariant, marginBottom: spacing }]}>
-        <View style={styles.cardHeader}>
-            <WWText variant="titleMedium" style={{ color: colors.onSurfaceVariant }}>
-                {title}
-            </WWText>
-            {status.isOutdated ? (
-                <WWText variant="labelMedium" style={[styles.statusText, { color: colors.error }]}>
-                    OUTDATED
-                </WWText>
-            ) : (
-                <WWText variant="labelMedium" style={[styles.statusText, styles.statusOk]}>
-                    UP TO DATE
-                </WWText>
-            )}
-        </View>
-
-        <Divider style={styles.divider} />
-
-        <View style={styles.versionRow}>
-            <WWText variant="bodyMedium" style={[styles.flex1, { color: colors.onSurfaceVariant }]}>
-                Device Version:
-            </WWText>
-            <WWText variant="bodyMedium" style={[styles.boldText, { color: status.isOutdated ? colors.error : colors.onSurfaceVariant }]}>
-                {status.currentVersion}
-            </WWText>
-        </View>
-
-        <View style={styles.versionRow}>
-            <WWText variant="bodyMedium" style={[styles.flex1, { color: colors.onSurfaceVariant }]}>
-                Latest Available:
-            </WWText>
-            <WWText variant="bodyMedium" style={[styles.boldText, { color: colors.primary }]}>
-                {status.latestVersion}
-            </WWText>
-        </View>
-
-        <Button
-            mode="contained"
-            style={styles.marginTop12}
-            onPress={onUpdate}
-            disabled={!isConnected || isChecking}
-        >
-            <WWText>Update {title}</WWText>
-        </Button>
+        <WWText variant="titleMedium" style={{ color: colors.onSurfaceVariant }}>
+            {title}
+        </WWText>
+        <WWText variant="bodyMedium" style={{ color: status.isOutdated ? colors.error : colors.onSurfaceVariant }}>
+            {statusLine(status)}
+        </WWText>
+        {(status.isOutdated || engineer) && (
+            <Button
+                mode="contained"
+                style={styles.marginTop12}
+                onPress={onUpdate}
+                disabled={!isConnected || isChecking}
+            >
+                <WWText>Update</WWText>
+            </Button>
+        )}
     </View>
 )
 
@@ -73,7 +59,8 @@ export const FirmwareStatusScreen = () => {
     const { colors, spacing } = useExtendedTheme()
 
     const deviceId = route.params?.deviceId
-    const restrictToLatest = route.params?.restrictToLatest ?? false
+    // Opened from the Engineer Console: the update screens it opens are its view (#344)
+    const engineer: boolean = route.params?.engineer ?? false
     const device = useAppSelector(state => state.devices[deviceId || ''])
     const isFocused = useIsFocused()
 
@@ -100,15 +87,6 @@ export const FirmwareStatusScreen = () => {
                     <RefreshControl refreshing={isChecking} onRefresh={checkStatus} tintColor={colors.primary} />
                 }
             >
-                <WWText variant="titleLarge" style={{ marginBottom: spacing }}>
-                    Firmware Status
-                </WWText>
-
-                <WWText style={{ marginBottom: spacing }}>
-                    Compare the currently installed firmware versions on the device against the
-                    latest versions available in the cloud.
-                </WWText>
-
                 {errorMsg && (
                     <View style={[styles.errorBanner, { marginBottom: spacing }]}>
                         <WWText style={styles.errorText}>⚠️ {errorMsg}</WWText>
@@ -120,30 +98,27 @@ export const FirmwareStatusScreen = () => {
                 ) : (
                     <>
                         <FirmwareComponentCard
-                            title="BLE Firmware (nRF52)"
+                            title="Bluetooth"
                             status={statuses.ble}
                             colors={colors}
                             spacing={spacing}
                             isChecking={isChecking}
                             isConnected={!!device?.connected}
-                            onUpdate={() => navigation.navigate('FirmwareUpdateScreen', { deviceId, target: 'ble', restrictToLatest })}
+                            engineer={engineer}
+                            onUpdate={() => navigation.navigate('FirmwareUpdateScreen', { deviceId, target: 'ble', engineer })}
                         />
                         
                         <FirmwareComponentCard
-                            title="AI Processor Firmware (Himax)"
+                            title="AI processor"
                             status={statuses.himax}
                             colors={colors}
                             spacing={spacing}
                             isChecking={isChecking}
                             isConnected={!!device?.connected}
-                            onUpdate={() => navigation.navigate('FirmwareUpdateScreen', { deviceId, target: 'himax', restrictToLatest })}
+                            engineer={engineer}
+                            onUpdate={() => navigation.navigate('FirmwareUpdateScreen', { deviceId, target: 'himax', engineer })}
                         />
 
-                        {lastChecked && (
-                            <WWText variant="bodySmall" style={[styles.lastCheckedText, { marginTop: spacing }]}>
-                                Last checked: {lastChecked.toLocaleTimeString()}
-                            </WWText>
-                        )}
                     </>
                 )}
 
@@ -163,36 +138,10 @@ const styles = StyleSheet.create({
         padding: 16,
         borderRadius: 8,
     },
-    cardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    versionRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingVertical: 4,
-    },
     errorBanner: {
         backgroundColor: '#BF360C',
         padding: 12,
         borderRadius: 8,
-    },
-    statusText: {
-        fontWeight: 'bold',
-    },
-    statusOk: {
-        color: '#4CAF50',
-    },
-    divider: {
-        marginVertical: 8,
-        backgroundColor: 'rgba(255,255,255,0.1)',
-    },
-    flex1: {
-        flex: 1,
-    },
-    boldText: {
-        fontWeight: 'bold',
     },
     marginTop12: {
         marginTop: 12,
@@ -202,9 +151,5 @@ const styles = StyleSheet.create({
     },
     loadingSpinner: {
         marginTop: 40,
-    },
-    lastCheckedText: {
-        textAlign: 'center',
-        opacity: 0.6,
     },
 })

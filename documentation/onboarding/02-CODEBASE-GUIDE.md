@@ -35,7 +35,7 @@ src/
 ├── database/               # WatermelonDB schema and models
 ├── types/                  # TypeScript type definitions
 ├── hooks/                  # Custom React hooks (BLE, sync, auth)
-├── utils/                  # Utility functions (incl. cameraVariant.ts, flashCameraMatch.ts, networkErrors.ts)
+├── utils/                  # Utility functions (incl. cameraVariant.ts, firmwareWords.ts, flashCameraMatch.ts, networkErrors.ts)
 ├── providers/              # React context providers
 ├── ble/                    # BLE protocol engine (protocol/, session/, command registry)
 ├── features/               # Feature-specific modules (maps)
@@ -121,7 +121,8 @@ screens/                                  navigation/screens/
 │   ├── StandaloneMotionDetectionScreen
 │   ├── DeviceMonitoringSummaryScreen
 │   ├── components/
-│   │   └── ScannerRoutingDialog.tsx      # Post-scan routing
+│   │   ├── ScannerRoutingDialog.tsx      # Post-scan routing
+│   │   └── SimpleFirmwareUpdate.tsx      # The operator's firmware update (#344)
 │   └── hooks/
 │       ├── useDeviceDiscovery.ts         # Scanner auto-connect + routing
 │       ├── useAutoConnectStateMachine.ts

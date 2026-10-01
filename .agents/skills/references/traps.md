@@ -141,6 +141,11 @@ file is the list of things that look like an app bug and are not, and the revers
   which throws `Cannot refetch a query that has not been started yet.` Wrap a confirmation in a
   promise and await it before anything navigates, and do not refetch after a mutation whose
   `invalidatesTags` already covers the query.
+- **An "unmounted" ref must be cleared on mount, not only set on unmount.** Fast Refresh and
+  StrictMode run an effect's cleanup and then the effect again, so a ref only ever set to `true`
+  leaves a mounted hook believing it is gone. `useFirmwareUpdate` did that on 1 October 2026:
+  after a hot reload with the screen open, an update transferred image 1, sent the flash command
+  and then stopped without a word, the screen frozen on "Sending" and the reset never sent.
 - **A field for someone else's email address must not be an email-type field, or Android offers
   the phone's saved logins.** Invite Member's address field opened Google Password Manager's
   saved-password sheet on the first tap after each launch (#363), and picking one would have
