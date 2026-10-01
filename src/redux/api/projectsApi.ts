@@ -24,6 +24,7 @@ import type {
 } from "../../types/project"
 import ReferenceDataService from "../../services/ReferenceDataService"
 import { log, logError, logWarn } from '../../utils/logger'
+import { withoutArchived } from '../../utils/projectArchive'
 
 
 // Define return types for reference data
@@ -74,8 +75,7 @@ export const projectsApi = createApi({
 						{ userId, organisationId }
 					)
 
-					// Call new filtered method
-					const data = await ProjectService.getProjectsForUserInOrganisation(userId, organisationId)
+					const data = withoutArchived(await ProjectService.getProjectsForUserInOrganisation(userId, organisationId))
 
 					log(
 						`✅ RTK Query - Retrieved ${data.length} projects from local database`,

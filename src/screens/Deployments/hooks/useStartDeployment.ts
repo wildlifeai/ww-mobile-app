@@ -35,6 +35,7 @@ import { calculateDistance } from '../../../utils/gpsUtils'
 import { CAMERA_VARIANT_LABELS, CameraVariant, parseVariant } from '../../../utils/cameraVariant'
 import { checkFlashAgainstCamera } from '../../../utils/flashCameraMatch'
 import { mdSensitivityLevel } from '../../../utils/mdSensitivity'
+import { withoutArchived } from '../../../utils/projectArchive'
 
 interface UseStartDeploymentParams {
     deviceId?: string
@@ -191,7 +192,7 @@ export const useStartDeployment = ({
                 
                 if (user?.id && currentOrganisation?.id) {
                     const projs = await ProjectService.getProjectsForUserInOrganisation(user.id, currentOrganisation.id)
-                    setAvailableProjects(projs)
+                    setAvailableProjects(withoutArchived(projs))
                 }
 
                 if (proj && proj.capture_method_id) {

@@ -15,6 +15,7 @@ import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWText } from '../../components/ui/WWText'
 import { WWButton } from '../../components/ui/WWButton'
 import { WWIcon } from '../../components/ui/WWIcon'
+import { DeploymentPhotoStrip } from '../../components/ui/DeploymentPhotoStrip'
 import { DeviceService } from '../../services/DeviceService'
 import { DeviceWithStatus } from '../../types/device'
 import { useRoute, useNavigation } from '@react-navigation/native'
@@ -212,6 +213,13 @@ export const DeviceMonitoringSummaryScreen = () => {
                                     </Text>
                                 </View>
                             )}
+
+                            {/* Site photos taken at deployment; tap one to open it */}
+                            <DeploymentPhotoStrip
+                                deployment={displayDeployment}
+                                size={96}
+                                style={styles.photoStrip}
+                            />
                         </Card.Content>
                     </Card>
                 ) : (
@@ -289,6 +297,10 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: 'rgba(0,0,0,0.1)',
+    },
+    photoStrip: {
+        marginTop: 16,
+        marginBottom: 0,
     },
     emptyContent: {
         alignItems: 'center',
