@@ -75,6 +75,21 @@ describe("InviteMemberCard (#308)", () => {
 		}
 	})
 
+	// #363: Android offered the phone's saved logins on this field
+	it("keeps the address field out of autofill", () => {
+		renderWithProviders(
+			<InviteMemberCard projectId="project-1" onInviteSent={jest.fn()} styles={{}} />,
+			{ preloadedState: signedIn },
+		)
+		const field = screen.getByDisplayValue("")
+
+		expect(field.props.autoComplete).toBe("off")
+		expect(field.props.importantForAutofill).toBe("no")
+		expect(field.props.textContentType).toBe("none")
+		// An email-type field drew the saved logins on a Pixel even when marked "no"
+		expect(field.props.keyboardType).toBe("default")
+	})
+
 	it("explains a second invitation to the same address", async () => {
 		;(InvitationService.sendInvitation as jest.Mock).mockRejectedValue({
 			code: "23505",

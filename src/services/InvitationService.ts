@@ -143,6 +143,27 @@ class InvitationService {
     }
 
     /**
+     * Withdraw a pending invitation (#364). Project admins only: the server
+     * raises 42501 for anyone else, and P0002 once the invitation has been
+     * answered or has expired. Server-only, so nothing is queued offline.
+     */
+    async cancelInvitation(invitationId: string): Promise<void> {
+        log('🚫 Cancelling invitation:', invitationId)
+
+        const supabase = getSupabaseClient()
+        const { error } = await supabase.rpc('cancel_project_invitation' as any, {
+            p_invitation_id: invitationId,
+        })
+
+        if (error) {
+            logError('❌ Failed to cancel invitation:', error)
+            throw error
+        }
+
+        log('✅ Invitation cancelled')
+    }
+
+    /**
      * Accept or decline an invitation
      */
     async respondToInvitation(
@@ -312,6 +333,16 @@ class InvitationService {
             return 0
         }
     }
+}
+
+/**
+ * What to tell the admin when cancel_project_invitation refuses (#364), by the
+ * SQLSTATE it raises; anything else is most likely the connection.
+ */
+export const describeCancelInvitationError = (error: { code?: string } | null | undefined): string => {
+    if (error?.code === 'P0002') return 'It had already been accepted, declined or had expired. The list now shows what is still pending.'
+    if (error?.code === '42501') return 'Only project admins can cancel invitations. Nothing was changed.'
+    return 'Could not reach the server, so it may not have been cancelled. Refresh the list to check.'
 }
 
 export default new InvitationService()

@@ -190,23 +190,18 @@ export const getProjectMembers = async (
 				const user = userMap.get(role.userId)
 				// users.email is filled by the member cache (cacheProjectMembers)
 				let email = user?.email || invitationMap.get(role.userId) || ""
-				const isMe = String(role.userId).toLowerCase() === String(requestingUserId).toLowerCase()
-				let name = isMe ? "Me" : "Unknown User"
+				// A plain name: "(You)" is added where it is shown (#362)
+				let name = "Unknown User"
 
 				if (user) {
 					const fullName = `${user.firstname || ""} ${user.surname || ""}`.trim()
 					if (fullName) {
-						name = isMe ? `${fullName} (You)` : fullName
+						name = fullName
 					} else if (email) {
-						name = isMe ? `${email} (You)` : email
+						name = email
 					}
 				} else if (email) {
-					name = isMe ? `${email} (You)` : email // Use invitation email as name if profile is missing
-				}
-
-				// If we still have "Unknown User" but it's me, make sure it says Me
-				if (name === "Unknown User" && isMe) {
-					name = "Me (You)"
+					name = email // Use invitation email as name if profile is missing
 				}
 
 				// We might not have email locally if it's not in public.users or not synced
@@ -324,11 +319,10 @@ export const fetchMembersFromCloud = async (
 		const firstName = m.firstname || ""
 		const surname = m.surname || ""
 		const fullName = m.name || (firstName || surname ? `${firstName} ${surname}`.trim() : (m.email || "Unknown"))
-		const isMe = String(m.id).toLowerCase() === String(requestingUserId).toLowerCase()
 
 		return {
 			id: m.id,  // RPC returns 'id' not 'user_id'
-			name: isMe ? (fullName && fullName !== "Unknown" ? `${fullName} (You)` : "Me (You)") : fullName,
+			name: fullName,
 			firstname: m.firstname,
 			surname: m.surname,
 			email: m.email || "",
@@ -515,18 +509,14 @@ const fetchMembersFromCloudManual = async (projectId: string, requestingUserId: 
 		// 4. Join and map
 		const members: ProjectMember[] = roles.map(role => {
 			const profile = profileMap.get(role.user_id)
-			const isMe = String(role.user_id).toLowerCase() === String(requestingUserId).toLowerCase()
-			
-			let name = isMe ? "Me" : "Unknown User"
+			let name = "Unknown User"
             let email = "" // Cannot fetch email manually securely
 			
 			if (profile) {
 				const profileName = `${profile.firstname || ""} ${profile.surname || ""}`.trim()
 				if (profileName) {
-					name = isMe ? `${profileName} (You)` : profileName
+					name = profileName
 				}
-			} else if (isMe) {
-				name = "Me (You)"
 			}
 
 			return {

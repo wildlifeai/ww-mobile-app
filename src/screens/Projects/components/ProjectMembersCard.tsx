@@ -65,11 +65,9 @@ export const ProjectMembersCard: React.FC<Props> = ({
                     <View style={styles.membersList}>
                         {members.slice(0, 5).map((member, index) => {
                             const isMe = member.user_id === currentUser?.id
-                            const displayName = isMe
-                                ? ((currentUser as any)?.profile?.first_name
-                                    ? `${(currentUser as any).profile.first_name} ${(currentUser as any).profile.last_name || ""}`.trim()
-                                    : "Me")
-                                : getDisplayName(member.user_profile || (member.user_profile as any)?.profile, false)
+                            // The same name the members screen shows; the signed-in
+                            // user's own profile has no first_name, which made it "Me" (#362)
+                            const displayName = getDisplayName(member.user_profile, isMe)
 
                             return (
                                 <View
@@ -84,7 +82,7 @@ export const ProjectMembersCard: React.FC<Props> = ({
                                                 isMe && styles.memberNameBold,
                                             ]}
                                         >
-                                            {displayName} {isMe && "(You)"}
+                                            {displayName}
                                         </Text>
                                         {member.role && (
                                             <Text

@@ -65,7 +65,7 @@ import type {
 	ProjectMember,
 	ProjectRole,
 } from "../../services/UserRoleService"
-import InvitationService from "../../services/InvitationService"
+import InvitationService, { describeCancelInvitationError } from "../../services/InvitationService"
 import type ProjectInvitation from "../../database/models/ProjectInvitation"
 import { log, logError } from '../../utils/logger'
 import { logCloudFailure } from '../../utils/networkErrors'
@@ -149,13 +149,14 @@ export const ProjectMembersScreen = () => {
 				const enrichedMembers = rawMembers.map(m => {
 					const isMe = String(m.id).toLowerCase() === String(user!.id).toLowerCase()
 					if (isMe) {
-						if (!m.name || m.name === "Unknown User" || m.name === "Me") {
+						if (!m.name || m.name === "Unknown User" || m.name === "Unknown") {
 							// The profile comes from the cloud, so offline there is none;
-							// the email from the session is still there
+							// the email from the session is still there. A plain name:
+							// the row adds "(You)" (#362)
 							const profile = user!.profile as UserProfile | undefined
 							return {
 								...m,
-								name: getDisplayName(profile ?? { email: user!.email }, true),
+								name: getDisplayName(profile ?? { email: user!.email }),
 								firstname: profile?.firstName || profile?.firstname || m.firstname,
 								surname: profile?.lastName || profile?.surname || m.surname,
 								email: user!.email || m.email
@@ -244,6 +245,35 @@ export const ProjectMembersScreen = () => {
 		closeMenu(member.id)
 	}, [closeMenu])
 
+	// Withdrawing an invitation is made on the server, so offline it says so
+	// and sends nothing, the same as Invite; the list is fetched again after,
+	// whatever the answer (#364)
+	const handleCancelInvitation = useCallback(async (invite: ProjectInvitation) => {
+		if (await isKnownOffline()) {
+			Alert.alert("No connection", "Cancelling an invitation needs a connection. Try again when you are online.")
+			return
+		}
+		Alert.alert(
+			"Cancel invitation?",
+			`${invite.inviteeEmail} will no longer be able to join this project with it.`,
+			[
+				{ text: "Keep", style: "cancel" },
+				{
+					text: "Cancel invitation",
+					style: "destructive",
+					onPress: async () => {
+						try {
+							await InvitationService.cancelInvitation(invite.remoteId || invite.id)
+						} catch (error: any) {
+							Alert.alert("Invitation not cancelled", describeCancelInvitationError(error))
+						}
+						await handleRefresh()
+					},
+				},
+			],
+		)
+	}, [handleRefresh])
+
 
 
 	const dynamicStyles = useMemo(() => ({
@@ -317,6 +347,7 @@ export const ProjectMembersScreen = () => {
 				<PendingInvitationsList
 					pendingInvitations={pendingInvitations}
 					getRoleDisplayName={getRoleDisplayName}
+					onCancel={handleCancelInvitation}
 					dynamicStyles={dynamicStyles}
 				/>
 			)}

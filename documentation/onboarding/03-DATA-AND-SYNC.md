@@ -105,7 +105,8 @@ cards, work offline for any project whose members were seen online (#307). The c
 fresh as that last view. Offline, the Members screen shows what the phone has, at least the
 current user, and raises no Alert; the offline banner is the one offline signal. Invitations
 are made on the server, so offline the Invite card says it needs a connection and sends
-nothing, and nothing is queued.
+nothing, and nothing is queued. An admin cancels a pending invitation from the same screen
+(`cancel_project_invitation`, #364), which is server-only in the same way.
 
 Changing a member's role and removing a member are server actions too (#335).
 `UserRoleService` calls `update_project_member_role` and `remove_project_member`, which check

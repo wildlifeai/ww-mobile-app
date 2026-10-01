@@ -127,3 +127,19 @@ it('does not touch the cache when the server cannot be reached', async () => {
 
 	expect(projectRoles()).toEqual(['user-me:project_admin', 'user-tama:project_member'])
 })
+
+// #362: the screens add "(You)", so a name carrying it showed "(You) (You)"
+it('gives my own name plain, online and offline', async () => {
+	online([
+		member(ME, 'Victor Anton', 'victor@ww.org', 'project_admin'),
+		member('user-tama', 'Tama Te Rangi', 'tama@ww.org', 'project_member'),
+	])
+	const onlineList = await getProjectMembers(PROJECT, ME)
+	expect(onlineList.find((m) => m.id === ME)?.name).toBe('Victor Anton')
+
+	offline()
+	const offlineList = await getProjectMembers(PROJECT, ME)
+	const mine = offlineList.find((m) => m.id === ME)
+	expect(mine).toBeDefined()
+	expect(mine?.name).not.toMatch(/\(You\)|^Me$/)
+})
