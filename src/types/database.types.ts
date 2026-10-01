@@ -3140,6 +3140,7 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           description: string | null
+          detection_threshold_pct: number
           flash_led: string
           flash_mode: string
           flash_window_minutes: number | null
@@ -3170,6 +3171,7 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           description?: string | null
+          detection_threshold_pct?: number
           flash_led?: string
           flash_mode?: string
           flash_window_minutes?: number | null
@@ -3200,6 +3202,7 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           description?: string | null
+          detection_threshold_pct?: number
           flash_led?: string
           flash_mode?: string
           flash_window_minutes?: number | null
@@ -3769,6 +3772,7 @@ export type Database = {
           deleted_at: string | null
           deployment_count: number | null
           description: string | null
+          detection_threshold_pct: number | null
           flash_led: string | null
           flash_mode: string | null
           flash_window_minutes: number | null
@@ -3804,6 +3808,7 @@ export type Database = {
           deleted_at?: string | null
           deployment_count?: never
           description?: string | null
+          detection_threshold_pct?: number | null
           flash_led?: string | null
           flash_mode?: string | null
           flash_window_minutes?: number | null
@@ -3839,6 +3844,7 @@ export type Database = {
           deleted_at?: string | null
           deployment_count?: never
           description?: string | null
+          detection_threshold_pct?: number | null
           flash_led?: string | null
           flash_mode?: string | null
           flash_window_minutes?: number | null

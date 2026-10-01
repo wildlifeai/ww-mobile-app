@@ -75,13 +75,14 @@ The coverage floor is a ratchet at 20%: it only moves up, by hand.
   `OP_PARAMETERS_E` in the Seeed repo. That is a cross-repo contract, never renumber
   unilaterally. So are the self-test bit numbers and the `AE light check` line's fields.
 - **The project owns the camera's settings, the device is where they land.** Capture method,
-  sensitivity, model, GPS, the capture flash (#282) and, since #317, the pictures per trigger
-  and their interval all live on the `projects` row and are written to the device after the
-  deployment reset. A setting with no home in the project is a setting that no deployment
-  will ever carry. Beware the two halves of that contract in
-  `SupabaseSyncService.syncProjects` and ww-backend's `push_changes`: both name their columns by
-  hand, and both have silently dropped some (#285, ww-backend #170). The app half is now
-  guarded: `syncProjects.columns.test.ts` fails when a local `projects` column has no pull line.
+  sensitivity, model, GPS, the capture flash (#282), the pictures per trigger and their
+  interval (#317) and, since #342, the model's detection threshold all live on the `projects`
+  row and are written to the device after the deployment reset. A setting with no home in the
+  project is a setting that no deployment will ever carry. Beware the two halves of that
+  contract in `SupabaseSyncService.syncProjects` and ww-backend's `push_changes`: both name
+  their columns by hand, and both have silently dropped some (#285, ww-backend #170). The app
+  half is now guarded: `syncProjects.columns.test.ts` fails when a local `projects` column has
+  no pull line.
 - **The device tells you things you didn't ask for.** Self-test bits after every wake, the
   light decision after every check, motion grids while monitoring. Check for an existing
   broadcast before adding a command that polls. One already cost us a stale banner that

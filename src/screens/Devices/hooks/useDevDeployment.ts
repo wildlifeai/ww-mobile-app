@@ -649,6 +649,10 @@ export const useDevDeployment = ({
                 mdSensitivity: mdSensitivityLevel(
                     sensitivityOptions.find(o => String(o.id) === String(motionSensitivityOverride))?.value
                 ),
+                // The project's detection threshold (op16), as Start Monitoring
+                // writes it (#342). No field here: the model chosen on this
+                // screen is tried at the threshold the project would deploy it at.
+                detectionThreshold: project,
             }, cb, opsAfterReset)
 
             // 7. Flash brightness, dev only (the LED and the mode went in above).

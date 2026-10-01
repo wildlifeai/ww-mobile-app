@@ -157,8 +157,8 @@ a number, and any version below about 402 in an older document means nothing.
   clears every sync state cached in AsyncStorage. An incremental pull would not: a backend
   column added with a default does not move `updated_at`, so existing rows would keep
   WatermelonDB's 0 until something else changed them. The cost is the outbox, lost with the
-  rest, so sync before installing a build that bumps it. Schema 403 to 404 on 1 October 2026
-  (#317) was one.
+  rest, so sync before installing a build that bumps it. Schema 403 to 404 (#317) and 404 to
+  405 (#342), both on 1 October 2026, were two.
 - **Never hand-edit the version downwards, or reuse a number.** A device whose database
   already carries that number is not reset and keeps the old table shape. If you want to
   discard a bump, make sure no device has already run that build.
