@@ -161,7 +161,11 @@ The APK is cached by profile, Expo fingerprint and a hash of `package-lock.json`
 of building for 20 to 27 minutes. Caches are scoped per ref: the first dispatch on a branch
 builds, later ones should not. Check the "Restore cached APK" step rather than assuming.
 
-Two jobs run the flows on an API 33 x86_64 emulator, through `scripts/ci-maestro.sh`:
+Two jobs run the flows on an API 33 x86_64 emulator with the Pixel 6 profile (the default AVD
+is 320x640 at 160 dpi, where the drawer's version footer sat over its sign-out button), through
+`scripts/ci-maestro.sh`. That script also turns Bluetooth on, which the app insists on before
+the login screen, and takes `bluetooth` out of `airplane_mode_radios`, because the offline flows
+switch airplane mode and would otherwise land on "Please enable Bluetooth":
 
 - `E2E Smoke`, **required**. One flow, [`smoke/app-startup.yaml`](../../tests/maestro/smoke/app-startup.yaml):
   install, launch, and the login screen's `email-input` and `login-button` render within 90 s.
@@ -256,7 +260,9 @@ adb devices
   file no glob matches.
 - **Maestro cannot shell out.** `runScript` runs JavaScript in Maestro's own sandbox with no
   `adb`, no `Android.shell`. Airplane mode is a command (`setAirplaneMode: enabled`, Android
-  only); anything else outside the app belongs in the workflow, before Maestro starts.
+  only); anything else outside the app belongs in the workflow, before Maestro starts. Before an
+  offline flow runs locally: `adb shell settings put global airplane_mode_radios cell,wifi,nfc,wimax`,
+  or airplane mode takes Bluetooth down and the app with it.
 - **Scroll to a button near the bottom of a form** with `scrollUntilVisible` before tapping it;
   `hideKeyboard` after typing, or the keyboard covers it.
 
@@ -277,7 +283,7 @@ maestro cloud tests/maestro/auth-workflow.yaml
 | `maestro: command not found` | `source ~/.bashrc` or reinstall via curl |
 | Java version error | Install Java 17+: `sudo apt install -y openjdk-17-jdk` |
 | "Element not found" | Read the hierarchy (`maestro studio`, or the CI log's compact view); `extendedWaitUntil` before `tapOn`; use a testID |
-| Stuck on "Please enable Bluetooth" | The app refuses to run with the adapter off: `adb shell svc bluetooth enable`, which `scripts/ci-maestro.sh` does |
+| Stuck on "Please enable Bluetooth" | The app refuses to run with the adapter off: `adb shell svc bluetooth enable`, which `scripts/ci-maestro.sh` does. In an offline flow, airplane mode took it down: take `bluetooth` out of `airplane_mode_radios` first |
 | Login never happens | `E2E_TEST_EMAIL` / `E2E_TEST_PASSWORD` not passed, or not a seeded user since the last cloud-dev reseed |
 | Flaky tests | `launchApp` with `clearState: true`; disable animations |
 

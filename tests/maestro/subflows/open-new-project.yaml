@@ -14,10 +14,12 @@ appId: ${APP_ID}
     commands:
       - tapOn:
           id: "new-project-button"
+# Checked on the FAB itself, not on the button's absence: the first branch has
+# already left the list by the time this one is evaluated (run 36921573134)
 - runFlow:
     when:
-      notVisible:
-        id: "new-project-button"
+      visible:
+        id: "new-project-fab"
     commands:
       - tapOn:
           id: "new-project-fab"

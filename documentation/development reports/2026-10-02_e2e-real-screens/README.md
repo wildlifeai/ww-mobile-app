@@ -57,7 +57,7 @@ builds `e2e` and runs both E2E jobs.
 
 | Run | What changed | What the screenshots and hierarchy showed | Result |
 |---|---|---|---|
-| (pending) | First push: `e2e` profile, real flows, test ids, scripts | | |
+| [36921573134](https://github.com/wildlifeai/ww-mobile-app/actions/runs/36921573134) (and the PR's own run [36921574932](https://github.com/wildlifeai/ww-mobile-app/actions/runs/36921574932), same commit) | First push: `e2e` profile, real flows, test ids, scripts | **The login screen rendered** from the release APK: `email-input`, `password-input`, `login-button` in the hierarchy, 6 s after launch. Sign-in as Tama, the tutorial skip and the tab change all worked, and the wrong-password alert "Login Failed" showed. Auth: the drawer opened but the sign-out tap at (82,580) hit the "Version v0.0.69" footer drawn over the button on the 320x640 default AVD. CRUD: the organisation had no projects, the empty-state button was tapped, then the second conditional looked for the FAB on the Create Project screen. Both offline flows: airplane mode turned Bluetooth off and the app showed "Please enable Bluetooth" under the offline indicator. | Build 29 min (no cache yet). **Smoke green.** Full: 0 of 4 |
 
 ## Open items
 

@@ -249,6 +249,9 @@ jobs:
           api-level: 33
           target: google_apis
           arch: x86_64
+          # A phone-sized screen. The default AVD is 320x640 at 160 dpi, where the
+          # drawer's version footer overlapped its sign-out button (run 36921573134).
+          profile: pixel_6
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
@@ -332,6 +335,9 @@ jobs:
           api-level: 33
           target: google_apis
           arch: x86_64
+          # A phone-sized screen. The default AVD is 320x640 at 160 dpi, where the
+          # drawer's version footer overlapped its sign-out button (run 36921573134).
+          profile: pixel_6
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true

@@ -21,6 +21,13 @@ adb install -r ./app-debug.apk
 adb shell svc bluetooth enable || true
 echo "bluetooth_on=$(adb shell settings get global bluetooth_on 2>/dev/null)"
 
+# The offline flows use Maestro's setAirplaneMode, and airplane mode turns the
+# Bluetooth radio off too, which puts the app on "Please enable Bluetooth"
+# (run 36921573134). AIRPLANE_MODE_RADIOS lists the radios airplane mode
+# switches; without bluetooth in it, the adapter stays on.
+adb shell settings put global airplane_mode_radios cell,wifi,nfc,wimax || true
+echo "airplane_mode_radios=$(adb shell settings get global airplane_mode_radios 2>/dev/null)"
+
 status=0
 maestro test \
   -e APP_ID=com.wildlife.wildlifewatcher \

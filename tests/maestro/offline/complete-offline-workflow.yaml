@@ -5,9 +5,11 @@
 # Until October 2026 this file held ten "tests" against screens the app never
 # had (an admin panel, LoRaWAN simulation, conflict review) and shelled out
 # from JavaScript, which Maestro cannot do. Airplane mode is a Maestro command
-# on Android (`setAirplaneMode`), so the network part is real now. The flow
-# ends with the network back on whatever happens, so the next flow starts
-# online.
+# on Android (`setAirplaneMode`), so the network part is real now, provided the
+# device keeps Bluetooth out of airplane mode's radios (scripts/ci-maestro.sh
+# sets `airplane_mode_radios`), or the app stops at "Please enable Bluetooth".
+# The flow ends with the network back on whatever happens, so the next flow
+# starts online.
 #
 # Needs E2E_TEST_EMAIL and E2E_TEST_PASSWORD from the run, see ../subflows/sign-in.yaml.
 # appId comes from the run (`-e APP_ID=...`), see ../smoke/app-startup.yaml
