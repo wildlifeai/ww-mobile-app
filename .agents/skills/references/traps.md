@@ -89,6 +89,13 @@ file is the list of things that look like an app bug and are not, and the revers
   refused with `Unrecognised` instead (Seeed #211), and that reply gets through. The level is
   persisted in op17 either way, so a flow that has just read the op table can skip the command
   when it already holds the level (#272).
+- **op19 is not the number of images on the card.** It counts the files in the current
+  `IMAGES.NNN` folder, and the firmware starts a new folder at the first boot after it passes
+  100 (`directory_manager.c`, `generateImageDirName`), setting op19 back to 0. The live
+  monitor's Stored tile shows op19, so it climbs to about 101 and drops to 0, which testers
+  reported as a counting bug (#192). op0, the image sequence number, is the running total, but
+  it also counts captures whose save was skipped (op18 bit 3, an AE-check wake). A true count
+  needs a firmware counter; until then do not present op19 as a total.
 
 ## Screens and navigation
 
@@ -116,6 +123,13 @@ file is the list of things that look like an app bug and are not, and the revers
   22 September 2026. The patch does the close bookkeeping at once and keeps one set of
   back-button and dimensions listeners. Metro loads paper from `src/`, so the patch carries
   `src/` and both `lib/` builds. If paper is upgraded, re-check the reopen before dropping it.
+- **An `Alert.alert` confirmation returns at once, and RTK Query's `refetch()` throws once its
+  screen has gone.** Archiving a project showed "Update Failed" from May to September 2026
+  (#191): the save returned before the user answered, Edit Project went back underneath the
+  alert, and Continue wrote the project and then called `refetch()` on the unmounted query,
+  which throws `Cannot refetch a query that has not been started yet.` Wrap a confirmation in a
+  promise and await it before anything navigates, and do not refetch after a mutation whose
+  `invalidatesTags` already covers the query.
 
 - **A screen left in the stack under a flow keeps rendering, and the Engineer Console is
   under every flow it opens.** Until 22 September 2026 `BleConsoleOutput` rebuilt its whole
