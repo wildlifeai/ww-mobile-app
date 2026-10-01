@@ -350,7 +350,7 @@ function generateSchema() {
         } else {
             version = existingVersion + 1;
             console.log(`ℹ️  Schema changed — incrementing version to ${version}`);
-            console.log('   Add a matching migration in src/database/migrations.ts.');
+            console.log('   There are no migrations: installing this build resets the local database (src/database/index.ts).');
         }
     } else {
         console.log('ℹ️  No existing schema found — starting at version 1');
