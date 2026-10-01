@@ -2,9 +2,11 @@
 # archive it, which is the app's delete. Ends back on the list, which no
 # longer shows it (projectsApi drops archived rows). Keeps cloud-dev tidy
 # between runs; the archived row itself goes with the next backend reseed.
+#
+# PROJECT_NAME comes from the caller's `runFlow: env:`. No default here: a
+# flow-level `env:` in this file won over the caller's value and the subflow
+# looked for "Project ," (run 36929311218).
 appId: ${APP_ID}
-env:
-  PROJECT_NAME: ""
 ---
 # By the card's accessibility label, see project-crud-workflow.yaml
 - waitForAnimationToEnd:

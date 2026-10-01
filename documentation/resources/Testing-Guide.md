@@ -157,9 +157,11 @@ and reads `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` from th
 `development` environment secrets, the names `src/config/environments.ts` reads.
 
 The APK is cached by profile, Expo fingerprint and a hash of `package-lock.json`, `app.config.ts`,
-`eas.json` and `patches/`, so a run that changes only flows or the workflow restores it instead
-of building for 20 to 27 minutes. Caches are scoped per ref: the first dispatch on a branch
-builds, later ones should not. Check the "Restore cached APK" step rather than assuming.
+`eas.json` and `patches/`, so a run that changes only flows, scripts, docs or the workflow
+restores it instead of building for 25 to 30 minutes. The fingerprint covers `package.json`
+whole: a commit that changed only an npm script rebuilt (run 36929311218). Caches are scoped
+per ref: the first dispatch on a branch builds, later ones should not. Check the "Restore
+cached APK" step rather than assuming.
 
 Two jobs run the flows on an API 33 x86_64 emulator with the Pixel 6 profile (the default AVD
 is 320x640 at 160 dpi, where the drawer's version footer sat over its sign-out button, #379),
