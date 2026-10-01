@@ -26,6 +26,7 @@ import { useFirmwareStatus } from '../Devices/hooks/useFirmwareStatus'
 import { useModelOnPhone } from '../../hooks/useOfflineFiles'
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
 import { resolveProjectFlash, shortFlashLabel } from '../../utils/projectFlash'
+import { shortBurstLabel } from '../../utils/projectBurst'
 
 
 type StartMonitoringDetailsRouteProp = RouteProp<RootStackParamList, 'StartMonitoringDetailsStep'>;
@@ -341,6 +342,13 @@ export const StartMonitoringDetailsStep = () => {
                                     color={theme.colors.onSurfaceVariant}
                                 />
                                 <Text variant="labelSmall" style={styles.featureLabel}>{shortFlashLabel(project)}</Text>
+                            </View>
+                            )}
+                            {/* Pictures per trigger, written as op5 (#317) */}
+                            {project && (
+                            <View style={styles.featureIcon}>
+                                <WWIcon source="camera-burst" size={22} color={theme.colors.onSurfaceVariant} />
+                                <Text variant="labelSmall" style={styles.featureLabel}>{shortBurstLabel(project)}</Text>
                             </View>
                             )}
                         </View>

@@ -110,7 +110,9 @@ day are in [traps.md](traps.md).
   test, and records the original on disk; `release` puts it back; and anything a dropped link
   left owed is restored the next time a flow takes a hold on that device. Nothing is written at
   connect time. Never `setop 8` from a screen and never keep the original only in a ref, which
-  the motion test did until #271. Every way out of a flow must release its holds, failures
+  the motion test did until #271. The one exception is a deployment, which sets op8 as the
+  field value (above 1000 for a burst, #317) and calls `keepAwake.forget` first, so no hold or
+  owed restore from before it can write the old value back. Every way out of a flow must release its holds, failures
   included: a hold left in memory makes the next `acquire` a no-op. While `keepAwake.holds(deviceId)` the capture path sends `txfile` straight after
   `Captured` instead of paying a wake: 22 s to 13 s for the same picture.
 - **op11 is a field setting too, and the motion test holds it through
@@ -139,7 +141,10 @@ day are in [traps.md](traps.md).
   deployment stays at 2 through every reset. Both deployment flows write op5 themselves for
   that reason. op18 is not preserved and is 0 after the reset. Noted on 21 September 2026
   while retiring the BMP option, where "the reset handles it" was true for one of the two
-  parameters and wrong for the other.
+  parameters and wrong for the other. op6 is not preserved either: the reset sets 500, and
+  since #317 Start Monitoring writes op5 and op6 from the project, through
+  `utils/projectBurst.ts`, with op5 doubled when the raw BMP is recorded and op8 raised to
+  op6 + 1000 when op5 is above 1.
 
 ## Captures, light and telemetry
 

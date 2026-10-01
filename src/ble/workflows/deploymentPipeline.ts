@@ -18,6 +18,7 @@ import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
 import { executeResetToDefaults } from './resetToDefaults'
 import { log, logWarn } from '../../utils/logger'
 import { describeProjectFlash, ProjectFlashColumns } from '../../utils/projectFlash'
+import { describeProjectBurst, ProjectBurstColumns } from '../../utils/projectBurst'
 
 interface ProgressCallbacks {
     addLog: (msg: string) => void
@@ -455,6 +456,10 @@ export async function configureDevice(
         flash?: ProjectFlashColumns | null
         /** op17 from the project's sensitivity, see `mdSensitivityLevel`. */
         mdSensitivity?: 1 | 2 | 3
+        /** op5, op6 and the op8 that outlasts op6, from the project (#317). Omitted leaves op5 and op6 alone. */
+        burst?: ProjectBurstColumns | null
+        /** Doubles op5 so each JPEG keeps its raw BMP. */
+        recordRawBmp?: boolean
     },
     { addLog, setStep, setProgress }: ProgressCallbacks,
     currentOps?: string[]
@@ -483,9 +488,14 @@ export async function configureDevice(
         } : undefined,
         flash: config.flash ?? undefined,
         mdSensitivity: config.mdSensitivity,
+        burst: config.burst ?? undefined,
+        recordRawBmp: config.recordRawBmp,
     }, currentOps)
 
     if (config.flash !== undefined) addLog(`Capture flash: ${describeProjectFlash(config.flash)}`)
+    // The awake figure is the op8 written: a burst keeps the camera up past
+    // its interval, a single picture keeps the usual 1000 ms (#317)
+    if (config.burst !== undefined) addLog(describeProjectBurst(config.burst, config.recordRawBmp))
     addLog('Device configuration successful')
     log('[Deployment] Device configuration successful')
 }

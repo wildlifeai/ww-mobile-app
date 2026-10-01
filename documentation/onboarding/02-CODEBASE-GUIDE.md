@@ -32,7 +32,7 @@ src/
 ├── navigation/             # Navigation configuration + auth screens
 ├── redux/                  # Redux Toolkit (session + UI state only)
 ├── services/               # Business logic & data services
-├── database/               # WatermelonDB schema, models, migrations
+├── database/               # WatermelonDB schema and models
 ├── types/                  # TypeScript type definitions
 ├── hooks/                  # Custom React hooks (BLE, sync, auth)
 ├── utils/                  # Utility functions (incl. cameraVariant.ts, flashCameraMatch.ts, networkErrors.ts)
@@ -306,9 +306,8 @@ providers/
 
 ```
 database/
-├── index.ts               # Database instance + collection accessors
+├── index.ts               # Database instance + collection accessors; no migrations, a version change resets the local database
 ├── schema.ts              # Auto-generated schema, version + table count live in the file
-├── migrations.ts          # Schema migration definitions
 └── models/                # WatermelonDB model classes
     ├── Project.ts
     ├── Deployment.ts

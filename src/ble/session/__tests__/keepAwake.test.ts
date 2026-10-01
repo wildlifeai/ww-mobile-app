@@ -211,6 +211,26 @@ describe('keepAwake', () => {
         expect(keepAwake.holds(DEVICE)).toBe(true)
     })
 
+    it('forget drops the hold and the owed restore, disk included, and writes nothing', async () => {
+        const first = fakeSession('1000')
+        await keepAwake.acquire(first.session, DEVICE, 3000)
+
+        // A burst deployment now sets op8 to 3000 as the field value (#317)
+        await keepAwake.forget(DEVICE)
+        expect(keepAwake.holds(DEVICE)).toBe(false)
+
+        await keepAwake.release(first.session, DEVICE)
+        expect(first.writes).toEqual(['AI setop 8 3000'])
+
+        // Not even after an app restart: the owed 1000 is gone from disk too
+        keepAwake.clear()
+        const later = fakeSession('3000')
+        await keepAwake.acquire(later.session, DEVICE, 3000)
+        await keepAwake.release(later.session, DEVICE)
+        await keepAwake.restorePending(later.session, DEVICE)
+        expect(later.writes).toEqual([])
+    })
+
     it('keeps devices apart', async () => {
         const a = fakeSession('3000')
         await keepAwake.acquire(a.session, DEVICE, HOLD)
