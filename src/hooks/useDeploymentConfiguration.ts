@@ -5,7 +5,9 @@ import { commandRegistry } from '../ble/protocol/commandRegistry'
 import { OP_PARAMETER } from './useDeviceSettings'
 import { log, logError, logWarn } from '../utils/logger'
 import { describeProjectFlash, ProjectFlashColumns, resolveProjectFlashOps } from '../utils/projectFlash'
+import { DEPLOYMENT_INTERVAL_BEFORE_DPD_MS, ProjectBurstColumns, resolveProjectBurstOps } from '../utils/projectBurst'
 import { formatGPSString } from '../utils/gpsUtils'
+import { keepAwake } from '../ble/session/keepAwake'
 
 
 export interface DeploymentConfig {
@@ -31,6 +33,15 @@ export interface DeploymentConfig {
      * deployment screen, which has no project of its own, should do that.
      */
     flash?: ProjectFlashColumns
+    /**
+     * The project's pictures per trigger and their interval, written as op5
+     * and op6, with op8 raised to outlast the interval when there is more than
+     * one capture. Omitted leaves op5 and op6 alone and op8 at 1000: the dev
+     * deployment screen writes its own op5 and has no project interval.
+     */
+    burst?: ProjectBurstColumns
+    /** The raw BMP is recorded alongside each JPEG, so op5 is doubled (#317). */
+    recordRawBmp?: boolean
 }
 
 export const useDeploymentConfiguration = () => {
@@ -86,7 +97,10 @@ export const useDeploymentConfiguration = () => {
     }, [])
 
     /**
-     * Helper to apply updates sequentially
+     * Helper to apply updates sequentially. Each write is recorded in
+     * `currentOps`, so a later step that writes the same parameter compares
+     * against what this one left: op8 is written by the capture method and
+     * then, for a burst, again by configureBurst.
      */
     const applyUpdates = useCallback(async (session: any, updates: { index: number, value: number }[], currentOps: string[]) => {
         for (const { index, value } of updates) {
@@ -99,6 +113,7 @@ export const useDeploymentConfiguration = () => {
 
             log(`[DeployConfig] Setting parameter ${index} to ${value}`)
             await session.execute(() => commandRegistry.setop({ index, value: value.toString() }))
+            if (currentOps && currentOps.length > index) currentOps[index] = value.toString()
         }
     }, [])
 
@@ -123,7 +138,7 @@ export const useDeploymentConfiguration = () => {
             updates.push({ index: OP_PARAMETER.MD_SENSITIVITY, value: sensitivity })
             updates.push({ index: OP_PARAMETER.MD_INTERVAL, value: config.motionInterval || 1000 })
             updates.push({ index: OP_PARAMETER.TIMELAPSE_INTERVAL, value: 0 })
-            updates.push({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: 1000 })
+            updates.push({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: DEPLOYMENT_INTERVAL_BEFORE_DPD_MS })
             updates.push({ index: OP_PARAMETER.CAMERA_ENABLED, value: 1 }) // Enable last
             
         } else if (config.captureMethod === 'timelapse') {
@@ -133,7 +148,7 @@ export const useDeploymentConfiguration = () => {
             updates.push({ index: OP_PARAMETER.MD_SENSITIVITY, value: 0 }) // MD off in timelapse-only
             updates.push({ index: OP_PARAMETER.MD_INTERVAL, value: 0 })
             updates.push({ index: OP_PARAMETER.TIMELAPSE_INTERVAL, value: interval })
-            updates.push({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: 1000 })
+            updates.push({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: DEPLOYMENT_INTERVAL_BEFORE_DPD_MS })
             updates.push({ index: OP_PARAMETER.CAMERA_ENABLED, value: 1 }) // Enable last
         } else if (config.captureMethod === 'mixed') {
              // Mixed mode (Activity + Timelapse)
@@ -142,7 +157,7 @@ export const useDeploymentConfiguration = () => {
              updates.push({ index: OP_PARAMETER.MD_SENSITIVITY, value: sensitivity })
              updates.push({ index: OP_PARAMETER.MD_INTERVAL, value: config.motionInterval || 1000 })
              updates.push({ index: OP_PARAMETER.TIMELAPSE_INTERVAL, value: interval })
-             updates.push({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: 1000 })
+             updates.push({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: DEPLOYMENT_INTERVAL_BEFORE_DPD_MS })
              updates.push({ index: OP_PARAMETER.CAMERA_ENABLED, value: 1 }) // Enable last
         } else {
             logWarn('[DeployConfig] Unknown capture method:', config.captureMethod)
@@ -194,6 +209,36 @@ export const useDeploymentConfiguration = () => {
     }, [applyUpdates])
 
     /**
+     * Writes the project's burst to the device: op5 NUM_PICTURES, op6
+     * PICTURE_INTERVAL and op8 INTERVAL_BEFORE_DPD, for motion and timelapse
+     * alike (#317).
+     *
+     * The reset before this preserves op5, so without the write a device keeps
+     * whatever count the card held, and it sets op6 to the factory 500 ms.
+     * With the raw BMP recorded, op5 is twice the project value, because the
+     * firmware alternates JPEG and BMP through the same count.
+     *
+     * op8 is the interval plus a second when there is a next capture to wait
+     * for: the firmware sleeps mid-burst once op8 has run out (Seeed #208).
+     * This runs after the capture method, so its op8 is the one that stays.
+     */
+    const configureBurst = useCallback(async (
+        session: any,
+        burst: ProjectBurstColumns,
+        currentOps: string[],
+        recordRawBmp = false
+    ): Promise<void> => {
+        const { numPictures, pictureIntervalMs, intervalBeforeDpdMs } = resolveProjectBurstOps(burst, recordRawBmp)
+        log(`[DeployConfig] Configuring burst: op5 ${numPictures}${recordRawBmp ? ' (JPEG + BMP)' : ''}, op6 ${pictureIntervalMs} ms, op8 ${intervalBeforeDpdMs} ms`)
+
+        await applyUpdates(session, [
+            { index: OP_PARAMETER.NUM_PICTURES, value: numPictures },
+            { index: OP_PARAMETER.PICTURE_INTERVAL, value: pictureIntervalMs },
+            { index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: intervalBeforeDpdMs },
+        ], currentOps)
+    }, [applyUpdates])
+
+    /**
      * Complete deployment configuration in one atomic operation
      */
     const configure = useCallback(async (
@@ -205,8 +250,14 @@ export const useDeploymentConfiguration = () => {
         const session = createBleSession(device)
 
         try {
-            // Transaction pre-flight: fetch ops
-            const currentOps = providedOps || await session.execute(commandRegistry.getops)
+            // Transaction pre-flight: fetch ops. A copy, because the steps
+            // below record their writes in it and the caller's table is theirs.
+            const currentOps: string[] = [...(providedOps || await session.execute(commandRegistry.getops))]
+
+            // From here the deployment owns op8 (the capture method writes it,
+            // and a burst raises it). A keepAwake hold or owed restore from
+            // before must not put an earlier value back over it (#317).
+            await keepAwake.forget(device.id)
 
             // 1. Set deployment ID (with auto-fallback and GPS enforce)
             await setDeploymentId(session, config.deploymentId, config.location, config.recordGpsInImages, currentOps)
@@ -219,17 +270,24 @@ export const useDeploymentConfiguration = () => {
                 await configureFlash(session, config.flash, currentOps)
             }
 
+            // 4. Pictures per trigger, their interval and the op8 that
+            // outlasts it, likewise. Last of the op8 writers on purpose.
+            if (config.burst) {
+                await configureBurst(session, config.burst, currentOps, config.recordRawBmp)
+            }
+
             log('[DeployConfig] Deployment configuration complete (Atomic)')
         } catch (error) {
             logError('[DeployConfig] Configuration transaction failed:', error)
             throw new Error(`Failed to configure deployment: ${error}`)
         }
-    }, [setDeploymentId, configureCaptureMethod, configureFlash])
+    }, [setDeploymentId, configureCaptureMethod, configureFlash, configureBurst])
 
     return {
         configure,
         setDeploymentId,
         configureCaptureMethod,
-        configureFlash
+        configureFlash,
+        configureBurst
     }
 }

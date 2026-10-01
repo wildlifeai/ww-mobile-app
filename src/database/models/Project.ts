@@ -29,6 +29,10 @@ export default class Project extends Model {
     @field('flash_window_start_minutes_utc') flashWindowStartMinutesUtc?: number | null
     /** time_of_day only: length of the flash window in minutes (op36) */
     @field('flash_window_minutes') flashWindowMinutes?: number | null
+    /** Pictures per trigger, 1 to 10, written as op5 (doubled with the raw BMP) */
+    @field('photos_per_trigger') photosPerTrigger!: number
+    /** Milliseconds between those pictures, 200 to 2000, written as op6 */
+    @field('photo_interval_milliseconds') photoIntervalMilliseconds!: number
     @field('is_archived') isArchived!: boolean
     @text('project_image') projectImage?: string | null
     @text('website') website?: string | null

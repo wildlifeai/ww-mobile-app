@@ -154,7 +154,7 @@ camera before naming the site.
 |---------|-------|
 | Warning banner | Orange banner with "Update Firmware" button navigating to `FirmwareStatusScreen` with `restrictToLatest: true` (which hides developer version selection dropdowns to keep the operator flow clean and simple). Non-blocking, user can proceed without updating. |
 
-Project settings (capture method, sensitivity, timelapse interval, GPS image tagging) are inherited from the selected project and displayed as feature icons. The user can switch projects at any time via the dropdown.
+Project settings (capture method, sensitivity, timelapse interval, GPS image tagging, capture flash, pictures per trigger) are inherited from the selected project and displayed as feature icons. The user can switch projects at any time via the dropdown.
 
 ### Start Deployment Sequence
 
@@ -167,8 +167,8 @@ When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeplo
 | 3 | Snapshot Data | Reads `battery`, `network` (if LoRaWAN required), `ver` for deployment record metadata |
 | 4 | Create DB Record | `DeploymentService.createDeployment()` → `OutboxService` → `SupabaseSyncService` |
 | 5 | Reset to Defaults | `pipeline.resetOps()` calls `executeResetToDefaults()`, shared workflow that intelligently resets parameters, skips tracking counters, and clears AI models. |
-| 6 | Configure Device | `pipeline.configureDevice()`, applies [capture method OPs](./04-ENGINEER-CONSOLE.md#capture-method-op-mapping), deployment ID, GPS, and the project's [capture flash](#c-configure-capture-flash). It configures against the op table **`resetOps` returned**, not the pre-reset snapshot |
-| 6b | Pictures per trigger | `NUM_PICTURES` (OP 5) = 1. Written explicitly because OP 5 is in `RESET_PRESERVED_OPS`, so the reset leaves whatever the card held. The raw BMP option that sat here (OP 18 bit 1, two pictures per trigger) was retired on 21 September 2026 and its code is commented out; OP 18 is not preserved, so the reset leaves it 0. Non-fatal |
+| 6 | Configure Device | `pipeline.configureDevice()`, applies [capture method OPs](./04-ENGINEER-CONSOLE.md#capture-method-op-mapping), deployment ID, GPS, the project's capture flash and its pictures per trigger (C and D under [Device Configuration](#device-configuration-usedeploymentconfiguration)). It configures against the op table **`resetOps` returned**, not the pre-reset snapshot |
+| 6b | Raw BMP (retired) | The raw BMP option that sat here (OP 18 bit 1) was retired on 21 September 2026 and its code is commented out; OP 18 is not preserved, so the reset leaves it 0. Restoring it means passing `recordRawBmp` to step 6, which doubles OP 5 |
 | 6c | Light Verdict and camera | Reads the op table and `AI slots`, and **only measures when something will consume the verdict** (OP 26 or OP 34 = 1). When it does, `pipeline.measureLight()` sends `AI light`, about a second and no photo. Reports DARK/BRIGHT, **names the camera this deployment keeps**, and warns when the project's flash does not suit it (#321). Non-fatal |
 | 6d | Model Verification | Reads OP 14/15 and says loudly whether the NN is armed, guarding silent modelless starts. Reuses the table 6c already read back rather than asking again: everything between the two is a read, so the second `getop -1` returned identical bytes and cost about 300 ms of every deployment, measured on the bench on 21 September 2026. Falls back to its own read when 6c got nothing. Non-fatal |
 | 7 | Live Monitor | Transitions to `DeploymentMonitorView` (remains connected) |
@@ -205,7 +205,7 @@ The shared steps:
 
 ### Device Configuration (`useDeploymentConfiguration`)
 
-`configure()` performs a single `AI getop -1` bulk fetch at the start, then passes the cached result to both sub-steps below. Only parameters that differ from the target value are actually written.
+`configure()` performs a single `AI getop -1` bulk fetch at the start, then passes the cached result to each sub-step below. Only parameters that differ from the target value are actually written.
 
 **A. Set Deployment ID:**
 ```
@@ -246,6 +246,37 @@ flash off and no night IR. The reset before this step writes op13 = 0 and
 op34 = 0, which is why step 6 must diff against the post-reset table: against
 the older snapshot, a device that already held the project's flash before the
 reset would have had both writes skipped and stayed dark.
+
+**D. Configure Pictures per Trigger:** the project's two burst columns, for motion
+and timelapse alike, and the OP 8 they need (#317):
+
+```
+AI setop 5 <1 to 10>       (NUM_PICTURES, from projects.photos_per_trigger; twice that with the raw BMP)
+AI setop 6 <200 to 2000>   (PICTURE_INTERVAL in ms, from projects.photo_interval_milliseconds)
+AI setop 8 <OP 6 + 1000>   (INTERVAL_BEFORE_DPD in ms, when OP 5 is above 1; otherwise it stays 1000)
+```
+
+The mapping lives in [`src/utils/projectBurst.ts`](../../src/utils/projectBurst.ts),
+and the deployment log says `Pictures per trigger: 3, 1000 ms apart (awake 2000 ms)`,
+or `Pictures per trigger: 1 (awake 1000 ms)`, where the awake figure is the OP 8
+written. The project counts the JPEGs the user sees. With the raw BMP recorded the
+firmware alternates JPEG and BMP through the same count, so OP 5 is doubled; Start
+Monitoring records JPEG only since 21 September 2026. OP 5 is in
+`RESET_PRESERVED_OPS`, so the reset leaves the card's old count, and OP 6 is reset
+to 500, which is why both are written here.
+
+OP 8 is raised because the firmware sleeps while it waits for the next picture once
+OP 8 has run out, and the rest of the burst is lost
+([Seeed#208](https://github.com/wildlifeai/Seeed_Grove_Vision_AI_Module_V2/issues/208),
+`handleEventForWaitForTimer` in `image_task.c`; its `config_file.md` says OP 6 must
+be less than OP 8). The capture method (B) writes 1000 first, and this step comes
+last so its value is the one that stays; each write is recorded in the table the
+later steps compare against. Nothing after it in the deployment writes OP 8. The
+cost is battery: the camera stays up a second past the interval after every
+trigger. Before writing, `configure()` calls `keepAwake.forget`, so a hold still
+open on the screen (the motion test) or a restore owed by a dropped link cannot
+put 1000 back later. The Dev Deployment Test screen writes its own OP 5 and leaves
+OP 6 at the reset's 500 and OP 8 at 1000.
 
 ---
 
