@@ -96,6 +96,7 @@ const GOLDEN: Record<keyof typeof commandRegistry, Row> = {
         accepts: 'OpParam 19 = 1',
         rejects: 'Error: index (40) must be between 0 and 36',
     },
+    // Also the Engineer Console's one-tap "Take one photo" (COMMANDS.capture_one).
     capture: {
         args: [1, 500],
         wire: 'AI capture 1 500',

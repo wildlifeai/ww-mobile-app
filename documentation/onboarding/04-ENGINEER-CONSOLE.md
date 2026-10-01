@@ -31,6 +31,12 @@ To rescue a device in DFU mode:
 
 Commands are organised by **target processor**. All commands are sent over BLE; AI-prefixed commands are forwarded by the nRF52 to the Himax chip.
 
+The tables follow the firmware command tables: `appCommands[]` in ww-hardware's
+`MokoTech/Workspace/WildlifeWatcher_1/ble_commands.c` for the nRF, and `vRegisterCLICommands()` in
+the Seeed repo's `ww500_md/CLI-commands.c` and `CLI-FATFS-commands.c` for the Himax, both on `dev`
+as of 30 September 2026. A row marked *typed only* is not in the Commands list; type it into the
+input line.
+
 ### 📡 BLE Processor (nRF52)
 
 Direct commands handled by the BLE chip, no `AI` prefix.
@@ -40,22 +46,20 @@ Direct commands handled by the BLE chip, no `AI` prefix.
 | Command | Response | Purpose |
 |---------|----------|---------|
 | `id` | BLE name | Device BLE advertising name |
-| `ver` | `WW500-C02 V 00.21.14 ...` | BLE firmware version + build date |
+| `ver` | `WW500-C02 V 00.30.52 ...` | BLE firmware version + build date |
 | `device` | `WW500-C00` | Product name / hardware variant |
-| `status` | `Sensor: enabled/disabled` | Device status (sensor, LoRaWAN, sequence) |
-| `state` | `State = ...` | State machine state |
+| `status` | `Sensor: enabled. LoRaWan: Joined. Seq: 12` | Device status (sensor, LoRaWAN, sequence) |
 | `battery` | `Battery = 3305mV 100%` | Battery voltage and percentage |
-| `temp` | `Temperature: 23.5C` | Board temperature |
+| `temp` | `Temperature: 23.25C` | The BLE chip's own die temperature, not the air |
 | `selftest` | `Error bits = 0x0000` | Hardware self-test bitmask |
-| `get heartbeat` | `heartbeat is 12h` | Read/set the nRF's heartbeat interval. The app also sends it as its BLE keep-alive, because the nRF answers it without waking the Himax |
+| `get heartbeat` | `heartbeat is 12h` | The nRF's LoRaWAN heartbeat interval. The app also sends it as its BLE keep-alive, because the nRF answers it without waking the Himax. Setting it is *typed only*: `heartbeat 1h` |
 
-#### Clock & Location
+#### Clock
 
 | Command | Response | Purpose |
 |---------|----------|---------|
-| `setutc` | `RTC set to...` | Sync device clock to phone UTC (auto-generates ISO 8601 timestamp) |
+| `setutc` | `UTC is: ...` | Sync device clock to phone UTC (auto-generates ISO 8601 timestamp) |
 | `getutc` | `UTC is: ...` | Read device system time |
-| `getgps` | `Location is: ...` | Read stored GPS location |
 
 #### Device Control
 
@@ -63,28 +67,30 @@ Direct commands handled by the BLE chip, no `AI` prefix.
 |---------|----------|---------|
 | `dis` | `Disconnecting` | BLE disconnect |
 | `reset` | `Device will reset after disconnecting.` | Board reset (takes effect after disconnect) |
-| `erase` | `NVM will be erased after disconnecting.` | Erase non-volatile memory (takes effect after disconnect) |
 | `dfu` | `Device will enter DFU mode after disconnecting.` | Enter DFU mode for BLE firmware update |
-| `wake` | `AI processor is awake` | Wake AI processor from Deep Power Down |
+| `wake` | `AI processor is awake.` / `Waking AI processor.` | Wake AI processor from Deep Power Down |
 
 #### LoRaWAN
 
 | Command | Response | Purpose |
 |---------|----------|---------|
 | `get deveui` | `DevEui: XX:XX:...` | Read LoRaWAN DevEUI |
-| `get appeui` | `AppEui: XX:XX:...` | Read LoRaWAN AppEUI |
-| `get appkey` | `AppKey: XX:XX:...` | Read LoRaWAN AppKey (may fail with `Failed 2`) |
-| `join` | `Already joined` / `OK` / `Wrong state` | Request LoRaWAN join |
-| `ping` | `Joined` / `Not Joined` | Send LoRaWAN test packet |
-| `network` | `RSSI: -85dB, SNR: 7dB` | Most recent LoRaWAN signal quality |
+| `get appeui` | `AppEui: XX:XX:...` | Read LoRaWAN AppEUI (JoinEUI) |
+| `join` | `Already joined` / `OK` / `Wrong state: ...` | Request LoRaWAN join |
+| `ping` | `OK` / `Not joined yet.` / `Busy` | Send LoRaWAN test packet |
+| `network` | `RSSI: -85dB, SNR: 7dB, PER: 0%. Last seen 3 minutes ago.` | Most recent LoRaWAN signal quality |
 
 #### LED Diagnostics
 
 | Command | Response | Purpose |
 |---------|----------|---------|
-| `flashr <count> <ms>` | `Flashing ...` | Flash red LED (default: 2× 500ms) |
-| `flashg <count> <ms>` | `Flashing ...` | Flash green LED (default: 2× 500ms) |
-| `flashb <count> <ms>` | `Flashing ...` | Flash blue LED (default: 2× 500ms) |
+| `flashr <count> <ms>` | `Flashing 500ms 2 times` | Flash red LED. Run sends `flashr 2 500`; other values are *typed only* |
+| `flashg <count> <ms>` | `Flashing 500ms 2 times` | Flash green LED, as above |
+| `flashb <count> <ms>` | `Flashing 500ms 2 times` | Flash blue LED, as above |
+
+`erase` and `get appkey` left the Commands list on 30 September 2026 (#300): the BLE firmware
+answers `erase` with `Not yet implemented`, and `get appkey` with `Failed N` because it cannot
+read the key back. Setting the key is still *typed only*: `appkey XX:XX:...`.
 
 ---
 
@@ -96,53 +102,61 @@ Commands prefixed with `AI`, routed via BLE to the Himax chip. These interact wi
 
 | Command | Response | Purpose |
 |---------|----------|---------|
-| `AI ver` | `V X.Y.Z` | AI processor firmware version |
-| `AI info` | `30515200 K total... 30511056 K available.` | SD card space (total / available KB) |
-| `AI camera` | `HM0360` / `RP2` / `RP3` | Connected camera sensor type |
-| `AI inithm0360` | `OK` / `Error` | Reinitialise HM0360 sensor (recovery from black images) |
-| `AI firmware <filename> [crc]` | `Firmware update OK/FAILED` | Update Himax firmware from SD card image. With a CRC the device recomputes the file's own and refuses to touch flash on a mismatch |
-| `AI crc <filename>` | `CRC 0x4569 (487424 bytes)` | CRC16-CCITT and size of a file in `/MANIFEST/`. The same algorithm the file transfer uses, so a file already on the card can be checked against a release or a model without sending it again |
+| `AI ver` | `WW500_C02 ...` | AI processor firmware version |
+| `AI info` | `Label: ...`, `Serial No: ...`, `30515200 K total drive space.`, `30511056 K available.` | `ai_info` in the list. SD card label, serial number, size and free space in KB |
+| `AI inithm0360` | `OK` / `Error.` | Reinitialise HM0360 sensor (recovery from black images). HM0360 firmware only; the RP3 firmware answers `Unrecognised` |
+| `AI crc <filename>` | `CRC 0x4569 (487424 bytes)` | *Typed only.* CRC16-CCITT and size of a file in `/MANIFEST/`. The same algorithm the file transfer uses, so a file already on the card can be checked against a release or a model without sending it again |
+
+#### SD Card & Files
+
+| Command | Response | Purpose |
+|---------|----------|---------|
+| `AI dir` | One line per file | List the files in the SD card's current directory |
+| `AI format` | `WARNING: all data on the SD card will be erased. Run 'format' again to confirm...`, then `Formatted OK. Reboot to remount.` / `Format failed (FRESULT N).` | Erase the SD card and format it FAT32. The firmware formats only on a second `format` before the Himax next sleeps, about a second later, too soon for a second tap, so Run sends the second itself once the warning arrives. Reboot the camera afterwards to remount the card |
 
 #### Operational Parameters
 
 | Command | Response | Purpose |
 |---------|----------|---------|
-| `AI getop -1` | `OpParams 1324 6 0 ...` | Bulk fetch ALL OPs (0–20) in one response |
-| `AI getop <n>` | `OpParam N = ...` | Read a single OP by index |
-| `AI setop <idx> <val>` | `Set OpParam N = ...` | Write a single OP |
-| `AI setdid <uuid>` | `Deployment ID set to...` | Set deployment ID (null = clear) |
-| `AI getdid` | UUID string | Read deployment ID |
-| `AI setgps <lat>,<lng>,<alt>` | `Device GPS set...` | Set GPS location (stored in CONFIG.TXT) |
+| `AI getop -1` | `OpParams 1324 6 0 ...` | Bulk fetch every op (0 to 36 on current firmware) in one response |
+| `AI getop <n>` | `OpParam N = ...` | Read a single OP by index. Run asks for the index, as a number or an `OP_PARAMETER` name such as `MD_SENSITIVITY` |
+| `AI setop <idx> <val>` | `Set OpParam N = ...` | Write a single OP, saved to CONFIG.TXT at once. Run asks for the index, by number or name, and the value |
+| `AI setgps <location>` | `Device GPS set` | Set the location written into each photo's EXIF, and saved to CONFIG.TXT: degrees, minutes and seconds with `_` for every space, e.g. `37°48'30.50"_N_122°25'10.22"_W_500.75_Above`. Decimal `lat,lng,alt` is silently discarded (#315) |
+| `AI getgps` | `Device Location: ...` | Read back the location photos get |
 
-#### Capture & Motion Detection
-
-| Command | Response | Purpose |
-|---------|----------|---------|
-| `AI capture 1 1000` | `Captured` | Manual image capture (count, delay_ms) |
-| `AI md <0-3>` | none | Set motion detection sensitivity (0 = off, 1–3 = increasing) |
-
-#### Model Management
+#### Camera Functions
 
 | Command | Response | Purpose |
 |---------|----------|---------|
-| `AI erasemodel` | `OK` / `erased` | Erase loaded AI model, write 0,0 to CONFIG.TXT lines 14 & 15 |
-| `AI loadmodel <id> <ver>` | `OK` / `loaded` | Load model from SD (e.g. `1V1.TFL`, paired with `1V1.TXT` labels), update CONFIG.TXT |
+| `AI capture 1 500` | `About to capture 1 image ...`, then `Captured 1 images. Last is X.JPG (File write Nms avg.)` | `capture_one` in the list: take one photo. See [Take one photo](#take-one-photo) below. Other counts and intervals are *typed only* |
+| `AI light` | `Checking light level...`, then the AE registers | Measure light without a photo. See [Light-Sensor.md](../resources/Light-Sensor.md) |
+| `AI slots` | `Active slot 1 running 'HM0360 (night/IR)'. Slot A: 'RP3 (day/colour)', Slot B: 'HM0360 (night/IR)'. Auto-switch: off` | Which firmware slot runs, and the camera each slot is built for (day/night switching) |
+| `AI switchslot` | `Switched to slot N` / `Slot switch failed` | Boot the other firmware slot; the camera resets on its way into its next sleep |
 
-#### OP Shortcuts
+#### Take one photo
 
-Convenience commands that wrap `AI setop` with human-readable names and defaults:
+`capture_one`, under AI Processor, Camera Functions, is one tap and no form. It sends
+`AI capture 1 500`, the same bytes Capture Picture sends, and nothing else: no keep-awake hold, no
+flash hold, no download and no preview. The console shows the device's own replies, `About to
+capture 1 image with an interval of '500' milliseconds` and then `Captured 1 images. Last is
+X.JPG (File write Nms avg.)`. The photo stays on the SD card. The AE registers and the motion grid
+follow on their own, as after every capture.
 
-| Command | Underlying | Purpose |
-|---------|------------|---------|
-| `SET_NUM_PICTURES` | `AI setop 5 <n>` | Images per trigger |
-| `SET_PICTURE_INTERVAL` | `AI setop 6 <ms>` | Interval between images in ms |
-| `SET_TIMELAPSE_INTERVAL` | `AI setop 7 <sec>` | Timelapse interval in seconds, 0 = off |
-| `SET_MOTION_DETECT_INTERVAL` | `AI setop 11 <ms>` | Motion detection polling interval, 0 = off |
+Because it is raw, the result depends on the device's state, and these are the device telling you
+so rather than the button failing:
 
-> [!NOTE]
-> Factory defaults are **not** listed here. `FACTORY_DEFAULTS` in [`useDeviceSettings.ts`](../../src/hooks/useDeviceSettings.ts) is the single source of truth and these shortcuts do not carry their own defaults.
-| `DISABLE_MOTION_DETECT` | `AI setop 11 0` | Disable motion detection |
-| `DISABLE_TIMELAPSE` | `AI setop 7 0` | Disable timelapse capture |
+| You see | Why | What to do |
+|---|---|---|
+| `Camera system not enabled` | op10 is 0, which is how ending a deployment leaves a camera. A camera that did not answer at boot disables the system for that wake too, with self-test bit 8 | Capture Picture turns op10 back on by itself. From the console, `AI setop 10 1`, wait for `Sleep`, tap again: the next wake starts the camera. If it persists, read the self-test after the wake |
+| `About to capture ...` and then nothing, with `Fail (-60)` lines on the Himax console | The RP3 firmware cannot capture right after a cold boot (Seeed #238, fix in draft Seeed #239) | Let it sleep and try again: the warm boot re-initialises the sensor |
+| No reply at all | The device is stuck awake (Seeed #205) and the nRF drops every command | Power cycle; see [traps.md](../../.agents/skills/references/traps.md) |
+| No flash | The LED fires only when the device armed it: op13 chooses the LED, op34 the mode, and in AE mode the stored light decision op25. Capture Picture holds op34 at always-on for its visit; this button does not | Use Capture Picture for a flash photo, or see the three commands in [Light-Sensor.md](../resources/Light-Sensor.md) |
+| `Captured 1 images. Last is` with an old name or none, and no new file | op18 bit 3, `TEST_BIT_SKIP_FILE_CREATION`, was left set by a motion test that did not finish | `AI setop 18 0` |
+
+It is a real capture in every other way: it counts toward op19, runs the AI model if one is
+loaded, and when automatic camera switching (op26) is on, its light check can schedule a slot
+switch and a reboot at the next sleep. Any setting changed with `setop` applies from the next
+wake, so to photograph with it, let the device sleep first.
 
 ### OP Parameter Index
 
@@ -197,7 +211,17 @@ Camera enable (`setop 10 1`) is always sent **last** to avoid premature triggers
 
 The Engineer Console provides two reference modals:
 
-**Commands** (`CommandReferenceModal`): atomic BLE operations that send a single command string and receive a single response. These map 1:1 to firmware commands (e.g., `ver`, `battery`, `AI getop -1`). See [Key Commands](#key-commands) above.
+**Commands** (`CommandReferenceModal`): atomic BLE operations that send a single command string and receive a single response. These map 1:1 to firmware commands (e.g., `ver`, `battery`, `AI getop -1`). See [BLE Command Reference](#ble-command-reference) above.
+
+The list shows the two processors as headings, each with its categories as toggles, all closed
+when the list opens and one open at a time; the ? beside the title says how it works. A command
+that takes values (`getop`, `setop` and `setgps`) lists them as `params` in `COMMANDS`. Tapping
+Run opens a small form under its row, and Send stays disabled until every value checks out;
+nothing is filled in on the operator's behalf (#300). An op index can be typed
+as a number or a name, the app's `OP_PARAMETER` name or the firmware's, with or without the
+`OP_PARAMETER_` prefix, and the form shows what it resolved to. Every other command, including
+`capture_one`, sends on the first tap. Nothing in the list sends anything when the console opens
+or connects.
 
 **Flows & Processes** (`FlowsReferenceModal`): multi-step workflows or convenience wrappers. These either compose multiple BLE commands, interact with app services (cloud, GPS, navigation), or wrap a single `setop` with a human-readable name. Tapping "Run" executes the full sequence.
 
@@ -306,8 +330,12 @@ mode back when the test ends ([`flashHold.ts`](../../src/ble/session/flashHold.t
 - **Auto Exposure (AE) Data:** Captures console logs (`Integration time`, `Analog gain`, etc.) and renders live AE metrics with a visual AE Mean progress bar (0–255)
 - **Gallery:** Every captured image is stored with its `cameraParams` and `aeData`. Tapping a thumbnail opens a light-box modal showing the exact settings for that frame.
 
-> [!WARNING]
-> **Firmware Bug: flash strobe not configured in manual capture path.** The Himax firmware only configures the HM0360 strobe mode (`Strobe mode 0x03`) when entering DPD via the normal MD sleep preparation path. The manual `AI capture` command bypasses this, so the flash LED never fires. The timelapse workaround forces the capture through the normal DPD path where strobe IS configured. **TODO:** Revert to direct `AI capture` once the Himax firmware is updated.
+> [!NOTE]
+> This section predates [Capture-Picture.md](../resources/Capture-Picture.md), which is how the
+> flow behaves now. The manual-capture strobe bug it used to warn about is gone: every capture,
+> `AI capture` included, arms the HM0360 STROBE from `ledFlashIsActive()` when it starts the
+> sensor (`configure_image_sensor(CAMERA_CONFIG_RUN)` in the Seeed repo's `image_task.c`, `dev`,
+> 30 September 2026). Whether the LED fires is op13 with the flash mode op34.
 
 > [!NOTE]
 > The flash LED hardware is driven by the Himax AI processor (HX6538), not the nRF52 (WW500). The nRF only stores and forwards the OP values; the Himax reads them from CONFIG.TXT during the capture wake cycle.
@@ -474,4 +502,4 @@ All screens use `bleDeviceRef` (a `useRef`) for device state inside timer callba
 | [`useDeviceSettings.ts`](../../src/hooks/useDeviceSettings.ts) | OP enum, factory defaults, quiesce |
 | [`useBleHeartbeat.ts`](../../src/hooks/useBleHeartbeat.ts) | 30s heartbeat mechanism |
 
-*Last Updated: May 16, 2026*
+*Last Updated: 30 September 2026 (BLE Command Reference checked against firmware `dev`, #300)*
