@@ -84,15 +84,24 @@ file is the list of things that look like an app bug and are not, and the revers
   cell, so a low reading there is not a reason to stop, charge anything or doubt a result.
   Raising it as a risk mid-run has wasted time more than once. On the bench, only treat the
   battery as real when the unit is deliberately running from a cell.
-- **`AI md N` never answers over BLE, and the 5 s the app then waits is the nRF, not the
+- **`AI md N` never answers over BLE, and the wait the app then pays is the nRF, not the
   Himax.** The Himax replies `MD sensitivity set to N` within 0.2 s, but the nRF's prefix table
   of Himax-originated messages matches it against `"MD "`, the motion-wake announcement, raises
   `Wake (MD)` while it is still waiting for that very reply, logs `UNHANDLED event Wake (MD) in
-  PROCESSING` and drops it (ww-hardware #52; nRF 0.30.51, 23 September 2026). Every motion
-  test pays the `md` command's full timeout, on both cards. On the RP3 slot the command is
-  refused with `Unrecognised` instead (Seeed #211), and that reply gets through. The level is
-  persisted in op17 either way, so a flow that has just read the op table can skip the command
-  when it already holds the level (#272).
+  PROCESSING` and drops it (ww-hardware #52; nRF 0.30.51, 23 September 2026). On the RP3 slot
+  the command is refused with `Unrecognised` instead (Seeed #211), and that reply gets through.
+  The level is persisted in op17 either way, so since #272 the motion test skips `md` when the
+  op table it has just read already holds the level, waits 2 s rather than 5 when it does send,
+  and shows a refusal (`isMdRefusal`) or a lost reply on the card instead of swallowing it. A
+  lost reply on the HM0360 build usually means the level did land; the next run's `getop -1`
+  shows it.
+- **op19 is not the number of images on the card.** It counts the files in the current
+  `IMAGES.NNN` folder, and the firmware starts a new folder at the first boot after it passes
+  100 (`directory_manager.c`, `generateImageDirName`), setting op19 back to 0. The live
+  monitor's Stored tile shows op19, so it climbs to about 101 and drops to 0, which testers
+  reported as a counting bug (#192). op0, the image sequence number, is the running total, but
+  it also counts captures whose save was skipped (op18 bit 3, an AE-check wake). A true count
+  needs a firmware counter; until then do not present op19 as a total.
 
 ## Screens and navigation
 
@@ -122,6 +131,13 @@ file is the list of things that look like an app bug and are not, and the revers
   22 September 2026. The patch does the close bookkeeping at once and keeps one set of
   back-button and dimensions listeners. Metro loads paper from `src/`, so the patch carries
   `src/` and both `lib/` builds. If paper is upgraded, re-check the reopen before dropping it.
+- **An `Alert.alert` confirmation returns at once, and RTK Query's `refetch()` throws once its
+  screen has gone.** Archiving a project showed "Update Failed" from May to September 2026
+  (#191): the save returned before the user answered, Edit Project went back underneath the
+  alert, and Continue wrote the project and then called `refetch()` on the unmounted query,
+  which throws `Cannot refetch a query that has not been started yet.` Wrap a confirmation in a
+  promise and await it before anything navigates, and do not refetch after a mutation whose
+  `invalidatesTags` already covers the query.
 
 - **A screen left in the stack under a flow keeps rendering, and the Engineer Console is
   under every flow it opens.** Until 22 September 2026 `BleConsoleOutput` rebuilt its whole
@@ -246,7 +262,9 @@ file is the list of things that look like an app bug and are not, and the revers
   default branch, so an agent given worktree isolation begins at `origin/main`. Check
   `git log -1` and reset to the intended base before editing. Inside one, `npm test` finds 0
   tests on Windows, because Jest reads the `\.` of `\.claude` in `<rootDir>` as a glob escape:
-  pass the test globs as root-relative patterns instead. In the main checkout Jest also picks
+  pass the five `testMatch` globs from `jest.config.js` with `<rootDir>` swapped for `**`, as
+  `npx jest --testMatch "**/src/**/__tests__/**/*.{js,jsx,ts,tsx}" ...`, and check that
+  `--listTests` counts every test file on disk. In the main checkout Jest also picks
   up the worktrees' copies of every test, so add `--modulePathIgnorePatterns=<rootDir>/.claude/`
   **after** any test paths: the option swallows the paths that follow it and silently turns
   them into ignore patterns. An isolated agent may not run git against another worktree
