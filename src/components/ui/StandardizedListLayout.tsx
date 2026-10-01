@@ -53,6 +53,12 @@ interface StandardizedListLayoutProps<T> {
     filterActions?: React.ReactNode
     fabStyle?: ViewStyle
     contentContainerStyle?: ViewStyle
+
+    // Test hooks (Maestro). The empty state replaces the FAB with a centred
+    // button, so the two get separate ids and a flow checks which one is there.
+    searchBarTestID?: string
+    primaryActionTestID?: string
+    emptyStateActionTestID?: string
 }
 
 export function StandardizedListLayout<T>({
@@ -79,6 +85,9 @@ export function StandardizedListLayout<T>({
     filterActions,
     fabStyle,
     contentContainerStyle,
+    searchBarTestID,
+    primaryActionTestID,
+    emptyStateActionTestID,
 }: StandardizedListLayoutProps<T>) {
     const theme = useTheme()
     const { setIsOpen } = useAppDrawer()
@@ -134,6 +143,7 @@ export function StandardizedListLayout<T>({
                     size={28}
                     style={styles.menuIcon}
                     onPress={() => setIsOpen(true)}
+                    testID="drawer-menu-button"
                 />
 
                 {/* Search Bar */}
@@ -143,6 +153,7 @@ export function StandardizedListLayout<T>({
                         onChangeText={onSearchChange}
                         value={searchQuery}
                         style={styles.searchbar}
+                        testID={searchBarTestID}
                     />
                 </View>
             </View>
@@ -168,6 +179,7 @@ export function StandardizedListLayout<T>({
                         icon="plus"
                         onPress={onPrimaryAction}
                         style={styles.createButton}
+                        testID={emptyStateActionTestID}
                     >
                         <Text>{primaryActionLabel}</Text>
                     </Button>
@@ -220,6 +232,7 @@ export function StandardizedListLayout<T>({
                 visible={!showEmptyState}
                 style={[styles.fab, fabStyle, { backgroundColor: theme.colors.primary }]}
                 onPress={onPrimaryAction}
+                testID={primaryActionTestID}
             />
         </SafeAreaView>
     )

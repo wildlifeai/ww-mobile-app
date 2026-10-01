@@ -245,9 +245,10 @@ file is the list of things that look like an app bug and are not, and the revers
   a file would crash such a build at launch. `signInWithGoogle` requires it at the tap and treats
   a failure as "not set up in this build" (#350, 1 October 2026). Do the same for the next
   native library, until every build in use carries it.
-- **Installing on Windows** is in AGENTS.md: `npm install --ignore-scripts` then
-  `npx patch-package`, because `maestro`'s postinstall aborts a plain install, and skipping
-  `postinstall` alone leaves `patches/` unapplied, which breaks the native build later.
+- **Installing on Windows**: plain `npm install` works since October 2026, when the npm package
+  `maestro` (an AWS tool, not mobile Maestro) and its shell postinstall left the project. If an
+  install still aborts in a postinstall, `npm install --ignore-scripts` then `npx patch-package`:
+  skipping `postinstall` alone leaves `patches/` unapplied, which breaks the native build later.
 - **Publishing traps live in `documentation/resources/publishing_guide.md`**, not here: Play
   Store installs blocked invisibly by device checks, the five `eas.json` profiles and the one
   that also submits, a failed submission that shows nothing in the web console until re-run

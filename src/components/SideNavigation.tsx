@@ -144,6 +144,7 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 				style={[dynamicStyles.link, styles.link]}
 				icon="logout"
 				onPress={onLogout}
+				testID="sign-out-button"
 			>
 				<Text>Sign out</Text>
 			</Button>

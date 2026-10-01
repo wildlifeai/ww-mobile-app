@@ -56,7 +56,9 @@ jobs:
           # change there IS a native change (PR #258 got no validation without
           # it). This file is included so a change to the build logic is
           # exercised by the workflow it changes.
-          if echo "$CHANGED" | grep -qE '^(src/|android/|patches/|package\.json|package-lock\.json|app\.config\.ts|app\.json|eas\.json|babel\.config\.js|metro\.config\.js|tsconfig\.json|\.github/workflows/native-build-validation\.yml)'; then
+          # `tests/maestro/` is in the list so a flow change runs the flows: the
+          # APK cache below makes that cheap when nothing native moved.
+          if echo "$CHANGED" | grep -qE '^(src/|android/|patches/|package\.json|package-lock\.json|app\.config\.ts|app\.json|eas\.json|babel\.config\.js|metro\.config\.js|tsconfig\.json|tests/maestro/|\.github/workflows/native-build-validation\.yml)'; then
             echo "native=true" >> "$GITHUB_OUTPUT"
             echo "=> native build required"
           else
@@ -113,12 +115,16 @@ jobs:
         if: needs.changes.outputs.native == 'true'
         id: config
         run: |
+          # Both profiles are release-type, so the APK carries its JavaScript and
+          # installs as com.wildlife.wildlifewatcher. The `ci` profile that ran
+          # until October 2026 was a development client: with no Metro server on
+          # the runner every flow stopped at Expo's launcher (run 36836146016).
           if [[ "${{ github.base_ref }}" == "main" ]]; then
             echo "profile=staging" >> $GITHUB_OUTPUT
             echo "supabase_url=${{ secrets.EXPO_PUBLIC_SUPABASE_URL_STAG }}" >> $GITHUB_OUTPUT
             echo "supabase_anon_key=${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY_STAG }}" >> $GITHUB_OUTPUT
           else
-            echo "profile=ci" >> $GITHUB_OUTPUT
+            echo "profile=e2e" >> $GITHUB_OUTPUT
             echo "supabase_url=${{ secrets.EXPO_PUBLIC_SUPABASE_URL_DEV }}" >> $GITHUB_OUTPUT
             echo "supabase_anon_key=${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY_DEV }}" >> $GITHUB_OUTPUT
           fi
@@ -143,10 +149,10 @@ jobs:
         if: needs.changes.outputs.native == 'true' && steps.cache-apk.outputs.cache-hit != 'true'
         run: eas build --local --profile ${{ steps.config.outputs.profile }} --platform android --output ./app-debug.apk --non-interactive
         env:
-          EXPO_PUBLIC_SUPABASE_URL_DEV: ${{ steps.config.outputs.supabase_url }}
-          EXPO_PUBLIC_SUPABASE_ANON_KEY_DEV: ${{ steps.config.outputs.supabase_anon_key }}
-          EXPO_PUBLIC_SUPABASE_URL_PROD: ${{ steps.config.outputs.supabase_url }}
-          EXPO_PUBLIC_SUPABASE_ANON_KEY_PROD: ${{ steps.config.outputs.supabase_anon_key }}
+          # The names src/config/environments.ts reads. Metro inlines them into
+          # the bundle, ahead of whatever the EAS environment holds.
+          EXPO_PUBLIC_SUPABASE_URL: ${{ steps.config.outputs.supabase_url }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ steps.config.outputs.supabase_anon_key }}
           GOOGLE_MAPS_API_KEY_ANDROID: ${{ secrets.GOOGLE_MAPS_API_KEY_ANDROID }}
           GOOGLE_MAPS_API_KEY_IOS: ${{ secrets.GOOGLE_MAPS_API_KEY_IOS }}
 
@@ -188,8 +194,8 @@ jobs:
         if: needs.changes.outputs.native == 'true'
         run: npx expo prebuild --no-install --platform ios
 
-  # Required. The one flow that can pass today: install, launch, screenshot.
-  # See tests/maestro/smoke/app-startup.yaml for why it asserts nothing else.
+  # Required. One flow: install, launch, and the JavaScript bundle renders the
+  # login screen. See tests/maestro/smoke/app-startup.yaml.
   e2e-smoke:
     name: E2E Smoke
     needs: [changes, android-build]
@@ -233,9 +239,9 @@ jobs:
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
 
-      # The package follows the EAS profile chosen in android-build: a PR into
-      # main installs the release-type `staging` build, without the debug
-      # `.expo` suffix (see tests/maestro/smoke/app-startup.yaml)
+      # Both CI profiles are release-type and install as the release package;
+      # the flows still take it from the run so a local debug build can pass
+      # its own (tests/maestro/smoke/app-startup.yaml).
       - name: Run flows on an emulator
         if: needs.changes.outputs.native == 'true'
         uses: ReactiveCircus/android-emulator-runner@v2
@@ -243,13 +249,14 @@ jobs:
           api-level: 33
           target: google_apis
           arch: x86_64
+          # A phone-sized screen. The default AVD is 320x640 at 160 dpi, where the
+          # drawer's version footer overlapped its sign-out button (run 36921573134).
+          profile: pixel_6
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
-            set -e
-            adb install -r ./app-debug.apk
-            maestro test -e APP_ID=${{ github.base_ref == 'main' && 'com.wildlife.wildlifewatcher' || 'com.wildlife.wildlifewatcher.expo' }} --format junit --output maestro-report.xml tests/maestro/smoke/
+            bash scripts/ci-maestro.sh tests/maestro/smoke/
 
       # Maestro can print a usage error and exit before running anything, and
       # on 20 September 2026 run 35493842313 did exactly that and was reported
@@ -262,6 +269,10 @@ jobs:
           echo "flows executed: $n"
           test "$n" -ge 1
 
+      - name: Print Maestro's output into the log
+        if: needs.changes.outputs.native == 'true' && always()
+        run: bash scripts/ci-maestro-output.sh
+
       - name: Upload Maestro report and screenshots
         if: needs.changes.outputs.native == 'true' && always()
         uses: actions/upload-artifact@v7
@@ -273,15 +284,16 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
-  # Advisory. Every flow, including the four whose appId was wrong until
-  # 21 September 2026 and which have never passed against the real screens.
-  # Runs on the `full-e2e` label or by hand; never in the merge queue, where
-  # there are no labels.
+  # Advisory. Every flow tests/maestro/config.yaml lists, signed in as the
+  # seeded cloud-dev user held in the E2E_TEST_EMAIL and E2E_TEST_PASSWORD
+  # secrets of the `development` environment. Runs on the `full-e2e` label or
+  # by hand; never in the merge queue, where there are no labels.
   e2e-full:
     name: E2E Full
     needs: [changes, android-build]
     if: needs.changes.outputs.native == 'true' && (contains(github.event.pull_request.labels.*.name, 'full-e2e') || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
+    environment: development
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
@@ -311,25 +323,38 @@ jobs:
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
 
+      # The flows take APP_ID from the run (#376) and the account from the two
+      # secrets. GitHub masks the values in the log; the output step below
+      # redacts them from the files the artifact carries.
       - name: Run flows on an emulator
         uses: ReactiveCircus/android-emulator-runner@v2
+        env:
+          E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
+          E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
         with:
           api-level: 33
           target: google_apis
           arch: x86_64
+          # A phone-sized screen. The default AVD is 320x640 at 160 dpi, where the
+          # drawer's version footer overlapped its sign-out button (run 36921573134).
+          profile: pixel_6
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
-            set -e
-            adb install -r ./app-debug.apk
-            maestro test --format junit --output maestro-report.xml tests/maestro/
+            bash scripts/ci-maestro.sh tests/maestro/
 
       - name: Fail if no flow actually ran
         run: |
-          n=$(grep -c "<testcase" maestro-report.xml 2>/dev/null || echo 0)
+          n=$(cat maestro-report*.xml 2>/dev/null | grep -c "<testcase" || echo 0)
           echo "flows executed: $n"
           test "$n" -ge 1
+
+      - name: Print Maestro's output into the log
+        if: always()
+        env:
+          E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+        run: bash scripts/ci-maestro-output.sh
 
       - name: Upload Maestro report and screenshots
         if: always()
