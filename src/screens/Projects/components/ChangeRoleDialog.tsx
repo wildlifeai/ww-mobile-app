@@ -54,6 +54,8 @@ export const ChangeRoleDialog = ({ projectId, visible, member, user, onDismiss, 
 		setLoading(true)
 		try {
 			log(`🔄 Changing role for ${member.name}...`)
+			// The service asks about the connection at this tap, and offline
+			// sends nothing (#335)
 			const result = await updateProjectMemberRole({
 				project_id: projectId,
 				user_id: member.id,
@@ -61,7 +63,10 @@ export const ChangeRoleDialog = ({ projectId, visible, member, user, onDismiss, 
 				updated_by: user.id,
 			})
 			if (!result.success) {
-				Alert.alert("Error", result.error || "Failed to update role")
+				Alert.alert(
+					result.reason === "offline" ? "No connection" : "Role not changed",
+					result.error || "The server did not change this role."
+				)
 				return
 			}
 			Alert.alert("Success", "Role updated successfully")

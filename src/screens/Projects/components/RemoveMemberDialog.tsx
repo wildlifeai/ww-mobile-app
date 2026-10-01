@@ -32,13 +32,18 @@ export const RemoveMemberDialog = ({ projectId, visible, member, members, user, 
 		setLoading(true)
 		try {
 			log(`➖ Removing member ${member.name}...`)
+			// The service asks about the connection at this tap, and offline
+			// sends nothing (#335)
 			const result = await removeProjectMember({
 				project_id: projectId,
 				user_id: member.id,
 				removed_by: user.id,
 			})
 			if (!result.success) {
-				Alert.alert("Error", result.error || "Failed to remove member")
+				Alert.alert(
+					result.reason === "offline" ? "No connection" : "Member not removed",
+					result.error || "The server did not remove this member."
+				)
 				return
 			}
 			Alert.alert("Success", "Member removed successfully")

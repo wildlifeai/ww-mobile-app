@@ -3,6 +3,7 @@ import { Alert } from 'react-native'
 import { Card, Text, SegmentedButtons, Button } from 'react-native-paper'
 import { WWTextInput } from '../../../components/ui/WWTextInput'
 import InvitationService from '../../../services/InvitationService'
+import { isKnownOffline } from '../../../services/connectivityWatch'
 import { log, logError } from '../../../utils/logger'
 import { ProjectRole } from '../../../services/UserRoleService'
 import { useAppSelector } from '../../../redux'
@@ -29,6 +30,17 @@ export const InviteMemberCard: React.FC<Props> = ({ projectId, onInviteSent, sty
 			Alert.alert("Error", "User authentication required")
 			return
 		}
+		// An invitation is made on the server (send_project_invitation), so it
+		// is not queued for later: say so rather than send a call that must fail.
+		// Asked at the tap rather than followed, because the banner is the one
+		// thing that subscribes to the connection.
+		if (await isKnownOffline()) {
+			Alert.alert(
+				"No connection",
+				"Inviting someone needs a connection. Try again when you are online."
+			)
+			return
+		}
 
 		setInviteLoading(true)
 		try {
@@ -38,13 +50,22 @@ export const InviteMemberCard: React.FC<Props> = ({ projectId, onInviteSent, sty
 				inviteEmail.trim(),
 				inviteRole as "project_admin" | "project_member"
 			)
-			Alert.alert("Success", "Invitation sent successfully")
+			// The same words whether or not the address has an account, so the
+			// screen cannot be used to find out who has one (#308)
+			Alert.alert(
+				"Invitation sent",
+				"If they have a Wildlife Watcher account, they will see it in Notifications. If not, they will see it once they create an account with this email address."
+			)
 			setInviteEmail("")
 			setInviteRole("project_member")
 			onInviteSent()
 		} catch (err: any) {
 			logError("❌ Error sending invitation:", err)
-			Alert.alert("Error", err.message || "Failed to send invitation")
+			// 23505 is the one-pending-invitation-per-email index, not an account lookup
+			const message = err?.code === "23505"
+				? "This email address already has a pending invitation to this project."
+				: err.message || "Failed to send invitation"
+			Alert.alert("Error", message)
 		} finally {
 			setInviteLoading(false)
 		}

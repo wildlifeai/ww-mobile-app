@@ -41,12 +41,17 @@ class InvitationService {
         role: 'project_admin' | 'project_member' = 'project_member'
     ): Promise<string> {
         try {
-            log('📨 Sending invitation:', { projectId, inviteeEmail, role })
+            // The RPC stores the address as given, and the invitee's side matches
+            // it exactly against their JWT email, which Supabase keeps in lower
+            // case: an invitation to "Tama@ww.org" would never be found (#308)
+            const email = inviteeEmail.trim().toLowerCase()
+
+            log('📨 Sending invitation:', { projectId, inviteeEmail: email, role })
 
             const supabase = getSupabaseClient()
             const { data, error } = await supabase.rpc('send_project_invitation' as any, {
                 p_project_id: projectId,
-                p_invitee_email: inviteeEmail,
+                p_invitee_email: email,
                 p_role: role,
             })
 

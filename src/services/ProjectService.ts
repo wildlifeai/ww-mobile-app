@@ -10,7 +10,6 @@
 import { Q } from '@nozbe/watermelondb'
 import database from '../database'
 import Project from '../database/models/Project'
-import { getSupabaseClient } from "./supabase"
 import { getStoredUserId } from "./auth"
 import OutboxService from './OutboxService'
 import SupabaseSyncService from './SupabaseSyncService'
@@ -21,6 +20,7 @@ import type {
 	CreateProjectInput,
 } from "../types/project"
 import UserRoleService from './UserRoleService'
+import InvitationService from './InvitationService'
 import UserRole from '../database/models/UserRole'
 import { log, logError } from '../utils/logger'
 import { DEFAULT_FLASH_LED, DEFAULT_FLASH_MODE } from '../utils/projectFlash'
@@ -298,8 +298,25 @@ class ProjectService {
 
 					log("✅ Outbox record prepared, executing batch...")
 
+					// The creator is this project's admin from the start. On the server
+					// the on_project_created trigger grants it, but offline nothing did,
+					// so every role check treated the creator as a stranger to their own
+					// project until a sync. This row is local only and never queued:
+					// the server makes its own, and syncUserRoles later updates this
+					// row in place, since it matches roles by user and scope, not id.
+					const creatorRole = database.collections.get<UserRole>('user_roles').prepareCreate(role => {
+						role.userId = currentUserId
+						role.role = 'project_admin'
+						role.scopeType = 'project'
+						role.scopeId = newProject!.id
+						role.grantedBy = currentUserId
+						role.grantedAt = new Date()
+						role.isActive = true
+						role.modifiedBy = currentUserId
+					})
+
 					// 3. Execute batch
-					await database.batch(newProject, outboxOp)
+					await database.batch(newProject, outboxOp, creatorRole)
 
 					log("✅ Batch executed successfully - project and outbox record created")
 				} catch (outboxError) {
@@ -338,6 +355,7 @@ class ProjectService {
 
 			const project = await this.projectsCollection.find(projectId)
 			const currentUserId = await this.getCurrentUserId()
+			const before = this.mapModelToType(project)
 
 			await database.write(async () => {
 				// 1. Prepare project update
@@ -363,12 +381,20 @@ class ProjectService {
 					if (currentUserId) p.modifiedBy = currentUserId
 				})
 
-				// 2. Prepare outbox record
+				// 2. Prepare outbox record, carrying only what this edit changed.
+				// push_changes keeps any column the payload leaves out, so a stale
+				// copy on the phone no longer overwrites a newer value set on the
+				// website: on 29 September a Sinbad edit sent the whole record and
+				// put back model_id null and GPS off over the website's change (#330).
+				const after = this.mapModelToType(project)
+				const changed = Object.fromEntries(
+					Object.entries(after).filter(([key, value]) => value !== (before as Record<string, unknown>)[key])
+				)
 				const outboxOp = OutboxService.recordOperation({
 					operation: 'UPDATE',
 					tableName: 'projects',
 					recordId: project.id,
-					payload: this.mapModelToType(project),
+					payload: { ...changed, id: project.id, modified_by: after.modified_by, updated_at: after.updated_at },
 					userId: currentUserId || undefined,
 				})
 
@@ -468,8 +494,11 @@ class ProjectService {
 	}
 
 	/**
-	 * Add member to project
-	 * Delegates to UserRoleService
+	 * Add member to project, by inviting their email address
+	 * Goes through the send_project_invitation RPC, which never looks the
+	 * invitee up (#308). Looking them up in public.users told the caller
+	 * whether an account existed, and could not invite anyone who had not
+	 * signed up yet. The invitation waits until that email signs in.
 	 */
 	async addProjectMember(
 		projectId: string,
@@ -480,28 +509,7 @@ class ProjectService {
 			const currentUserId = await this.getCurrentUserId()
 			if (!currentUserId) throw new Error("User not authenticated")
 
-			// 1. Find user by email
-			const { data: user, error: userError } = await getSupabaseClient()
-				.from('users')
-				.select('id')
-				.eq('email', email)
-				.single()
-
-			if (userError || !user) {
-				throw new Error(`User with email ${email} not found`)
-			}
-
-			// 2. Add member via UserRoleService
-			const result = await UserRoleService.addProjectMember({
-				project_id: projectId,
-				user_id: user.id,
-				role,
-				granted_by: currentUserId
-			})
-
-			if (!result.success) {
-				throw new Error(result.error || "Failed to add project member")
-			}
+			await InvitationService.sendInvitation(projectId, email, role)
 		} catch (error) {
 			logError("Failed to add project member:", error)
 			throw error

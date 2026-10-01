@@ -14,7 +14,35 @@ version for humans is
   reach the UI through `withObservables`. Redux is session and UI state only.
 - **The RLS blindspot.** A local query only ever sees what the current user was allowed to
   sync. Never compute a cross-user aggregate, such as member counts or global lists, from a
-  local query. Fetch it from the cloud and degrade gracefully offline.
+  local query. Fetch it from the cloud and degrade gracefully offline. The project member list
+  is the one sanctioned cache: `fetchMembersFromCloud` writes each `get_project_members` answer
+  into the local `users` and `user_roles` tables, other people's rows only, and removes roles
+  the server no longer lists (#307). The sync never brings those rows, since `user_roles` is
+  own-row-only and `public.users` gives out no one else's profile, so do not "fix" them from
+  the sync.
+- **A project made on the phone makes its creator its admin on the phone too.** On the server
+  the `on_project_created` trigger grants `project_admin`; offline nothing did, so every role
+  check treated the creator as a stranger to their own project until a sync.
+  `ProjectService.createProject` now writes that role row in the same batch as the project. It
+  is never queued (the server makes its own, and `user_roles` writes from the app are refused
+  by RLS), and `syncUserRoles` later updates it in place, because it matches roles by user and
+  scope, not by id. Keep that matching, or the pull will duplicate the row.
+- **Server-only actions say so offline, they are not queued.** Invitations are made by
+  `send_project_invitation`, so the Invite card tells the user it needs a connection instead of
+  calling. Role changes and removals are the same (#335): `UserRoleService` asks
+  `isKnownOffline()` before `update_project_member_role` or `remove_project_member` and sends
+  nothing offline. The Members screen offline shows what the phone has (you, plus the member
+  cache) and raises no Alert: the offline banner is the one offline signal. Screens that read
+  `user.profile` must allow it to be undefined, since it comes from the cloud.
+- **Never write `user_roles` from the app** (#335). RLS refused the insert and the update, and
+  turned an unauthorised delete into "0 rows" with no error, which the app reported as a
+  removal while the person kept full access. ww-backend #219 has since revoked every write
+  grant on the table from `authenticated`. Members are added by invitation and changed or
+  removed through the RPCs, and a reply that is not `{ success: true }` is not a change.
+- **Never look an account up by email.** Invite through `send_project_invitation`
+  (`InvitationService.sendInvitation`), lower-casing the address, and show the same message
+  whatever the address. A `public.users` lookup tells the caller whether an account exists
+  (#308), and cannot invite someone who has not signed up.
 - Writes go to WatermelonDB first and the outbox syncs them. Never block the UI on network.
 - **Security lives at the sync boundary, not on the client.** Role checks in the app are user
   experience; Supabase row level security is the enforcement. Never treat a local query as
@@ -67,6 +95,43 @@ version for humans is
   first push fails `23503` and only a self-healing retry recovers it a cycle later, which the
   operator sees as a sync error (#294). A bare "touch" to trigger reactivity is not a sync
   operation.
+- **A refused table must not stop the others (#287).** `uploadOutbox` pushes each table in
+  that order but never breaks the chain: a refused multi-record call is retried record by
+  record, and only a deployment whose parent the server does not have waits. Every
+  deployment's project is looked up, not only one that failed in this sync (#330); a device
+  only when its own change failed here. Keep it that way. The old `break` also left every later
+  table in `syncing`, which nothing re-read, so those changes were stranded for good; `syncing`
+  at the start of a push now means "cut short" and is resumed. A push error no longer skips the
+  pull.
+- **Incremental pulls never see a row disappear (#330).** A project deleted on the website,
+  wiped by a Dev reset or taken away by removing the account from it never appears in
+  `updated_at > watermark`, so `reconcileProjects`, run after a `syncProjects` that completed,
+  compares the phone with the full list of project ids the server gives this account. A
+  project missing there, with no `CREATE` queued or in flight, loses its row, its synced
+  deployments and its roles. Anything not uploaded stays: a deployment with an unsynced change
+  or a local photo keeps its row, and this account's queued operations become `orphaned`,
+  never retried, with the project named in `error_message` (`OutboxService.getOrphanedOperations`,
+  `getStatistics().orphaned`). Another account's held operations are not touched. It does
+  nothing on a failed read, on a list shorter than its own count, or when it would remove every
+  project on the phone. Orphaned operations go back to `pending` if the project reappears, and a
+  server project the phone lacks clears the project, role and deployment watermarks for a full
+  pull. There is still no screen for orphaned work.
+- **A project edit sends only the fields it changed (#330).** The edit form passes every field,
+  and a full record from a stale phone overwrote newer website values (Sinbad's model and GPS,
+  29 September). `ProjectService.updateProject` diffs the record before and after and queues
+  only the changed columns; `push_changes` keeps any column the payload leaves out. Deployment
+  updates are still full records.
+- **`push_changes` returns `conflicts` as an array of `{id, reason: 'not_applied'}`**, not a
+  count. For an `UPDATE` or `DELETE` it means the change did not land (row missing, or RLS
+  said no) and the operation stays `failed`; for a `CREATE` it means the row already exists.
+  Until #287 the app read `data.conflicts > 0` and `conflict_details`, neither of which exists,
+  and marked refused updates `synced`.
+- **One phone, several accounts (#267).** Pull watermarks are one set per phone, owned by
+  `LAST_SYNC_USER_ID`, and are cleared when another account syncs so its first pull is a full
+  one. The outbox is one queue: an operation whose `user_id` is another account is held, not
+  pushed under this session, except a device `CREATE`. Nothing local is deleted on sign-out,
+  so the previous account's rows stay on the phone; whether to clear them, and whether the next
+  account may upload the previous one's held work, are open product questions.
 
 ## Schema version, only moves on a real change
 
