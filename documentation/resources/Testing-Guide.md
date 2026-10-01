@@ -133,7 +133,10 @@ every run while Maestro ran nothing: four of the five flows named a package that
 installed, `auth-workflow.yaml` had no `appId` at all, and run 35493842313 shows an empty
 `~/.maestro/tests/` under a green tick. The flows are now pointed at the real debug package,
 `com.wildlife.wildlifewatcher.expo`, but the four fuller ones have never passed against real
-screens and stay advisory until one does.
+screens and stay advisory until one does. The smoke flow takes its package from the run instead:
+a PR into main builds the release-type `staging` profile, which installs as
+`com.wildlife.wildlifewatcher`, so the job passes that, and the debug package otherwise;
+`npm run test:maestro:smoke` passes the debug one.
 
 ### Existing Test Flows
 
