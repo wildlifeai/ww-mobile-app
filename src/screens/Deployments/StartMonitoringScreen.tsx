@@ -26,6 +26,7 @@ import { useFirmwareStatus } from '../Devices/hooks/useFirmwareStatus'
 import { useModelOnPhone } from '../../hooks/useOfflineFiles'
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
 import { resolveProjectFlash, shortFlashLabel } from '../../utils/projectFlash'
+import { SD_CARD_POWER_CYCLE_HINT } from '../../utils/deviceSelfTest'
 import { shortBurstLabel } from '../../utils/projectBurst'
 
 
@@ -236,7 +237,7 @@ export const StartMonitoringDetailsStep = () => {
                         </View>
                         <Text variant="bodySmall" style={{ color: '#C62828', marginBottom: 8 }}>
                             {hasSdCardError
-                                ? 'The device reports no SD card. Every image and setting a deployment writes goes to the card, so monitoring cannot start without one. Insert a FAT32 card, then go back and reconnect.'
+                                ? `The device reports no SD card. Every image and setting a deployment writes goes to the card, so monitoring cannot start without one. ${SD_CARD_POWER_CYCLE_HINT}`
                                 : hasCameraError
                                     ? 'The AI processor has reported a critical camera or hardware error. Starting monitoring is blocked. Please check the camera module connections or hardware configuration.'
                                     : 'The AI processor (camera module) did not wake up after multiple attempts. The device cannot start monitoring without it. Please go back and try reconnecting to the device.'}

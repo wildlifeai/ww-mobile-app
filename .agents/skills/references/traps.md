@@ -79,7 +79,9 @@ file is the list of things that look like an app bug and are not, and the revers
   card answers electrically but never reaches the identification state without a clean power
   ramp. Self-test bit 11 stays set on every wake after that, so the app is right to keep the
   blocker up, and repeating `selftest` will never clear it. Only a cold boot will. Expect the
-  same in the field whenever anyone swaps a card without cutting power; #325 is the copy fix.
+  same in the field whenever anyone swaps a card without cutting power. Since #325 every message
+  that reports bit 11 tells the operator to power cycle, using `SD_CARD_POWER_CYCLE_HINT` in
+  `utils/deviceSelfTest.ts`; a new one should use it too.
 - **Ignore the battery percentage on a bench unit, it is reading the USB rail.** A WW500 powered
   over USB on the bench reports numbers like `Battery = 3076mV 2%` that say nothing about any
   cell, so a low reading there is not a reason to stop, charge anything or doubt a result.

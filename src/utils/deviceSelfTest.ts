@@ -30,6 +30,16 @@ export interface SelfTestIssue {
     hint: string
 }
 
+/**
+ * What to do about bit 11, for every message that reports it. A card put into
+ * a WW500 that is still powered is never mounted: the warm boot out of DPD
+ * fails FatFS `disk_initialize` with FR_NOT_READY, and the bit stays set on
+ * every wake until the camera is power cycled. Inserting the card and checking
+ * again, which is all the messages said until #325, cannot clear it.
+ */
+export const SD_CARD_POWER_CYCLE_HINT =
+    'Insert or reseat a FAT32 card, then power cycle the camera (unplug it or remove the battery) and reconnect. A card put in while the camera is on is not detected until it restarts.'
+
 const ISSUE_TABLE: Array<Omit<SelfTestIssue, never>> = [
     {
         bit: SelfTestBit.LOW_BATTERY,
@@ -83,7 +93,7 @@ const ISSUE_TABLE: Array<Omit<SelfTestIssue, never>> = [
         bit: SelfTestBit.AI_NO_SD_CARD,
         severity: 'error',
         title: '💾 SD card missing',
-        hint: 'Insert a FAT32 SD card. The device cannot store images or settings without it.',
+        hint: `The device cannot store images or settings without one. ${SD_CARD_POWER_CYCLE_HINT}`,
     },
     {
         bit: SelfTestBit.AI_PDM_ERROR,
@@ -157,7 +167,9 @@ export const CRITICAL_AI_MASK =
  * Warning strings for the initialisation banners, one per set bit, in bit order,
  * plus one for any bit outside the known set. The wording is what
  * `useBleInitialization` and `useDevicePreDeploymentChecks` have shown since the
- * first release; both used to carry their own copy of the table.
+ * first release; both used to carry their own copy of the table. Bit 11 also
+ * says how to clear it (#325), and must keep the words "no SD card": Start
+ * Monitoring picks its blocker by matching them.
  */
 const WARNING_TEXT: Record<SelfTestBit, string> = {
     [SelfTestBit.LOW_BATTERY]: 'Low Battery detected (Bit 0)',
@@ -168,7 +180,7 @@ const WARNING_TEXT: Record<SelfTestBit, string> = {
     [SelfTestBit.AI_NO_MAIN_CAMERA]: 'Main Camera Error (Bit 8)',
     [SelfTestBit.AI_NO_HM0360]: 'Motion Detector Camera Error (Bit 9)',
     [SelfTestBit.AI_NO_FLASH]: 'LED Flash Circuit Failure (Bit 10)',
-    [SelfTestBit.AI_NO_SD_CARD]: 'Device has no SD card detected (Bit 11)',
+    [SelfTestBit.AI_NO_SD_CARD]: 'Device has no SD card detected (Bit 11). Power cycle the camera after inserting or reseating a card',
     [SelfTestBit.AI_PDM_ERROR]: 'PDM Microphone Failure (Bit 12)',
     [SelfTestBit.AI_NN_ERROR]: 'Neural Network Error (Bit 13)',
 }

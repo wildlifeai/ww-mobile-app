@@ -32,7 +32,7 @@ import { useCameraSwitch, CAMERA_VARIANT_LABELS, type CameraVariant } from '../.
 import { useDeviceSelfTest } from '../../../hooks/useDeviceSelfTest'
 import { checkSdCard } from '../../../ble/workflows/checkSdCard'
 import { selfTestCache } from '../../../ble/protocol/selfTestCache'
-import { SelfTestBit, parseSelfTestBits, isBootPreset, formatSelfTestBits } from '../../../utils/deviceSelfTest'
+import { SelfTestBit, parseSelfTestBits, isBootPreset, formatSelfTestBits, SD_CARD_POWER_CYCLE_HINT } from '../../../utils/deviceSelfTest'
 import {
     resolveProjectFlash, formatUtcMinutes, describeProjectFlash, flashColumnsFromFields,
     type ProjectFlashMode, type ProjectFlashLed,
@@ -378,7 +378,7 @@ export const useDevDeployment = ({
         setIsCheckingSdCard(true)
         try {
             const sd = await checkSdCard(bleSession)
-            setSdCardStatus({ total: sd.totalSpaceMb, free: sd.freeSpaceMb })
+            setSdCardStatus({ total: sd.totalSpaceKb, free: sd.freeSpaceKb })
         } catch (e) {
             // No card, or the Himax asleep. The health banner and the Start
             // button already say which (#303), so only the figures go.
@@ -493,7 +493,7 @@ export const useDevDeployment = ({
             return
         }
         if (sdCardMissing) {
-            Alert.alert('No SD Card', 'The device reports no SD card. Every image and setting a deployment writes goes to the card, so it cannot start without one. Insert a FAT32 card, then re-check.')
+            Alert.alert('No SD Card', `The device reports no SD card. Every image and setting a deployment writes goes to the card, so it cannot start without one. ${SD_CARD_POWER_CYCLE_HINT}`)
             return
         }
         // Asked again at the moment of the press, not read from the state the
