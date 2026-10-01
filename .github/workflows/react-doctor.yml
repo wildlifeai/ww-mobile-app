@@ -38,4 +38,4 @@ jobs:
           scope: 'full'
           blocking: 'error'
           project: ''
-          version: '0.5.1'
+          version: '0.9.14'
