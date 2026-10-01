@@ -43,7 +43,8 @@ file is the list of things that look like an app bug and are not, and the revers
   on a capture only when its last light decision, op25, was DARK, and the check after every
   capture rewrites op25. In a lit room the LED never fires whatever the app selected, and that
   is not an app bug. Before touching the app, isolate it in three console commands:
-  `AI flash 50 500` lights the white LED directly, proving hardware and command path;
+  `AI flash 50 500` lights the white LED directly, proving hardware and command path, and
+  quietly stores 500 in op12, the RP3 capture flash length, which the next sleep saves;
   `AI getop 25` shows the gate; and `AI setop 25 1` followed by `AI capture 1 500` proves the
   capture path can fire it. Bench-proven 3 September 2026. Capture Picture forces it for now by
   writing op25 = 1 before a capture with a flash chosen, marked `TODO(flash-mode-op)` in

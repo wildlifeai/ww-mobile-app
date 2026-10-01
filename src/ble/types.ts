@@ -1,4 +1,5 @@
 import { ExtendedPeripheral } from "../redux/slices/devicesSlice"
+import { commandRegistry } from "./protocol/commandRegistry"
 
 export type ParseCommands = {
 	value?: string
@@ -14,15 +15,13 @@ export enum CommandNames {
 	heartbeat = "heartbeat",
 	deveui = "deveui",
 	appeui = "appeui",
-	appkey = "appkey",
 	ping = "ping",
 	reset = "reset",
-	erase = "erase",
 	dis = "dis",
 	dfu = "dfu",
 	status = "status",
 	device = "device",
-	aiinfo = "aiinfo",
+	ai_info = "ai_info",
 	selftest = "selftest",
 	flashr = "flashr",
 	flashg = "flashg",
@@ -30,37 +29,24 @@ export enum CommandNames {
 	temp = "temp",
 	network = "network",
 	join = "join",
-	getgps = "getgps",
 	setgps = "setgps",
 	getutc = "getutc",
-	state = "state",
 	setop = "setop",
 	getop = "getop",
 	getop_all = "getop_all",
 	ai_ver = "ai_ver",
-	erasemodel = "erasemodel",
-	loadmodel = "loadmodel",
 	wake = "wake",
-	camera_type = "camera_type",
 	slots = "slots",
 	switchslot = "switchslot",
-	md = "md",
 	light = "light",
-	setdid = "setdid",
-	getdid = "getdid",
-	ai_firmware = "ai_firmware",
 	inithm0360 = "inithm0360",
 	dir = "dir",
 	format = "format",
+	capture_one = "capture_one",
+	ai_getgps = "ai_getgps",
 
 	// BLE-processor commands (lowercase)
 	setutc = "setutc",
-	SET_NUM_PICTURES = "SET_NUM_PICTURES",
-	SET_PICTURE_INTERVAL = "SET_PICTURE_INTERVAL",
-	SET_TIMELAPSE_INTERVAL = "SET_TIMELAPSE_INTERVAL",
-	SET_MOTION_DETECT_INTERVAL = "SET_MOTION_DETECT_INTERVAL",
-	DISABLE_MOTION_DETECT = "DISABLE_MOTION_DETECT",
-	DISABLE_TIMELAPSE = "DISABLE_TIMELAPSE",
 	UPDATE_BLE_FIRMWARE = "UPDATE_BLE_FIRMWARE",
 	UPDATE_HIMAX_FIRMWARE = "UPDATE_HIMAX_FIRMWARE",
 	MOTION_DETECTION_PREVIEW = "MOTION_DETECTION_PREVIEW",
@@ -88,12 +74,38 @@ export type Command = {
 	name: CommandNames
 	readCommand?: string
 	writeCommand?: (value?: string, value2?: string) => string
+	/**
+	 * The values `writeCommand` needs, in order. The Engineer Console asks for
+	 * each one before it sends, and sends nothing until they are all valid, so
+	 * a command that writes to the device never goes out with a value nobody
+	 * chose. `md` used to fall back to level 0 that way, which the firmware
+	 * saves to op17 and which turns motion triggering off (#300).
+	 */
+	params?: CommandParam[]
 	readRegex?: RegExp
 	description?: string
 	type?: 'command' | 'process' | 'local'
 	timeout?: number
 	expectedPattern?: RegExp | string | false
 }
+
+/** One value a console command needs before it can be sent. See `Command.params`. */
+export type CommandParam = {
+	label: string
+	/** Placeholder shown in the empty field */
+	hint?: string
+	/**
+	 * `op`: an op index, typed as a number or as its `OP_PARAMETER` name.
+	 * `int`: a whole number within `min` and `max`.
+	 * `text`: one word, since the device splits its command line on spaces.
+	 */
+	kind: 'op' | 'int' | 'text'
+	min?: number
+	max?: number
+}
+
+/** setop stores a uint16 on the Himax, so this is every value it can hold. */
+const OP_VALUE_PARAM: CommandParam = { label: 'Value', kind: 'int', min: 0, max: 65535 }
 
 export const getCommandByName = (name: CommandNames | string): Command | null => {
 	if (!name) return null
@@ -250,7 +262,7 @@ export const COMMANDS: {
 		readCommand: "get heartbeat",
 		readRegex: /\bheartbeat\s+is\s+(\d+d|\d+h|\d+m|\d+s)\b/,
 		writeCommand: (value?: string) => value ? `heartbeat ${value}` : "get heartbeat",
-		description: "Report/set heartbeat rate",
+		description: "Report the LoRaWAN heartbeat interval (get heartbeat)",
 		type: 'command',
 	},
 	[CommandNames.deveui]: {
@@ -258,7 +270,7 @@ export const COMMANDS: {
 		readCommand: "get deveui",
 		readRegex: /\DevEui:\s([a-zA-Z0-9:]+)\b/,
 		writeCommand: (value?: string) => value ? `deveui ${value}` : "get deveui",
-		description: "Report/set LoRaWan DevEUI",
+		description: "Report the LoRaWAN DevEUI (get deveui)",
 		type: 'command',
 	},
 	[CommandNames.appeui]: {
@@ -266,15 +278,7 @@ export const COMMANDS: {
 		readCommand: "get appeui",
 		readRegex: /\bAppEui:\s([a-zA-Z0-9:]+)\b/,
 		writeCommand: (value?: string) => value ? `appeui ${value}` : "get appeui",
-		description: "Report/set LoRaWan AppEUI",
-		type: 'command',
-	},
-	[CommandNames.appkey]: {
-		name: CommandNames.appkey,
-		readCommand: "get appkey",
-		readRegex: /\bAppKey:\s([a-zA-Z0-9:]+)\b/,
-		writeCommand: (value?: string) => value ? `set appkey ${value}` : "get appkey",
-		description: "Report/set LoRaWan AppKey (Note: get appkey may fail with 'Failed 2')",
+		description: "Report the LoRaWAN AppEUI, also called JoinEUI (get appeui)",
 		type: 'command',
 	},
 	[CommandNames.ping]: {
@@ -289,13 +293,6 @@ export const COMMANDS: {
 		writeCommand: () => "reset",
 		readRegex: /(Device will reset after disconnecting.)\s*/,
 		description: "Board will reset after disconnect",
-		type: 'command',
-	},
-	[CommandNames.erase]: {
-		name: CommandNames.erase,
-		writeCommand: () => "erase",
-		readRegex: /(NVM will be erased after disconnecting.)\s*/,
-		description: "Erase NVM after disconnect",
 		type: 'command',
 	},
 	[CommandNames.dis]: {
@@ -318,13 +315,13 @@ export const COMMANDS: {
 		description: "Product name (e.g. WW500-C00)",
 		type: 'command',
 	},
-	[CommandNames.aiinfo]: {
-		name: CommandNames.aiinfo,
+	[CommandNames.ai_info]: {
+		name: CommandNames.ai_info,
 		writeCommand: () => "AI info",
 		// Matches total and available drive space response
 		// Example: "30515200 K total drive space.\n  30511056 K available."
 		readRegex: /(\d+)\s*[Kk]\s*total\s*drive\s*space\.\s*(\d+)\s*[Kk]\s*available/i,
-		description: "Get AI module info (label, serial, total/available drive space in KB)",
+		description: "SD card label, serial number, size and free space in KB",
 		type: 'command',
 	},
 	[CommandNames.selftest]: {
@@ -338,21 +335,21 @@ export const COMMANDS: {
 		name: CommandNames.flashr,
 		writeCommand: (value?: string) => `flashr ${value || '2 500'}`,
 		readRegex: /Flashing\s+(\d+)ms\s+(\d+)\s+times/i,
-		description: "Flash red LED (count duration_ms)",
+		description: "Flash the red LED 2 times at 500 ms (flashr <count> <ms>)",
 		type: 'command',
 	},
 	[CommandNames.flashg]: {
 		name: CommandNames.flashg,
 		writeCommand: (value?: string) => `flashg ${value || '2 500'}`,
 		readRegex: /Flashing\s+(\d+)ms\s+(\d+)\s+times/i,
-		description: "Flash green LED (count duration_ms)",
+		description: "Flash the green LED 2 times at 500 ms (flashg <count> <ms>)",
 		type: 'command',
 	},
 	[CommandNames.flashb]: {
 		name: CommandNames.flashb,
 		writeCommand: (value?: string) => `flashb ${value || '2 500'}`,
 		readRegex: /Flashing\s+(\d+)ms\s+(\d+)\s+times/i,
-		description: "Flash blue LED (count duration_ms)",
+		description: "Flash the blue LED 2 times at 500 ms (flashb <count> <ms>)",
 		type: 'command',
 	},
 	[CommandNames.setutc]: {
@@ -373,14 +370,19 @@ export const COMMANDS: {
 	[CommandNames.setop]: {
 		name: CommandNames.setop,
 		writeCommand: (index?: string, value?: string) => `AI setop ${index || ''} ${value || ''}`.trim(),
+		params: [
+			{ label: 'Index', kind: 'op', hint: 'e.g. 11 or MD_INTERVAL' },
+			OP_VALUE_PARAM,
+		],
 		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
-		description: "Set Operational Parameter <index> to <value> (Advanced)",
+		description: "Set Operational Parameter <index> to <value>, saved to CONFIG.TXT at once (Advanced)",
 		type: 'command',
 	},
 	[CommandNames.getop]: {
 		name: CommandNames.getop,
 		readCommand: "AI getop",
 		writeCommand: (index?: string) => `AI getop ${index || ''}`.trim(),
+		params: [{ label: 'Index', kind: 'op', hint: 'e.g. 17 or MD_SENSITIVITY' }],
 		readRegex: /^Op(?:Param\s+|\[)(\d+)\]?\s+=\s+(.+)$/i,
 		description: "Get Operational Parameter <index> (Advanced)",
 		type: 'command',
@@ -400,39 +402,11 @@ export const COMMANDS: {
 		description: "Get AI processor version",
 		type: 'command',
 	},
-	[CommandNames.ai_firmware]: {
-		name: CommandNames.ai_firmware,
-		writeCommand: (filename?: string) => `AI firmware ${filename || 'output.img'}`,
-		readRegex: /Firmware update (OK|FAILED)/i,
-		description: "Update Himax firmware from SD card image",
-		type: 'command',
-	},
-	[CommandNames.erasemodel]: {
-		name: CommandNames.erasemodel,
-		writeCommand: () => "AI erasemodel",
-		readRegex: /(OK|erased|failed)/i,
-		description: "Erases the model and write 0, 0 to the CONFIG.TXT lines 14 & 15",
-		type: 'command',
-	},
-	[CommandNames.loadmodel]: {
-		name: CommandNames.loadmodel,
-		writeCommand: (id?: string, ver?: string) => `AI loadmodel ${id || '0'} ${ver || '0'}`,
-		readRegex: /(OK|loaded|failed)/i,
-		description: "Load model <id> <ver> from SD (e.g. 1V1.tflite) and update lines 14 & 15 of CONFIG.TXT",
-		type: 'command',
-	},
 	[CommandNames.wake]: {
 		name: CommandNames.wake,
 		writeCommand: () => 'wake',
 		readRegex: /(AI processor is awake|Waking AI processor|Wake)/i,
 		description: "Wake AI processor from Deep Power Down (firmware v0.8.14+)",
-		type: 'command',
-	},
-	[CommandNames.camera_type]: {
-		name: CommandNames.camera_type,
-		readCommand: "AI camera",
-        readRegex: /\b(HM0360|RP2|RP3)\b/i,
-		description: "Get connected camera type",
 		type: 'command',
 	},
 	[CommandNames.slots]: {
@@ -453,7 +427,7 @@ export const COMMANDS: {
 		name: CommandNames.inithm0360,
 		writeCommand: () => 'AI inithm0360',
 		readRegex: /^(OK|Error)/i,
-		description: "Reinitialise HM0360 camera sensor registers (diagnostic for black images)",
+		description: "Reinitialise HM0360 camera sensor registers (diagnostic for black images). HM0360 firmware only",
 		type: 'command',
 	},
 	[CommandNames.dir]: {
@@ -465,14 +439,20 @@ export const COMMANDS: {
 	[CommandNames.format]: {
 		name: CommandNames.format,
 		writeCommand: () => 'AI format',
-		description: "Formats the SD card as FAT32 (run twice to confirm)",
+		description: "Erases the SD card and formats it as FAT32, confirming on the camera by itself. Reboot the camera afterwards",
 		type: 'command',
 	},
-	[CommandNames.md]: {
-		name: CommandNames.md,
-		writeCommand: (level?: string) => `AI md ${level || '0'}`,
-		expectedPattern: false,
-		description: "Set motion detection sensitivity (0-3)",
+	// One tap, one photo, and nothing else (#300): no keep-awake or flash hold,
+	// no download, no preview. The device's own replies are the result. Built
+	// by the registry's `capture` so the bytes are the golden-tested ones that
+	// Capture Picture sends. 500, not 0: the interval is only waited between
+	// pictures, but on the HM0360 firmware it also programs the sensor's own
+	// frame timer, where 0 means its slowest rate, and 500 is what has been
+	// proven on the bench on both cameras.
+	[CommandNames.capture_one]: {
+		name: CommandNames.capture_one,
+		writeCommand: () => commandRegistry.capture(1, 500).build(),
+		description: "Take one photo now (AI capture 1 500). Saved to the SD card, not downloaded; the flash fires only if the device has it armed",
 		type: 'command',
 	},
 	[CommandNames.light]: {
@@ -484,69 +464,11 @@ export const COMMANDS: {
 		description: "Measure light without taking a photo (reading follows separately)",
 		type: 'command',
 	},
-	[CommandNames.setdid]: {
-		name: CommandNames.setdid,
-		writeCommand: (id?: string) => `AI setdid ${id || ''}`.trim(),
-		expectedPattern: false,
-		description: "Set Deployment ID as a single string",
-		type: 'command',
-	},
-	[CommandNames.getdid]: {
-		name: CommandNames.getdid,
-		writeCommand: () => "AI getdid", // In case we want to write it explicitly instead of read
-		readCommand: "AI getdid",
-		readRegex: /\b([a-fA-F0-9-]{36})\b/, // Matches UUID-formatted deployment IDs
-		description: "Get Deployment ID (string)",
-		type: 'command',
-	},
-	// Preset Operational Parameter Commands
-	[CommandNames.SET_NUM_PICTURES]: {
-		name: CommandNames.SET_NUM_PICTURES,
-		writeCommand: (count?: string) => `AI setop 5 ${count || '3'}`,
-		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
-		description: "Set number of images per trigger (default: 3)",
-		type: 'command',
-	},
-	[CommandNames.SET_PICTURE_INTERVAL]: {
-		name: CommandNames.SET_PICTURE_INTERVAL,
-		writeCommand: (intervalMs?: string) => `AI setop 6 ${intervalMs || '1500'}`,
-		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
-		description: "Set interval between images in ms (default: 1500)",
-		type: 'command',
-	},
-	[CommandNames.SET_TIMELAPSE_INTERVAL]: {
-		name: CommandNames.SET_TIMELAPSE_INTERVAL,
-		writeCommand: (intervalSec?: string) => `AI setop 7 ${intervalSec || '900'}`,
-		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
-		description: "Set timelapse interval in seconds, 0=off (default: 900)",
-		type: 'command',
-	},
-	[CommandNames.SET_MOTION_DETECT_INTERVAL]: {
-		name: CommandNames.SET_MOTION_DETECT_INTERVAL,
-		writeCommand: (intervalMs?: string) => `AI setop 11 ${intervalMs || '1000'}`,
-		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
-		description: "Set motion detection interval in ms, 0=off (default: 1000)",
-		type: 'command',
-	},
-	[CommandNames.DISABLE_MOTION_DETECT]: {
-		name: CommandNames.DISABLE_MOTION_DETECT,
-		writeCommand: () => 'AI setop 11 0',
-		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
-		description: "Disable motion detection",
-		type: 'command',
-	},
-	[CommandNames.DISABLE_TIMELAPSE]: {
-		name: CommandNames.DISABLE_TIMELAPSE,
-		writeCommand: () => 'AI setop 7 0',
-		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
-		description: "Disable timelapse capture",
-		type: 'command',
-	},
 	[CommandNames.temp]: {
 		name: CommandNames.temp,
 		readCommand: "temp",
 		readRegex: /Temperature: (-?\d+)\.(\d+)C/,
-		description: "Report temperature",
+		description: "Report the BLE chip's own die temperature",
 		type: 'command',
 	},
 	[CommandNames.network]: {
@@ -563,18 +485,21 @@ export const COMMANDS: {
 		description: "Request a LoRaWAN join",
 		type: 'command',
 	},
-	[CommandNames.getgps]: {
-		name: CommandNames.getgps,
-		readCommand: "getgps",
-		readRegex: /Location is: (.*)/,
-		description: "Get the GPS location",
-		type: 'command',
-	},
 	[CommandNames.setgps]: {
 		name: CommandNames.setgps,
 		writeCommand: (gpsString?: string) => `AI setgps ${gpsString || ''}`.trim(),
+		// Degrees, minutes, seconds with underscores for spaces, the format
+		// commandRegistry.setgps sends. Decimal "lat,lng,alt" is one token the
+		// firmware silently discards (#315).
+		params: [{ label: 'Location', kind: 'text', hint: `e.g. 37°48'30.50"_N_122°25'10.22"_W_500.75_Above` }],
 		readRegex: /Device GPS set/i,
-		description: "Set GPS location (lat,lng,alt)",
+		description: "Set the location written into photos, degrees minutes seconds with _ for spaces",
+		type: 'command',
+	},
+	[CommandNames.ai_getgps]: {
+		name: CommandNames.ai_getgps,
+		readCommand: "AI getgps",
+		description: "The location the AI processor writes into photos, as set by setgps",
 		type: 'command',
 	},
 	[CommandNames.getutc]: {
@@ -582,13 +507,6 @@ export const COMMANDS: {
 		readCommand: "getutc",
 		readRegex: /UTC is: (.*)/,
 		description: "Get the system time",
-		type: 'command',
-	},
-	[CommandNames.state]: {
-		name: CommandNames.state,
-		readCommand: "state",
-		readRegex: /State = (.*)/,
-		description: "Returns state machine state",
 		type: 'command',
 	},
 	[CommandNames.UPDATE_BLE_FIRMWARE]: {

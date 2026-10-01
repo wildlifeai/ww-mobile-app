@@ -3,7 +3,27 @@ import { BackHandler } from 'react-native'
 import { useBle } from '../../../hooks/useBle'
 import { log, logWarn } from '../../../utils/logger'
 import { CommandNames, COMMANDS } from '../../../ble/types'
+import { bleEventBus, BleEvent } from '../../../ble/protocol/eventBus'
 import { ConsoleEntry } from '../../../components/BleConsoleOutput'
+
+/** How long the console waits for the camera to ask for the second `format`. */
+export const FORMAT_CONFIRM_TIMEOUT_MS = 10000
+
+/** Resolves true when the device sends a line matching `pattern`, false after `timeoutMs`. */
+const waitForLine = (deviceId: string, pattern: RegExp, timeoutMs: number): Promise<boolean> =>
+    new Promise(resolve => {
+        const listener = (event: BleEvent & { type: 'TEXT_LINE' }) => {
+            if (event.deviceId !== deviceId || !pattern.test(event.line)) return
+            clearTimeout(timer)
+            bleEventBus.removeListener('textLine', listener)
+            resolve(true)
+        }
+        const timer = setTimeout(() => {
+            bleEventBus.removeListener('textLine', listener)
+            resolve(false)
+        }, timeoutMs)
+        bleEventBus.on('textLine', listener)
+    })
 
 export const useEngineerConsoleActions = ({
     device,
@@ -87,7 +107,7 @@ export const useEngineerConsoleActions = ({
         }
     }
 
-    const onRunHelpCommand = async (cmdName: CommandNames) => {
+    const onRunHelpCommand = async (cmdName: CommandNames, args: string[] = []) => {
         // Dismiss both modals (command could come from either)
         dispatch({ type: 'SET_IS_HELP_VISIBLE', payload: false })
         dispatch({ type: 'SET_IS_FLOWS_VISIBLE', payload: false })
@@ -138,9 +158,51 @@ export const useEngineerConsoleActions = ({
         }
 
 
+        // A command that takes values is never sent without them. The Commands
+        // list asks for them; this is the backstop, because the writers once
+        // filled a gap with a default, and `AI md 0` turned motion triggering
+        // off on the device (#300).
+        if (cmd.params && args.length < cmd.params.length) {
+            dispatch({
+                type: 'APPEND_HISTORY',
+                payload: {
+                    id: Date.now().toString(),
+                    timestamp: new Date(),
+                    type: 'error',
+                    content: `${cmd.name} not sent: it needs ${cmd.params.map(p => p.label).join(', ')}`,
+                } as ConsoleEntry,
+            })
+            return
+        }
+
+        // The firmware formats only on a second `format` before the Himax
+        // sleeps: the first arms it and asks again, and the arm is lost at
+        // the next sleep, about a second later. Two taps cannot land in that
+        // window, so Run sends the second itself once the camera asks for it.
+        // The console is for people who know what a format does.
+        if (cmdName === CommandNames.format) {
+            if (!device) return
+            const asked = waitForLine(device.id, /Run 'format' again/i, FORMAT_CONFIRM_TIMEOUT_MS)
+            await handleSend('AI format')
+            if (await asked) {
+                await handleSend('AI format')
+            } else {
+                dispatch({
+                    type: 'APPEND_HISTORY',
+                    payload: {
+                        id: Date.now().toString(),
+                        timestamp: new Date(),
+                        type: 'error',
+                        content: 'format not confirmed: the camera did not ask for the second format, so the card was not erased',
+                    } as ConsoleEntry,
+                })
+            }
+            return
+        }
+
         // Execute BLE commands normally
         if (cmd.writeCommand) {
-            handleSend(cmd.writeCommand())
+            handleSend(cmd.writeCommand(args[0], args[1]))
         } else if (cmd.readCommand) {
             handleSend(cmd.readCommand)
         }

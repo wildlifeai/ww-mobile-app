@@ -26,6 +26,16 @@ day are in [traps.md](traps.md).
   `type: 'command'` entry belongs to no group. **`FlowsReferenceModal` has the same shape and
   no equivalent guard**, so `type: 'process'` entries can still go missing silently. When you
   add one, open the modal and confirm it renders.
+- **A console command never fills in a value for the operator.** A `COMMANDS` entry whose
+  `writeCommand` takes arguments declares them as `params`; the Commands list asks for each and
+  sends nothing until they check out, and `useEngineerConsoleActions` refuses one that arrives
+  without them. `md` used to default to level 0, which the firmware saves to op17 and which
+  turns motion triggering off (#300). `src/components/__tests__/commandArgs.test.ts` fails when
+  a command with `params` gains a default. A one-tap entry with fixed arguments, such as
+  `capture_one`, builds its string from the registry, so the golden test pins its bytes.
+- **`readRegex` and `expectedPattern` on `COMMANDS` entries are read by nothing.** They
+  describe the reply for a human; the console writes raw and matches nothing. Fixing one changes
+  no behaviour, and a reply that matters belongs in `commandRegistry.ts`.
 - **`commandQueue` does not exist.** The queue is `bleTransportController.ts`. Old docs and
   comments still name the former.
 - **Cancelling stops the command, and frees the queue at once.** Pass `signal` to
