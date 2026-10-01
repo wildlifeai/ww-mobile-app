@@ -76,6 +76,10 @@ interface Hold {
  * the raised value the device reports now. Otherwise a drop and a re-entry
  * would "restore" the device to the raised value.
  *
+ * A deployment is the one writer that overrules all of this: it sets op8 as
+ * the field value, above 1000 for a burst (#317), and calls `forget` first so
+ * no earlier hold or owed restore can put the old value back over it.
+ *
  * The Motion Detection stream holds the device through here too, for its test
  * window of interval + 2 s. It used to raise op8 itself and keep the original
  * in a ref, so a drop mid-test left the device raised (#271).
@@ -171,6 +175,26 @@ class KeepAwake {
         const owed = await this.owed(deviceId)
         if (owed === null) return
         await this.writeBack(session, deviceId, owed, 'reconnect')
+    }
+
+    /**
+     * Drop the hold and any owed restore for one device, writing nothing.
+     *
+     * For a deployment, which sets op8 as the field value. Anything kept here
+     * for that device is from before it and would put the earlier value back
+     * over it: the release of a hold still open on the screen underneath (the
+     * motion test on Start Monitoring), or a restore owed since a dropped link,
+     * which the next `acquire` turns into the value its `release` writes. A
+     * deployment of a burst writes op8 above 1000 (#317), so that write back
+     * would cut every burst short in the field.
+     */
+    public async forget(deviceId: string): Promise<void> {
+        const hadHold = this.holdsByDevice.delete(deviceId)
+        const owed = await this.owed(deviceId)
+        if (owed !== null) await this.clearOwed(deviceId)
+        if (hadHold || owed !== null) {
+            log(`[KeepAwake] ${deviceId}: op8 now belongs to the deployment; ${hadHold ? 'hold dropped' : 'no hold'}${owed !== null ? `, owed restore to ${owed} dropped` : ''}`)
+        }
     }
 
     /** Forget every hold and owed restore in memory. Tests only: disk is untouched. */
