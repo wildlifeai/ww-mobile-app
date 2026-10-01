@@ -26,6 +26,7 @@ import { managedOrganisationIds, projectRoleIds, seesEverything, seesOrganisatio
 import { log, logError } from '../utils/logger'
 import { DEFAULT_FLASH_LED, DEFAULT_FLASH_MODE } from '../utils/projectFlash'
 import { DEFAULT_PHOTO_INTERVAL_MS, DEFAULT_PHOTOS_PER_TRIGGER, resolveProjectBurst } from '../utils/projectBurst'
+import { DEFAULT_DETECTION_THRESHOLD_PCT, resolveDetectionThresholdPct } from '../utils/projectDetectionThreshold'
 
 
 class ProjectService {
@@ -251,6 +252,8 @@ class ProjectService {
 					// updates leave them out.
 					project.photosPerTrigger = DEFAULT_PHOTOS_PER_TRIGGER
 					project.photoIntervalMilliseconds = DEFAULT_PHOTO_INTERVAL_MS
+					// The detection threshold likewise (#342): 57%, op16 18
+					project.detectionThresholdPct = DEFAULT_DETECTION_THRESHOLD_PCT
 				})
 
 
@@ -360,10 +363,11 @@ class ProjectService {
 				const changed = Object.fromEntries(
 					Object.entries(after).filter(([key, value]) => value !== (before as Record<string, unknown>)[key])
 				)
-				// The burst columns never go out on an update: the website is their
-				// only editor (#317)
+				// The burst columns (#317) and the detection threshold (#342) never
+				// go out on an update: the website is their only editor
 				delete changed.photos_per_trigger
 				delete changed.photo_interval_milliseconds
+				delete changed.detection_threshold_pct
 				const outboxOp = OutboxService.recordOperation({
 					operation: 'UPDATE',
 					tableName: 'projects',
@@ -592,6 +596,7 @@ class ProjectService {
 				flash_window_start_minutes_utc: model.flashWindowStartMinutesUtc ?? null,
 				flash_window_minutes: model.flashWindowMinutes ?? null,
 				...burstColumns(model),
+				detection_threshold_pct: detectionThresholdColumn(model),
 				// Computed fields
 				member_count: memberCount,
 				deployment_count: deploymentCount,
@@ -636,6 +641,7 @@ class ProjectService {
 			flash_window_start_minutes_utc: model.flashWindowStartMinutesUtc ?? null,
 			flash_window_minutes: model.flashWindowMinutes ?? null,
 			...burstColumns(model),
+			detection_threshold_pct: detectionThresholdColumn(model),
 		}
 	}
 }
@@ -652,5 +658,9 @@ const burstColumns = (model: Project): { photos_per_trigger: number, photo_inter
 	})
 	return { photos_per_trigger: photosPerTrigger, photo_interval_milliseconds: intervalMs }
 }
+
+/** The detection threshold off a local record, inside the CHECK range for the same reason (#342). */
+const detectionThresholdColumn = (model: Project): number =>
+	resolveDetectionThresholdPct({ detection_threshold_pct: model.detectionThresholdPct })
 
 export default new ProjectService()

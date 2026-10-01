@@ -7,6 +7,7 @@ import { OP_PARAMETER } from './useDeviceSettings'
 import { log, logError, logWarn } from '../utils/logger'
 import { describeProjectFlash, ProjectFlashColumns, resolveProjectFlashOps } from '../utils/projectFlash'
 import { DEPLOYMENT_INTERVAL_BEFORE_DPD_MS, ProjectBurstColumns, resolveProjectBurstOps } from '../utils/projectBurst'
+import { describeDetectionThreshold, ProjectDetectionThresholdColumns, resolveModelThresholdOp } from '../utils/projectDetectionThreshold'
 import { formatGPSString } from '../utils/gpsUtils'
 import { keepAwake } from '../ble/session/keepAwake'
 
@@ -43,6 +44,11 @@ export interface DeploymentConfig {
     burst?: ProjectBurstColumns
     /** The raw BMP is recorded alongside each JPEG, so op5 is doubled (#317). */
     recordRawBmp?: boolean
+    /**
+     * The project's detection threshold, written as op16 (#342). Omitted
+     * leaves op16 at the reset's factory 18, which is 57%, the column default.
+     */
+    detectionThreshold?: ProjectDetectionThresholdColumns
 }
 
 export const useDeploymentConfiguration = () => {
@@ -240,6 +246,27 @@ export const useDeploymentConfiguration = () => {
     }, [applyUpdates])
 
     /**
+     * Writes the project's detection threshold to the device as op16
+     * MODEL_THRESHOLD, ceil(pct * 2.56) - 128 (#342).
+     *
+     * The reset before this sets op16 to the factory 18, which is 57%, the
+     * column default, so a project on the default writes nothing here. Only a
+     * model on the device reads op16; it is written whatever the model, since
+     * with none the value is never read.
+     */
+    const configureDetectionThreshold = useCallback(async (
+        session: any,
+        threshold: ProjectDetectionThresholdColumns,
+        currentOps: string[]
+    ): Promise<void> => {
+        log(`[DeployConfig] ${describeDetectionThreshold(threshold)}`)
+
+        await applyUpdates(session, [
+            { index: OP_PARAMETER.MODEL_THRESHOLD, value: resolveModelThresholdOp(threshold) },
+        ], currentOps)
+    }, [applyUpdates])
+
+    /**
      * Complete deployment configuration in one atomic operation
      */
     const configure = useCallback(async (
@@ -284,18 +311,24 @@ export const useDeploymentConfiguration = () => {
                 await configureBurst(session, config.burst, currentOps, config.recordRawBmp)
             }
 
+            // 5. The detection threshold (op16), likewise
+            if (config.detectionThreshold) {
+                await configureDetectionThreshold(session, config.detectionThreshold, currentOps)
+            }
+
             log('[DeployConfig] Deployment configuration complete (Atomic)')
         } catch (error) {
             logError('[DeployConfig] Configuration transaction failed:', error)
             throw new Error(`Failed to configure deployment: ${error}`)
         }
-    }, [setDeploymentId, configureCaptureMethod, configureFlash, configureBurst])
+    }, [setDeploymentId, configureCaptureMethod, configureFlash, configureBurst, configureDetectionThreshold])
 
     return {
         configure,
         setDeploymentId,
         configureCaptureMethod,
         configureFlash,
-        configureBurst
+        configureBurst,
+        configureDetectionThreshold
     }
 }

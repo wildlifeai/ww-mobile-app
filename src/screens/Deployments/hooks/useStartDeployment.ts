@@ -593,6 +593,9 @@ export const useStartDeployment = ({
                     // op6 is reset to 500, so both are written here, and op8 is
                     // raised past the interval when there is more than one.
                     burst: project,
+                    // The detection threshold (op16), from the project since
+                    // #342. The reset sets op16 to 18, which is the default 57%.
+                    detectionThreshold: project,
                 }, cb, opsAfterReset)
             } catch (configError) {
                 logError('[Deployment] Configuration failed:', configError)

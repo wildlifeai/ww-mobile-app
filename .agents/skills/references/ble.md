@@ -154,7 +154,9 @@ day are in [traps.md](traps.md).
   parameters and wrong for the other. op6 is not preserved either: the reset sets 500, and
   since #317 Start Monitoring writes op5 and op6 from the project, through
   `utils/projectBurst.ts`, with op5 doubled when the raw BMP is recorded and op8 raised to
-  op6 + 1000 when op5 is above 1.
+  op6 + 1000 when op5 is above 1. op16, the model threshold, is reset to 18 too, so a value
+  set from the console does not survive a deployment; since #342 both deployment flows write
+  it from the project's `detection_threshold_pct`, through `utils/projectDetectionThreshold.ts`.
 
 ## Captures, light and telemetry
 
