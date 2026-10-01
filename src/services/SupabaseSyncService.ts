@@ -1355,6 +1355,30 @@ class SupabaseSyncService {
     }
 
     /**
+     * Records of a table with a change still in the outbox, not yet on the
+     * server (#349). An incremental pull must not write the server's row over
+     * them: the row is older than the change, and on 1 October 2026 applying it
+     * put a deployment's local photo path back over the uploaded one, which made
+     * the next upload drop the photo (#347). The record comes back in a later
+     * pull once the change is pushed. An outbox that cannot be read leaves the
+     * pull as it was, applying every row.
+     */
+    private async unsyncedRecordIds(table: 'projects' | 'devices' | 'deployments'): Promise<Set<string>> {
+        try {
+            const ops = await database.collections.get<SyncOutbox>('sync_outbox')
+                .query(
+                    Q.where('table_name', table),
+                    Q.where('status', Q.oneOf(['pending', 'failed', 'syncing'])),
+                )
+                .fetch()
+            return new Set(ops.map(op => op.recordId))
+        } catch (e) {
+            logWarn(`[Sync] Could not read the outbox before the ${table} pull, so every row is applied:`, e)
+            return new Set()
+        }
+    }
+
+    /**
      * Sync projects (incremental pull)
      * Pulls projects that the user has access to via their user_roles
      */
@@ -1393,9 +1417,15 @@ class SupabaseSyncService {
         log(`📥 Received ${data.length} project updates`)
 
         const collection = database.collections.get<Project>('projects')
+        const unsynced = await this.unsyncedRecordIds('projects')
 
         await database.write(async () => {
             for (const row of data) {
+                // A change waiting in the outbox is newer than this row (#349)
+                if (unsynced.has(row.id || '')) {
+                    log(`⏸️ Kept the local project ${row.id}: a change to it is still waiting to be pushed`)
+                    continue
+                }
                 // Skip projects that were deleted on server
                 if (row.deleted_at) {
                     try {
@@ -1523,6 +1553,8 @@ class SupabaseSyncService {
 
         log(`📥 Received ${data.length} device updates`)
 
+        const unsynced = await this.unsyncedRecordIds('devices')
+
         await database.write(async () => {
             const collection = database.get<Device>('devices')
 
@@ -1535,6 +1567,12 @@ class SupabaseSyncService {
                     continue
                 }
                 log(`[Sync] Processing device row: ${row.id}`) // Debug for TypeError
+
+                // A change waiting in the outbox is newer than this row (#349)
+                if (unsynced.has(row.id)) {
+                    log(`⏸️ Kept the local device ${row.id}: a change to it is still waiting to be pushed`)
+                    continue
+                }
 
                 // Check if exists
                 try {
@@ -1597,10 +1635,17 @@ class SupabaseSyncService {
 
         log(`📥 Received ${data.length} deployment updates`)
 
+        const unsynced = await this.unsyncedRecordIds('deployments')
+
         await database.write(async () => {
             const collection = database.get<Deployment>('deployments')
 
             for (const row of data) {
+                // A change waiting in the outbox is newer than this row (#349)
+                if (unsynced.has(row.id)) {
+                    log(`⏸️ Kept the local deployment ${row.id}: a change to it is still waiting to be pushed`)
+                    continue
+                }
                 // Skip if deleted on server
                 if (row.deleted_at) {
                     try {

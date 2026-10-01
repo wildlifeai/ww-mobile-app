@@ -326,6 +326,13 @@ account's last sync and never received its own older roles, so its Projects tab 
 already on the phone are kept, and signing out also resets `syncSlice`, so the scanner waits for
 the new account's own first sync.
 
+**A record with a change still to push keeps its local copy (#349).** The project, device and
+deployment pulls skip any row whose record has an outbox operation not yet on the server
+(pending, failed or being sent), and log `Kept the local deployment ...`. The server's row is
+older than that change; applying it once put a deployment's local photo path back over the
+uploaded one, and the next upload dropped the photo (#347). The record is pulled again after the
+push.
+
 **A project that disappears from the server (#330).** An incremental pull never sees a row that
 no longer exists, so a project deleted on the website, wiped by a Dev database reset, or taken
 away by removing the account from it used to stay on the phone for good, and every deployment
