@@ -29,8 +29,8 @@ type Row = {
     wire: string | RegExp
     /** One reply line the device sends that this command must accept as success. */
     accepts: string | string[]
-    /** One reply line that must be treated as failure, when the command has a failure matcher. */
-    rejects?: string
+    /** Reply lines that must be treated as failure, when the command has a failure matcher. */
+    rejects?: string | string[]
 }
 
 const GOLDEN: Record<keyof typeof commandRegistry, Row> = {
@@ -104,7 +104,13 @@ const GOLDEN: Record<keyof typeof commandRegistry, Row> = {
     },
     light: { wire: 'AI light', accepts: 'Checking light level...', rejects: 'Unrecognised command' },
     txfile: { args: ['AAF67400.JPG'], wire: 'AI txfile AAF67400.JPG', accepts: '251568 bytes in 34 packets' },
-    md: { args: [2], wire: 'AI md 2', accepts: 'MD sensitivity set to 2', rejects: 'Sleep' },
+    // `Unrecognised` is the RP3 build's answer, bench 4 September 2026 (Seeed #211).
+    md: {
+        args: [2],
+        wire: 'AI md 2',
+        accepts: 'MD sensitivity set to 2',
+        rejects: ['Sleep', 'Unrecognised', 'Error: Sensitivity must be an integer between 0 and 3.'],
+    },
     erasemodel: { wire: 'AI erasemodel', accepts: 'Model Erased' },
     loadmodel: {
         args: [1, 1],
@@ -150,11 +156,13 @@ describe('commandRegistry golden wire format', () => {
 
             if (row.rejects) {
                 it('treats the known failure line as a failure, not a timeout', () => {
-                    const cmd = make()
-                    expect(cmd.failureMatcher(row.rejects!)).toBe(true)
-                    cmd.collect(row.rejects!)
-                    expect(cmd.isComplete()).toBe(true)
-                    expect(() => cmd.parser()).toThrow()
+                    for (const line of ([] as string[]).concat(row.rejects!)) {
+                        const cmd = make()
+                        expect(cmd.failureMatcher(line)).toBe(true)
+                        cmd.collect(line)
+                        expect(cmd.isComplete()).toBe(true)
+                        expect(() => cmd.parser()).toThrow()
+                    }
                 })
             }
         })

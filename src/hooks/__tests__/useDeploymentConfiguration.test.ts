@@ -3,6 +3,7 @@ import { renderHook } from '@testing-library/react-native'
 import { useDeploymentConfiguration } from '../useDeploymentConfiguration'
 import { OP_PARAMETER } from '../useDeviceSettings'
 import { createBleSession } from '../../ble/session/createBleSession'
+import { mdIntervalHold } from '../../ble/session/mdIntervalHold'
 import { keepAwake, KeepAwakeSession } from '../../ble/session/keepAwake'
 
 jest.mock('../../utils/logger', () => ({ log: jest.fn(), logWarn: jest.fn(), logError: jest.fn() }))
@@ -145,6 +146,31 @@ describe('useDeploymentConfiguration configureCaptureMethod sensitivity', () => 
         await configureCaptureMethod()(session, { deploymentId: 'd', captureMethod: 'timelapse', mdSensitivity: 3 }, opsAfterReset())
 
         expect(session.lines).toContain(`AI setop ${OP_PARAMETER.MD_SENSITIVITY} 0`)
+    })
+})
+
+/**
+ * A motion test holds op11 at its interval and puts the original back when it
+ * ends, or on the next test if the link dropped first. The Start Monitoring
+ * card tests at the 1000 ms a deployment writes, so from the op table alone a
+ * later restore could not tell the deployment's value from the test's, and
+ * would switch motion detection off on a deployed camera (#274).
+ */
+describe('useDeploymentConfiguration configure and the motion test op11 hold', () => {
+    const opsAfterReset = (): string[] => Array.from({ length: 37 }, () => '0')
+
+    it('drops any op11 hold or owed restore before it writes anything', async () => {
+        const session = makeRecordingSession()
+        ;(createBleSession as jest.Mock).mockReturnValue(session)
+        let linesAtForget = -1
+        jest.spyOn(mdIntervalHold, 'forget').mockImplementation(async () => { linesAtForget = session.lines.length })
+
+        const configure = renderHook(() => useDeploymentConfiguration()).result.current.configure
+        await configure({ id: 'dev-1', connected: true } as any, { deploymentId: 'd', captureMethod: 'activity' }, opsAfterReset())
+
+        expect(mdIntervalHold.forget).toHaveBeenCalledWith('dev-1')
+        expect(linesAtForget).toBe(0)
+        expect(session.lines).toContain(`AI setop ${OP_PARAMETER.MD_INTERVAL} 1000`)
     })
 })
 

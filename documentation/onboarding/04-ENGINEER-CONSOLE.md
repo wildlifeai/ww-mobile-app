@@ -298,7 +298,9 @@ The following screens are accessed from the Engineer Console → Flows modal. Th
 - Uses `useMotionDetectionStream` to subscribe to `TEXT_LINE` events from `bleEventBus`
 - Sets `TEST_BIT_SKIP_FILE_CREATION` (OP 18, bit 3) before capture so firmware streams MD data without saving JPEGs
 - Parses `HM0360 motion in N blocks:` header + 32 hex-byte grid data from BLE text lines
-- Renders the 16×16 grid as a precomputed text string, a visual feedback loop that helps understand environmental threshold behaviour
+- Renders the 16×16 grid as a precomputed text string, a visual feedback loop that helps understand environmental threshold behaviour. The grid is the HM0360's own detector read once per test frame, not motion between the test's frames, and frame 1 is always empty
+- Sends `AI md` only when op17 differs from the chosen level. When it is sent, a refusal (`Unrecognised`, the RP3 build) or a reply that never comes is shown on the card rather than swallowed; after a refusal the selector is disabled for the visit (#272)
+- The interval floor is 0.5 s, the fastest the device has been shown to sustain
 - **On completion/stop**, automatically resets `TEST_MODE_BITS` to 0 so subsequent captures (e.g., photo preview) save JPEG files normally
 
 **The flash on this screen, and how it differs from the field.** A test frame is lit through the
@@ -312,6 +314,17 @@ deployment instead of a dimmer version of it.
 The gate itself is op34 with op13: since `ae_review` the LED fires only when the flash mode arms
 it, so the screen holds op34 at always-on for a test that asks for an LED and puts the previous
 mode back when the test ends ([`flashHold.ts`](../../src/ble/session/flashHold.ts)).
+
+**The detector's rate is the test's interval, held for the test (#274).** The HM0360 takes its
+rate from op11 `MD_INTERVAL` on the way into Deep Power Down, and nothing re-arms it while the
+device is awake, so a test that left op11 alone ran at whatever the device last slept with. After
+Stop Monitoring or a reset that is 0, a sensor frame about every two seconds. The test writes op11 = the
+interval after its `getop -1`, waits for the device to sleep, then sends the capture, and puts
+op11 back on every way out through
+[`mdIntervalHold.ts`](../../src/ble/session/mdIntervalHold.ts). Raised on a stopped camera op11
+turns motion capture back on, so a restore a dropped link leaves owed is kept on disk and paid by
+the next test on that camera, and a deployment drops it, because it writes op11 itself at the
+same 1000 ms the Start Monitoring card tests at.
 
 ### Camera Settings Test Screen
 

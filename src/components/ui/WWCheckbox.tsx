@@ -39,6 +39,7 @@ export const WWCheckbox = forwardRef<View, Props>((props, ref) => {
 				color={hasError ? "red" : colors.primary}
 				uncheckedColor="#fff"
 				style={[styles.container, style]}
+				labelStyle={styles.label}
 				position="leading"
 				mode="android"
 			/>
@@ -53,5 +54,10 @@ const styles = StyleSheet.create({
 	},
 	container: {
 		borderRadius: 4,
+	},
+	// Paper right-aligns a leading checkbox's label, which only shows once the
+	// label wraps: the second line would hug the right edge (#190)
+	label: {
+		textAlign: "left",
 	},
 })
