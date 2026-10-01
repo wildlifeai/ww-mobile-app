@@ -22,6 +22,7 @@ import type {
 import UserRoleService from './UserRoleService'
 import InvitationService from './InvitationService'
 import UserRole from '../database/models/UserRole'
+import { managedOrganisationIds, projectRoleIds, seesEverything, seesOrganisation } from './roleAccess'
 import { log, logError } from '../utils/logger'
 import { DEFAULT_FLASH_LED, DEFAULT_FLASH_MODE } from '../utils/projectFlash'
 import { DEFAULT_PHOTO_INTERVAL_MS, DEFAULT_PHOTOS_PER_TRIGGER, resolveProjectBurst } from '../utils/projectBurst'
@@ -52,35 +53,22 @@ class ProjectService {
 				Q.where('is_active', true)
 			).fetch()
 
-			// 2. Build set of accessible project IDs
-			const projectIds = new Set<string>()
-
-			// Check for global admin
-			const isGlobalAdmin = userRoles.some(r => r.scopeType === 'global')
-			if (isGlobalAdmin) {
-				// Return all projects
+			// 2. Build set of accessible project IDs, by the backend's role
+			// rules (services/roleAccess.ts, #351)
+			if (seesEverything(userRoles)) {
 				const allProjects = await this.projectsCollection.query().fetch()
 				return await Promise.all(allProjects.map(p => this.enrichProjectWithDetails(p)))
 			}
 
-			// Process other roles
-			for (const role of userRoles) {
-				if (role.scopeType === 'project' && role.scopeId) {
-					projectIds.add(role.scopeId)
-				} else if (role.scopeType === 'organisation' && role.scopeId) {
-					// Only fetch all projects if user is an Admin in this organisation
-					// 'project_admin' at organisation scope = Organisation Admin
-					// 'ww_admin' = System Admin (already handled by global check, but safely included here)
-					if (role.role === 'project_admin' || role.role === 'ww_admin') {
-						const orgProjects = await this.projectsCollection.query(
-							Q.where('organisation_id', role.scopeId),
-							Q.where('is_active', true)
-						).fetch()
-						orgProjects.forEach(p => projectIds.add(p.id))
-					}
-					// If they are just 'organisation_member' (or similar), they get NO projects from this role.
-					// They must rely on specific 'project' scoped roles.
-				}
+			const projectIds = projectRoleIds(userRoles)
+			// An organisation manager sees every project of the organisation,
+			// with or without a role on it
+			for (const organisationId of managedOrganisationIds(userRoles)) {
+				const orgProjects = await this.projectsCollection.query(
+					Q.where('organisation_id', organisationId),
+					Q.where('is_active', true)
+				).fetch()
+				orgProjects.forEach(p => projectIds.add(p.id))
 			}
 
 			// 3. Optimistic UI: Also fetch projects created by the user locally
@@ -126,44 +114,20 @@ class ProjectService {
 				Q.where('is_active', true)
 			).fetch()
 
-			// 2. Check for Admin privileges
-
-
-			// Checking UserRole definition: role is 'ww_admin' | 'project_admin' | 'project_member'
-			// Typically admin is handled via specific checks.
-			// Let's assume 'ww_admin' is global.
-			// 'project_admin' at organisation scope might be the "Org Admin".
-			// Let's verify what 'organisation_member' maps to.
-			// The log says: "role": "organisation_member" in the fetch output, but that might be from a different view.
-			// In UserRole.ts, roles are 'ww_admin' | 'project_admin' | 'project_member'.
-			// If scopeType is 'organisation', 'project_admin' likely means Organisation Admin.
-
-			// Let's be safe: if they have 'project_admin' (which seems to be the highest non-global role) at ORG scope, they see all.
-			// If they are 'ww_admin', they see all.
-
-			const hasFullAccess = userRoles.some(r =>
-				r.scopeType === 'global' ||
-				(r.scopeType === 'organisation' && r.scopeId === organisationId && r.role === 'project_admin') ||
-				(r.scopeType === 'organisation' && r.scopeId === organisationId && r.role === 'ww_admin')
-			)
+			// 2. Every project of the organisation for its manager or a ww_admin,
+			// by the backend's role rules (services/roleAccess.ts, #351)
+			const hasFullAccess = seesOrganisation(userRoles, organisationId)
 
 			if (hasFullAccess) {
-				log("✅ User has full access (Admin), fetching all projects in org")
+				log("✅ User sees the whole organisation, fetching all its projects")
 				const allProjects = await this.projectsCollection.query(
 					Q.where('organisation_id', organisationId)
 				).fetch()
 				return await Promise.all(allProjects.map(p => this.enrichProjectWithDetails(p)))
 			}
 
-			// 3. Filter specific projects
-			// Find all roles with scope_type='project'
-			const accessibleProjectIds = new Set<string>()
-
-			userRoles.forEach(r => {
-				if (r.scopeType === 'project' && r.scopeId) {
-					accessibleProjectIds.add(r.scopeId)
-				}
-			})
+			// 3. Filter specific projects: the project-scope roles
+			const accessibleProjectIds = projectRoleIds(userRoles)
 
 			// 4. Also always include projects created by the user in this organisation (Optimistic UI)
 			// This covers the case where the user just created a project but the 'admin' role hasn't synced back from server yet.

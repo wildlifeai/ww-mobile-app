@@ -81,8 +81,8 @@ tableSchema({
   name: 'user_roles',
   columns: [
     { name: 'user_id', type: 'string', isIndexed: true },
-    { name: 'role', type: 'string' },        // 'ww_admin', 'project_admin', 'project_member'
-    { name: 'scope_type', type: 'string' },  // 'global', 'organisation', 'project'
+    { name: 'role', type: 'string' },        // 'ww_admin', 'organisation_manager', 'organisation_member', 'project_admin', 'project_member', 'project_viewer'
+    { name: 'scope_type', type: 'string' },  // 'system', 'organisation', 'project'
     { name: 'scope_id', type: 'string', isOptional: true, isIndexed: true },
     { name: 'granted_by', type: 'string' },
     { name: 'is_active', type: 'boolean' },
@@ -90,6 +90,12 @@ tableSchema({
   ]
 })
 ```
+
+Which projects, devices and deployments a user sees on the phone follows the backend's role
+rules, in `services/roleAccess.ts` (#351): `ww_admin` is system scope and sees everything, an
+`organisation_manager` sees every project of its organisation, and project roles cover their
+own project only. Sync already sends only what the account may read; the local rule keeps
+another account's unsynced rows out of view on a shared phone.
 
 A project created on the phone also gets a local `project_admin` row for its creator, written
 by `ProjectService.createProject` in the same batch as the project. It mirrors ww-backend's
@@ -177,7 +183,7 @@ USING (
         SELECT organisation_id 
         FROM user_roles
         WHERE user_id = auth.uid()
-        AND scope_type IN ('global', 'organisation')
+        AND scope_type IN ('system', 'organisation')
         AND is_active = true
     )
 );

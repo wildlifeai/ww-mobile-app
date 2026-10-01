@@ -7,6 +7,7 @@ import SyncOutbox from '../database/models/SyncOutbox'
 import OutboxService from './OutboxService'
 import SupabaseSyncService from './SupabaseSyncService'
 import ProjectService from './ProjectService'
+import { seesEverything, seesOrganisation } from './roleAccess'
 import { log, logError, logWarn } from '../utils/logger'
 
 
@@ -371,8 +372,8 @@ export const DeploymentService = {
                 Q.where('is_active', true)
             ).fetch()
 
-            const isGlobalAdmin = userRoles.some((r: any) => r.scopeType === 'global')
-            if (isGlobalAdmin) {
+            // A ww_admin, or a manager at system scope, sees every deployment (#351)
+            if (seesEverything(userRoles as any)) {
                 const deploymentsCollection = database.get<Deployment>('deployments')
                 return await deploymentsCollection.query(Q.sortBy('created_at', Q.desc)).fetch()
             }
@@ -401,10 +402,7 @@ export const DeploymentService = {
                 Q.where('is_active', true)
             ).fetch()
 
-            const hasFullAccess = userRoles.some((r: any) =>
-                r.scopeType === 'global' ||
-                (r.scopeType === 'organisation' && r.scopeId === organisationId && (r.role === 'project_admin' || r.role === 'ww_admin'))
-            )
+            const hasFullAccess = seesOrganisation(userRoles as any, organisationId)
 
             if (hasFullAccess) {
                 const deploymentsCollection = database.get<Deployment>('deployments')
