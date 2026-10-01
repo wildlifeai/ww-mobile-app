@@ -26,7 +26,6 @@ interface ProjectFormData {
     model_id: string
     record_gps_in_images: boolean
     lorawan_required: boolean
-    is_archived?: boolean
     flash_mode: string
     flash_led: string
     flash_window_start_minutes_utc: string
@@ -48,7 +47,6 @@ interface Props {
     isTimeLapse: boolean
     isLoadingModels: boolean
     modelsError: any
-    showArchiveToggle?: boolean
     /** The flash mode currently chosen, so the LED and window fields can follow it */
     flashMode: string
 }
@@ -63,7 +61,6 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
     isTimeLapse,
     isLoadingModels,
     modelsError,
-    showArchiveToggle = false,
     flashMode
 }) => {
     const theme = useTheme()
@@ -331,25 +328,31 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
                             )}
                         />
 
-                        <View style={styles.relativeContainer}>
-                            <Controller
-                                control={control}
-                                name="record_gps_in_images"
-                                render={({ field: { value, onChange } }) => (
-                                    <WWCheckbox
-                                        label="Record GPS locations in images"
-                                        value={value}
-                                        onChange={onChange}
-                                        testID="record-gps-checkbox"
-                                    />
-                                )}
-                            />
+                        {/* The help icon sits beside the checkbox, not over it, so a
+                            long label wraps instead of running under the icon (#190) */}
+                        <View style={styles.checkboxRow}>
+                            <View style={styles.flex1}>
+                                <Controller
+                                    control={control}
+                                    name="record_gps_in_images"
+                                    render={({ field: { value, onChange } }) => (
+                                        <WWCheckbox
+                                            label="Record GPS locations in images"
+                                            value={value}
+                                            onChange={onChange}
+                                            testID="record-gps-checkbox"
+                                        />
+                                    )}
+                                />
+                            </View>
                             <IconButton
                                 icon="help-circle-outline"
                                 size={24}
                                 onPress={() => setGpsHelpVisible(true)}
-                                style={[styles.helpIcon, styles.absoluteHelpIcon]}
+                                style={styles.checkboxHelpIcon}
                                 iconColor={theme.colors.primary}
+                                accessibilityLabel="About recording GPS locations"
+                                testID="record-gps-help"
                             />
                         </View>
 
@@ -365,21 +368,6 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
                                 />
                             )}
                         />
-
-                        {showArchiveToggle && (
-                            <Controller
-                                control={control}
-                                name="is_archived"
-                                render={({ field: { value, onChange } }) => (
-                                    <WWCheckbox
-                                        label="Archive project"
-                                        value={value}
-                                        onChange={onChange}
-                                        testID="is-archived-checkbox"
-                                    />
-                                )}
-                            />
-                        )}
                     </Card.Content>
                 </Card>
             )}
@@ -426,13 +414,12 @@ const styles = StyleSheet.create({
         backgroundColor: "transparent",
         paddingHorizontal: 0,
     },
-    relativeContainer: {
-        position: 'relative'
+    checkboxRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
     },
-    absoluteHelpIcon: {
-        position: 'absolute',
-        right: 0,
-        top: 4,
-        zIndex: 1
-    }
+    checkboxHelpIcon: {
+        margin: 0,
+    },
 })
