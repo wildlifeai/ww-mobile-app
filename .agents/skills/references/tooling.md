@@ -47,7 +47,17 @@ shell boundary, and none of them reproduced in a Linux container.
   an empty `~/.maestro/tests/` under a green tick. The job now writes a junit report and
   fails if it holds no `<testcase>`. Apply the same guard to any runner you add: count what
   ran, not whether the command exited. A Maestro flow names its package as `appId: ${APP_ID}`,
-  never a fixed one: a PR into main installs the release package, not the debug `.expo` one.
+  never a fixed one: CI installs the release package, a local debug build the `.expo` one.
+- **A development client proves nothing in CI.** It carries no JavaScript, so without a Metro
+  server every flow stops at Expo's "Development servers" launcher, and a smoke that only
+  launches reads green (run 36836146016, 1 October 2026). CI builds the release-type `e2e`
+  profile for the flows; a flow asserts a real first screen. Three more Maestro facts that each
+  cost a run: Maestro only runs the top-level files of a directory unless `config.yaml` lists the
+  subfolders; `runScript` cannot shell out (`Android.shell` is not an API, airplane mode is the
+  `setAirplaneMode` command); and the npm package `maestro` is an AWS tool, not Maestro, which
+  installs with `curl -Ls https://get.maestro.mobile.dev | bash`. Read a failed run from the job
+  log, where `scripts/ci-maestro-output.sh` prints every screen hierarchy, before touching a
+  selector.
 - **A required check that never triggers blocks the merge forever, and the obvious fix is a
   trap.** A workflow with `paths:` produces no check run at all for a PR it does not match, so
   a docs-only PR can never satisfy it. The tempting answer, a mirror workflow with

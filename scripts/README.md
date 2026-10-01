@@ -19,7 +19,9 @@
 | `pre-build-check.sh` | Full pre-build validation (9 checks) | Bash |
 | `pre-commit-hook.sh` | Git pre-commit hook | Bash |
 | `test-integration-local.sh` | Run local integration tests | Bash |
-| `install-maestro-wsl2.sh` | Install Maestro testing in WSL2 | Bash (WSL2) |
+| `install-maestro-wsl2.sh` | Install the Maestro CLI and JDK 17 in WSL2 | Bash (WSL2) |
+| `ci-maestro.sh` | Run the Maestro flows on the CI emulator (install APK, Bluetooth on, junit report, final hierarchy, logcat) | Bash (CI) |
+| `ci-maestro-output.sh` | Redact the E2E password and print Maestro's report, hierarchies and logs into the job log | Bash (CI) |
 
 ## Environment Configuration
 
@@ -95,7 +97,7 @@ Called automatically by `npm run android`, `npm run ios`, and `npm run start`.
 - `npm test` — Run all tests
 - `npm run test:unit` — Unit tests only
 - `npm run test:integration` — Integration tests
-- `npm run test:maestro` — UI automation tests (requires Maestro)
+- `npm run test:maestro` — UI automation tests (requires the Maestro CLI and `-e E2E_TEST_EMAIL`/`-e E2E_TEST_PASSWORD`)
 
 ## Contributing
 

@@ -13,16 +13,17 @@ quickstart.
 ## Run it
 
 ```bash
-npm install                                   # macOS/Linux
-npm install --ignore-scripts && npx patch-package   # Windows (see note)
+npm install
 npm run android:doctor   # JDK 17, Android SDK, adb device, Supabase env
 npm run android          # preflight, types, schema sync, build, launch
 npm run android:local    # skips the two network steps (fast iteration loop)
 ```
 
 `postinstall` applies `patches/` via patch-package, and skipping it breaks the native build.
-On Windows plain `npm install` aborts on the `maestro` package's shell postinstall, so run
-`patch-package` by hand as above.
+Plain `npm install` works on Windows since October 2026, when the npm package `maestro` (an
+unrelated AWS tool whose shell postinstall aborted the install) left `devDependencies`; if an
+install still dies in a postinstall, `npm install --ignore-scripts && npx patch-package` reaches
+the same state. Mobile Maestro is a separate CLI, see the Testing Guide.
 
 Needs a `.env.development`, copied from `.env.example` with the Dev anon key pasted in. The
 app cannot reach Supabase without it. iOS builds require macOS; there is no tracked `ios/`
@@ -46,11 +47,14 @@ npm run type-check       # tsc --noEmit
 npm run lint             # ESLint
 npm run version:check    # the 5 files carrying the app version agree
 npm run docs:validate    # every path/link in documentation/ resolves
-npm run test:maestro:smoke   # the one E2E flow CI requires: install, launch, screenshot
+npm run test:maestro:smoke   # the one E2E flow CI requires: install, launch, the login screen renders
 ```
 
 All of these run in CI on each pull request; the smoke flow runs after the native build,
-which a docs-only PR skips. Every check that can be required also runs on `merge_group`,
+which a docs-only PR skips. CI builds the release-type `e2e` EAS profile for it, because a
+development client carries no JavaScript and only ever showed Expo's launcher. The fuller
+flows (`E2E Full`, on the `full-e2e` label) sign in as a seeded cloud-dev user from two
+secrets; what each proves is in the Testing Guide. Every check that can be required also runs on `merge_group`,
 so `dev` can sit behind a merge queue without touching the workflows. PR-Agent is the one
 that cannot: it triggers on open and on comments, so it stays advisory.
 The coverage floor is a ratchet at 20%: it only moves up, by hand.
@@ -116,5 +120,6 @@ The coverage floor is a ratchet at 20%: it only moves up, by hand.
 | Device flows | `documentation/onboarding/05-DEVICE-FLOWS.md`, `06-BLE-CONNECTIONS.md` |
 | Offline/sync | `documentation/onboarding/03-DATA-AND-SYNC.md` |
 | Sign-in, sessions, Google sign-in and its setup | `documentation/resources/Authentication-Implementation-Guide.md` |
+| E2E flows, the EAS profile CI builds and why, how to read a failed run | `documentation/resources/Testing-Guide.md`, "Maestro E2E Testing" |
 | Developer settings, Dev Build Info, first-run tutorial | `documentation/resources/Developer-Settings.md` |
 | How the code got this way | `documentation/development reports/` |

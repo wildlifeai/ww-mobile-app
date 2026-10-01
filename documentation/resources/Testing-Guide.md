@@ -8,7 +8,7 @@
 |------|------|----------|---------|
 | Unit | Jest + RNTL | `src/**/__tests__/*.test.ts` | `npm test` |
 | Integration/BDD | Jest + custom helpers | `tests/integration/**/*.bdd.test.tsx` | `npm test -- bdd` |
-| E2E | Maestro | `tests/maestro/smoke/` required in CI, the rest on the `full-e2e` label | `npm run test:maestro:smoke`, `npm run test:maestro` |
+| E2E | Maestro | `tests/maestro/smoke/` required in CI, the flows in `tests/maestro/config.yaml` on the `full-e2e` label | `npm run test:maestro:smoke`, `npm run test:maestro` |
 
 ## Running Tests
 
@@ -18,7 +18,7 @@ npm test -- --watch         # Watch mode
 npm test -- --coverage      # Coverage report
 npm test -- Login.test.tsx  # Single file
 npm run test:maestro:smoke  # the one E2E flow CI requires (requires device)
-npm run test:maestro        # every E2E flow (requires device)
+npm run test:maestro        # every E2E flow (requires device and -e E2E_TEST_EMAIL/-e E2E_TEST_PASSWORD)
 npm run lint                # ESLint
 npm run type-check          # TypeScript
 ```
@@ -104,52 +104,94 @@ Helpers: `tests/setup/helpers/bdd.ts`
 
 ## Maestro E2E Testing
 
-[Maestro](https://maestro.mobile.dev/) provides declarative YAML-based E2E testing against a real device or emulator.
+[Maestro](https://maestro.mobile.dev/) runs declarative YAML flows against a real device or
+emulator. The flows live in `tests/maestro/`.
 
-**Version**: `maestro` v2.1.1 (devDependency)
-**Requires**: Java 17+, ADB, connected Android device or emulator
+**Install**: the Maestro CLI is not an npm package. `curl -Ls "https://get.maestro.mobile.dev" | bash`
+is what CI runs; `./scripts/install-maestro-wsl2.sh` does the same on WSL2 with the JDK. The npm
+package called `maestro` is an unrelated AWS Step Functions tool (`maestro-framework`). It sat in
+`devDependencies` until October 2026, where it shadowed the real CLI on every `npm run test:maestro*`
+and its shell postinstall aborted `npm install` on Windows.
+
+**Requires**: Java 17+, `adb`, a connected Android device or emulator, and for every flow but the
+smoke an account on the Supabase instance the build talks to (below).
 
 ### Quick Start
 
 ```bash
-adb devices                 # 1. Verify device connected
-npm run test:maestro:smoke  # 2. What CI requires: install, launch, screenshot
-npm run test:maestro        # 3. Every flow
-npm run test:maestro:auth   # 4. Auth flow only
-maestro studio tests/maestro/auth-workflow.yaml  # 5. Interactive debug
+adb devices                   # 1. A device is connected
+npm run test:maestro:smoke    # 2. What CI requires: install, launch, the login screen renders
+npm run test:maestro -- -e E2E_TEST_EMAIL=... -e E2E_TEST_PASSWORD=...   # 3. Every flow
+npm run test:maestro:auth -- -e E2E_TEST_EMAIL=... -e E2E_TEST_PASSWORD=...
+maestro studio                # 4. Browse the live screen's ids and texts
 ```
 
-### What CI runs, and why the split
+The npm scripts pass `APP_ID=com.wildlife.wildlifewatcher.expo`, the package of a local debug
+build. Against a release-type build (an EAS `preview`, `staging` or `e2e` APK) run `maestro test`
+yourself with `-e APP_ID=com.wildlife.wildlifewatcher`.
 
-`E2E Smoke` runs after every native build and is a required check. It is one flow,
-[`smoke/app-startup.yaml`](../../tests/maestro/smoke/app-startup.yaml): install the APK the
-same run built, launch it, take a screenshot. It asserts no screen content on purpose, because
-a required check must not fail for a test id nobody has verified.
+### The account the flows use
 
-`E2E Full` runs every flow, only when the PR carries the `full-e2e` label or the workflow is
-dispatched by hand, and is advisory. Both jobs write a junit report and **fail if it holds no
-test cases**. That guard exists because until 21 September 2026 the E2E job reported success on
-every run while Maestro ran nothing: four of the five flows named a package that was never
-installed, `auth-workflow.yaml` had no `appId` at all, and run 35493842313 shows an empty
-`~/.maestro/tests/` under a green tick. The fuller flows have never passed against real
-screens and stay advisory until one does.
+Every flow but the smoke signs in as `E2E_TEST_EMAIL` / `E2E_TEST_PASSWORD`, passed with `-e`.
+Cloud-dev is wiped and reseeded by every ww-backend dev deploy, so the account has to be one the
+backend seed creates ([Role-Based Test Accounts](#role-based-test-accounts)), and one with a single
+role in its organisation: the seed gives some users two roles in one scope (ww-backend #248,
+app side #375), which no flow should depend on. The project flows need a user who may create
+projects in their organisation. In CI the two values are the `E2E_TEST_EMAIL` and
+`E2E_TEST_PASSWORD` secrets of the `development` GitHub environment. Never write the password
+into a flow, a commit or an issue; `scripts/ci-maestro-output.sh` redacts it from the artifact,
+because Maestro writes each `inputText`'s resolved text into its command log and the artifact of
+a public repository is downloadable by anyone signed in to GitHub.
 
-Every flow takes its package from the run, as `appId: ${APP_ID}`. A PR into main builds the
-release-type `staging` profile, which installs as `com.wildlife.wildlifewatcher`, so both jobs
-pass that, and the debug package `com.wildlife.wildlifewatcher.expo` otherwise; the
-`test:maestro` scripts pass the debug one. A flow with a fixed package fails on the release PR,
-as the smoke flow did on #366, so a new flow uses `${APP_ID}` too.
+### What CI runs, and why
+
+The `native-build-validation.yml` workflow builds the APK the flows run against **locally on the
+runner** with `eas build --local`, from the `e2e` profile in `eas.json` on a pull request into
+`dev` or a `workflow_dispatch`, and from `staging` on a pull request into `main`. Both are
+release-type: the APK carries its JavaScript bundle and installs as
+`com.wildlife.wildlifewatcher`. Until October 2026 the dev build was the `ci` profile, a
+**development client**, which carries no bundle: with no Metro server on the runner every run
+stopped at Expo's "Development servers" launcher (run 36836146016), so the required check only
+proved that the native launcher opened. The `e2e` profile is `preview` with `buildType: apk`,
+and reads `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` from the workflow's
+`development` environment secrets, the names `src/config/environments.ts` reads.
+
+The APK is cached by profile, Expo fingerprint and a hash of `package-lock.json`, `app.config.ts`,
+`eas.json` and `patches/`, so a run that changes only flows or the workflow restores it instead
+of building for 20 to 27 minutes. Caches are scoped per ref: the first dispatch on a branch
+builds, later ones should not. Check the "Restore cached APK" step rather than assuming.
+
+Two jobs run the flows on an API 33 x86_64 emulator, through `scripts/ci-maestro.sh`:
+
+- `E2E Smoke`, **required**. One flow, [`smoke/app-startup.yaml`](../../tests/maestro/smoke/app-startup.yaml):
+  install, launch, and the login screen's `email-input` and `login-button` render within 90 s.
+  It asserts no more than that so that a required check never fails for an unverified id.
+- `E2E Full`, advisory. Every flow [`config.yaml`](../../tests/maestro/config.yaml) lists, signed
+  in as the E2E account. Runs on the `full-e2e` label or by hand (`gh workflow run
+  native-build-validation.yml --ref <branch>`); never in the merge queue, which has no labels.
+
+Both write a junit report and **fail if it holds no test cases**, because until 21 September
+2026 the E2E job reported success on every run while Maestro ran nothing (run 35493842313: an
+empty `~/.maestro/tests/` under a green tick). Both then print Maestro's output into the job log
+(`scripts/ci-maestro-output.sh`): the report, a compact view of every screen hierarchy (resource
+id, text, accessibility text, bounds), the tail of each command log, and the app's logcat. Read
+the hierarchy there to find a real id before changing a selector; the `maestro-smoke` and
+`maestro-full` artifacts hold the same files plus the screenshots.
 
 ### Existing Test Flows
 
-| File | Purpose | Status |
-|------|---------|--------|
-| `tests/maestro/smoke/app-startup.yaml` | Install, launch, screenshot. **The required CI check** | ✅ Passes |
-| `tests/maestro/auth-workflow.yaml` | RBAC login flows for all 3 roles + multi-org switching | ⚠️ Never executed before 21 Sep 2026 (had no `appId`); some assertions commented out; advisory |
-| `tests/maestro/project-crud-workflow.yaml` | Create, read, update, delete project flow | ⚠️ Never executed (wrong `appId` until 21 Sep 2026); uses text selectors; advisory |
-| `tests/maestro/offline/complete-offline-workflow.yaml` | Full offline sync workflow | ⚠️ Never executed (wrong `appId` until 21 Sep 2026); advisory |
-| `tests/maestro/offline/database-operations.yaml` | Offline database CRUD operations | ⚠️ Never executed (wrong `appId` until 21 Sep 2026); advisory |
-| `tests/maestro/offline/setup-test-user.yaml` | Test user provisioning for offline tests | ⚠️ Never executed (wrong `appId` until 21 Sep 2026); advisory |
+| File | Proves | Status |
+|------|--------|--------|
+| `tests/maestro/smoke/app-startup.yaml` | The APK installs, launches, and the bundle renders the login screen. **The required check** | See the PR that landed it for the run |
+| `tests/maestro/auth-workflow.yaml` | A wrong password is refused with "Login Failed"; the right one reaches the home screen and the project list; sign out returns to the login screen | Advisory, E2E Full |
+| `tests/maestro/project-crud-workflow.yaml` | Create a project with a unique name, see it listed, rename it, archive it (the app's delete), see it gone | Advisory, E2E Full |
+| `tests/maestro/offline/complete-offline-workflow.yaml` | A cold start in airplane mode stays signed in (#310), shows the offline indicator, and lists projects from the local database | Advisory, E2E Full |
+| `tests/maestro/offline/database-operations.yaml` | A project created in airplane mode is listed at once and survives the network returning and a pull | Advisory, E2E Full |
+| `tests/maestro/offline/setup-test-user.yaml` | Nothing. Superseded by `subflows/sign-in.yaml`, not in `config.yaml`, kept until deleted | Not run |
+| `tests/maestro/subflows/*.yaml` | Subflows: sign in, open the New Project form, archive a project by name. Not flows | Run via `runFlow` only |
+
+The status column names what each flow proves; which runs passed is in the development report
+that landed them, [`2026-10-02_e2e-real-screens`](../development%20reports/2026-10-02_e2e-real-screens/README.md).
 
 ### npm Scripts
 
@@ -159,6 +201,7 @@ as the smoke flow did on #366, so a new flow uses `${APP_ID}` too.
   "test:maestro:smoke": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/smoke/",
   "test:maestro:full": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/",
   "test:maestro:auth": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/auth-workflow.yaml",
+  "test:maestro:crud": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/project-crud-workflow.yaml",
   "test:maestro:offline": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/offline/complete-offline-workflow.yaml"
 }
 ```
@@ -168,7 +211,7 @@ as the smoke flow did on #366, so a new flow uses `${APP_ID}` too.
 **Option A: Direct Device (Simplest)**
 ```bash
 adb devices   # Should show your device
-npm run test:maestro:auth
+npm run test:maestro:smoke
 ```
 
 **Option B: Android Emulator**
@@ -191,55 +234,36 @@ adb devices
 
 ### Writing E2E Tests
 
-**Use testIDs (not text selectors):**
-```yaml
-# ❌ Fragile — breaks with text changes
-- tapOn: "Login"
-
-# ✅ Stable — tied to component testID prop
-- tapOn:
-    id: "login-button"
-```
-
-Add `testID` props in components:
-```tsx
-<TextInput testID="email-input" />
-<Pressable testID="login-button" />
-```
-
-**Wait for elements:**
-```yaml
-- waitForVisible: "Submit"
-- tapOn: "Submit"
-```
-
-**Clean state between tests:**
-```yaml
-- launchApp:
-    clearState: true
-```
-
-**Environment variables:**
-```bash
-maestro test --env TEST_USER_EMAIL=admin@example.com tests/maestro/
-```
-```yaml
-- inputText: ${TEST_USER_EMAIL}
-```
-
-### Maestro Installation
-
-Maestro is already in `devDependencies`. For the CLI tool:
-
-```bash
-curl -Ls "https://get.maestro.mobile.dev" | bash
-```
-
-Or use the project's WSL2 install script: `./scripts/install-maestro-wsl2.sh`
+- **Name the package as `appId: ${APP_ID}`**, never a fixed one. CI installs the release package,
+  a local debug build the `.expo` one; a fixed `.expo` failed the release PR #366.
+- **Select by `testID`, not text.** `grep -rn 'testID=' src` lists what exists; add one in `src/`
+  when a screen has none. Text changes, ids do not, and a text match is exact.
+  ```yaml
+  - tapOn:
+      id: "login-button"
+  ```
+- **Start from `subflows/sign-in.yaml`** (`launchApp` with `clearState` and every permission
+  granted, sign in, skip the tutorial, wait for the bottom tabs). `AndroidPermissionsProvider`
+  renders nothing else until Bluetooth and location are granted, and an explicit sign-in opens
+  the tutorial before the home screen.
+- **Wait, do not assert, after anything asynchronous.** `extendedWaitUntil` with a generous
+  `timeout`: a cold start on a CI emulator takes tens of seconds, and the list screens wait on
+  the first sync.
+- **Create what you need with a unique name and archive it at the end**, as the CRUD flow does
+  with `evalScript: ${output.projectName = 'E2E ' + Date.now()}`, so a failed run does not
+  collide with the next one and cloud-dev stays clean until the next reseed.
+- **A new top-level flow runs by itself; a new subfolder or subflow needs `config.yaml`.**
+  Maestro ignores subfolders unless the config's `flows:` globs name them, and a subflow is any
+  file no glob matches.
+- **Maestro cannot shell out.** `runScript` runs JavaScript in Maestro's own sandbox with no
+  `adb`, no `Android.shell`. Airplane mode is a command (`setAirplaneMode: enabled`, Android
+  only); anything else outside the app belongs in the workflow, before Maestro starts.
+- **Scroll to a button near the bottom of a form** with `scrollUntilVisible` before tapping it;
+  `hideKeyboard` after typing, or the keyboard covers it.
 
 ### Maestro Cloud (Optional)
 
-100 free tests/month — useful for CI/CD without device setup:
+100 free tests a month, useful for CI/CD without device setup:
 ```bash
 maestro login
 maestro cloud tests/maestro/auth-workflow.yaml
@@ -253,15 +277,17 @@ maestro cloud tests/maestro/auth-workflow.yaml
 | Maestro can't find device | Verify `adb devices` first; try `maestro test --device <id>` |
 | `maestro: command not found` | `source ~/.bashrc` or reinstall via curl |
 | Java version error | Install Java 17+: `sudo apt install -y openjdk-17-jdk` |
-| "Element not found" | Add `waitForVisible` before `tapOn`; use testID instead of text |
-| Flaky tests | Use `launchApp: clearState: true`; disable animations |
+| "Element not found" | Read the hierarchy (`maestro studio`, or the CI log's compact view); `extendedWaitUntil` before `tapOn`; use a testID |
+| Stuck on "Please enable Bluetooth" | The app refuses to run with the adapter off: `adb shell svc bluetooth enable`, which `scripts/ci-maestro.sh` does |
+| Login never happens | `E2E_TEST_EMAIL` / `E2E_TEST_PASSWORD` not passed, or not a seeded user since the last cloud-dev reseed |
+| Flaky tests | `launchApp` with `clearState: true`; disable animations |
 
 ---
 
 ## Testing offline by hand (Android)
 
-The Maestro offline flows have never run, so offline behaviour is checked on a phone, with a
-debug build over USB. Four things decide whether the test means anything:
+The Maestro offline flows cover a cold start in airplane mode and one offline write. Everything
+else offline is checked on a phone, with a debug build over USB. Four things decide whether the test means anything:
 
 1. **Airplane mode is not offline.** Android turns Wi-Fi back on near a remembered network. Turn
    off "Turn on Wi-Fi automatically", keep Bluetooth on for the camera, and confirm before every
