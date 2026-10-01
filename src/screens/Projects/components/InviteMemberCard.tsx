@@ -82,11 +82,12 @@ export const InviteMemberCard: React.FC<Props> = ({ projectId, onInviteSent, sty
 					label="Email Address"
 					value={inviteEmail}
 					onChange={setInviteEmail}
-					keyboardType="email-address"
+					// Someone else's address, not a sign-in, so out of autofill (#363).
+					// The plain keyboard is part of it: on a Pixel, Android still asked
+					// Google for saved logins on an email-type field marked "no"
+					keyboardType="default"
 					autoCapitalize="none"
 					autoCorrect={false}
-					// Someone else's address, not a sign-in: without these Android
-					// offers the phone's saved logins here (#363)
 					autoComplete="off"
 					importantForAutofill="no"
 					textContentType="none"

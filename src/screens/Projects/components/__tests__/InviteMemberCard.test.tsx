@@ -86,6 +86,8 @@ describe("InviteMemberCard (#308)", () => {
 		expect(field.props.autoComplete).toBe("off")
 		expect(field.props.importantForAutofill).toBe("no")
 		expect(field.props.textContentType).toBe("none")
+		// An email-type field drew the saved logins on a Pixel even when marked "no"
+		expect(field.props.keyboardType).toBe("default")
 	})
 
 	it("explains a second invitation to the same address", async () => {
