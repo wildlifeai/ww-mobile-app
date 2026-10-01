@@ -4,11 +4,12 @@ import { unstable_batchedUpdates } from 'react-native'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { log, logError, logWarn } from '../../../utils/logger'
 import { bleEventBus, BleEvent } from '../../../ble/protocol/eventBus'
-import { commandRegistry } from '../../../ble/protocol/commandRegistry'
+import { commandRegistry, isMdRefusal } from '../../../ble/protocol/commandRegistry'
 import { bleTransport } from '../../../ble/protocol/bleTransportController'
 import { createBleSession } from '../../../ble/session/createBleSession'
 import { flashHold } from '../../../ble/session/flashHold'
 import { keepAwake } from '../../../ble/session/keepAwake'
+import { mdIntervalHold } from '../../../ble/session/mdIntervalHold'
 import { OP_PARAMETER } from '../../../hooks/useDeviceSettings'
 
 /** Maximum number of frames per test run. */
@@ -32,10 +33,14 @@ const INACTIVE_CHAR = '·'
 const EMPTY_GRID = Array(16).fill(INACTIVE_CHAR.repeat(16)).join('\n')
 
 /**
- * Undo what a test run set up: op18 back to 0, then the op8 and flash holds.
- * Each step runs whether or not the one before it landed, and a hold that
- * cannot be written back stays owed in keepAwake or flashHold for the next
- * flow on that device (#271, #320). Every way out of a test ends here.
+ * Undo what a test run set up: op18 back to 0, then the op11, op8 and flash
+ * holds. Each step runs whether or not the one before it landed, and a hold
+ * that cannot be written back stays owed in its module for the next flow on
+ * that device (#271, #320). Every way out of a test ends here.
+ *
+ * op11 goes first of the holds, and an op11 restore left owed by a dropped
+ * link or a lost reply is paid here too: raised on a stopped camera, op11
+ * turns motion capture back on in the field (#274).
  */
 const cleanUpAfterTest = (device: ExtendedPeripheral, why: string): Promise<void> => {
     const session = createBleSession(device)
@@ -44,6 +49,8 @@ const cleanUpAfterTest = (device: ExtendedPeripheral, why: string): Promise<void
             () => log(`[MotionDetectionStream] TEST_MODE_BITS reset to 0 (${why})`),
             (e: any) => logWarn(`[MotionDetectionStream] Failed to reset test mode bits (${why}):`, e)
         )
+        .then(() => mdIntervalHold.release(session, device.id))
+        .then(() => mdIntervalHold.restorePending(session, device.id))
         .then(() => keepAwake.release(session, device.id))
         .then(() => flashHold.release(session, device.id))
         .catch((e: any) => logWarn(`[MotionDetectionStream] Failed to release the test holds (${why}):`, e))
@@ -56,6 +63,17 @@ export interface FrameSnapshot {
     gridString: string
     blockCount: number
 }
+
+/**
+ * What became of the sensitivity a test asked for, when the card should say
+ * so. `refused`: the camera build rejected `AI md`, so every level detects the
+ * same on it. `unconfirmed`: no answer came, so the level may or may not have
+ * taken. Nothing to say when op17 already held the level or the camera
+ * confirmed it (#272).
+ */
+export type SensitivityNote = { kind: 'refused' | 'unconfirmed'; message: string } | null
+
+const SENSITIVITY_NAMES = ['Off', 'Low', 'Medium', 'High']
 
 export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOptions) => {
     // 16x16 grid initialized to false
@@ -70,6 +88,7 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
     // Pipeline status — shows the user what the system is doing at each stage
     const [statusMessage, setStatusMessage] = useState<string>('')
     const [errorMessage, setErrorMessage] = useState<string>('')
+    const [sensitivityNote, setSensitivityNote] = useState<SensitivityNote>(null)
 
     // Frame history — ephemeral, cleared on new test / unmount
     const [frameHistory, setFrameHistory] = useState<FrameSnapshot[]>([])
@@ -87,6 +106,13 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
     // Whether we're actively processing incoming MD data.
     // Set to false on stopTest() so late-arriving frames are ignored.
     const activeRef = useRef<boolean>(false)
+
+    // Whether this test's own capture has started ("About to capture N
+    // images"). Until then a grid or a "Captured" is not ours: with op11 held
+    // at the test rate through the setup sleep, a motion wake can take and
+    // report a capture of its own first, and its "Captured 1 images" used to
+    // end the test and release the holds under the real capture.
+    const captureStartedRef = useRef<boolean>(false)
 
     // Pending frames accumulated during capture — committed to state on completion.
     // This avoids O(N²) array spreads and prevents N re-renders of the MiniGrid list.
@@ -109,6 +135,8 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
             if (!activeRef.current) return; // Ignore frames after test stopped
             const msg = event.line;
 
+            if (/About to capture\s+\d+\s+images/i.test(msg)) captureStartedRef.current = true
+
             // Detect Wake (MD) — HM0360 internal threshold exceeded
             if (/Wake \(MD\)/i.test(msg) || /^MD \d{4}-/i.test(msg.trim())) {
                 log('[MotionDetectionStream] Motion threshold exceeded!')
@@ -119,6 +147,10 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
 
             // Detect natural completion: "Captured N images"
             if (/Captured\s+\d+\s+images/i.test(msg)) {
+                if (!captureStartedRef.current) {
+                    log(`[MotionDetectionStream] Ignored "${msg.trim()}": it came before this test's capture started`)
+                    return
+                }
                 log('[MotionDetectionStream] Firmware capture sequence completed naturally.')
                 activeRef.current = false
                 // Commit all pending frames to state in one batch
@@ -150,6 +182,10 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                 setStatusMessage('')
                 setErrorMessage('Camera system not enabled. Go to Device Settings and reset the Operational Parameters, then try again.')
                 bleTransport.clearAll()
+                // The capture loop reads this as a stop and leaves the cleanup
+                // to whoever stopped it, so it is done here: no "Captured" will
+                // come, and the holds would otherwise stay on the device (#274).
+                if (device) cleanUpAfterTest(device, 'camera not enabled')
                 return
             }
             if (/No model found/i.test(msg) && /NN/i.test(msg)) {
@@ -161,7 +197,7 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
             }
 
             // Detect the start of a motion frame
-            if (msg.includes('HM0360 motion')) {
+            if (msg.includes('HM0360 motion') && captureStartedRef.current) {
                 hexBufferRef.current = [] // Reset buffer for new frame
                 expectingHexRef.current = true
                 
@@ -241,7 +277,8 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
 
     // Leaving the screen mid-test ends the test. The listener above goes with
     // the screen, so "Captured" would never be seen, and op18 = 8 and the op8
-    // hold would stay behind with nothing left to clean them up (#271).
+    // and op11 holds would stay behind with nothing left to clean them up
+    // (#271, #274).
     const deviceRef = useRef(device)
     deviceRef.current = device
     useEffect(() => () => {
@@ -280,7 +317,9 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
      * Start the motion detection test.
      *
      * Configures device OPs (test bits, flash, brightness) via session,
-     * sets MD sensitivity, then fires a capture command.
+     * holds op8 and op11 for the run, sets MD sensitivity when op17 differs,
+     * lets the device sleep so the HM0360 takes the test's rate, then fires a
+     * capture command.
      * The device captures `captureCount` frames at `intervalMs` intervals,
      * streaming MD grid data over BLE. No JPEG files are saved
      * (TEST_BIT_SKIP_FILE_CREATION is enabled).
@@ -306,12 +345,15 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
         expectingHexRef.current = false
         frameIndexRef.current = 0
         activeRef.current = true
+        captureStartedRef.current = false
         setMdGrid(EMPTY_GRID)
         setMdBlocksCount(0)
         setFrameCount(0)
         setFrameHistory([])
         pendingFramesRef.current = []
         blockCountRef.current = 0
+        // A refusal is the camera build's, so it stands for the whole visit.
+        setSensitivityNote(prev => (prev?.kind === 'refused' ? prev : null))
 
         try {
             log(`[MotionDetectionStream] Starting MD test: sensitivity=${sensitivityLevel}, interval=${intervalMs}ms`)
@@ -383,6 +425,23 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                 await keepAwake.acquire(session, device.id, requiredDpd)
             }
 
+            // 1e. Run the HM0360 at the test's rate (#274). The grid is its own
+            // detector, and its rate comes from op11 when the device goes to
+            // sleep, so without this the test inherits whatever the device
+            // last slept with: after Stop Monitoring or a reset, one frame
+            // every two seconds. Held through mdIntervalHold, like op8: op11
+            // is a field setting, and left raised on a stopped camera it turns
+            // motion capture back on. Not fatal: the test still runs, at the
+            // inherited rate.
+            let rateHeld = false
+            if (currentOps) {
+                rateHeld = await mdIntervalHold.acquire(session, device.id, intervalMs)
+                    .catch((e: unknown) => {
+                        logWarn('[MotionDetectionStream] Could not hold the detector at the test rate:', e)
+                        return false
+                    })
+            }
+
             // Check before firing md
             if (!activeRef.current) {
                 log('[MotionDetectionStream] Start aborted — stop was called during setup.')
@@ -392,16 +451,61 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
             }
 
             // 2. Set MD sensitivity via session.
+            //    Only when op17 does not already hold it: the level is saved on
+            //    the card, so a repeat run has nothing to write, and today no
+            //    `md` is ever acknowledged (the nRF drops the HM0360 build's
+            //    reply, ww-hardware #52; the RP3 build refuses it, Seeed #211).
+            //    A refusal or a lost reply is shown on the card, not swallowed:
+            //    the grid is read as evidence for the level (#272).
             if (sensitivityLevel !== undefined && sensitivityLevel > 0) {
-                setStatusMessage(`Setting sensitivity to ${sensitivityLevel}…`)
-                log(`[MotionDetectionStream] Setting MD sensitivity to ${sensitivityLevel}`)
-                await session.execute(() => commandRegistry.md(sensitivityLevel))
-                    .catch(() => log('[MotionDetectionStream] md command failed (non-critical)'))
+                const currentSensitivity = currentOps ? parseInt(currentOps[OP_PARAMETER.MD_SENSITIVITY] ?? '', 10) : NaN
+                if (currentSensitivity === sensitivityLevel) {
+                    log(`[MotionDetectionStream] MD sensitivity already ${sensitivityLevel}, not sending md`)
+                } else {
+                    const levelName = SENSITIVITY_NAMES[sensitivityLevel] ?? String(sensitivityLevel)
+                    setStatusMessage(`Setting sensitivity to ${levelName}…`)
+                    log(`[MotionDetectionStream] Setting MD sensitivity to ${sensitivityLevel} (op17 was ${isNaN(currentSensitivity) ? 'unknown' : currentSensitivity})`)
+                    await session.execute(() => commandRegistry.md(sensitivityLevel))
+                        .catch((e: unknown) => {
+                            const reason = e instanceof Error ? e.message : String(e)
+                            if (isMdRefusal(e)) {
+                                logWarn(`[MotionDetectionStream] md refused by this camera build: ${reason}`)
+                                setSensitivityNote({
+                                    kind: 'refused',
+                                    message: 'This camera build does not take a sensitivity: Low, Med and High detect the same on it.',
+                                })
+                            } else {
+                                log(`[MotionDetectionStream] md not confirmed (non-critical): ${reason}`)
+                                setSensitivityNote({
+                                    kind: 'unconfirmed',
+                                    message: `The camera did not confirm sensitivity ${levelName}, so it may not have taken.`,
+                                })
+                            }
+                        })
+                }
+            }
+
+            // 2b. Let the device sleep before the capture (#274). The HM0360
+            //     takes its rate from op11 on the way into Deep Power Down, and
+            //     op8 and the flash settings above apply at the next wake, so a
+            //     capture sent into this awake window would run with none of
+            //     them. `md`'s 5 s wait used to buy that sleep; since #272 it is
+            //     often not sent. Nothing may be sent while waiting, since every
+            //     command restarts the device's timer. Instant when the device
+            //     is already asleep. The awake window can run on a previous
+            //     run's hold, so the wait allows this run's hold and 2 s more;
+            //     past that the capture goes anyway.
+            if (rateHeld) {
+                setStatusMessage('Letting the camera sleep so the detector takes the test rate…')
+                const slept = await session.waitForSleep(Math.max(5000, requiredDpd + 2000))
+                if (!slept) {
+                    logWarn('[MotionDetectionStream] No Sleep before the capture; the detector may still run at its previous rate')
+                }
             }
 
             // 3. Fire the capture command with retry logic.
-            //    After setops + md, the device may enter DPD (1000ms inactivity).
-            //    The capture command wakes it; we wait for 'About to capture'
+            //    The device is asleep by now, or the wait above gave up. The
+            //    capture command wakes it; we wait for 'About to capture'
             //    confirmation. If not received within 10s, retry up to 3 more times.
             const MAX_CAPTURE_ATTEMPTS = 4
             let captureConfirmed = false
@@ -490,7 +594,7 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
      * frame data — sending commands during this flood risks a BLE disconnect.
      * Instead, we just stop processing on the app side. The device will
      * finish its remaining frames silently and go to DPD on its own.
-     * Test mode bits are cleaned up at the START of the next test.
+     * op18 and the holds are put back now, by cleanUpAfterTest.
      */
     const stopTest = useCallback(() => {
         activeRef.current = false
@@ -520,7 +624,8 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
         frameHistory,
         statusMessage,
         errorMessage,
+        sensitivityNote,
         clearTestFinished: () => setTestFinished(false),
         clearError: () => setErrorMessage(''),
-    }), [mdGrid, isTesting, testFinished, startTest, stopTest, mdBlocksCount, motionDetected, frameCount, frameHistory, statusMessage, errorMessage])
+    }), [mdGrid, isTesting, testFinished, startTest, stopTest, mdBlocksCount, motionDetected, frameCount, frameHistory, statusMessage, errorMessage, sensitivityNote])
 }

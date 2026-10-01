@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { createBleSession } from '../ble/session/createBleSession'
+import { mdIntervalHold } from '../ble/session/mdIntervalHold'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
 import { OP_PARAMETER } from './useDeviceSettings'
 import { log, logError, logWarn } from '../utils/logger'
@@ -205,6 +206,13 @@ export const useDeploymentConfiguration = () => {
         const session = createBleSession(device)
 
         try {
+            // op11 is the deployment's from here. A motion test holds it at the
+            // same 1000 ms this writes, so an op11 restore a dropped test left
+            // owed could not tell the two apart and would later put a deployed
+            // camera back to 0, and a Start Monitoring card test still running
+            // would restore over this write when it ends (#274).
+            await mdIntervalHold.forget(device.id)
+
             // Transaction pre-flight: fetch ops
             const currentOps = providedOps || await session.execute(commandRegistry.getops)
 
