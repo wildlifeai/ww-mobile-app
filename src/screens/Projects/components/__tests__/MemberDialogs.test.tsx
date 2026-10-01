@@ -30,7 +30,7 @@ jest.mock("react-native-paper", () => {
 
 const me = { id: "user-me", email: "victor@ww.org" }
 const admin = {
-	id: "user-me", name: "Victor Anton (You)", email: "victor@ww.org", role: "project_admin",
+	id: "user-me", name: "Victor Anton", email: "victor@ww.org", role: "project_admin",
 	granted_at: "2026-09-01T00:00:00Z", granted_by: "user-me",
 }
 const tama = {

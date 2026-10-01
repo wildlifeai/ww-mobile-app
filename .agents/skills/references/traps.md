@@ -141,6 +141,12 @@ file is the list of things that look like an app bug and are not, and the revers
   which throws `Cannot refetch a query that has not been started yet.` Wrap a confirmation in a
   promise and await it before anything navigates, and do not refetch after a mutation whose
   `invalidatesTags` already covers the query.
+- **An email field that is not a sign-in needs `autoComplete="off"`, or Android offers the
+  phone's saved logins.** Invite Member's address field, a plain `keyboardType="email-address"`
+  input, opened Google Password Manager's saved-password sheet on every tap (#363), and picking
+  one would have invited the wrong person. It sets `autoComplete="off"`,
+  `importantForAutofill="no"` and `textContentType="none"`; do the same on any field that takes
+  someone else's address.
 
 - **A screen left in the stack under a flow keeps rendering, and the Engineer Console is
   under every flow it opens.** Until 22 September 2026 `BleConsoleOutput` rebuilt its whole

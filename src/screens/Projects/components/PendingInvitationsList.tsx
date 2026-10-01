@@ -1,18 +1,20 @@
 import React from "react"
 import { View } from "react-native"
-import { Text, Card, Chip, Divider } from "react-native-paper"
+import { Text, Card, Button, Divider } from "react-native-paper"
 import type ProjectInvitation from "../../../database/models/ProjectInvitation"
 import type { ProjectRole } from "../../../services/UserRoleService"
 
 export interface PendingInvitationsListProps {
 	pendingInvitations: ProjectInvitation[]
 	getRoleDisplayName: (role: ProjectRole) => string
+	onCancel: (invite: ProjectInvitation) => void
 	dynamicStyles: any
 }
 
 export const PendingInvitationsList: React.FC<PendingInvitationsListProps> = ({
 	pendingInvitations,
 	getRoleDisplayName,
+	onCancel,
 	dynamicStyles,
 }) => {
 	if (pendingInvitations.length === 0) return null
@@ -34,9 +36,13 @@ export const PendingInvitationsList: React.FC<PendingInvitationsListProps> = ({
 								{new Date(invite.expiresAt).toLocaleDateString()}
 							</Text>
 						</View>
-						<Chip icon="clock-outline" compact>
-							<Text>Pending</Text>
-						</Chip>
+						<Button
+							compact
+							onPress={() => onCancel(invite)}
+							accessibilityLabel={`Cancel the invitation to ${invite.inviteeEmail}`}
+						>
+							Cancel
+						</Button>
 					</Card.Content>
 				</Card>
 			))}

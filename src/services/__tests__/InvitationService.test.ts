@@ -1,4 +1,4 @@
-import InvitationService from '../InvitationService'
+import InvitationService, { describeCancelInvitationError } from '../InvitationService'
 
 const mockRpc = jest.fn()
 jest.mock('../supabase', () => ({
@@ -29,5 +29,30 @@ describe('InvitationService.sendInvitation', () => {
 		mockRpc.mockResolvedValue({ data: null, error: { code: '23505', message: 'duplicate key value violates unique constraint "idx_unique_pending_invitation"' } })
 
 		await expect(InvitationService.sendInvitation('project-1', 'tama@ww.org')).rejects.toMatchObject({ code: '23505' })
+	})
+})
+
+// #364: an admin withdraws a pending invitation through the backend function
+describe('InvitationService.cancelInvitation', () => {
+	beforeEach(() => {
+		mockRpc.mockReset().mockResolvedValue({ data: null, error: null })
+	})
+
+	it('calls cancel_project_invitation with the invitation id', async () => {
+		await InvitationService.cancelInvitation('invitation-1')
+
+		expect(mockRpc).toHaveBeenCalledWith('cancel_project_invitation', { p_invitation_id: 'invitation-1' })
+	})
+
+	it('passes a refusal on to the caller', async () => {
+		mockRpc.mockResolvedValue({ data: null, error: { code: 'P0002', message: 'Invitation not found or expired' } })
+
+		await expect(InvitationService.cancelInvitation('invitation-1')).rejects.toMatchObject({ code: 'P0002' })
+	})
+
+	it('says why, by the code the function raises', () => {
+		expect(describeCancelInvitationError({ code: 'P0002' })).toMatch(/already been accepted, declined or had expired/)
+		expect(describeCancelInvitationError({ code: '42501' })).toMatch(/Only project admins/)
+		expect(describeCancelInvitationError({ code: '' })).toMatch(/Could not reach the server/)
 	})
 })

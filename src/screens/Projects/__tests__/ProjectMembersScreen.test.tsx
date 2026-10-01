@@ -21,7 +21,11 @@ jest.mock("../../../services/UserRoleService", () => ({ getProjectMembers: jest.
 
 jest.mock("../../../services/InvitationService", () => ({
 	__esModule: true,
-	default: { getProjectPendingInvitations: jest.fn(() => Promise.resolve([])) },
+	default: {
+		getProjectPendingInvitations: jest.fn(() => Promise.resolve([])),
+		cancelInvitation: jest.fn(() => Promise.resolve()),
+	},
+	describeCancelInvitationError: () => "It had already been accepted, declined or had expired.",
 }))
 
 // The children use paper components the global mock does not have; the list
@@ -31,7 +35,12 @@ jest.mock("../components/MemberListItem", () => ({
 		require("react").createElement(require("react-native").Text, { onPress: () => handleMenuRemove(member) }, member.name),
 }))
 jest.mock("../components/InviteMemberCard", () => ({ InviteMemberCard: () => null }))
-jest.mock("../components/PendingInvitationsList", () => ({ PendingInvitationsList: () => null }))
+// Each pending invitation as its Cancel button
+jest.mock("../components/PendingInvitationsList", () => ({
+	PendingInvitationsList: ({ pendingInvitations, onCancel }: any) =>
+		pendingInvitations.map((invite: any) =>
+			require("react").createElement(require("react-native").Text, { key: invite.id, onPress: () => onCancel(invite) }, `Cancel ${invite.inviteeEmail}`)),
+}))
 jest.mock("../components/ChangeRoleDialog", () => ({ ChangeRoleDialog: () => null }))
 // Stands for a removal the server confirmed
 jest.mock("../components/RemoveMemberDialog", () => ({
@@ -57,7 +66,7 @@ const signedInOffline = {
 // What the local fallback returns for a project created on this phone
 const me = {
 	id: "user-me",
-	name: "Me",
+	name: "Unknown User",
 	email: "",
 	role: "project_admin",
 	granted_at: "2026-09-29T04:00:00Z",
@@ -82,7 +91,8 @@ describe("ProjectMembersScreen offline", () => {
 
 		renderWithProviders(<ProjectMembersScreen />, { preloadedState: signedInOffline })
 
-		expect(await screen.findByText("victor@ww.org (You)")).toBeTruthy()
+		// The session email, plain: the row adds "(You)" (#362)
+		expect(await screen.findByText("victor@ww.org")).toBeTruthy()
 		expect(alert).not.toHaveBeenCalled()
 		// Pending invitations live only on the server
 		expect(InvitationService.getProjectPendingInvitations).not.toHaveBeenCalled()
@@ -130,5 +140,64 @@ describe("ProjectMembersScreen after a member change (#335)", () => {
 		await waitFor(() => expect(screen.queryByText("Tama Te Rangi")).toBeNull(), { timeout: 5000 })
 		expect(screen.queryByText("Remove Tama Te Rangi?")).toBeNull()
 		expect(getProjectMembers).toHaveBeenCalledTimes(2)
+	})
+})
+
+// #364: an admin withdraws a pending invitation
+describe("ProjectMembersScreen cancelling an invitation", () => {
+	const invitation = {
+		id: "invitation-1", remoteId: "invitation-1", inviteeEmail: "bench356@ww.org",
+		role: "project_member", expiresAt: "2026-10-31T00:00:00Z",
+	}
+	let alert: jest.SpyInstance
+
+	beforeEach(() => {
+		jest.useRealTimers()
+		alert = jest.spyOn(Alert, "alert").mockImplementation(() => {})
+		;(getProjectMembers as jest.Mock).mockResolvedValue([me])
+		;(InvitationService.getProjectPendingInvitations as jest.Mock).mockResolvedValue([invitation])
+		;(InvitationService.cancelInvitation as jest.Mock).mockClear().mockResolvedValue(undefined)
+		__setNetworkState({ isConnected: true })
+	})
+
+	afterEach(() => {
+		__resetNetworkState()
+	})
+
+	// The button the confirmation offers, pressed
+	const confirm = async () => {
+		await waitFor(() => expect(alert).toHaveBeenCalledWith("Cancel invitation?", expect.any(String), expect.any(Array)))
+		const buttons = alert.mock.calls.find((call) => call[0] === "Cancel invitation?")[2]
+		await buttons.find((b: any) => b.text === "Cancel invitation").onPress()
+	}
+
+	it("asks first, then cancels it and fetches the list again", async () => {
+		renderWithProviders(<ProjectMembersScreen />, { preloadedState: signedInOffline })
+		fireEvent.press(await screen.findByText("Cancel bench356@ww.org"))
+		await confirm()
+
+		expect(InvitationService.cancelInvitation).toHaveBeenCalledWith("invitation-1")
+		await waitFor(() => expect(InvitationService.getProjectPendingInvitations).toHaveBeenCalledTimes(2))
+	})
+
+	it("says why when the server refuses", async () => {
+		;(InvitationService.cancelInvitation as jest.Mock).mockRejectedValue({ code: "P0002" })
+
+		renderWithProviders(<ProjectMembersScreen />, { preloadedState: signedInOffline })
+		fireEvent.press(await screen.findByText("Cancel bench356@ww.org"))
+		await confirm()
+
+		expect(alert).toHaveBeenCalledWith("Invitation not cancelled", expect.stringContaining("already been accepted"))
+	})
+
+	it("says it needs a connection when offline, without asking or calling the server", async () => {
+		renderWithProviders(<ProjectMembersScreen />, { preloadedState: signedInOffline })
+		const button = await screen.findByText("Cancel bench356@ww.org")
+		__setNetworkState({ isConnected: false })
+		fireEvent.press(button)
+
+		await waitFor(() => expect(alert).toHaveBeenCalledWith("No connection", expect.stringContaining("needs a connection")))
+		expect(alert).not.toHaveBeenCalledWith("Cancel invitation?", expect.anything(), expect.anything())
+		expect(InvitationService.cancelInvitation).not.toHaveBeenCalled()
 	})
 })

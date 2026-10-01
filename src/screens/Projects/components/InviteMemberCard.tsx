@@ -85,6 +85,11 @@ export const InviteMemberCard: React.FC<Props> = ({ projectId, onInviteSent, sty
 					keyboardType="email-address"
 					autoCapitalize="none"
 					autoCorrect={false}
+					// Someone else's address, not a sign-in: without these Android
+					// offers the phone's saved logins here (#363)
+					autoComplete="off"
+					importantForAutofill="no"
+					textContentType="none"
 					style={styles.inviteInput}
 				/>
 				<Text variant="titleSmall" style={styles.roleLabel}>Role:</Text>
