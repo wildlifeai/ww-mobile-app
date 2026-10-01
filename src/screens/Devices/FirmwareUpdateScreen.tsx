@@ -419,7 +419,8 @@ export const FirmwareUpdateScreen = () => {
                         {!pairSource && isPreflightDone && (
                             <WWText variant="bodySmall" style={[styles.marginBottom8, { color: colors.error }]}>
                                 No firmware images available — sync the app to fetch the catalogue, or prepare the
-                                SD card from the website and reinsert it.
+                                SD card from the website, reinsert it and power cycle the camera, since a card put
+                                in while it is on is not detected until it restarts.
                             </WWText>
                         )}
                         <Button

@@ -17,7 +17,7 @@ import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { checkSdCard } from '../../../ble/workflows/checkSdCard'
 import { sleep } from '../../../utils/helpers'
 import { selfTestCache } from '../../../ble/protocol/selfTestCache'
-import { parseSelfTestBits, SelfTestBit } from '../../../utils/deviceSelfTest'
+import { parseSelfTestBits, SelfTestBit, SD_CARD_POWER_CYCLE_HINT } from '../../../utils/deviceSelfTest'
 import { useBleActions } from '../../../providers/BleEngineProvider'
 import { useDeploymentConfiguration } from '../../../hooks/useDeploymentConfiguration'
 import { useBle } from '../../../hooks/useBle'
@@ -446,7 +446,7 @@ export const useStartDeployment = ({
             Alert.alert(
                 hasSdCardError ? 'No SD Card' : hasCameraError ? 'Critical AI Processor Error' : 'AI Processor Not Responding',
                 hasSdCardError
-                    ? 'The device reports no SD card. Every image and setting a deployment writes goes to the card, so monitoring cannot start without one. Insert a FAT32 card, then reconnect.'
+                    ? `The device reports no SD card. Every image and setting a deployment writes goes to the card, so monitoring cannot start without one. ${SD_CARD_POWER_CYCLE_HINT}`
                     : hasCameraError
                         ? 'The AI processor has reported a critical camera or hardware error. Starting monitoring is blocked. Please check the camera module connections or hardware configuration.'
                         : 'The AI processor did not wake up during pre-deployment checks. The device cannot start monitoring. Please try reconnecting or check the hardware.',
@@ -878,7 +878,7 @@ export const useStartDeployment = ({
             if (bleSession) {
                 try {
                     const sdStatus = await checkSdCard(bleSession)
-                    setSdCardStatus({ total: sdStatus.totalSpaceMb, free: sdStatus.freeSpaceMb })
+                    setSdCardStatus({ total: sdStatus.totalSpaceKb, free: sdStatus.freeSpaceKb })
                     return
                 } catch (err: any) {
                     // Try to determine the exact cause from the self-test bits. The
@@ -892,7 +892,7 @@ export const useStartDeployment = ({
                         }
                         // eslint-disable-next-line no-bitwise
                         if (bits !== null && (bits & (1 << SelfTestBit.AI_NO_SD_CARD))) {
-                            Alert.alert('No SD Card Detected', 'The device reports no SD card is inserted.', [{ text: 'OK' }])
+                            Alert.alert('No SD Card Detected', `The device reports no SD card. ${SD_CARD_POWER_CYCLE_HINT}`, [{ text: 'OK' }])
                             setSdCardStatus(null)
                             return
                         }

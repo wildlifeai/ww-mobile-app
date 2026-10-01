@@ -7,6 +7,7 @@ import {
     ERROR_BITS_LINE,
     CRITICAL_AI_MASK,
     KNOWN_BITS_MASK,
+    SD_CARD_POWER_CYCLE_HINT,
     SelfTestBit,
 } from '../deviceSelfTest'
 
@@ -40,7 +41,25 @@ describe('deviceSelfTest', () => {
         expect(selfTestWarnings(0)).toEqual([])
         expect(selfTestWarnings(1 << SelfTestBit.LOW_BATTERY)).toEqual(['Low Battery detected (Bit 0)'])
         expect(selfTestWarnings((1 << SelfTestBit.AI_NO_SD_CARD) | (1 << SelfTestBit.LORAWAN_ERROR)))
-            .toEqual(['LoRaWAN Error (Bit 2)', 'Device has no SD card detected (Bit 11)'])
+            .toEqual([
+                'LoRaWAN Error (Bit 2)',
+                'Device has no SD card detected (Bit 11). Power cycle the camera after inserting or reseating a card',
+            ])
+    })
+
+    // A card put into a powered camera is never mounted, and bit 11 stays set
+    // until a power cycle, so a message that only says "insert a card and
+    // check again" describes the one thing that cannot work (#325).
+    it('tells the operator to power cycle wherever it reports a missing SD card (#325)', () => {
+        expect(SD_CARD_POWER_CYCLE_HINT).toMatch(/power cycle the camera/)
+
+        const [issue] = decodeSelfTest(1 << SelfTestBit.AI_NO_SD_CARD)
+        expect(issue.hint).toContain(SD_CARD_POWER_CYCLE_HINT)
+
+        const [warning] = selfTestWarnings(1 << SelfTestBit.AI_NO_SD_CARD)
+        expect(warning).toMatch(/power cycle/i)
+        // Start Monitoring picks its "No SD Card" blocker by these words.
+        expect(warning).toMatch(/no sd card/i)
     })
 
     it('reports a bit it does not know as an unknown issue, alongside the known ones', () => {

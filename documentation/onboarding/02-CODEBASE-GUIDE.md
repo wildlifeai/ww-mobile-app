@@ -223,7 +223,6 @@ hooks/
 ├── useEngineerConnect.ts      # Console connection management
 ├── useScanLoop.ts             # Shared 3s burst scan loop + cache flush
 ├── useDeviceSelfTest.ts       # Device health from the self-test cache (Capture Picture banner)
-├── useReconnectDevice.tsx     # Reconnection helper
 ├── useSelectDevice.tsx        # Device selection helper
 ├── useDeploymentConfiguration.ts # Capture method and capture flash → OP mapping
 ├── useDeploymentProgress.ts   # Deployment progress tracking
@@ -297,8 +296,7 @@ providers/
 ├── AppSetupProvider.tsx            # App initialisation (DB, sync, config)
 ├── BleEngineProvider.tsx           # Bluetooth engine lifecycle
 ├── ListenToBleEngineProvider.tsx   # BLE event routing
-├── AuthProvider.tsx                # Auth state + token management
-└── DeviceReconnectProvider.tsx     # Auto-reconnection
+└── AuthProvider.tsx                # Auth state + token management
 ```
 
 ### `src/database/`: WatermelonDB
