@@ -12,7 +12,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 404,
+    version: 405,
     tables: [
         tableSchema({
             name: 'account_deletion_requests',
@@ -811,6 +811,7 @@ export default appSchema({
                 { name: 'capture_method_id', type: 'number', isOptional: true, isIndexed: true },
                 { name: 'created_by', type: 'string', isOptional: true },
                 { name: 'description', type: 'string', isOptional: true },
+                { name: 'detection_threshold_pct', type: 'number' },
                 { name: 'flash_led', type: 'string' },
                 { name: 'flash_mode', type: 'string' },
                 { name: 'flash_window_minutes', type: 'number', isOptional: true },

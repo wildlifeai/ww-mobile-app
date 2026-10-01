@@ -408,3 +408,104 @@ describe('useDeploymentConfiguration burst', () => {
         })
     })
 })
+
+/**
+ * The detection threshold (op16), from the project (#342). The reset before
+ * this sets op16 to the factory 18, which is 57%, the column default, and no
+ * other step writes it, so a threshold tuned at the bench was lost at every
+ * deployment.
+ */
+describe('useDeploymentConfiguration detection threshold', () => {
+    /** A post-reset table: op16 at its factory 18 unless told otherwise. */
+    const opsAfterReset = (op16 = '18'): string[] =>
+        Array.from({ length: 37 }, (_, index) => (index === OP_PARAMETER.MODEL_THRESHOLD ? op16 : '0'))
+
+    const hook = () => renderHook(() => useDeploymentConfiguration()).result.current
+
+    const op16Lines = (lines: string[]) => lines.filter(line => line.startsWith(`AI setop ${OP_PARAMETER.MODEL_THRESHOLD} `))
+
+    it('writes op16 from the project percent', async () => {
+        const session = makeRecordingSession()
+
+        await hook().configureDetectionThreshold(session, { detection_threshold_pct: 80 }, opsAfterReset())
+
+        expect(session.lines).toEqual([`AI setop ${OP_PARAMETER.MODEL_THRESHOLD} 77`])
+    })
+
+    it('writes both ends of the range', async () => {
+        const low = makeRecordingSession()
+        await hook().configureDetectionThreshold(low, { detection_threshold_pct: 50 }, opsAfterReset())
+        expect(low.lines).toEqual([`AI setop ${OP_PARAMETER.MODEL_THRESHOLD} 0`])
+
+        const high = makeRecordingSession()
+        await hook().configureDetectionThreshold(high, { detection_threshold_pct: 99 }, opsAfterReset())
+        expect(high.lines).toEqual([`AI setop ${OP_PARAMETER.MODEL_THRESHOLD} 126`])
+    })
+
+    it('writes nothing for the default, which the reset has already left', async () => {
+        const session = makeRecordingSession()
+
+        await hook().configureDetectionThreshold(session, { detection_threshold_pct: 57 }, opsAfterReset())
+        await hook().configureDetectionThreshold(session, {}, opsAfterReset())
+
+        expect(session.lines).toEqual([])
+    })
+
+    it('skips a value the device already holds', async () => {
+        const session = makeRecordingSession()
+
+        await hook().configureDetectionThreshold(session, { detection_threshold_pct: 80 }, opsAfterReset('77'))
+
+        expect(session.lines).toEqual([])
+    })
+
+    it('puts a device off the default back on it for a default project', async () => {
+        // A table where op16 is not 18, as a caller without a reset could pass
+        const session = makeRecordingSession()
+
+        await hook().configureDetectionThreshold(session, { detection_threshold_pct: null }, opsAfterReset('64'))
+
+        expect(session.lines).toEqual([`AI setop ${OP_PARAMETER.MODEL_THRESHOLD} 18`])
+    })
+
+    it('configure writes op16 from the project, against its own copy of the table', async () => {
+        const session = makeRecordingSession()
+        ;(createBleSession as jest.Mock).mockReturnValue(session)
+        const ops = opsAfterReset()
+
+        await hook().configure({ id: 'dev' } as any, {
+            deploymentId: 'd',
+            captureMethod: 'activity',
+            detectionThreshold: { detection_threshold_pct: 90 },
+        }, ops)
+
+        expect(op16Lines(session.lines)).toEqual([`AI setop ${OP_PARAMETER.MODEL_THRESHOLD} 103`])
+        // The caller's table is left as it was
+        expect(ops[OP_PARAMETER.MODEL_THRESHOLD]).toBe('18')
+    })
+
+    it('configure skips op16 when the device already holds the project value', async () => {
+        const session = makeRecordingSession()
+        ;(createBleSession as jest.Mock).mockReturnValue(session)
+
+        await hook().configure({ id: 'dev' } as any, {
+            deploymentId: 'd',
+            captureMethod: 'activity',
+            detectionThreshold: { detection_threshold_pct: 90 },
+        }, opsAfterReset('103'))
+
+        expect(op16Lines(session.lines)).toEqual([])
+    })
+
+    it('configure leaves op16 alone without one', async () => {
+        const session = makeRecordingSession()
+        ;(createBleSession as jest.Mock).mockReturnValue(session)
+
+        await hook().configure({ id: 'dev' } as any, {
+            deploymentId: 'd',
+            captureMethod: 'activity',
+        }, opsAfterReset('64'))
+
+        expect(op16Lines(session.lines)).toEqual([])
+    })
+})

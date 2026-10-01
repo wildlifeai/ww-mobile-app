@@ -16,6 +16,7 @@ import { log, logError, logWarn } from '../utils/logger'
 import { logCloudFailure } from '../utils/networkErrors'
 import { DEFAULT_FLASH_LED, DEFAULT_FLASH_MODE } from '../utils/projectFlash'
 import { DEFAULT_PHOTO_INTERVAL_MS, DEFAULT_PHOTOS_PER_TRIGGER } from '../utils/projectBurst'
+import { DEFAULT_DETECTION_THRESHOLD_PCT } from '../utils/projectDetectionThreshold'
 
 
 import { setGlobalSyncing, markInitialSyncComplete } from '../redux/slices/syncSlice'
@@ -1466,6 +1467,8 @@ class SupabaseSyncService {
                         // and op6 by the deployment (#317)
                         rec.photosPerTrigger = row.photos_per_trigger ?? DEFAULT_PHOTOS_PER_TRIGGER
                         rec.photoIntervalMilliseconds = row.photo_interval_milliseconds ?? DEFAULT_PHOTO_INTERVAL_MS
+                        // Detection threshold, written as op16 by the deployment (#342)
+                        rec.detectionThresholdPct = row.detection_threshold_pct ?? DEFAULT_DETECTION_THRESHOLD_PCT
                         // Pulled since #285: a GPS setting changed on the website never
                         // reached the phone, so its deployments zeroed GPS regardless
                         rec.recordGpsInImages = row.record_gps_in_images ?? false
@@ -1499,6 +1502,7 @@ class SupabaseSyncService {
                         rec.flashWindowMinutes = row.flash_window_minutes ?? undefined
                         rec.photosPerTrigger = row.photos_per_trigger ?? DEFAULT_PHOTOS_PER_TRIGGER
                         rec.photoIntervalMilliseconds = row.photo_interval_milliseconds ?? DEFAULT_PHOTO_INTERVAL_MS
+                        rec.detectionThresholdPct = row.detection_threshold_pct ?? DEFAULT_DETECTION_THRESHOLD_PCT
                         // Pulled since #285: a GPS setting changed on the website never
                         // reached the phone, so its deployments zeroed GPS regardless
                         rec.recordGpsInImages = row.record_gps_in_images ?? false

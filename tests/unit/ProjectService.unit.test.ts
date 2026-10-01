@@ -318,6 +318,75 @@ describe('ProjectService Unit Test', () => {
         });
     });
 
+    // The detection threshold (#342), handled as the burst columns are: the
+    // website is its only editor, so the phone sends it when it inserts a
+    // project, where the CHECK constraint rejects a value outside 50 to 99,
+    // and never on an update, where push_changes keeps the stored value for a
+    // missing key.
+    describe('detection threshold in the push payload', () => {
+        const payloadOf = () => (OutboxService.recordOperation as jest.Mock).mock.calls[0][0].payload
+
+        it('creates a project with the table default, 57, and pushes it', async () => {
+            const created = await ProjectService.createProject({ name: 'P', organisation_id: 'org-1' });
+
+            expect(payloadOf()).toEqual(expect.objectContaining({ detection_threshold_pct: 57 }))
+            expect(created.detection_threshold_pct).toBe(57)
+        });
+
+        it('never pushes a create value the CHECK constraint would reject', async () => {
+            // 0 is what WatermelonDB keeps in a number column nobody wrote
+            mockCollection.prepareCreate.mockImplementation((cb: any) => {
+                const model: any = { id: 'p0', name: 'P', createdAt: 1, updatedAt: 1, _isEditing: true };
+                cb(model);
+                model.detectionThresholdPct = 0;
+                return model;
+            });
+
+            await ProjectService.createProject({ name: 'P', organisation_id: 'org-1' });
+
+            expect(payloadOf()).toEqual(expect.objectContaining({ detection_threshold_pct: 57 }))
+        });
+
+        const projectHolding = (detectionThresholdPct: number) => {
+            const project: any = {
+                id: 'test-project-id',
+                name: 'Test Project',
+                createdAt: 1620000000000,
+                updatedAt: 1620000000000,
+                detectionThresholdPct,
+                _isEditing: true,
+            };
+            project.prepareUpdate = jest.fn((cb) => {
+                cb(project);
+                return project;
+            });
+            mockCollection.find.mockResolvedValue(project);
+            return project;
+        };
+
+        it('leaves it out of an update payload, so a stale phone cannot overwrite the website', async () => {
+            const project = projectHolding(80);
+
+            const updated = await ProjectService.updateProject('test-project-id', { name: 'Renamed' });
+
+            const payload = payloadOf()
+            expect(payload.name).toBe('Renamed')
+            expect(payload).not.toHaveProperty('detection_threshold_pct')
+            // The local record and what the caller gets back still carry it
+            expect(project.detectionThresholdPct).toBe(80)
+            expect(updated.detection_threshold_pct).toBe(80)
+        });
+
+        it('does not apply it locally from an update either, the website being its only editor', async () => {
+            const project = projectHolding(80);
+
+            await ProjectService.updateProject('test-project-id', { detection_threshold_pct: 95 });
+
+            expect(project.detectionThresholdPct).toBe(80)
+            expect(payloadOf()).not.toHaveProperty('detection_threshold_pct')
+        });
+    });
+
     it('should batch deleteProject operations', async () => {
         // Mock find to return a project
         const mockProject: any = {
