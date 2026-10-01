@@ -2,8 +2,11 @@ import { renderHook } from '@testing-library/react-native'
 
 import { useDeploymentConfiguration } from '../useDeploymentConfiguration'
 import { OP_PARAMETER } from '../useDeviceSettings'
+import { createBleSession } from '../../ble/session/createBleSession'
+import { keepAwake, KeepAwakeSession } from '../../ble/session/keepAwake'
 
 jest.mock('../../utils/logger', () => ({ log: jest.fn(), logWarn: jest.fn(), logError: jest.fn() }))
+jest.mock('../../ble/session/createBleSession', () => ({ createBleSession: jest.fn() }))
 
 /**
  * What reaches the wire when a deployment writes the project's capture flash.
@@ -172,5 +175,210 @@ describe('useDeploymentConfiguration setDeploymentId GPS', () => {
         await setDeploymentId()(session, 'd', { latitude: -45.5, longitude: 167.75, altitude: 320.5 }, false, ['0'])
 
         expect(gpsLine(session.lines)).toBe(`AI setgps 0°0'0.00"_N_0°0'0.00"_E_0.00_Above`)
+    })
+})
+
+/**
+ * Pictures per trigger (op5), their interval (op6) and the op8 that outlasts
+ * it, from the project (#317). The reset before this preserves op5, so the
+ * card's old count survives it, sets op6 to the factory 500 ms, which no other
+ * step writes, and op8 to the factory 1000 ms, which a burst has to exceed:
+ * the firmware sleeps mid-burst once op8 runs out (Seeed #208).
+ */
+describe('useDeploymentConfiguration burst', () => {
+    /** A post-reset table: op5 as an earlier deployment left it, op6 and op8 at their factory values. */
+    const opsAfterReset = (op5 = '1', op8 = '1000'): string[] =>
+        Array.from({ length: 37 }, (_, index) =>
+            index === OP_PARAMETER.NUM_PICTURES ? op5
+                : index === OP_PARAMETER.PICTURE_INTERVAL ? '500'
+                    : index === OP_PARAMETER.INTERVAL_BEFORE_DPD ? op8
+                        : '0')
+
+    const hook = () => renderHook(() => useDeploymentConfiguration()).result.current
+
+    const BURST_OPS: number[] = [OP_PARAMETER.NUM_PICTURES, OP_PARAMETER.PICTURE_INTERVAL, OP_PARAMETER.INTERVAL_BEFORE_DPD]
+    const burstLines = (lines: string[]) => lines.filter(line => BURST_OPS.some(index => line.startsWith(`AI setop ${index} `)))
+    const op8Lines = (lines: string[]) => lines.filter(line => line.startsWith(`AI setop ${OP_PARAMETER.INTERVAL_BEFORE_DPD} `))
+
+    it('3 x 1000 ms: op5 3, op6 1000 and op8 2000', async () => {
+        const session = makeRecordingSession()
+
+        await hook().configureBurst(session, { photos_per_trigger: 3, photo_interval_milliseconds: 1000 }, opsAfterReset())
+
+        expect(session.lines).toEqual([
+            `AI setop ${OP_PARAMETER.NUM_PICTURES} 3`,
+            `AI setop ${OP_PARAMETER.PICTURE_INTERVAL} 1000`,
+            `AI setop ${OP_PARAMETER.INTERVAL_BEFORE_DPD} 2000`,
+        ])
+    })
+
+    it('3 x 2000 ms: op8 3000', async () => {
+        const session = makeRecordingSession()
+
+        await hook().configureBurst(session, { photos_per_trigger: 3, photo_interval_milliseconds: 2000 }, opsAfterReset())
+
+        expect(op8Lines(session.lines)).toEqual([`AI setop ${OP_PARAMETER.INTERVAL_BEFORE_DPD} 3000`])
+    })
+
+    it('1 photo: op8 stays at 1000, written only when the device holds something else', async () => {
+        const settled = makeRecordingSession()
+        await hook().configureBurst(settled, { photos_per_trigger: 1, photo_interval_milliseconds: 2000 }, opsAfterReset())
+        expect(op8Lines(settled.lines)).toEqual([])
+
+        const raised = makeRecordingSession()
+        await hook().configureBurst(raised, { photos_per_trigger: 1, photo_interval_milliseconds: 2000 }, opsAfterReset('1', '3000'))
+        expect(op8Lines(raised.lines)).toEqual([`AI setop ${OP_PARAMETER.INTERVAL_BEFORE_DPD} 1000`])
+    })
+
+    it('doubles op5 when the raw BMP is recorded, and writes op6 unchanged', async () => {
+        const session = makeRecordingSession()
+
+        await hook().configureBurst(session, { photos_per_trigger: 3, photo_interval_milliseconds: 1000 }, opsAfterReset(), true)
+
+        expect(session.lines).toEqual([
+            `AI setop ${OP_PARAMETER.NUM_PICTURES} 6`,
+            `AI setop ${OP_PARAMETER.PICTURE_INTERVAL} 1000`,
+            `AI setop ${OP_PARAMETER.INTERVAL_BEFORE_DPD} 2000`,
+        ])
+    })
+
+    it('writes the column defaults for a project with no values', async () => {
+        const session = makeRecordingSession()
+
+        await hook().configureBurst(session, {}, opsAfterReset())
+
+        expect(session.lines).toEqual([
+            `AI setop ${OP_PARAMETER.NUM_PICTURES} 3`,
+            `AI setop ${OP_PARAMETER.PICTURE_INTERVAL} 1000`,
+            `AI setop ${OP_PARAMETER.INTERVAL_BEFORE_DPD} 2000`,
+        ])
+    })
+
+    it('skips a value the device already holds', async () => {
+        const session = makeRecordingSession()
+
+        // op5 survived the reset at 3; op6 is always 500 after it
+        await hook().configureBurst(session, { photos_per_trigger: 3, photo_interval_milliseconds: 1000 }, opsAfterReset('3', '2000'))
+
+        expect(session.lines).toEqual([`AI setop ${OP_PARAMETER.PICTURE_INTERVAL} 1000`])
+    })
+
+    it('configure writes the burst after the capture method, so its op8 is the one that stays', async () => {
+        const session = makeRecordingSession()
+        ;(createBleSession as jest.Mock).mockReturnValue(session)
+
+        await hook().configure({ id: 'dev' } as any, {
+            deploymentId: 'd',
+            captureMethod: 'timelapse',
+            timelapseInterval: 300,
+            burst: { photos_per_trigger: 5, photo_interval_milliseconds: 800 },
+        }, opsAfterReset())
+
+        expect(burstLines(session.lines)).toEqual([
+            `AI setop ${OP_PARAMETER.NUM_PICTURES} 5`,
+            `AI setop ${OP_PARAMETER.PICTURE_INTERVAL} 800`,
+            `AI setop ${OP_PARAMETER.INTERVAL_BEFORE_DPD} 1800`,
+        ])
+        expect(session.lines.indexOf(`AI setop ${OP_PARAMETER.NUM_PICTURES} 5`))
+            .toBeGreaterThan(session.lines.indexOf(`AI setop ${OP_PARAMETER.CAMERA_ENABLED} 1`))
+    })
+
+    it('configure ends on the burst op8 even when the capture method had to write 1000 first', async () => {
+        // A table where op8 is not the factory 1000, so the capture method
+        // writes it. The burst then compares against that write, not against
+        // the stale 2000, and must not skip its own.
+        const session = makeRecordingSession()
+        ;(createBleSession as jest.Mock).mockReturnValue(session)
+        const ops = opsAfterReset('3', '2000')
+
+        await hook().configure({ id: 'dev' } as any, {
+            deploymentId: 'd',
+            captureMethod: 'activity',
+            burst: { photos_per_trigger: 3, photo_interval_milliseconds: 1000 },
+        }, ops)
+
+        expect(op8Lines(session.lines)).toEqual([
+            `AI setop ${OP_PARAMETER.INTERVAL_BEFORE_DPD} 1000`,
+            `AI setop ${OP_PARAMETER.INTERVAL_BEFORE_DPD} 2000`,
+        ])
+        // The caller's table is left as it was
+        expect(ops[OP_PARAMETER.INTERVAL_BEFORE_DPD]).toBe('2000')
+    })
+
+    it('configure leaves op5 and op6 alone and op8 at 1000 without one, as the dev deployment needs', async () => {
+        const session = makeRecordingSession()
+        ;(createBleSession as jest.Mock).mockReturnValue(session)
+
+        await hook().configure({ id: 'dev' } as any, {
+            deploymentId: 'd',
+            captureMethod: 'activity',
+        }, opsAfterReset())
+
+        expect(burstLines(session.lines)).toEqual([])
+    })
+
+    /**
+     * keepAwake keeps the op8 a hold raised from, to put back. A deployment
+     * that raised op8 for a burst must not have that earlier 1000 written back
+     * over it: neither by the release of a hold still open on the screen (the
+     * motion test on Start Monitoring), nor by a later hold that turns an owed
+     * restore into the value its release writes.
+     */
+    describe('and keepAwake', () => {
+        /** A session keepAwake can read op8 from, recording what it sends. */
+        const holdSession = (op8: string): KeepAwakeSession & { lines: string[] } => {
+            const lines: string[] = []
+            return {
+                lines,
+                getOps: jest.fn(async () => opsAfterReset('3', op8)),
+                execute: jest.fn(async (build: any) => {
+                    const command = typeof build === 'function' ? build() : build
+                    lines.push(command?.build?.() ?? '')
+                    return true
+                }) as KeepAwakeSession['execute'],
+            }
+        }
+
+        const deployBurst = async () => {
+            const deployment = makeRecordingSession()
+            ;(createBleSession as jest.Mock).mockReturnValue(deployment)
+            await hook().configure({ id: 'dev' } as any, {
+                deploymentId: 'd',
+                captureMethod: 'activity',
+                burst: { photos_per_trigger: 3, photo_interval_milliseconds: 2000 },
+            }, opsAfterReset())
+            return deployment
+        }
+
+        beforeEach(() => keepAwake.clear())
+        afterEach(() => keepAwake.clear())
+
+        it('a hold open before the deployment writes nothing back afterwards', async () => {
+            const screen = holdSession('1000')
+            await keepAwake.acquire(screen, 'dev', 3000)
+            expect(op8Lines(screen.lines)).toEqual([`AI setop ${OP_PARAMETER.INTERVAL_BEFORE_DPD} 3000`])
+
+            const deployment = await deployBurst()
+            expect(op8Lines(deployment.lines)).toEqual([`AI setop ${OP_PARAMETER.INTERVAL_BEFORE_DPD} 3000`])
+
+            await keepAwake.release(screen, 'dev')
+            expect(op8Lines(screen.lines)).toEqual([`AI setop ${OP_PARAMETER.INTERVAL_BEFORE_DPD} 3000`])
+            expect(keepAwake.holds('dev')).toBe(false)
+        })
+
+        it('a restore owed from before the deployment is not written by a later hold', async () => {
+            // A hold whose link dropped: the hold is gone, the original 1000 stays owed
+            await keepAwake.acquire(holdSession('1000'), 'dev', 3000)
+            ;(keepAwake as any).holdsByDevice.delete('dev')
+
+            await deployBurst()
+
+            // Capture Picture afterwards: its 3 s hold matches the deployed op8
+            const later = holdSession('3000')
+            await keepAwake.acquire(later, 'dev', 3000)
+            await keepAwake.release(later, 'dev')
+
+            expect(op8Lines(later.lines)).toEqual([])
+        })
     })
 })

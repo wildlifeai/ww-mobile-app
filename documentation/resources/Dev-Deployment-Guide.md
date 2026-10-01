@@ -34,7 +34,7 @@ The Dev Deployment screen is only accessible from the Engineer Console's Flows m
 | **Camera** | Whatever slot is running when the deployment starts; Start Monitoring warns on a flash that does not suit it (#321) and never switches | Chosen on screen and switched as the first pipeline step when it is not the one running |
 | **Capture method** | Inherited from project settings | The project's own fields, chosen on screen and persisted |
 | **Flash settings** | Mode and LED inherited from the project (op34, op13, and op35/op36 for the window) | The same fields, chosen on screen and persisted, plus the LED brightness (op9) as a dev-only extra |
-| **Pictures per trigger** | 1 | Any number, default 3 |
+| **Pictures per trigger** | The project's count and interval (op5, op6), with op8 raised past the interval for a burst (#317) | Any number, default 3; op6 stays at the reset's 500 ms and op8 at 1000 |
 | **AI model** | Inherited from project | Overridable dropdown (including "None"), applied to this deployment and persisted |
 | **LoRaWAN / GPS** | Inherited from project | Toggleable switches |
 | **SD card** | Pre-deployment checks block on the self-test's SD card bit (#303) | The health banner shows the bit and Start is disabled while it is set |
@@ -127,7 +127,7 @@ A device carries one deployment at a time. The scanner routes a deployed device 
 The flash goes to the device as the project's four columns, through the same `configureFlash` a standard deployment uses, so a mode and LED tried here are what a real deployment of the project would write. See [Light-Sensor.md](Light-Sensor.md), "How the decision reaches the flash LED".
 
 ### 5. Pictures per Trigger
-- **Pictures per trigger**: numeric input (OP 5), default 3. Start Monitoring still writes 1, so the two flows differ here on purpose: one frame per trigger too often catches the animal leaving.
+- **Pictures per trigger**: numeric input (OP 5), default 3. It is not persisted: Start Monitoring writes the project's `photos_per_trigger` and `photo_interval_milliseconds` since #317, which only the website edits.
 
 ### 6. Location
 - **Site Name**: free text
@@ -156,4 +156,4 @@ The flash goes to the device as the project's four columns, through the same `co
 
 ---
 
-*Last Updated: 21 September 2026*
+*Last Updated: 1 October 2026*
