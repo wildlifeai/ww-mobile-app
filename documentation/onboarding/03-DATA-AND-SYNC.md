@@ -448,13 +448,18 @@ The project uses a **5-layer defence strategy** to prevent the mobile Watermelon
 # 1. Regenerate types
 npm run types:cloud-dev
 
-# 2. Validate schema
+# 2. Regenerate src/database/schema.ts; `version:` moves only if a table changed
+npm run schema:generate
+
+# 3. Validate schema
 npm run schema:validate:live:cloud-dev
 
-# 3. Fix mismatches in src/database/schema.ts
-# 4. Increment the `version:` field at the top of src/database/schema.ts
-# 5. Add migration in src/database/migrations.ts (or database reset for dev)
+# 4. Add the new columns to the model, the pull in SupabaseSyncService and the push payload
 ```
+
+There are no migrations. The adapter in `src/database/index.ts` configures none on purpose,
+so a version change resets the local database and the next sync pulls everything again.
+Anything still in the outbox is lost with it, so sync before installing such a build.
 
 ### What the validator actually checks, and what it cannot
 
