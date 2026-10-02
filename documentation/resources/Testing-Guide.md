@@ -328,9 +328,9 @@ The `quality-gate-validation.yml` GitHub Action runs on all PRs:
 - Console.log pollution check
 - Type system size validation
 
-The `react-doctor.yml` GitHub Action also runs on all PRs (informational):
+The `react-doctor.yml` GitHub Action also runs on all PRs, and fails the PR on an error-severity finding (warnings never fail it):
 - Scans for 60+ React / React Native best-practice rules
-- Outputs a 0–100 health score in the job summary
+- Outputs a 0–100 health score in the job summary and a sticky PR comment
 - Can also be triggered manually from the **Actions** tab
 - Config: `doctor.config.json` (suppresses React Native false positives)
 - See [React-Doctor-Guide.md](React-Doctor-Guide.md) for details

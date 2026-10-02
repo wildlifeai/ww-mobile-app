@@ -82,8 +82,14 @@
       "**/*.test.tsx",
       "**/__tests__/**",
       "**/__mocks__/**",
-      "src/types/database.types.ts"
+      "src/types/database.types.ts",
+      "supabase/**"
     ]
+  },
+  "rules": {
+    "react-doctor/effect-needs-cleanup": "warn",
+    "react-doctor/no-ref-current-in-render": "warn",
+    "react-doctor/no-impure-state-updater": "warn"
   },
   "deadCode": false
 }
