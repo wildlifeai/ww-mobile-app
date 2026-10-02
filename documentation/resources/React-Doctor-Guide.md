@@ -64,9 +64,9 @@ Additionally, `doctor.config.json` ignores baseline aesthetic warnings that are 
 | `src/types/database.types.ts` | Auto-generated Supabase types |
 | `supabase/**` | SQL schema dumps. CLI 0.9.x reads `service_role` in a `GRANT` as a leaked secret (`artifact-secret-leak`), and `supabase-table-missing-rls` only looks in the `CREATE TABLE` file while RLS is enabled in `xxx_rls/` and `yyy_policies/`. Both are false positives here. |
 
-### Rules demoted to warnings
+### Rules at error severity
 
-`rules` in `doctor.config.json` sets `effect-needs-cleanup`, `no-ref-current-in-render` and `no-impure-state-updater` to `warn`. CLI 0.9.14 added them at error severity and found 11 existing cases in `src/hooks/` and `src/screens/Devices/`, tracked in #380. Promote each rule back to its default once its findings are fixed, so new code cannot reintroduce them.
+CLI 0.9.14 added `effect-needs-cleanup`, `no-ref-current-in-render` and `no-impure-state-updater` at error severity and found 11 existing cases, fixed in #380. They run at their default severity, so a new case fails the PR. Two of them have a shape the rule does not accept even when the code is sound: a timer whose `async` callback re-arms it (an await in flight could re-arm after cleanup; keep the callback synchronous and await in a helper), and a ref written during render to hand a fresh closure to a long-running loop (write it in an effect instead).
 
 ### Updating the Config
 
@@ -91,7 +91,7 @@ Alternatively, use the `"reactDoctor"` key in `package.json` (config file takes 
 - **Score 50–74** — Needs work. Review the flagged diagnostics.
 - **Score <50** — Critical. Prioritise fixing the most severe issues.
 
-- The CLI's score moves with its rule set: 0.5.1 reported no issues, 0.9.14 reports 85 warnings and a score of 41. Compare scores only across the same CLI version.
+- The CLI's score moves with its rule set: 0.5.1 reported no issues, 0.9.14 reported 85 warnings and a score of 62 before #380, 70 warnings after. Compare scores only across the same CLI version.
 
 Use `--verbose` (enabled by default in CI) to see which files and line numbers are affected by each rule.
 

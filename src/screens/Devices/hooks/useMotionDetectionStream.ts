@@ -272,6 +272,10 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
         bleEventBus.on('textLine', messageListener)
         return () => {
             bleEventBus.removeListener('textLine', messageListener)
+            if (motionTimeoutRef.current) {
+                clearTimeout(motionTimeoutRef.current)
+                motionTimeoutRef.current = null
+            }
         }
     }, [device])
 
@@ -280,7 +284,7 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
     // and op11 holds would stay behind with nothing left to clean them up
     // (#271, #274).
     const deviceRef = useRef(device)
-    deviceRef.current = device
+    useEffect(() => { deviceRef.current = device }, [device])
     useEffect(() => () => {
         if (activeRef.current && deviceRef.current) {
             activeRef.current = false
