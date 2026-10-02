@@ -28,7 +28,6 @@ const HEARTBEAT_DELAY_MS = BLE_PROTOCOL_TIMINGS.HEARTBEAT_IDLE_MS
 const IDLE_SECONDS = HEARTBEAT_DELAY_MS / 1000
 
 export const useBleHeartbeat = (device: ExtendedPeripheral | null) => {
-    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const deviceRef = useRef(device)
     const { writeRaw } = useBle()
     const writeRawRef = useRef(writeRaw)
@@ -40,20 +39,33 @@ export const useBleHeartbeat = (device: ExtendedPeripheral | null) => {
     const isPausedRef = useRef(false)
 
     useEffect(() => {
+        // The idle timer lives and dies with this effect: the cleanup below is
+        // the only thing that stops it, on disconnect and on unmount alike.
+        let timer: ReturnType<typeof setTimeout> | undefined
         if (!device?.connected) {
-            if (timerRef.current) {
-                clearTimeout(timerRef.current)
-                timerRef.current = null
-            }
-            return
+            return () => clearTimeout(timer)
         }
 
         log(`[BLE Heartbeat] ✓ Active for ${device.name ?? device.id}`)
 
+        // The write is awaited in its own function so the timer callback stays
+        // synchronous: a callback that re-arms the timer after an await could
+        // re-arm it after this effect's cleanup has run.
+        const sendHeartbeat = async (currentDevice: ExtendedPeripheral) => {
+            log(`[BLE Heartbeat] ${IDLE_SECONDS}s idle, sending heartbeat (get heartbeat)...`)
+            try {
+                // Send fire-and-forget heartbeat raw string
+                await writeRawRef.current(currentDevice, 'get heartbeat')
+                log('[BLE Heartbeat] Heartbeat sent. Timer will reset on response.')
+            } catch (err) {
+                logWarn('[BLE Heartbeat] Heartbeat failed:', err)
+            }
+        }
+
         const resetTimer = () => {
-            if (timerRef.current) clearTimeout(timerRef.current)
-            timerRef.current = setTimeout(async () => {
-                timerRef.current = null
+            clearTimeout(timer)
+            timer = setTimeout(() => {
+                timer = undefined
                 const currentDevice = deviceRef.current
                 if (!currentDevice?.connected) return
 
@@ -74,14 +86,7 @@ export const useBleHeartbeat = (device: ExtendedPeripheral | null) => {
                     return
                 }
 
-                log(`[BLE Heartbeat] ${IDLE_SECONDS}s idle, sending heartbeat (get heartbeat)...`)
-                try {
-                    // Send fire-and-forget heartbeat raw string
-                    await writeRawRef.current(currentDevice, 'get heartbeat')
-                    log('[BLE Heartbeat] Heartbeat sent. Timer will reset on response.')
-                } catch (err) {
-                    logWarn('[BLE Heartbeat] Heartbeat failed:', err)
-                }
+                sendHeartbeat(currentDevice)
             }, HEARTBEAT_DELAY_MS)
         }
 
@@ -105,10 +110,7 @@ export const useBleHeartbeat = (device: ExtendedPeripheral | null) => {
             bleEventBus.removeListener('binaryPacket', listener)
             bleEventBus.removeListener('rawTx', listener)
             bleEventBus.removeListener('heartbeatPause', pauseListener)
-            if (timerRef.current) {
-                clearTimeout(timerRef.current)
-                timerRef.current = null
-            }
+            clearTimeout(timer)
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [device?.connected])

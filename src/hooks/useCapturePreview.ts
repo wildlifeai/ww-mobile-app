@@ -148,6 +148,7 @@ export const useCapturePreview = ({
 
     // Listen for "Finished sending" message
     useEffect(() => {
+        let graceTimer: ReturnType<typeof setTimeout> | null = null
         const messageListener = (event: BleEvent & { type: 'TEXT_LINE' }) => {
             if (!device || event.deviceId !== device.id) return;
             const msg = event.line;
@@ -159,9 +160,11 @@ export const useCapturePreview = ({
                 log(`[useCapturePreview] "Finished sending" detected (expected ${expectedBytes} bytes). Waiting 500ms grace period for last packets...`)
                 
                 // Grace period to ensure last chunks are processed from the BLE queue
-                setTimeout(() => {
-                     log('[useCapturePreview] Grace period ended. Triggering force_finalize.')
-                     imageReassemblerEmitter.emit('force_finalize')
+                if (graceTimer) clearTimeout(graceTimer)
+                graceTimer = setTimeout(() => {
+                    graceTimer = null
+                    log('[useCapturePreview] Grace period ended. Triggering force_finalize.')
+                    imageReassemblerEmitter.emit('force_finalize')
                 }, 500)
             }
         }
@@ -170,6 +173,7 @@ export const useCapturePreview = ({
 
         return () => {
             bleEventBus.removeListener('textLine', messageListener)
+            if (graceTimer) clearTimeout(graceTimer)
         }
     }, [device])
 

@@ -202,11 +202,13 @@ export const useDevDeployment = ({
     // control has no dialog to write to. The ref keeps `onStage` stable so
     // the hook's callbacks do not change identity on every render.
     const stageRef = useRef<(stage: string) => void>(() => {})
-    stageRef.current = (stage: string) => {
-        if (!isStartDeploymentInProgress.current) return
-        progress.setFinishStep(stage)
-        progress.addLog(stage)
-    }
+    useEffect(() => {
+        stageRef.current = (stage: string) => {
+            if (!isStartDeploymentInProgress.current) return
+            progress.setFinishStep(stage)
+            progress.addLog(stage)
+        }
+    }, [progress])
     const onCameraStage = useCallback((stage: string) => stageRef.current(stage), [])
     const cameraErrorRef = useRef<Error | null>(null)
     const onCameraError = useCallback((err: Error) => { cameraErrorRef.current = err }, [])

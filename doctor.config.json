@@ -86,10 +86,5 @@
       "supabase/**"
     ]
   },
-  "rules": {
-    "react-doctor/effect-needs-cleanup": "warn",
-    "react-doctor/no-ref-current-in-render": "warn",
-    "react-doctor/no-impure-state-updater": "warn"
-  },
   "deadCode": false
 }
