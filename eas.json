@@ -8,7 +8,8 @@
       "distribution": "internal",
       "env": {
         "NODE_ENV": "development",
-        "EXPO_PUBLIC_SUPABASE_ENV": "cloud-dev"
+        "EXPO_PUBLIC_SUPABASE_ENV": "cloud-dev",
+        "ORG_GRADLE_PROJECT_reactNativeArchitectures": "x86_64"
       },
       "android": {
         "buildType": "apk"
