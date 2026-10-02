@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, Dispatch, SetStateAction } from "react"
-import { StyleSheet, View } from "react-native"
+import { ScrollView, StyleSheet, View } from "react-native"
 import { Button, Divider, Badge, Text } from "react-native-paper"
 import { useAppNavigation } from "../hooks/useAppNavigation"
 import { useExtendedTheme } from "../theme"
@@ -84,8 +84,16 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 		drawerControls(false)
 	}
 
+	// The links scroll above the drawer's version footer: the list is taller
+	// than a 640 dp screen leaves it, and without scrolling the footer sat
+	// over "Sign out" (#379).
 	return (
-		<View style={[styles.list, dynamicStyles.container]}>
+		<>
+		<ScrollView
+			style={[styles.list, dynamicStyles.container]}
+			contentContainerStyle={styles.listContent}
+			keyboardShouldPersistTaps="handled"
+		>
 			{/* Organisation Switcher (WW Admin or multi-org users only) */}
 			{canSwitchOrganisations && (
 				<>
@@ -171,22 +179,25 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 					</Button>
 				</>
 			)}
+		</ScrollView>
 
-			<EngineerConnectDialog
-				visible={dialogState !== 'idle'}
-				dialogState={dialogState}
-				discoveredDevices={discoveredDevices}
-				connectingDevice={engineerConnectingDevice}
-				onSelectDevice={selectDevice}
-				onDismiss={resetEngineerConnect}
-			/>
-		</View>
+		<EngineerConnectDialog
+			visible={dialogState !== 'idle'}
+			dialogState={dialogState}
+			discoveredDevices={discoveredDevices}
+			connectingDevice={engineerConnectingDevice}
+			onSelectDevice={selectDevice}
+			onDismiss={resetEngineerConnect}
+		/>
+		</>
 	)
 }
 
 const styles = StyleSheet.create({
 	list: {
 		flex: 1,
+	},
+	listContent: {
 		alignItems: "flex-start",
 	},
 	link: {
