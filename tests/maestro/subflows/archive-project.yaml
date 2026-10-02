@@ -1,0 +1,43 @@
+# Subflow: from the Projects tab, open the project named PROJECT_NAME and
+# archive it, which is the app's delete. Ends back on the list, which no
+# longer shows it (projectsApi drops archived rows). Keeps cloud-dev tidy
+# between runs; the archived row itself goes with the next backend reseed.
+#
+# PROJECT_NAME comes from the caller's `runFlow: env:`. No default here: a
+# flow-level `env:` in this file won over the caller's value and the subflow
+# looked for "Project ," (run 36929311218).
+appId: ${APP_ID}
+---
+# By the card's accessibility label, see project-crud-workflow.yaml
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    text: "Project ${PROJECT_NAME},.*"
+    retryTapIfNoChange: true
+- extendedWaitUntil:
+    visible:
+      id: "edit-button"
+    timeout: 30000
+- tapOn:
+    id: "edit-button"
+- extendedWaitUntil:
+    visible:
+      id: "project-name-input"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: "archive-button"
+    direction: DOWN
+- tapOn:
+    id: "archive-button"
+# useProjectDetails.confirmArchive, a native alert
+- extendedWaitUntil:
+    visible: "Continue"
+    timeout: 15000
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible:
+      id: "project-search-bar"
+    timeout: 30000
+- assertNotVisible:
+    text: ${PROJECT_NAME}

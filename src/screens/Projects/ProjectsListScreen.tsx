@@ -135,6 +135,9 @@ export const Projects = () => {
 			searchPlaceholder="Search projects…"
 			primaryActionLabel="New Project"
 			onPrimaryAction={handleCreateProject}
+			searchBarTestID="project-search-bar"
+			primaryActionTestID="new-project-fab"
+			emptyStateActionTestID="new-project-button"
 			emptyStateTitle={hasMultipleOrgs ? `No projects for ${organisationName}` : 'No projects yet'}
 			emptyStateMessage={hasMultipleOrgs
 				? `There are no projects yet for ${organisationName}. Create a new project or switch to a different organisation.`

@@ -1,57 +1,81 @@
-# Maestro E2E Test for Project CRUD Workflow
-# Goal: Verify Create, Read, Update, Delete operations for Projects
-
-appId: com.wildlife.wildlifewatcher.expo
-
+# Project CRUD against the real screens: create a project with a unique name,
+# see it in the list, rename it, archive it (the app has no delete; archiving
+# hides it from every list), and see it gone. Nothing is left behind on
+# cloud-dev beyond an archived row, which the next backend reseed removes.
+#
+# Needs E2E_TEST_EMAIL and E2E_TEST_PASSWORD from the run, for a user who may
+# create projects in their organisation. See subflows/sign-in.yaml.
+#
+# appId comes from the run (`-e APP_ID=...`), see smoke/app-startup.yaml
+appId: ${APP_ID}
 ---
-# 1. Login (Reuse existing flow or simplified)
-- launchApp
-- assertVisible: "Login Screen"
-- tapOn: "Email Input"
-- inputText: "admin@wildlifewatcher.com"
-- tapOn: "Password Input"
-- inputText: "admin123"
-- tapOn: "Login Button"
-- assertVisible: "Dashboard"
+- runFlow: subflows/sign-in.yaml
+- evalScript: ${output.projectName = 'E2E ' + Date.now()}
+- tapOn:
+    id: "bottom-tab-projects"
 
-# 2. Navigate to Projects
-- tapOn: "Projects"
-- assertVisible: "Projects Overview"
+# Create
+- runFlow: subflows/open-new-project.yaml
+- tapOn:
+    id: "project-name-input"
+- inputText: ${output.projectName}
+- hideKeyboard
+# The form's settings take their defaults from the reference data as it loads
+- scrollUntilVisible:
+    element:
+      id: "create-project-button"
+    direction: DOWN
+- tapOn:
+    id: "create-project-button"
 
-# 3. Create Project
-- tapOn: "Create Project"
-- assertVisible: "New Project"
+# Read: back on the list, with the new project in it
+- extendedWaitUntil:
+    visible:
+      text: ${output.projectName}
+    timeout: 60000
+- takeScreenshot: crud-created
 
-# Fill Form
-- tapOn: "Name Input"
-- inputText: "Maestro Test Project"
+# Update: open it, rename it, and see the new name as the details title.
+# The card is tapped by its accessibility label, which lands on the card
+# itself; a tap on the name's text node did nothing (run 36926971767), and the
+# list redraws as the outbox pushes the new project, so the tap repeats if the
+# screen does not change.
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    text: "Project ${output.projectName},.*"
+    retryTapIfNoChange: true
+- extendedWaitUntil:
+    visible:
+      id: "edit-button"
+    timeout: 30000
+- tapOn:
+    id: "edit-button"
+- extendedWaitUntil:
+    visible:
+      id: "project-name-input"
+    timeout: 30000
+- tapOn:
+    id: "project-name-input"
+- eraseText: 100
+- inputText: ${output.projectName} edited
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "save-button"
+    direction: DOWN
+- tapOn:
+    id: "save-button"
+- extendedWaitUntil:
+    visible:
+      text: ${output.projectName} edited
+    timeout: 30000
+- takeScreenshot: crud-renamed
+- back
 
-# Select Dropdowns (Assuming they are populated now)
-- tapOn: "Capture Method"
-- tapOn: "Activity Detection" # Value from seed data
-
-- tapOn: "Deployment Status"
-- tapOn: "Planned"
-
-- tapOn: "Create"
-
-# 4. Verify Creation
-- assertVisible: "Maestro Test Project"
-
-# 5. Update Project
-- tapOn: "Maestro Test Project"
-- tapOn: "Edit"
-- tapOn: "Name Input"
-- inputText: "Maestro Project Updated"
-- tapOn: "Save"
-
-# 6. Verify Update
-- assertVisible: "Maestro Project Updated"
-
-# 7. Delete Project
-- tapOn: "Maestro Project Updated"
-- tapOn: "Delete" 
-- tapOn: "Confirm" # Assuming a confirmation dialog
-
-# 8. Verify Deletion
-- assertNotVisible: "Maestro Project Updated"
+# Delete: archive it from the list and see it gone
+- runFlow:
+    file: subflows/archive-project.yaml
+    env:
+      PROJECT_NAME: ${output.projectName} edited
+- takeScreenshot: crud-archived

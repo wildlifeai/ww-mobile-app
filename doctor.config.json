@@ -82,7 +82,8 @@
       "**/*.test.tsx",
       "**/__tests__/**",
       "**/__mocks__/**",
-      "src/types/database.types.ts"
+      "src/types/database.types.ts",
+      "supabase/**"
     ]
   },
   "deadCode": false

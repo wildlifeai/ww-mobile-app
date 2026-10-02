@@ -8,7 +8,7 @@ The app uses **EAS (Expo Application Services)** for building and submitting to 
 
 | EAS Profile | Purpose | `EXPO_PUBLIC_SUPABASE_ENV` | Trigger |
 |-------------|---------|---------------------------|---------|
-| `ci` | CI smoke builds | *(unset)* | CI workflows |
+| `e2e` | CI builds for the Maestro flows (release-type, built locally on the runner) | `cloud-dev` | CI workflows |
 | `development` | Dev client builds | *(unset — local `.env`)* | Manual: `eas build` |
 | `staging` | Pre-production validation | `cloud-staging` | Manual: `eas build` |
 | `preview` | Internal testing | `cloud-dev` | Push to `main` (via GitHub Action) |

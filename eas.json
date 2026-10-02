@@ -4,17 +4,15 @@
     "appVersionSource": "local"
   },
   "build": {
-    "ci": {
-      "developmentClient": true,
+    "e2e": {
       "distribution": "internal",
       "env": {
-        "NODE_ENV": "development"
+        "NODE_ENV": "development",
+        "EXPO_PUBLIC_SUPABASE_ENV": "cloud-dev",
+        "ORG_GRADLE_PROJECT_reactNativeArchitectures": "x86_64"
       },
       "android": {
         "buildType": "apk"
-      },
-      "ios": {
-        "simulator": true
       }
     },
     "development": {

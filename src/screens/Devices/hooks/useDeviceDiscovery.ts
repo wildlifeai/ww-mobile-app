@@ -92,6 +92,10 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
 
     const SCAN_DURATION_SECONDS = 15
     const [scanSecondsRemaining, setScanSecondsRemaining] = useState(SCAN_DURATION_SECONDS)
+    // The countdown's interval reads the latest value here, so the tick that
+    // ends the session can stop the scan outside the state updater.
+    const scanSecondsRemainingRef = useRef(scanSecondsRemaining)
+    useEffect(() => { scanSecondsRemainingRef.current = scanSecondsRemaining }, [scanSecondsRemaining])
     const [scanSessionId, setScanSessionId] = useState(0)
 
     // Wall-clock start of the current scan session. Auto-connect only trusts
@@ -115,16 +119,14 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     }, [])
     const [routingIsProcessing] = useState(false)
 
-    // We use a ref so effects can read the latest values without re-running
-    const isReadyToScanRef = useRef(!isBleConnecting && !processing && !connectingDevice)
-    isReadyToScanRef.current = !isBleConnecting && !processing && !connectingDevice
+    const isReadyToScan = !isBleConnecting && !processing && !connectingDevice
 
     const isFocused = useIsFocused()
 
     // True when screen is visible AND scan session is active
     const isActuallyFocused = isFocused && !isDrawerOpen && isActiveTab
     const scanLoopActive = isActuallyFocused
-        && isReadyToScanRef.current
+        && isReadyToScan
         && scanSessionStateRef.current === 'active'
         && !isEngineerConsoleActive
 
@@ -174,17 +176,17 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
         }
 
         const interval = setInterval(() => {
-            setScanSecondsRemaining(prev => {
-                if (prev <= 1) {
-                    // Session expired
-                    clearInterval(interval)
-                    updateScanSessionState('expired')
-                    stopScan()
-                    log('[Scanner] Scan session expired — no device found')
-                    return 0
-                }
-                return prev - 1
-            })
+            const next = scanSecondsRemainingRef.current - 1
+            if (next <= 0) {
+                // Session expired
+                clearInterval(interval)
+                setScanSecondsRemaining(0)
+                updateScanSessionState('expired')
+                stopScan()
+                log('[Scanner] Scan session expired — no device found')
+                return
+            }
+            setScanSecondsRemaining(next)
         }, 1000)
 
         return () => clearInterval(interval)

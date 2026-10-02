@@ -57,7 +57,7 @@ Configured in `eas.json`:
 
 | Profile | Output | `EXPO_PUBLIC_SUPABASE_ENV` | Purpose |
 |---------|--------|---------------------------|---------|
-| `ci` | APK / iOS simulator | *(unset)* | CI smoke builds |
+| `e2e` | APK (internal) | `cloud-dev` | CI builds, locally on the runner, for the Maestro flows; release-type so the bundle is in the APK |
 | `development` | APK/IPA (internal) | *(unset — falls back to the local `.env`)* | Dev client for testing |
 | `staging` | APK/IPA (internal) | `cloud-staging` | Pre-production validation |
 | `preview` | APK/IPA (internal) | `cloud-dev` | Internal team testing |
