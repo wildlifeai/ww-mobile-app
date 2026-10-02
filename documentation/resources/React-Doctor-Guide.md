@@ -20,7 +20,9 @@ It outputs a **0–100 health score** (75+ Great, 50–74 Needs work, <50 Critic
 
 ### Automatic — Every PR
 
-The `react-doctor.yml` workflow runs automatically on every pull request. The health score is posted to the **job summary** (visible in the PR's Checks tab). This is **informational only** — it will not block a PR from merging.
+The `react-doctor.yml` workflow runs automatically on every pull request. The health score is posted to the **job summary** (visible in the PR's Checks tab) and as a sticky PR comment. The workflow runs with `blocking: 'error'`, so a finding at error severity fails the check on a PR; warnings never do. On a push to a branch the run is a health snapshot and never fails.
+
+The action tag and the CLI `version:` in the workflow are pinned as a pair. A Dependabot bump moves only the action tag, so bump the CLI with it (#329 showed the failure mode: the action passes a flag the old CLI rejects).
 
 ### Manual — On Demand
 
@@ -60,6 +62,11 @@ Additionally, `doctor.config.json` ignores baseline aesthetic warnings that are 
 | `scripts/**`, `patches/**`, `archive/**` | Tooling and legacy code |
 | `**/*.test.ts`, `**/*.test.tsx`, `**/__tests__/**`, `**/__mocks__/**` | Test files |
 | `src/types/database.types.ts` | Auto-generated Supabase types |
+| `supabase/**` | SQL schema dumps. CLI 0.9.x reads `service_role` in a `GRANT` as a leaked secret (`artifact-secret-leak`), and `supabase-table-missing-rls` only looks in the `CREATE TABLE` file while RLS is enabled in `xxx_rls/` and `yyy_policies/`. Both are false positives here. |
+
+### Rules demoted to warnings
+
+`rules` in `doctor.config.json` sets `effect-needs-cleanup`, `no-ref-current-in-render` and `no-impure-state-updater` to `warn`. CLI 0.9.14 added them at error severity and found 11 existing cases in `src/hooks/` and `src/screens/Devices/`, tracked in #380. Promote each rule back to its default once its findings are fixed, so new code cannot reintroduce them.
 
 ### Updating the Config
 
@@ -84,10 +91,10 @@ Alternatively, use the `"reactDoctor"` key in `package.json` (config file takes 
 - **Score 50–74** — Needs work. Review the flagged diagnostics.
 - **Score <50** — Critical. Prioritise fixing the most severe issues.
 
-- **Score 100** — Excellent! App currently maintains a 100/100 score on `npx -y react-doctor@latest .`.
+- The CLI's score moves with its rule set: 0.5.1 reported no issues, 0.9.14 reports 85 warnings and a score of 41. Compare scores only across the same CLI version.
 
 Use `--verbose` (enabled by default in CI) to see which files and line numbers are affected by each rule.
 
 ---
 
-**Last Updated**: 2026-06-04
+**Last Updated**: 2026-10-02
