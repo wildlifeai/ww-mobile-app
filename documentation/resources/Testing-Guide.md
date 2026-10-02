@@ -154,7 +154,12 @@ release-type: the APK carries its JavaScript bundle and installs as
 stopped at Expo's "Development servers" launcher (run 36836146016), so the required check only
 proved that the native launcher opened. The `e2e` profile is `preview` with `buildType: apk`,
 and reads `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` from the workflow's
-`development` environment secrets, the names `src/config/environments.ts` reads.
+`development` environment secrets, the names `src/config/environments.ts` reads. It also sets
+`ORG_GRADLE_PROJECT_reactNativeArchitectures=x86_64`, a Gradle project property that overrides
+the four-ABI list in `android/gradle.properties`: the emulator is x86_64 and nothing else runs
+this APK, so the three other native builds and their packaging were pure cost. That packaging
+is where a full four-ABI build ran out of Gradle heap twice (run 36956363192), which is also
+why `org.gradle.jvmargs` carries a 4 GB heap now. The `staging` profile keeps every ABI.
 
 The APK is cached by profile, Expo fingerprint and a hash of `package-lock.json`, `app.config.ts`,
 `eas.json` and `patches/`, so a run that changes only flows, scripts, docs or the workflow
