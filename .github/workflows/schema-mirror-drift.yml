@@ -1,0 +1,80 @@
+# Advisory, never a required check.
+#
+# supabase/schemas is a copy of ww-backend's declarative schema, made by
+# scripts/sync-db-schema.js, and nothing checked that the copy stayed current:
+# in October 2026 it was 32 files behind (#390). This job checks out
+# ww-backend's dev with the repo's read-only token and compares the folders the
+# sync copies, then runs the WatermelonDB schema check beside it.
+#
+# Advisory because the backend may legitimately lead the app by a pull request,
+# the same reason op-index-drift.yml is. A red step here is a prompt to run
+# `npm run db:sync-schema` and commit, not a merge block.
+name: Schema Mirror Drift
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/**'
+      - 'src/database/schema.ts'
+      - 'src/types/supabase.ts'
+      - 'scripts/sync-db-schema.js'
+      - 'scripts/schema-sync-config.js'
+      - 'scripts/check-schema-mirror.js'
+      - 'scripts/validate-watermelon-schema.js'
+      - '.github/workflows/schema-mirror-drift.yml'
+  schedule:
+    - cron: '29 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mirror:
+    name: supabase/schemas matches ww-backend
+    # A fork's pull request gets no secrets, so it cannot check out ww-backend.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check the ww-backend read token is set
+        env:
+          TOKEN: ${{ secrets.WW_BACKEND_READ_TOKEN_FOR_MOBILE }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::WW_BACKEND_READ_TOKEN_FOR_MOBILE is not set, so ww-backend cannot be checked out. A fine-grained token with Contents: read on wildlifeai/ww-backend and nothing else."
+            exit 1
+          fi
+
+      - name: Check out ww-backend dev
+        uses: actions/checkout@v7
+        with:
+          repository: wildlifeai/ww-backend
+          ref: dev
+          path: ww-backend
+          token: ${{ secrets.WW_BACKEND_READ_TOKEN_FOR_MOBILE }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+
+      - name: Compare the mirror with the backend
+        id: mirror
+        continue-on-error: true
+        run: node scripts/check-schema-mirror.js ww-backend
+
+      - name: WatermelonDB schema matches the Supabase types
+        id: watermelon
+        continue-on-error: true
+        run: node scripts/validate-watermelon-schema.js
+
+      - name: Warn on drift
+        if: steps.mirror.outcome == 'failure' || steps.watermelon.outcome == 'failure'
+        run: |
+          [ "${{ steps.mirror.outcome }}" = "failure" ] && echo "::warning::supabase/schemas has drifted from ww-backend dev (advisory, #390): run npm run db:sync-schema and commit. The step above lists the files."
+          [ "${{ steps.watermelon.outcome }}" = "failure" ] && echo "::warning::src/database/schema.ts does not match src/types/supabase.ts (advisory): see the step above."
+          exit 0
