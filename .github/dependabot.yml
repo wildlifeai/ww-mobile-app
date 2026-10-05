@@ -16,3 +16,31 @@ updates:
       actions:
         patterns:
           - '*'
+
+  # App dependencies. Expo SDK packages, React Native and React are left out:
+  # their versions are pinned to the SDK as a set and move together through
+  # `npx expo install`, so a lone bump breaks the contract `validate:deps`
+  # guards. Everything else arrives as one weekly PR per update type into dev.
+  # Security updates ignore the grouping and open on their own.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    target-branch: dev
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      - dependency-name: expo
+      - dependency-name: 'expo-*'
+      - dependency-name: '@expo/*'
+      - dependency-name: react
+      - dependency-name: react-dom
+      - dependency-name: react-native
+      - dependency-name: 'react-native-*'
+      - dependency-name: '@react-native/*'
+      - dependency-name: '@react-native-community/*'
+      - dependency-name: 'react-native-reanimated'
