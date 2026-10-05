@@ -337,18 +337,29 @@ Check the queue, not the screen: the app's WatermelonDB file is readable with
 
 ## CI/CD
 
-The `quality-gate-validation.yml` GitHub Action runs on all PRs:
-- TypeScript compilation (`npm run type-check`)
-- ESLint (`npm run lint`)
-- Tests with coverage (`npm test -- --coverage`)
-- Console.log pollution check
-- Type system size validation
+Every workflow in `.github/workflows/`, what it proves and whether it can stop a merge. A gate
+fails the pull request. An advisory check prints a warning annotation and its report, and stays
+green. The agent guide (`AGENTS.md`, "Check it") has the local commands for the gates.
 
-`expo-doctor.yml` runs `npx expo-doctor` and `npx expo install --check` on a pull request that
-changes `package.json`, the lockfile, `app.config.ts`, `eas.json` or `android/`: package versions
-against the SDK, the app config schema, the native folders, the React Native Directory. Both read
-the Expo API, which is why they are not in the offline quality gate. What `package.json` tells
-them to skip, under `expo.doctor` and `expo.install`, and why:
+| Workflow | Runs on | Proves | Gate? |
+|---|---|---|---|
+| Quality Gate Validation | every PR, merge queue | `type-check`, `lint`, `version:check`, `docs:validate`, the type system is not empty, no `console.log` outside the logger, Jest with coverage at or above the 20% floor | gate |
+| Native Build Validation | every PR, merge queue | an Android EAS local build of the `e2e` profile, `E2E Smoke` on an emulator, `expo prebuild` for iOS; `E2E Full` on the `full-e2e` label. A `changes` job skips the expensive steps on a docs-only PR while every check still reports | gate |
+| Commitlint | every PR, merge queue | conventional commit subjects | gate |
+| Type Synchronization Validation, Cloud Type Validation | PRs, pushes | `src/types/supabase.ts` matches what `supabase gen types` produces from cloud-dev | gate |
+| React Doctor Review | every PR, merge queue | 60+ React and React Native rules. An error-severity finding fails the PR; warnings go to a sticky comment with a 0 to 100 score. Config in `doctor.config.json`, detail in [React-Doctor-Guide.md](React-Doctor-Guide.md) | gate on errors |
+| PR-Agent code review | PR open, comments | an AI review comment. It triggers on comments, so it can never be required | advisory |
+| Op Index Drift | PRs touching `useDeviceSettings.ts` | `OP_PARAMETER` matches the firmware enum on Seeed `dev`; the firmware may legitimately lead by one PR | advisory |
+| Expo Doctor | PRs touching `package.json`, the lockfile, `app.config.ts`, `eas.json` or `android/` | `npx expo-doctor` and `npx expo install --check`: package versions against the SDK, the app config schema, the native folders, the React Native Directory. Both read the Expo API, which is why they are not in the offline quality gate. What they are told to skip is below | gate |
+| CodeQL | PRs, pushes to `dev`, Mondays | GitHub's JavaScript and TypeScript security queries; findings are code scanning alerts in the Security tab. `android/`, `supabase/`, `patches/` and the tests are left out | advisory until #392 |
+| Schema Mirror Drift | PRs touching `supabase/`, the schema files or the sync scripts; Mondays | `supabase/schemas` still matches ww-backend's `dev` (`scripts/check-schema-mirror.js`, with the read-only token), and `validate-watermelon-schema.js` passes. The fix for drift is `npm run db:sync-schema` and a commit | advisory |
+| Dead Code | PRs touching source, tests, scripts or the dependency list; Mondays | knip: files nothing imports, exports nothing uses, dependencies nothing imports, imports of packages `package.json` does not list. What `knip.json` tells it is below | advisory on PRs; the weekly run fails (#393) |
+| iOS Weekly Build | Mondays, by hand | `eas build --local --profile e2e --platform ios` on `macos-latest`, no signing because the profile sets `ios.simulator: true`; the `app-ios-simulator` artifact stays two weeks. Weekly because macOS runners bill at ten times the Linux rate and a cold build is 25 to 40 minutes (#394) | a red scheduled run |
+| EAS Build & Submit, Semantic Release & Publish | pushes, by hand | the release pipeline: the Expo-EAS Guide and the publishing guide | not a check |
+
+### What Expo Doctor is told to skip, and why
+
+`package.json`, under `expo.doctor` and `expo.install`:
 
 - `appConfigFieldsNotSyncedCheck` is off: the `android/` folder is committed on purpose and
   prebuild runs before a build, so "EAS will not sync app.config.ts into the native folders"
@@ -366,12 +377,25 @@ them to skip, under `expo.doctor` and `expo.install`, and why:
 Everything else the version check reports is a real drift: fix it with `npx expo install --fix`
 in the pull request, as the first run of the workflow did for eight `expo-*` patch versions.
 
-The `react-doctor.yml` GitHub Action also runs on all PRs, and fails the PR on an error-severity finding (warnings never fail it):
-- Scans for 60+ React / React Native best-practice rules
-- Outputs a 0–100 health score in the job summary and a sticky PR comment
-- Can also be triggered manually from the **Actions** tab
-- Config: `doctor.config.json` (suppresses React Native false positives)
-- See [React-Doctor-Guide.md](React-Doctor-Guide.md) for details
+### What knip is told, and why
+
+The entry points are the ones `knip.json` names (the Expo config plugins in `plugins/` and
+`scripts/`) plus what knip's Expo, Metro, Babel and Jest plugins find on their own: `index.js`,
+`app.config.ts`, the Jest setup files.
+
+- Unused exports and exported types are warnings and never fail it: the Redux slices export
+  every action creator and the barrel files re-export by design.
+- `buffer` is ignored as a dependency: knip takes it for the Node built-in, the app needs the
+  npm polyfill.
+- `maestro` is ignored as a binary: it is a separate CLI the `test:maestro*` scripts call, not an
+  npm package (see "Maestro E2E Testing").
+- `src/types/database.types.ts` is generated and not inspected.
+
+The first report, October 2026, listed 27 unused files, 13 packages imported but not listed, 13
+listed but not imported, 5 duplicate default exports and some 70 unused exports: a mix of real
+dead code and transitive packages imported directly, which is why the pull request run is
+advisory. React Doctor's own dead-code pass stays off in `doctor.config.json` (`deadCode: false`):
+it could not see the Expo entry points and flagged every screen.
 
 ---
 

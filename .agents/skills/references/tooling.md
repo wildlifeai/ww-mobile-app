@@ -70,6 +70,19 @@ shell boundary, and none of them reproduced in a Linux container.
   The shape that works: **no path filter, every job always runs and reports**, and a first
   `changes` job diffs the PR against its base and sets an output the expensive steps guard on
   with `if:`. One check name, produced once, by the workflow that owns it.
+  An advisory workflow may filter on `paths`, since nothing waits for it; the day it becomes
+  required, drop the filter and use the `changes` job.
+- **An advisory check is `continue-on-error` on the step, never on the job.** On the job, the
+  check still shows as failed. On the step that runs the tool, a follow-up step reads
+  `steps.<id>.outcome` and prints `::warning::` with the finding, so the run stays green and the
+  finding is still on the pull request (Dead Code, Schema Mirror Drift, the website's Lighthouse).
+- **A space and a hash inside a `run:` string is a YAML comment.** `echo "advisory, see #225"`
+  ends at the hash and leaves the quote open, and the parser names the file, not the line. Write
+  "issue 225".
+- **`schedule` and `workflow_dispatch` register only from the default branch.** A new workflow
+  with a cron cannot be run by hand or by its schedule until it has merged to `dev`; give it a
+  `pull_request` trigger so the pull request itself exercises it, and expect the first scheduled
+  run after the merge.
 - **The `console.log` gate is a grep, and it reads comments.** `quality-gate-validation`
   fails on the text `console.log` anywhere in `src/` outside `__tests__/` and `logger.ts`, so a
   comment that names it fails CI exactly like a call. #337's first run failed on a comment in
