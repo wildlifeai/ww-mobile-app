@@ -336,10 +336,24 @@ The `quality-gate-validation.yml` GitHub Action runs on all PRs:
 `expo-doctor.yml` runs `npx expo-doctor` and `npx expo install --check` on a pull request that
 changes `package.json`, the lockfile, `app.config.ts`, `eas.json` or `android/`: package versions
 against the SDK, the app config schema, the native folders, the React Native Directory. Both read
-the Expo API, which is why they are not in the offline quality gate. One check is turned off in
-`package.json` (`expo.doctor.appConfigFieldsNotSyncedCheck`): the `android/` folder is committed
-on purpose and prebuild runs before a build, so "EAS will not sync app.config.ts into the native
-folders" describes the setup, not a problem (see the Expo-EAS Guide).
+the Expo API, which is why they are not in the offline quality gate. What `package.json` tells
+them to skip, under `expo.doctor` and `expo.install`, and why:
+
+- `appConfigFieldsNotSyncedCheck` is off: the `android/` folder is committed on purpose and
+  prebuild runs before a build, so "EAS will not sync app.config.ts into the native folders"
+  describes the setup, not a problem (see the Expo-EAS Guide).
+- The React Native Directory check does not list packages the directory has no entry for
+  (`@getquip/expo-nordic-dfu`, `react-native-document-picker`, `react-native-vector-icons`,
+  `@nozbe/simdjson`) and excludes `@nozbe/watermelondb` (untested on the New Architecture, the
+  app's database all the same) and `@react-native-community/geolocation` (unmaintained; replacing
+  it is a decision, not a CI fix).
+- `expo install` ignores `typescript`, pinned at 5.3.3 for React Native (see the Dependency
+  Validation System guide), and `react-native-keyboard-controller` and `react-native-worklets`,
+  installed newer than the SDK 54 list expects; the builds pass with them and a downgrade is a
+  separate decision.
+
+Everything else the version check reports is a real drift: fix it with `npx expo install --fix`
+in the pull request, as the first run of the workflow did for eight `expo-*` patch versions.
 
 The `react-doctor.yml` GitHub Action also runs on all PRs, and fails the PR on an error-severity finding (warnings never fail it):
 - Scans for 60+ React / React Native best-practice rules

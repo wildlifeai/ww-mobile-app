@@ -8,7 +8,9 @@
 # The "app config fields not synced" check is turned off in package.json: the
 # android/ folder is committed on purpose, and prebuild runs before a build
 # (see documentation/resources/Expo-EAS-Guide.md), so the warning that EAS will
-# not sync app.config.ts into it describes the setup, not a problem.
+# not sync app.config.ts into it describes the setup, not a problem. The other
+# exclusions (expo.doctor.reactNativeDirectoryCheck, expo.install.exclude) and
+# the reason for each are in documentation/resources/Testing-Guide.md.
 name: Expo Doctor
 
 on:
