@@ -17,7 +17,7 @@ three again:
 ```
 [00:32.877] nrf   | BLE in: Received   3 bytes 'ver'
 [00:33.187] nrf   | BLE in: Received   6 bytes 'AI ver'
-[00:34.092] app   | [FirmwareStatus] Snapshot looks outdated — verifying against the live device
+[00:34.092] app   | [FirmwareStatus] Snapshot looks outdated - verifying against the live device
 [00:34.427] nrf   | BLE in: Received   3 bytes 'ver'
 [00:34.738] nrf   | BLE in: Received   7 bytes 'AI info'
 [00:35.971] nrf   | BLE in: Received   6 bytes 'AI ver'

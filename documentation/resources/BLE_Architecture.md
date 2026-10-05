@@ -5,8 +5,8 @@
 The Wildlife Watcher mobile app communicates with hardware devices over **Bluetooth Low Energy (BLE)** using the Nordic UART Service (NUS). All communication is routed through an **event-driven architecture** built around `bleEventBus`, `commandRegistry`, and `bleTransportController`. Commands are serialized, matched against typed response parsers, and resolved through a deterministic pipeline.
 
 The app supports two data channels on the same BLE characteristic:
-- **Text commands** — ASCII strings for configuration and control (e.g. `AI capture 1 1`)
-- **Binary image data** — Raw JPEG bytes prefixed with a `0x06` marker
+- **Text commands**: ASCII strings for configuration and control (e.g. `AI capture 1 1`)
+- **Binary image data**: Raw JPEG bytes prefixed with a `0x06` marker
 
 > [!CAUTION]
 > The legacy `BleCommandManager` (`commandManager.ts`) is **dead code**. It exists only as a quarantine trap file that throws an error if imported. All command execution now flows through `bleEventBus` → `bleTransportController` → `commandRegistry`. Do NOT reference or import it.
@@ -39,7 +39,7 @@ Developers **must** use the correct write path for each use case. Misuse causes 
 > [!WARNING]
 > **Never** call `writeRaw()` from a deployment workflow. Never call `bleSession.execute()` from the Engineer Console. These boundaries exist to prevent determinism violations.
 >
-> The motion detection `md` command is the **one exception** to the queue rule — it uses direct `writeToDevice()` because the command always times out (~5s) due to the nRF52 Wake(MD) race, and that timeout blocks the queue, pushing `capture` into the Himax's Save State window.
+> The motion detection `md` command is the **one exception** to the queue rule: it uses direct `writeToDevice()` because the command always times out (~5s) due to the nRF52 Wake(MD) race, and that timeout blocks the queue, pushing `capture` into the Himax's Save State window.
 
 ---
 
@@ -171,8 +171,8 @@ interface CommandContext<T> {
 ```
 
 **Two factory helpers** simplify creation:
-- `createSingleLineCommand<T>()` — for commands expecting one response line
-- `createMultiLineCommand<T>()` — for commands expecting multiple lines terminated by an end marker
+- `createSingleLineCommand<T>()`: for commands expecting one response line
+- `createMultiLineCommand<T>()`: for commands expecting multiple lines terminated by an end marker
 
 **File:** [commandRegistry.ts](../../src/ble/protocol/commandRegistry.ts)
 
@@ -189,7 +189,7 @@ Configuration bursts (e.g. `setdid` → `setgps` → `setop` × N → `setutc`) 
 If **any** step times out or fails (e.g., Step 3 `setop` fails), the entire sequence aborts immediately. The queue does not attempt subsequent commands.
 
 ### No Automatic Rollback
-The BLE queue does **not** revert previously sent commands. Previously-written OpParams remain on the device. This is intentional — it preserves the device state for debugging.
+The BLE queue does **not** revert previously sent commands. Previously-written OpParams remain on the device. This is intentional: it preserves the device state for debugging.
 
 ### Partial Success Handling
 The UI tracks partial failures explicitly (e.g. `initErrors = { setUtc: "Timeout" }`), transitioning to a "Failed Initialization" state that requires **operator intervention** to retry the workflow from scratch.
@@ -240,23 +240,23 @@ The foundational hook providing:
 | `writeRaw(peripheral, command)` | Send raw ASCII string to device (no queue, no parsing) |
 
 **Scan lifecycle:**
-`startScan()` always calls `BleManager.stopScan()` before starting a new scan. This eliminates a race condition where the native `BleManagerStopScan` event could lag behind, leaving the Redux `isScanning` flag stale and silently blocking subsequent scan cycles. The function does **not** gate on `isScanning` state — the stop-before-start pattern is unconditionally safe.
+`startScan()` always calls `BleManager.stopScan()` before starting a new scan. This eliminates a race condition where the native `BleManagerStopScan` event could lag behind, leaving the Redux `isScanning` flag stale and silently blocking subsequent scan cycles. The function does **not** gate on `isScanning` state. The stop-before-start pattern is unconditionally safe.
 
 **Connection sequence on Android:**
 1. `BleManager.stopScan()` (always, even if no scan is active)
 2. 500ms GATT cleanup delay (prevents race with previous `removePeripheral`)
 3. `BleManager.connect()`
 4. `BleManager.retrieveServices()` → find Nordic UART (NUS) service
-5. `BleManager.startNotification()` — enable CCCD **before** MTU negotiation
-6. `requestConnectionPriority(HIGH)` — reduce connection interval (~11-15ms)
-7. `requestMTU(512)` — maximize packet size for image transfers
-8. `BleManager.readRSSI()` — read signal strength
+5. `BleManager.startNotification()`: enable CCCD **before** MTU negotiation
+6. `requestConnectionPriority(HIGH)`: reduce connection interval (~11-15ms)
+7. `requestMTU(512)`: maximize packet size for image transfers
+8. `BleManager.readRSSI()`: read signal strength
 
 **Connection sequence on iOS:**
 1. `BleManager.stopScan()` (always)
 2. `BleManager.connect()`
 3. `BleManager.retrieveServices()` → find Nordic UART (NUS) service
-4. `BleManager.startNotification()` — enable CCCD
+4. `BleManager.startNotification()`: enable CCCD
 
 > [!NOTE]
 > iOS handles MTU negotiation automatically at the Core Bluetooth level (typically 185–512 bytes depending on the iOS version and peripheral). `requestConnectionPriority` and `requestMTU` are **Android-only** APIs and are skipped on iOS.
@@ -276,17 +276,17 @@ Centralized hook that eliminates duplicate scan orchestration code:
 | Feature | Implementation |
 |---|---|
 | **Burst cycling** | 3-second scans via `startScan(3)`, 300ms gap between bursts, on the loop's own timer |
-| **Active flag** | Consumer passes `active: boolean` — loop starts/stops reactively |
+| **Active flag** | Consumer passes `active: boolean`; loop starts/stops reactively |
 | **No `isScanning` dependency** | The next burst is never re-armed off Redux `isScanning`. It used to be, and a late `BleManagerStopScan` from `startScan`'s own stop could leave the loop dead after one burst while the screen said it was scanning (#346) |
 | **Cache flush** | `flushBleCache()` clears Redux + Android native BLE cache |
 
 **`flushBleCache()` sequence:**
-1. Dispatch `clearDiscoveredDevices()` — removes all non-connected devices from Redux
+1. Dispatch `clearDiscoveredDevices()`: removes all non-connected devices from Redux
 2. (Android) `getDiscoveredPeripherals()` → `removePeripheral()` on each cached, non-connected device
-3. Only peripherals still in the native cache are removed — devices already cleared during disconnect are skipped to avoid redundant GATT cleanup
+3. Only peripherals still in the native cache are removed; devices already cleared during disconnect are skipped to avoid redundant GATT cleanup
 
 > [!WARNING]
-> The `flushBleCache` callback must **not** depend on `devices` state. Including it causes cascading re-renders and stale closures. The `dispatch(clearDiscoveredDevices())` is sufficient — the native cache check is independent.
+> The `flushBleCache` callback must **not** depend on `devices` state. Including it causes cascading re-renders and stale closures. The `dispatch(clearDiscoveredDevices())` is sufficient; the native cache check is independent.
 
 **File:** [useScanLoop.ts](../../src/hooks/useScanLoop.ts)
 
@@ -298,7 +298,7 @@ Used by the main **DeviceDiscoveryScreen** for deployment workflows:
 |---|---|
 | **Session-based** | 15-second countdown session (`SCAN_DURATION_SECONDS` in `useDeviceDiscovery.ts`) |
 | **Scan loop** | `useScanLoop({ active: isActuallyFocused && isReady && scanSessionState === 'active' && !isEngineerConsoleActive })` |
-| **Cache flush on NEW start** | `flushBleCache()` + `autoConnect.resetAll()` — only on fresh session, **not** on resume |
+| **Cache flush on NEW start** | `flushBleCache()` + `autoConnect.resetAll()`: only on fresh session, **not** on resume |
 | **Auto-connect** | Strongest-signal device auto-connected via `useAutoConnectStateMachine` |
 | **Signal tracking** | Devices marked `signalLost: true` when not found in scan results |
 | **Suspend on blur** | Session **suspends** when screen loses focus; **resumes** automatically on return |
@@ -323,28 +323,28 @@ idle → active → expired              (no device found)
 | `expired` | 15s countdown reached zero | ❌ | ❌ | N/A |
 
 **Session start sequence** (new session from `idle` or `expired`):
-1. `autoConnect.resetAll()` — all devices return to `DISCOVERED` state
-2. `flushBleCache()` — clears stale Redux devices and native BLE cache
+1. `autoConnect.resetAll()`: all devices return to `DISCOVERED` state
+2. `flushBleCache()`: clears stale Redux devices and native BLE cache
 3. `setScanSessionState('active')` + reset countdown to 15s
 4. `useScanLoop` begins burst cycling
 
 **Suspend** (screen loses focus during `active`):
-1. `setScanSessionState('suspended')` — countdown pauses
-2. `autoConnect.suspend()` — `DISCOVERED`/`ROUTING_PENDING` → `SUSPENDED`
-3. `stopScan()` — halt BLE transport
+1. `setScanSessionState('suspended')`: countdown pauses
+2. `autoConnect.suspend()`: `DISCOVERED`/`ROUTING_PENDING` → `SUSPENDED`
+3. `stopScan()`: halt BLE transport
 4. Discovered devices and RSSI data preserved in Redux
 
 **Resume** (screen regains focus during `suspended`):
-1. `setScanSessionState('active')` — countdown resumes from where it paused
-2. `autoConnect.resume()` — `SUSPENDED` → `DISCOVERED`
-3. `useScanLoop` restarts burst cycling — **no cache flush, no device wipe**
+1. `setScanSessionState('active')`: countdown resumes from where it paused
+2. `autoConnect.resume()`: `SUSPENDED` → `DISCOVERED`
+3. `useScanLoop` restarts burst cycling, **no cache flush, no device wipe**
 
 **Expire** (countdown reaches zero during `active`):
 1. `setScanSessionState('expired')`
 2. `stopScan()`
 
 > [!IMPORTANT]
-> Resuming a suspended session does **not** call `flushBleCache()`. Flushing destroys discovered devices, kills RSSI continuity, and forces a full re-scan — all unnecessary for a navigation round-trip where the device is still advertising.
+> Resuming a suspended session does **not** call `flushBleCache()`. Flushing destroys discovered devices, kills RSSI continuity, and forces a full re-scan. All unnecessary for a navigation round-trip where the device is still advertising.
 
 ##### Connection Operation Tokens
 
@@ -368,7 +368,7 @@ try {
 
 ##### Sync Readiness Barrier
 
-Before concluding "no projects" (routing to the `no_projects` dialog), the scanner checks `sync.hasCompletedInitialSync` from Redux. If `false` and `isGlobalSyncing` is `true`, it awaits `SyncBarrier.waitForInitialSync()` — an event-driven barrier that resolves when the sync slice transitions to `hasCompletedInitialSync: true` or times out after 15 seconds.
+Before concluding "no projects" (routing to the `no_projects` dialog), the scanner checks `sync.hasCompletedInitialSync` from Redux. If `false` and `isGlobalSyncing` is `true`, it awaits `SyncBarrier.waitForInitialSync()`, an event-driven barrier that resolves when the sync slice transitions to `hasCompletedInitialSync: true` or times out after 15 seconds.
 
 This prevents the false "no projects" state that occurs when the user connects to a device faster than the post-login WatermelonDB hydration.
 
@@ -408,7 +408,7 @@ DISCOVERED → ROUTING_PENDING → ACCEPTED
                               → REJECTED → IGNORED_FOR_SESSION
 DISCOVERED → SUSPENDED  (on screen blur via suspend())
 SUSPENDED  → DISCOVERED (on screen focus via resume())
-Any        → DISCOVERED (on resetAll() — new scan session only)
+Any        → DISCOVERED (on resetAll(), new scan session only)
 ```
 
 Only `DISCOVERED` devices are eligible for auto-connect. State preservation rules:
@@ -444,7 +444,7 @@ else:
     → emit TEXT_LINE (sanitised, for command pipeline)
 ```
 
-**Input Sanitisation:** Every text line is aggressively cleaned before reaching command listeners. This prevents `cmd>` prompt echoes and trailing whitespace from triggering false regex matches in the command pipeline. Pure hex lines (e.g. motion detection grid data) are intentionally passed through as `TEXT_LINE` events — `useMotionDetectionStream` depends on them for the 16×16 grid display.
+**Input Sanitisation:** Every text line is aggressively cleaned before reaching command listeners. This prevents `cmd>` prompt echoes and trailing whitespace from triggering false regex matches in the command pipeline. Pure hex lines (e.g. motion detection grid data) are intentionally passed through as `TEXT_LINE` events: `useMotionDetectionStream` depends on them for the 16×16 grid display.
 
 **File:** [rxRouter.ts](../../src/ble/protocol/rxRouter.ts)
 
@@ -461,7 +461,7 @@ Registers four native event handlers via `BleManagerEmitter`:
 | `BleManagerDisconnectPeripheral` | Emit `DEVICE_SIGNAL(DISCONNECT)`, clear buffers, await `removePeripheral` (Android), update Redux |
 | `BleManagerDidUpdateValueForCharacteristic` | Route to `rxRouter` |
 
-**`BleManagerStopScan` guard — `isEngineerConsoleActive`:**
+**`BleManagerStopScan` guard (`isEngineerConsoleActive`):**
 
 The `scanStoppedEvent` handler calls `BleManager.getDiscoveredPeripherals()` to reconcile which devices are still advertising. Devices NOT in the native cache are marked `signalLost: true`. However, on Android, `removePeripheral()` (called during disconnect) clears the device from the native cache. This causes a **signalLost flip-flop**: the device is discovered → marked `signalLost: false` → scan stops → not in native cache → `signalLost: true` → filtered out of auto-connect → repeat.
 
@@ -476,7 +476,7 @@ When `isEngineerConsoleActive` is `true`, the `notFoundAnymore` cleanup is **ski
 
 ### 7. BLE Transport Controller (`bleTransport`)
 
-Unified transport authority — owns the command queue, exclusive transport lock, and device signal handling. Ensures only one command is in-flight at a time.
+Unified transport authority: owns the command queue, exclusive transport lock, and device signal handling. Ensures only one command is in-flight at a time.
 
 **Lifecycle of a command:**
 
@@ -507,7 +507,7 @@ stateDiagram-v2
 - **No echo dependency:** Unlike the legacy manager, there is no echo-waiting phase. The command matches against `successMatcher` / `failureMatcher` directly.
 - **Retry with policy:** Each command defines its own `retryPolicy` (max retries and optional delay). `DEVICE_DISCONNECTED`, `CONFIG_ERROR` and `COMMAND_CANCELLED` are non-retryable.
 - **Queue state broadcasting:** Emits `QUEUE_STATE_CHANGED` events so UI can show busy/idle state.
-- **Disconnect fail-fast:** On `DEVICE_SIGNAL(DISCONNECT)`, calls `clearAll()` — rejecting every queued and active command instantly instead of letting each time out.
+- **Disconnect fail-fast:** On `DEVICE_SIGNAL(DISCONNECT)`, calls `clearAll()`, rejecting every queued and active command instantly instead of letting each time out.
 - **Cancellation reaches the command:** the transport hands each task an `AbortSignal` and aborts it wherever the task becomes `CANCELLED`: `clearAll()`, which `session.reset()` and the Motion Detection stream also call, and the caller's own `signal`. `runCommand` then rejects with `COMMAND_CANCELLED`, removing its listeners and its timeout at once. Until #257 only the caller's promise was rejected; the command kept its listeners and timeout for up to its full timeout, two minutes for `aifirmware`, and a retryable one could write again after the cancel. A dropped task that settles late also no longer frees the queue slot of the command that started after it.
 - **CONFIG_ERROR pass-through:** On `CONFIG_ERROR`, the queue does NOT pause (that would deadlock). The command pipeline rejects the active command immediately.
 - **Built-in transport lock:** `acquireLock()` / `releaseLock()` for exclusive operations (file transfer, firmware flash). The queue rejects non-holder commands while locked.
@@ -547,7 +547,7 @@ const battery = await session.execute(commandRegistry.battery)
 const gpsSet = await session.execute(() => commandRegistry.setgps(gpsString))
 ```
 
-**Guard:** `execute()` checks `peripheral.connected` before enqueuing. If the device is disconnected, it rejects immediately with `DEVICE_DISCONNECTED` — preventing dead commands from entering the queue.
+**Guard:** `execute()` checks `peripheral.connected` before enqueuing. If the device is disconnected, it rejects immediately with `DEVICE_DISCONNECTED`, preventing dead commands from entering the queue.
 
 **Waiting on the device's own signals:** `waitForSleep(timeoutMs)` resolves on the next Sleep broadcast (at once when the device is already known to be asleep) and `waitForWake(timeoutMs)` on the next Wake; both return whether the signal came. A flow that needs the device to sleep, such as the camera switch whose reset happens on the way into DPD, must send nothing while it waits, since every command restarts the inactivity timer, and must budget for the timer the device woke with (op8 is read at wake, so a `setop 8` only changes the next window).
 
@@ -618,7 +618,7 @@ Handles all BLE write operations. Two functions:
 4. Service/characteristic discovery with fallback logic
 
 **`writeBinaryToDevice()`:**
-1. Accepts `Uint8Array` directly — no string encoding
+1. Accepts `Uint8Array` directly, no string encoding
 2. Supports dual mode via `withResponse` flag:
    - `true` → `BleManager.write()` (reliable, for FILE_START/END)
    - `false` → `BleManager.writeWithoutResponse()` (fast, for FILE_DATA)
@@ -647,7 +647,7 @@ byte[3..] = payload          // actual JPEG image data
 - **Completion:** Finalizes when `totalBytesReceived >= totalExpectedBytes`
 - **Watchdog:** 3-second inter-packet timeout triggers `finalizePartial()`
 - **Stream announcement:** `initialize()` emits `onImageStart`; the transport holds its queue until `onImageComplete` / `onImageError` (section 7)
-- **Force finalize:** Firmware sends `"Finished sending X bytes."` — `useCapturePreview` catches this and emits `force_finalize`
+- **Force finalize:** Firmware sends `"Finished sending X bytes."`; `useCapturePreview` catches this and emits `force_finalize`
 - **Integrity checks on finalize:** Validates JPEG magic bytes (`0xFF 0xD8`), rejects images below 90% completeness
 - **Storage:** Converts binary buffer to base64, writes via `FileSystem.writeAsStringAsync()`
 
@@ -662,9 +662,9 @@ byte[3..] = payload          // actual JPEG image data
 
 The capture path used by Capture Picture, the deployment camera view and the Light Sensor screen (the hook keeps its old name for now). Orchestrates the capture using a **three-phase architecture** separated by device sleep cycles. Each phase lets the Himax complete its full lifecycle (inactivity timer → Save State → DPD) before the next command wakes it fresh, preventing the FatFS race condition where `txfile` and `save_configuration()` competed for the same filesystem.
 
-**Phase 1 — Setup:**
+**Phase 1 (Setup):**
 1. `session.getOps()` to verify `CAMERA_ENABLED` (OP 10 = 1) and `TEST_MODE_BITS` (OP 18 = 0). Fixes either if needed. Served from the per-wake op cache, so on a repeat capture this sends nothing.
-2. `waitForSleep(5000)` — returns immediately when the device is already down, which it usually is once the cached read stops waking it.
+2. `waitForSleep(5000)`: returns immediately when the device is already down, which it usually is once the cached read stops waking it.
 
 > [!NOTE]
 > Those two changed together on 2 September 2026 and had to. Caching the read alone removed the
@@ -684,20 +684,20 @@ The capture path used by Capture Picture, the deployment camera view and the Lig
 > 20 s hold was tried first and withdrawn the same day: it kept a camera switch from ever resetting
 > while the app polled for it. See [keepAwake.ts](../../src/ble/session/keepAwake.ts).
 
-**Phase 2 — Capture:**
-3. `AI capture 1 500` — captures a single image (500ms interval allows AE settling).
+**Phase 2 (Capture):**
+3. `AI capture 1 500`: captures a single image (500ms interval allows AE settling).
 4. Extract the captured filename from the response (e.g. `59200A60.JPG`).
-5. `waitForSleep(5000)` — **critical**: ensures Save State + DPD complete before file transfer.
+5. `waitForSleep(5000)` (**critical**): ensures Save State + DPD complete before file transfer.
 
-**Phase 3 — Transfer:**
-6. `AI txfile <filename>` — device wakes fresh from DPD, FatFS is clean, no competing operations.
+**Phase 3 (Transfer):**
+6. `AI txfile <filename>`: device wakes fresh from DPD, FatFS is clean, no competing operations.
 7. `ImageReassembler` processes binary packets via `bleEventBus.binaryPacket`.
 8. Normal completion or `force_finalize` fallback (30-second inactivity timeout).
 
 **Leaving the screen** stops the chain at its next step: a mounted ref is checked before the capture and before `txfile`, so nothing goes out for a screen that is gone. A stream already running finishes under the transport's gate, and a completion for a transfer this hook did not request is ignored (the file stays in the cache). Found 3 September 2026: a Back press mid-run let the capture and `txfile` go out 4 and 8 s later, and the picture turned up on the next visit.
 
 > [!NOTE]
-> The `waitForSleep()` method on `BleSession` listens for the `DEVICE_SIGNAL(SLEEP)` event from `bleEventBus`. It uses **static imports** for `DeviceSignal` — dynamic imports would defer the event handler to a microtask, causing the synchronously-emitted signal to be missed.
+> The `waitForSleep()` method on `BleSession` listens for the `DEVICE_SIGNAL(SLEEP)` event from `bleEventBus`. It uses **static imports** for `DeviceSignal`: dynamic imports would defer the event handler to a microtask, causing the synchronously-emitted signal to be missed.
 
 > [!NOTE]
 > The pre-flight `getops` check ensures capture works correctly even if `TEST_BIT_SKIP_FILE_CREATION` (OP 18, bit 3) is still set from a prior motion detection test. Without it, the firmware captures but skips JPEG file creation, and the `txfile` download times out.
@@ -725,7 +725,7 @@ Standard post-connection procedure:
 
 Prevents device disconnection due to the firmware's 60-second BLE inactivity timeout. Implemented as a **pure inactivity timer**: any line or binary packet received, or raw write sent, restarts a 30-second countdown (`BLE_PROTOCOL_TIMINGS.HEARTBEAT_IDLE_MS`), and when it runs out the app sends `get heartbeat`, which the nRF answers itself without waking the Himax. Two rules behind it (#312). The margin is half the window because a JS timer fires late whenever the thread is busy, and a 58-second ping lost the link six times in one bench session. And only air traffic counts, because the nRF restarts its own timer only on a write it receives or a notification it sends; the app's local events, such as the queue going idle after a command timed out, used to restart this countdown too. While a long-running operation has paused the heartbeat, the fallback RSSI read is answered by the phone's radio and does not keep the link up.
 
-**Mounted in:** `ListenToBleEngineProvider` — active whenever any device is connected.
+**Mounted in:** `ListenToBleEngineProvider`, active whenever any device is connected.
 
 **File:** [useBleHeartbeat.ts](../../src/hooks/useBleHeartbeat.ts)
 
@@ -737,15 +737,15 @@ Prevents device disconnection due to the firmware's 60-second BLE inactivity tim
 
 The **Engineer Console** (`EngineerConsoleScreen.tsx`) has two distinct surfaces. Keep them separate.
 
-**1. The raw input line — a pure terminal.** Whatever you type goes out via `writeRaw()` (`useEngineerConsoleActions.ts`) and responses come back through `bleEventBus` subscriptions. This path:
+**1. The raw input line: a pure terminal.** Whatever you type goes out via `writeRaw()` (`useEngineerConsoleActions.ts`) and responses come back through `bleEventBus` subscriptions. This path:
 - Never enqueues a typed command through the transport controller
 - Never parses or interprets responses beyond display
 - Is for verifying that `commandRegistry` regexes match real firmware output
 
-**2. The Flows modal — a workflow launcher.** `FlowsReferenceModal` runs the `type: 'process'` and `type: 'local'` entries in `src/ble/types.ts`. These *do* use sessions and hooks (`useDeviceSettings.resetToDefaults()`, capture preview, firmware update) and *do* navigate to workflow screens. See [04-ENGINEER-CONSOLE.md](../onboarding/04-ENGINEER-CONSOLE.md#flows--processes-reference).
+**2. The Flows modal: a workflow launcher.** `FlowsReferenceModal` runs the `type: 'process'` and `type: 'local'` entries in `src/ble/types.ts`. These *do* use sessions and hooks (`useDeviceSettings.resetToDefaults()`, capture preview, firmware update) and *do* navigate to workflow screens. See [04-ENGINEER-CONSOLE.md](../onboarding/04-ENGINEER-CONSOLE.md#flows--processes-reference).
 
 > [!WARNING]
-> The invariant is **not** "the console never runs workflows" — it plainly does. The invariant is that the **raw input line** never enqueues commands, so typing in the terminal can never interleave with a deployment's queued sequence. When adding console functionality, decide which surface it belongs to: freeform diagnostics go on the input line, anything with multiple steps or expected responses goes in Flows behind a session.
+> The invariant is **not** "the console never runs workflows" (it plainly does). The invariant is that the **raw input line** never enqueues commands, so typing in the terminal can never interleave with a deployment's queued sequence. When adding console functionality, decide which surface it belongs to: freeform diagnostics go on the input line, anything with multiple steps or expected responses goes in Flows behind a session.
 
 ### Common Issues
 
@@ -767,7 +767,7 @@ The **Engineer Console** (`EngineerConsoleScreen.tsx`) has two distinct surfaces
 Unexpected BLE disconnects (user navigation, device DPD, signal loss) can leave multiple pipeline layers in an inconsistent state. The pipeline now handles disconnects with a **fail-fast** strategy at every layer.
 
 > [!IMPORTANT]
-> The `DISCONNECT` signal is emitted as the **first action** in the disconnect event handler — before buffer cleanup, `removePeripheral`, or Redux updates. This ensures all in-flight and queued commands are rejected instantly.
+> The `DISCONNECT` signal is emitted as the **first action** in the disconnect event handler, before buffer cleanup, `removePeripheral`, or Redux updates. This ensures all in-flight and queued commands are rejected instantly.
 
 ### Disconnect Signal Flow
 
@@ -816,12 +816,12 @@ iOS handles this automatically at the Core Bluetooth level.
 src/
 ├── ble/
 │   ├── types.ts                    # UI command definitions (CommandNames, COMMANDS)
-│   ├── commandManager.ts           # ⛔ DEAD — trap file, throws on import
+│   ├── commandManager.ts           # ⛔ DEAD: trap file, throws on import
 │   ├── transport.ts                # Raw BLE write + binary write + service discovery
 │   ├── messageClassifier.ts        # UI-only log categorization (NOT protocol logic)
 │   ├── emitters.ts                 # Legacy EventEmitter3 instances (retained for ImageReassembler)
 │   ├── protocol/                   # Event-driven command engine
-│   │   ├── eventBus.ts             # BleEventBus — central event dispatcher
+│   │   ├── eventBus.ts             # BleEventBus: central event dispatcher
 │   │   ├── rxRouter.ts             # Binary/text demux + input sanitisation
 │   │   ├── commandRegistry.ts      # Typed command factories with frozen schema
 │   │   ├── bleTransportController.ts # Unified transport FSM: queue + lock + signal handling
@@ -843,11 +843,11 @@ src/
 │   │   └── createBleSession.ts     # Session factory for deployment workflows
 │   ├── workflows/                  # Reusable BLE workflow functions
 │   │   ├── deploymentPipeline.ts   # syncTime, syncAiModel, configureDevice
-│   │   ├── resetToDefaults.ts      # executeResetToDefaults — shared OP factory reset
+│   │   ├── resetToDefaults.ts      # executeResetToDefaults: shared OP factory reset
 │   │   ├── configVerification.ts   # Post-update CONFIG.TXT handshake
 │   │   └── checkSdCard.ts          # SD card health validation
 │   └── __tests__/                  # messageClassifier, transport
-├── hooks/                          # BLE hooks — full inventory in 02-CODEBASE-GUIDE.md
+├── hooks/                          # BLE hooks: full inventory in 02-CODEBASE-GUIDE.md
 ├── screens/Devices/hooks/
 │   ├── useDeviceDiscovery.ts       # Main scanner: session timer + auto-connect routing
 │   ├── useAutoConnectStateMachine.ts # Per-device auto-connect eligibility
@@ -891,7 +891,7 @@ src/
    ```
 
 3. **Or test via Engineer Console:**
-   Type `my-command 42` directly — `writeRaw()` sends it, response appears in console log.
+   Type `my-command 42` directly: `writeRaw()` sends it, response appears in console log.
 
 ### Creating a Multi-Step Workflow
 
@@ -913,7 +913,7 @@ const results = await runCommandPipeline(peripheral, [
 
 ## Maintenance Rules
 
-- **Adding commands**: Always start in `commandRegistry.ts` — define the factory, then use it via session.
+- **Adding commands**: Always start in `commandRegistry.ts`. Define the factory, then use it via session.
 - **UI command definitions**: `types.ts` (`COMMANDS` object) is used only for the Engineer Console's Command Reference Modal.
 - **Protocol logic**: Check `protocol/` directory first. Never modify `commandManager.ts`.
 - **Message classifier**: Only for monitoring UI display. Never use it for command matching.
@@ -922,7 +922,7 @@ const results = await runCommandPipeline(peripheral, [
 
 ---
 
-*Last Updated: May 16, 2026 — Scan session state machine (idle/active/suspended/expired), auto-connect suspend/resume, operation tokens, SyncBarrier for project readiness, updated rxRouter hex passthrough, DFU disconnect suppression via Redux, capture preview getops pre-flight*
+*Last Updated: May 16, 2026. Scan session state machine (idle/active/suspended/expired), auto-connect suspend/resume, operation tokens, SyncBarrier for project readiness, updated rxRouter hex passthrough, DFU disconnect suppression via Redux, capture preview getops pre-flight*
 
 ---
 
@@ -951,7 +951,7 @@ loops reported in field testing (CGP, April 2026).
 1. **Observe** device state via Redux (`useAppSelector(state => state.devices[id])`)
 2. **Execute** commands via `session.execute(commandRegistry.xxx)`
 3. **NEVER** call `disconnectDevice()` or `session.disconnect()`
-4. **On back-navigation:** just `goBack()` — the parent screen handles cleanup
+4. **On back-navigation:** just `goBack()`, the parent screen handles cleanup
 
 ### Owner Screen Rules
 

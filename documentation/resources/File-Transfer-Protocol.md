@@ -62,9 +62,9 @@ App                          nRF52                        HX6538
 | Rule | Description |
 |------|-------------|
 | **Bounded window** | At most `windowSize` (default 12) FILE_DATA packets are unacknowledged at any time |
-| **Ordered writes** | The HX6538 writes and ACKs strictly in order — packet order is preserved end to end |
+| **Ordered writes** | The HX6538 writes and ACKs strictly in order, so packet order is preserved end to end |
 | **Cumulative ACKs** | `ftx ack <N>` acknowledges every packet up to and including N, not just N |
-| **Duplicate tolerance** | BLE may retry at the link layer — duplicate and stale ACKs are ignored |
+| **Duplicate tolerance** | BLE may retry at the link layer, so duplicate and stale ACKs are ignored |
 | **Silence watchdog** | No `ftx`-prefixed activity for `SILENCE_TIMEOUT_MS` aborts the session |
 | **Abort on repeat timeout** | 3 consecutive ACK timeouts abort the transfer |
 
@@ -81,7 +81,7 @@ Setting `windowSize: 1` restores strict stop-and-wait: one packet, then wait for
 | `0x07` | FILE_START | `0x00` | payload len | `[size_u32_LE][filename\0]` |
 | `0x08` | FILE_DATA | pkt num (1–255, wraps) | payload len | `[file_data]` (≤241 bytes) |
 | `0x09` | FILE_END | `0x00` | `0x02` | `[crc16_LE]` |
-| `0x0A` | FILE_LOOPBACK | seq num | payload len | arbitrary payload — echoed back as a `0x06`-framed binary notification, no I2C or SD involvement. Diagnostic only (pure BLE round-trip benchmark). |
+| `0x0A` | FILE_LOOPBACK | seq num | payload len | arbitrary payload, echoed back as a `0x06`-framed binary notification, no I2C or SD involvement. Diagnostic only (pure BLE round-trip benchmark). |
 
 ### Responses (nRF52 → BLE, as strings)
 
@@ -128,7 +128,7 @@ Byte:  09  00  02  XX XX
 
 ## CRC Algorithm
 
-**CRC-16/CCITT (Augmented)** — matches firmware `crc16_ccitt.c`:
+**CRC-16/CCITT (Augmented)**: matches firmware `crc16_ccitt.c`:
 
 ```
 Polynomial: 0x1021
@@ -139,7 +139,7 @@ Augment:    2 bytes of 0x00 appended after data
 
 **Test vector:** `"123456789"` (9 ASCII bytes, no null) → `0xE5CC`
 
-**CRC scope — computed over file data bytes ONLY:**
+**CRC scope, computed over file data bytes ONLY:**
 - ✅ The raw file content bytes (what gets written to SD)
 - ❌ Does NOT include filename, packet headers, packet numbers, or null terminators
 
@@ -149,8 +149,8 @@ Augment:    2 bytes of 0x00 appended after data
 
 ### Automatic Handling
 
-1. **Validates filename** — rejects if not 8.3 uppercase format
-2. **Validates file size** — rejects if > 10MB
+1. **Validates filename**: rejects if not 8.3 uppercase format
+2. **Validates file size**: rejects if > 10MB
 3. **Checks the BLE firmware floor**, for one `ver` at most, and refuses below it. See [The BLE firmware floor](#the-ble-firmware-floor)
 4. **Computes CRC-16** over file data before transfer starts
 5. **Pauses heartbeat** for the entire transfer session
@@ -171,7 +171,7 @@ Augment:    2 bytes of 0x00 appended after data
 | FILE_DATA | `writeWithoutResponse()` | Session aborts after 3 consecutive ACK timeouts |
 | FILE_END | `write()` (with BLE response) | BLE-level confirmation; no app retries |
 
-**Session-level retry:** on `ftx err 7` (SD write fail) the device closes the file, so the app restarts the whole session from `FILE_START` — up to `MAX_SESSION_RETRIES` (2) additional attempts. The per-error policies in the table below are the source of truth and live in [`fileTransferTypes.ts`](../../src/ble/protocol/fileTransfer/fileTransferTypes.ts) as `ERROR_RETRY_POLICY`.
+**Session-level retry:** on `ftx err 7` (SD write fail) the device closes the file, so the app restarts the whole session from `FILE_START`, up to `MAX_SESSION_RETRIES` (2) additional attempts. The per-error policies in the table below are the source of truth and live in [`fileTransferTypes.ts`](../../src/ble/protocol/fileTransfer/fileTransferTypes.ts) as `ERROR_RETRY_POLICY`.
 
 ### Timeout Values
 
@@ -242,7 +242,7 @@ Per-phone variance is expected and large; a per-handset timing table is tracked 
 
 | Filename | Content | Size | Packets | Purpose |
 |----------|---------|------|---------|---------|
-| `HELLO.TXT` | `Hello World!` | 12 bytes | 1 | Minimal — verify basic flow |
+| `HELLO.TXT` | `Hello World!` | 12 bytes | 1 | Minimal, verify basic flow |
 | `NUMBERS.TXT` | `0123456789` repeated 25× | 250 bytes | 2 | Verify multi-packet |
 | `BIG.TXT` | Any text, 2KB | ~2048 bytes | 9 | Verify multi-packet |
 | `WRAP.TXT` | Any text, 62KB+ | ~63000 bytes | 262 | Verify packet number wrap 255→1 |
@@ -284,12 +284,12 @@ fileTx AI resp: 'ack end' state=1     ← CRC verified → "ftx done"
 |---------|-------------|
 | "This camera's BLE firmware is ..., and sending files to it needs ..." before anything is sent | BLE firmware below the floor. Update it over DFU, then try again |
 | "The camera acknowledged N of the M packets sent, then went silent" | `ver` went unanswered and the relay stopped acking early, as firmware below the floor does. Read `ver` from the Engineer Console and update the BLE firmware if it is old |
-| `ftx err 1` immediately | Device in ACTIVE state from previous failed transfer — disconnect and reconnect |
+| `ftx err 1` immediately | Device in ACTIVE state from previous failed transfer, disconnect and reconnect |
 | `ftx err 3` | Filename not 8.3 uppercase |
 | `ftx err 4` | I2C bus failure between nRF52 and HX6538 |
 | App timeout after FILE_START | HX6538 not responding to I2C file message |
-| `ftx err 9` | CRC mismatch — verify both sides compute CRC with 2 zero-bytes augmentation |
-| Partial file on SD | Transfer interrupted — check for orphaned `.tmp` files |
+| `ftx err 9` | CRC mismatch: verify both sides compute CRC with 2 zero-bytes augmentation |
+| Partial file on SD | Transfer interrupted, check for orphaned `.tmp` files |
 
 ---
 

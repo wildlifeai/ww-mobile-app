@@ -20,7 +20,7 @@ Set `ANDROID_HOME` to your SDK path (usually `C:\Users\<Name>\AppData\Local\Andr
 
 ### Recommended JDK
 
-[Azul Zulu JDK 17](https://www.azul.com/downloads/?version=java-17-lts) — if you see "Unsupported class file major version", you're on JDK 21+. Downgrade to 17 or set `JAVA_HOME` accordingly.
+[Azul Zulu JDK 17](https://www.azul.com/downloads/?version=java-17-lts): if you see "Unsupported class file major version", you're on JDK 21+. Downgrade to 17 or set `JAVA_HOME` accordingly.
 
 ## Running Locally
 
@@ -63,14 +63,14 @@ adb install ./path/to/app.apk
 
 Google Play requires apps targeting Android 15+ to support 16 KB memory pages.
 
-**Wildlife Watcher status**: ✅ Low risk — primarily JS/TS code. React Native core and Hermes engine already support 16 KB.
+**Wildlife Watcher status**: ✅ Low risk, primarily JS/TS code. React Native core and Hermes engine already support 16 KB.
 
 ### Native Dependencies to Monitor
 
 | Dependency | Risk | Status |
 |-----------|------|--------|
 | `react-native-ble-manager` | Medium | Popular, likely compatible |
-| `@getquip/expo-nordic-dfu` | **High** | Wraps Nordic's native DFU libraries — test on 16 KB emulator |
+| `@getquip/expo-nordic-dfu` | **High** | Wraps Nordic's native DFU libraries, test on 16 KB emulator |
 | `react-native-maps` | Low | Google-maintained |
 | Expo modules | Low | Expo team maintains |
 
@@ -102,7 +102,7 @@ android {
 | "compileSdkVersion not specified" | Add `subprojects { afterEvaluate { ... compileSdkVersion } }` to `android/build.gradle` |
 | `npm install` fails in a package's postinstall with `'.' is not recognized` (Windows) | A shell postinstall `cmd.exe` can't run (the npm package `maestro` did this until October 2026). Use `npm install --ignore-scripts` then `npx patch-package`, the same end state minus the broken script. |
 | Build exits non-zero | `cd android && ./gradlew clean && cd ..` then `npx expo prebuild --clean` |
-| Users can't install from Play (device *is* supported) | Play Integrity filter — see [publishing_guide.md](publishing_guide.md#️-store-listing-device-checks-play-integrity--the-invisible-install-filter) |
+| Users can't install from Play (device *is* supported) | Play Integrity filter, see [publishing_guide.md](publishing_guide.md#️-store-listing-device-checks-play-integrity--the-invisible-install-filter) |
 | "Missing Supabase configuration" | Env vars must be in `eas.json`, not just `.env.local`. Rebuild after updating. |
 | EAS build queued too long | Use `--local` flag |
 

@@ -1,9 +1,9 @@
-# Sliding Window File Transfer — Firmware Engineering Guide
+# Sliding Window File Transfer: Firmware Engineering Guide
 
 > [!CAUTION]
 > **Superseded.** The window=2 design described here was never the shipped design. Current transport is credit-based streaming with cumulative ACKs (`windowSize ?? 12`). See [File-Transfer-Protocol.md](../resources/File-Transfer-Protocol.md) for the current protocol and [fast_file_transfer_proposal.md](fast_file_transfer_proposal.md) for how it got there.
 >
-> Retained for the `ftx err 7` root-cause analysis (§CRITICAL), which drove real firmware fixes. Note its error-code table marks codes 1 and 9 as "Fail"; the app's actual policy is `auto_once` for both — see `ERROR_RETRY_POLICY` in `fileTransferTypes.ts`.
+> Retained for the `ftx err 7` root-cause analysis (§CRITICAL), which drove real firmware fixes. Note its error-code table marks codes 1 and 9 as "Fail"; the app's actual policy is `auto_once` for both; see `ERROR_RETRY_POLICY` in `fileTransferTypes.ts`.
 
 **Date:** 2026-04-29  
 **Mobile App Version:** 0.0.44  
@@ -86,9 +86,9 @@ The app keeps **at most 2 packets in-flight** at any time.
 
 Currently the nRF52 likely waits for an I2C ACK from the HX6538 before forwarding the next BLE packet. This needs to change:
 
-1. **Forward BLE packets immediately over I2C** — do not block on ACK from HX6538
+1. **Forward BLE packets immediately over I2C**: do not block on ACK from HX6538
 2. If HX6538 returns I2C busy/NACK → temporarily stop forwarding BLE packets until it's ready
-3. No other changes needed — error codes and ACK forwarding remain the same
+3. No other changes needed: error codes and ACK forwarding remain the same
 
 ### What the HX6538 Needs to Change
 
@@ -120,7 +120,7 @@ When a DATA packet arrives:
 ```c
 void handle_file_data(uint8_t pktNum, uint8_t* data, uint8_t len) {
     if (pktNum == expected_pkt) {
-        // Case 1: Expected packet — write immediately
+        // Case 1: Expected packet, write immediately
         sd_write(data, len);
         send_ack(pktNum);
         expected_pkt = next_wire_pkt(expected_pkt);
@@ -134,9 +134,9 @@ void handle_file_data(uint8_t pktNum, uint8_t* data, uint8_t len) {
         }
     }
     else if (pktNum == next_wire_pkt(expected_pkt)) {
-        // Case 2: Next packet arrived early — buffer it
+        // Case 2: Next packet arrived early, buffer it
         if (pending_slot.occupied) {
-            // Buffer full — should not happen with window=2
+            // Buffer full, should not happen with window=2
             send_err(SEQUENCE_ERROR);
             return;
         }
@@ -144,10 +144,10 @@ void handle_file_data(uint8_t pktNum, uint8_t* data, uint8_t len) {
         pending_slot.len = len;
         pending_slot.pktNum = pktNum;
         pending_slot.occupied = true;
-        // Do NOT send ACK yet — wait until expected_pkt is processed
+        // Do NOT send ACK yet, wait until expected_pkt is processed
     }
     else {
-        // Out of window — sequence error
+        // Out of window: sequence error
         send_err(SEQUENCE_ERROR);  // ftx err 8
     }
 }
@@ -184,7 +184,7 @@ if (pending_slot.occupied) {
 2. Connect to the device via Engineering Console
 3. Navigate to **File Transfer Test** (via the Engineering Console action menu)
 
-### Test 1: Stop-and-Wait (Baseline — No Firmware Changes Needed)
+### Test 1: Stop-and-Wait (Baseline, No Firmware Changes Needed)
 
 1. Select **Stop-and-Wait (current)** radio button
 2. Tap **Send TINY.TXT** (5 bytes, 1 packet)
@@ -214,14 +214,14 @@ if (pending_slot.occupied) {
    ```
    This is expected and the app handles it gracefully (session retry, then fail).
 
-5. Tap **Send BIG.TXT** (1000 bytes, 5 packets) — this is the real throughput test
+5. Tap **Send BIG.TXT** (1000 bytes, 5 packets): this is the real throughput test
 6. Compare the `avg` round-trip time with Stop-and-Wait mode
 7. **Expected improvement:** ~30–50% faster per-packet average
 
 ### Test 3: BLE Loopback Benchmark
 
-1. Tap **Run Benchmark** — sends FILE_LOOPBACK packets (type 10) at 3 payload sizes (5, 100, 241 bytes)
-2. The device should echo each packet immediately — no I2C or SD card involvement
+1. Tap **Run Benchmark**: sends FILE_LOOPBACK packets (type 10) at 3 payload sizes (5, 100, 241 bytes)
+2. The device should echo each packet immediately, with no I2C or SD card involvement
 3. Results are grouped by payload size, showing avg/min/max round-trip times
 4. **⚠️ Currently blocked:** The nRF52 firmware recognises FILE_LOOPBACK but does not send the echo response. All benchmark rounds will time out until firmware implements the echo. See Questions section.
 
@@ -229,7 +229,7 @@ if (pending_slot.occupied) {
 
 1. During a Large Binary transfer, **remove the SD card** (if physically possible)
 2. **Expected:** `ftx err 7` (SD write fail), app retries once, then fails gracefully
-3. Reinsert SD card, retry — should succeed
+3. Reinsert SD card, retry; should succeed
 
 ### Test 5: Verify SD Card Contents
 
@@ -272,7 +272,7 @@ All packets use the existing binary format over the BLE UART service:
 | `0x07` | FILE_START | filename (8.3, null-padded) + file size (4 bytes LE) |
 | `0x08` | FILE_DATA | packet number (1 byte) + chunk data (up to 241 bytes) |
 | `0x09` | FILE_END | CRC-16-CCITT (2 bytes LE) |
-| `0x0A` | FILE_LOOPBACK | arbitrary payload — device should echo back immediately (see below) |
+| `0x0A` | FILE_LOOPBACK | arbitrary payload; device should echo back immediately (see below) |
 
 Wire packet numbers: 1–255, wrap back to 1 (never 0).
 
@@ -293,7 +293,7 @@ without involving I2C or the AI processor. No `ftx ack` string should be sent.
 **Current status (2026-04-29):** The nRF52 firmware **receives** FILE_LOOPBACK packets
 (logs show `BLE fileTx LOOPBACK N bytes`) but does **not send the echo response**.
 The loopback benchmark in the mobile app times out on all attempts. This is a ~5-line
-firmware change — see "Required firmware action" in the Questions section.
+firmware change; see "Required firmware action" in the Questions section.
 
 ---
 
@@ -301,12 +301,12 @@ firmware change — see "Required firmware action" in the Questions section.
 
 The sliding window design maintains all existing safety guarantees:
 
-- ✅ **Ordered writes** — packets always written to SD in order
-- ✅ **Per-packet ACK** — every packet gets an explicit `ftx ack N`
-- ✅ **CRC end validation** — whole-file integrity check at FILE_END
-- ✅ **Existing error codes** — no new error codes needed
-- ✅ **Minimal RAM** — only ~250 bytes additional on HX6538
-- ✅ **Backward compatible** — if firmware doesn't support buffering, app falls back to stop-and-wait retry behaviour
+- ✅ **Ordered writes**: packets always written to SD in order
+- ✅ **Per-packet ACK**: every packet gets an explicit `ftx ack N`
+- ✅ **CRC end validation**: whole-file integrity check at FILE_END
+- ✅ **Existing error codes**: no new error codes needed
+- ✅ **Minimal RAM**: only ~250 bytes additional on HX6538
+- ✅ **Backward compatible**: if firmware doesn't support buffering, app falls back to stop-and-wait retry behaviour
 
 ---
 
@@ -344,7 +344,7 @@ The HX6538's 1000ms inactivity timer fires during the gap between packets, power
 
 #### Factor 2: Non-deterministic SD write failure
 
-Even after pipelining the mobile app's send loop to minimise BLE idle time, the failure moved from packet 31 to packet 16 — **earlier**, not later. This rules out timing as the sole cause and points to:
+Even after pipelining the mobile app's send loop to minimise BLE idle time, the failure moved from packet 31 to packet 16: **earlier**, not later. This rules out timing as the sole cause and points to:
 
 - **SD card internal garbage collection** stalling after filling an erase block (~4-32KB)
 - **Missing `f_sync()` calls** causing FAT metadata corruption
@@ -418,7 +418,7 @@ FRESULT safe_sd_write(FIL* fp, const void* buff, UINT btw, UINT* bw) {
 }
 ```
 
-**Why:** SD card write failures can be transient — a brief retry often succeeds after the card completes internal housekeeping.
+**Why:** SD card write failures can be transient: a brief retry often succeeds after the card completes internal housekeeping.
 
 #### 4. Clean up file handle on error
 

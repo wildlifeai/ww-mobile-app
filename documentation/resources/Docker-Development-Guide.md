@@ -50,9 +50,9 @@ npx expo start
 | 19002 | Expo web |
 
 Volume mounts:
-- `.:/app` — project folder
-- `/app/node_modules` — isolated (prevents host override)
-- `~/.expo:/home/developer/.expo` — shared Expo credentials
+- `.:/app`: project folder
+- `/app/node_modules`: isolated (prevents host override)
+- `~/.expo:/home/developer/.expo`: shared Expo credentials
 
 ### adb-server (optional, Android profile)
 

@@ -31,7 +31,7 @@ Think of it as a **quality gate** that prevents dependency-related build failure
 
 ### The Core Problem: Expo SDK Compatibility Chain
 
-Wildlife Watcher's dependency chain is tightly coupled — the **BLE and DFU libraries** drive the React Native version, which drives the Expo SDK version, which constrains everything else:
+Wildlife Watcher's dependency chain is tightly coupled: the **BLE and DFU libraries** drive the React Native version, which drives the Expo SDK version, which constrains everything else:
 
 ```
 BLE/DFU Libraries (Hardware Interface)
@@ -54,13 +54,13 @@ All Expo packages must match SDK version
 This system exists to **protect the dependency chain** by:
 
 1. **Version Locking**: Prevents accidental upgrades that break compatibility
-   - `react-native: 0.81.5` — must match Expo SDK 54
-   - `react-native-ble-manager: 11.3.2` — hardware interface
-   - `react-native-bluetooth-state-manager: 1.3.5` — BLE state
+   - `react-native: 0.81.5`: must match Expo SDK 54
+   - `react-native-ble-manager: 11.3.2`: hardware interface
+   - `react-native-bluetooth-state-manager: 1.3.5`: BLE state
 
 2. **Expo SDK Enforcement**: Keeps all Expo packages aligned
-   - `expo: ~54.0.0` — SDK version
-   - `expo-dev-client: ~6.0.20` — must match SDK
+   - `expo: ~54.0.0`: SDK version
+   - `expo-dev-client: ~6.0.20`: must match SDK
 
 3. **Package Migration Guards**: Prevents reverting to bare RN packages
    - **Blocks** `@expo/vector-icons` → **Must use** `react-native-vector-icons` or `expo-symbols`
@@ -445,7 +445,7 @@ These scripts are already configured in `package.json`:
 ```
 
 > [!IMPORTANT]
-> Validation runs from **`postinstall`**, not `preinstall` — there is no `preinstall` hook. `postinstall` also applies `patches/` via `patch-package`, so `npm install --ignore-scripts` skips both. Never use that flag on this repo.
+> Validation runs from **`postinstall`**, not `preinstall`. There is no `preinstall` hook. `postinstall` also applies `patches/` via `patch-package`, so `npm install --ignore-scripts` skips both. Never use that flag on this repo.
 
 ### CI/CD Integration
 
@@ -489,7 +489,7 @@ jobs:
 }
 ```
 
-### EAS Build Integration (proposal — not currently configured)
+### EAS Build Integration (proposal, not currently configured)
 
 > [!NOTE]
 > The current `eas.json` does **not** set `prebuildCommand` on any profile. The snippet below is a suggestion, not a description of the repo.
@@ -637,18 +637,18 @@ npm install --save-dev package-name@^2.16.0
 
 ### 2. Use Severity Based on the Dependency Chain
 
-**Error** — Part of the critical SDK compatibility chain:
-- `react-native: 0.81.5` — **Must match Expo SDK 54**
-- `typescript: ~5.3.3` — Required for React Native compatibility
+**Error**: Part of the critical SDK compatibility chain:
+- `react-native: 0.81.5`: **Must match Expo SDK 54**
+- `typescript: ~5.3.3`: Required for React Native compatibility
 - Core Expo SDK packages that must match the SDK version
 
-**Warning** — BLE/DFU libraries and supporting packages:
-- `react-native-ble-manager: 11.3.2` — hardware interface
-- `react-native-bluetooth-state-manager: 1.3.5` — BLE state management
-- `@getquip/expo-nordic-dfu` — firmware update capability
+**Warning**: BLE/DFU libraries and supporting packages:
+- `react-native-ble-manager: 11.3.2`: hardware interface
+- `react-native-bluetooth-state-manager: 1.3.5`: BLE state management
+- `@getquip/expo-nordic-dfu`: firmware update capability
 - Supporting libraries for navigation, UI, state management
 
-**Info** — Optional features:
+**Info**: Optional features:
 - Development tools
 - Optional UI enhancements
 - Nice-to-have packages
@@ -798,14 +798,14 @@ All other dependencies
 ```
 
 ### Key Commands
-- `npm run validate:deps` — **Run validation (use before any npm install)**
-- `npm run deps` — Manage rules interactively
-- `npm run prebuild:check` — Pre-build validation
+- `npm run validate:deps`: **Run validation (use before any npm install)**
+- `npm run deps`: Manage rules interactively
+- `npm run prebuild:check`: Pre-build validation
 
 ### Key Files
-- `scripts/validate-deps.js` — Validation engine
-- `scripts/manage-dependency-rules.js` — Rule management CLI
-- `scripts/dependency-rules.json` — **The critical configuration**
+- `scripts/validate-deps.js`: Validation engine
+- `scripts/manage-dependency-rules.js`: Rule management CLI
+- `scripts/dependency-rules.json`: **The critical configuration**
 
 ---
 

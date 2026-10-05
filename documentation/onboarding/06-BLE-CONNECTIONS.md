@@ -1,6 +1,6 @@
-# BLE Connections — Lifecycle, Gates, and Failure Signatures
+# BLE Connections: Lifecycle, Gates, and Failure Signatures
 
-How the app discovers, connects to, and releases WW500 devices — and the
+How the app discovers, connects to, and releases WW500 devices, and the
 sharp edges found on the bench (21 Jul 2026). Read alongside
 [04-ENGINEER-CONSOLE.md](./04-ENGINEER-CONSOLE.md) and
 [05-DEVICE-FLOWS.md](./05-DEVICE-FLOWS.md).
@@ -11,12 +11,12 @@ sharp edges found on the bench (21 Jul 2026). Read alongside
 |---|---|---|
 | Hook | `useDeviceDiscovery` + `useScanLoop` | `useEngineerConnect` + `useScanLoop` |
 | Session | 15 s countdown (`idle → active → expired`), manual restart | continuous while dialog open |
-| Auto-connect | yes — `useAutoConnectStateMachine` | no — user taps a device |
+| Auto-connect | yes, `useAutoConnectStateMachine` | no, user taps a device |
 
 `isEngineerConsoleActive` (redux `scanningSlice`) **disables the main
 scanner's scan loop and auto-connect** while the console's scanner runs.
 It is set when the console dialog opens and MUST be released on every exit
-path — it is cleared on successful navigation, explicit cancel, and (since
+path. It is cleared on successful navigation, explicit cancel, and (since
 `fix/ble-connection-lifecycle`) hook unmount. A stuck flag is invisible in
 the UI: the Scanner tab shows the searching animation but no scan bursts
 ever run.
@@ -24,7 +24,7 @@ ever run.
 ## Device-side facts that shape the app
 
 - The WW500 advertises **on wake and for a limited window after the
-  middle-button press** — not continuously. A sleeping device is silent.
+  middle-button press**, not continuously. A sleeping device is silent.
 - The device drops the link itself (`RX: Disconnecting`) after BLE
   inactivity, then sleeps. After ANY disconnect, assume it is asleep and
   NOT advertising until woken (button / motion / timer).
@@ -37,23 +37,23 @@ ever run.
   motion test do this. The motion test also holds op11, the HM0360's
   motion rate, the same way through `ble/session/mdIntervalHold.ts`.
   Connecting itself never writes to the device.
-- iOS: `peripheral.id` is a phone-local CoreBluetooth UUID (never a MAC —
+- iOS: `peripheral.id` is a phone-local CoreBluetooth UUID (never a MAC;
   Android's id IS the MAC). Pending iOS connects never time out on their
   own; every connect must carry an app-side timeout AND a cancel
-  (`BleManager.disconnect`) — `connectDevice` does this (13 s).
-- iOS silently drops write-without-response packets when its queue is full
-  — every write path uses write-with-response on iOS (PRs #213/#219).
+  (`BleManager.disconnect`). `connectDevice` does this (13 s).
+- iOS silently drops write-without-response packets when its queue is full.
+  Every write path uses write-with-response on iOS (PRs #213/#219).
 
 ## Auto-connect trust rules (main scanner)
 
 A device is only auto-connected when ALL hold:
-1. Fresh advertisement **in this scan session** — `lastSeen` (stamped on
+1. Fresh advertisement **in this scan session**: `lastSeen` (stamped on
    every advert) ≥ session start. A just-disconnected device lingers in
    the cache but is asleep; connecting to it hangs (13 s) then alerts.
 2. Not `signalLost`, not connected, not loading.
 3. Auto-connect state machine allows it (`canAutoConnect`): failed
    connects transition to `IGNORED_FOR_SESSION` (manual tap or "Search
-   Again" clears; `resetDevice` would loop — see PR #220).
+   Again" clears; `resetDevice` would loop; see PR #220).
 
 ## Cache flushing
 
@@ -62,7 +62,7 @@ cached peripherals. **The native removal blocks the Android scanner for
 10–60 s.** Callers racing a push-button advertising window pass
 `{ skipNativeRemoval: true }` (the Engineer Console does): otherwise the
 window expires before scanning starts, and discovery becomes
-order-dependent — "advertise, then open console" found nothing while
+order-dependent: "advertise, then open console" found nothing while
 "open console, then advertise" worked instantly.
 
 ## Failure signatures (bench-verified)

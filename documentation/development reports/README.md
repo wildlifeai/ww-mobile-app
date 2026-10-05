@@ -17,7 +17,7 @@ We follow three rules:
    open or closed. The Outcome summarises what was agreed and why. Open items are links to
    GitHub issues.
 3. **This folder records how the work happened, not how the code works.** Threads are the
-   audit trail — what we tried, what we found, what we decided and why. How the app
+   audit trail: what we tried, what we found, what we decided and why. How the app
    behaves belongs in [`../onboarding/`](../onboarding/) and
    [`../resources/`](../resources/). Nobody should have to read a thread to find out how
    something behaves now.
@@ -36,7 +36,7 @@ a reader can place it without digging through git history:
 Example:
 
 ```
-# Sliding window file transfer — firmware engineering guide
+# Sliding window file transfer: firmware engineering guide
 
 #### File: sliding_window_file_transfer.md
 #### Author: Claude (Opus 5), reviewed by Victor Anton
@@ -58,17 +58,17 @@ Example:
 > [!NOTE]
 > The reports below predate this convention: they are single files rather than dated
 > thread folders, and their status is recorded here instead of in a thread README. Leave
-> them as they are — they are the audit trail. New threads follow the folder convention.
+> them as they are, they are the audit trail. New threads follow the folder convention.
 
 ## Threads
 
 | Thread | Status |
 |---|---|
 | [2026-10-02_e2e-real-screens/](2026-10-02_e2e-real-screens/README.md) | **Closed.** The Maestro flows pass against the real screens on the release-type `e2e` build CI makes; four dispatches, each fixing what the previous hierarchy showed. |
-| [fast_file_transfer_proposal.md](fast_file_transfer_proposal.md) (2026-07-08) | **Partly superseded.** Phases 0–2 shipped; Phase 3 (credit streaming) also shipped despite being labelled future. Its Phase-1 per-transfer `requestConnectionPriority` was **reverted** — see the caution at the top. Kept for the bottleneck analysis, which is still the best record of *why* the design is what it is. |
+| [fast_file_transfer_proposal.md](fast_file_transfer_proposal.md) (2026-07-08) | **Partly superseded.** Phases 0–2 shipped; Phase 3 (credit streaming) also shipped despite being labelled future. Its Phase-1 per-transfer `requestConnectionPriority` was **reverted**, see the caution at the top. Kept for the bottleneck analysis, which is still the best record of *why* the design is what it is. |
 | [empty_sd_update_architecture.md](empty_sd_update_architecture.md) (2026-07-10) | **Current**, with corrections. The shipped Himax flow is now documented against the code in [Himax-Firmware-Update.md](../resources/Himax-Firmware-Update.md). §4 QA matrix and §5 firmware asks remain open. |
 | [sliding_window_file_transfer.md](sliding_window_file_transfer.md) (2026-04-29) | **Superseded.** The window=2 design was never shipped; transport is credit streaming (`windowSize ?? 12`). Retained for the `ftx err 7` root-cause analysis, which drove real firmware fixes. |
-| [sliding_window_file_transfer_spec.md](sliding_window_file_transfer_spec.md) (2026-04-28) | **Superseded — never implemented as specified.** Do not build from it; its `FILE_START` field order is also reversed relative to the wire format. Historical context only. |
+| [sliding_window_file_transfer_spec.md](sliding_window_file_transfer_spec.md) (2026-04-28) | **Superseded: never implemented as specified.** Do not build from it; its `FILE_START` field order is also reversed relative to the wire format. Historical context only. |
 
 A July 2026 audit of the whole `documentation/` tree (`DOCUMENTATION-AUDIT.md`, removed in
 September 2026 once its remediation had shipped in v0.0.62) is in the git history. Its last

@@ -4,8 +4,8 @@
 >
 > **Where this fits:** the mobile app owns **deployment** (stage 5) of the end-to-end
 > Embedded Model Lifecycle (`documentation/resources/embedded-model-lifecycle.md` in the
-> [ww-website](https://github.com/wildlifeai/ww-website) repo)
-> — models are uploaded, converted, and label-mapped on the website, then this app transfers a
+> [ww-website](https://github.com/wildlifeai/ww-website) repo).
+> Models are uploaded, converted, and label-mapped on the website, then this app transfers a
 > `validated` model to the device over BLE (or the user copies the SD-card manifest). On-device
 > inference and the resulting EXIF predictions are downstream.
 
@@ -36,7 +36,7 @@ These produce the SD card filename: `42V2.TFL` (8.3 format under `/MANIFEST/`).
 `${firmwareModelId}V${versionNumber}.${ext}`.toUpperCase()
 ```
 
-- **Not zero-padded** — id 1, version 1 gives `1V1.TFL`, not `0001V1.TFL`. The firmware parses with `%4dV%d`, where `4` is a *maximum* field width, so short names are fine.
+- **Not zero-padded**: id 1, version 1 gives `1V1.TFL`, not `0001V1.TFL`. The firmware parses with `%4dV%d`, where `4` is a *maximum* field width, so short names are fine.
 - **Uppercased**, extension included. A lowercase extension (`1V1.tfl`) fails the app's own 8.3 validator *before* any transfer, so the model silently never reaches the SD card (bench-confirmed 21 Jul 2026). FAT is case-insensitive, so `loadmodel` finds either.
 - Extensions are derived from the storage paths (`modelPath` → default `tflite`, `labelsPath` → default `txt`), not hard-coded.
 
@@ -82,7 +82,7 @@ When transferring a model to a device, the app follows this exact sequence:
 7. Confirm match       → compare readback to expected values
 ```
 
-Steps 2–3 are critical — before issuing `loadmodel`, the app confirms the file actually exists on the SD card to prevent silent corruption from interrupted transfers.
+Steps 2–3 are critical: before issuing `loadmodel`, the app confirms the file actually exists on the SD card to prevent silent corruption from interrupted transfers.
 
 ### Reusing a file already on the card: the contents are checked, not the name
 
@@ -120,7 +120,7 @@ const versionId = selectedModel.versionNumber;
 if (!modelId || modelId <= 0 || !versionId || versionId <= 0) {
     throw new Error(
         `Invalid firmware IDs: modelId=${modelId}, versionId=${versionId}. `
-        + `Sync may be stale — pull latest data.`
+        + `Sync may be stale - pull latest data.`
     );
 }
 
@@ -139,13 +139,13 @@ The backend normalises all model formats before storage:
 | `.zip` (Edge Impulse) | Extract `trained.tflite`, run Vela conversion, rename |
 | `.cc` (C hex array) | Parse hex array → raw bytes → store as `.TFL` |
 
-The mobile app always receives a ready-to-deploy `.TFL` binary from storage — no format conversion is needed on-device.
+The mobile app always receives a ready-to-deploy `.TFL` binary from storage, so no format conversion is needed on-device.
 
 ---
 
 ## Labels
 
-Every model carries a label set — the class names it predicts (e.g. `not rat`, `rat`).
+Every model carries a label set, the class names it predicts (e.g. `not rat`, `rat`).
 The app deploys these **alongside** the `.TFL` binary; both are needed for the device to
 turn output class indices into named predictions.
 
@@ -188,11 +188,11 @@ the camera nor the card when the files are not in it and cannot be downloaded (#
 
 > [!IMPORTANT]
 > On the SD card the labels file shares the model's **basename**, differing only in
-> extension — `42V2.TFL` pairs with `42V2.TXT`. It is *not* called `labels.txt`; the
+> extension: `42V2.TFL` pairs with `42V2.TXT`. It is *not* called `labels.txt`; the
 > firmware derives the name from the model's. (`labels_<cacheKey>.txt` is only the
 > phone-side download cache name.)
 
-The label **order must match** the model's output tensor — the website writes the labels
+The label **order must match** the model's output tensor, since the website writes the labels
 file in the model's class order to guarantee this.
 
 > The full label lifecycle (origin → website mapping → device → EXIF) is in

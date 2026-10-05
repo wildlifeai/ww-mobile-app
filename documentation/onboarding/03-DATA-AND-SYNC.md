@@ -1,10 +1,10 @@
-# Data & Sync — Offline-First Architecture
+# Data & Sync: Offline-First Architecture
 
-The heart of Wildlife Watcher — understanding offline-first design patterns, WatermelonDB, Supabase sync, and the security model.
+The heart of Wildlife Watcher: understanding offline-first design patterns, WatermelonDB, Supabase sync, and the security model.
 
 ## Core Philosophy
 
-**"The network is a lie"** — this app must function perfectly in remote wilderness areas with zero connectivity for days or weeks.
+**"The network is a lie"**: this app must function perfectly in remote wilderness areas with zero connectivity for days or weeks.
 
 | Traditional App | Offline-First (Our App) |
 |-----------------|-------------------------|
@@ -51,11 +51,11 @@ The heart of Wildlife Watcher — understanding offline-first design patterns, W
 
 ## WatermelonDB Schema
 
-**Location:** [`src/database/schema.ts`](../../src/database/schema.ts) — auto-generated. The `version:` field and the `tableSchema` entries in that file are authoritative; this doc deliberately does not restate them.
+**Location:** [`src/database/schema.ts`](../../src/database/schema.ts), auto-generated. The `version:` field and the `tableSchema` entries in that file are authoritative; this doc deliberately does not restate them.
 
 ### Key Tables
 
-**projects** — project data:
+**projects** (project data):
 ```typescript
 tableSchema({
   name: 'projects',
@@ -75,7 +75,7 @@ tableSchema({
 })
 ```
 
-**user_roles** — permissions (replaces legacy `project_members`):
+**user_roles** (permissions; replaces legacy `project_members`):
 ```typescript
 tableSchema({
   name: 'user_roles',
@@ -123,7 +123,7 @@ ww-backend #219 has since revoked the table's write grants from `authenticated`.
 shown with its reason, a success reloads the list from `get_project_members`, and offline both
 say they need a connection and send nothing.
 
-**sync_outbox** — queued offline operations:
+**sync_outbox** (queued offline operations):
 ```typescript
 tableSchema({
   name: 'sync_outbox',
@@ -199,14 +199,14 @@ USING (
 ### Offline Security Example
 
 ```typescript
-// Step 1: Local write (NO security check — by design)
+// Step 1: Local write (NO security check, by design)
 await database.write(async () => {
     await projects.create(p => {
         p.name = "My Project"
         p.organisation_id = "other-org-id"  // ← User doesn't belong to this org!
     })
 })
-// ✅ Succeeds locally — UI updates immediately
+// ✅ Succeeds locally, UI updates immediately
 
 // Step 2: Sync to server (RLS ENFORCES)
 // ❌ RLS blocks: "new row violates row-level security policy"
@@ -223,7 +223,7 @@ if (user.role === 'admin') {
 
 // ✅ GOOD: Client-side UX only
 if (user.role === 'admin') {
-    showAdminUI()  // Better UX — server still enforces via RLS
+    showAdminUI()  // Better UX, server still enforces via RLS
 }
 ```
 
@@ -280,7 +280,7 @@ private async uploadOutbox() {
 }
 ```
 
-The outbox is uploaded in a fixed foreign-key order — `projects`, then `devices`, then `deployments` — so a parent row always lands before the child that references it. Because of this, `DeploymentService.createDeployment` queues an idempotent device `CREATE` alongside the deployment (the server's devices insert is `ON CONFLICT DO NOTHING`), guaranteeing the device is in the same push and reaches the server first. Without it, a deployment whose device was never synced fails with `23503` (foreign key) and only a self-healing retry in `SupabaseSyncService` recovers it a cycle later, which the operator sees as a transient sync error (#294). A bare "touch" of the device to trigger UI reactivity records no outbox operation, so it does not count.
+The outbox is uploaded in a fixed foreign-key order (`projects`, then `devices`, then `deployments`) so a parent row always lands before the child that references it. Because of this, `DeploymentService.createDeployment` queues an idempotent device `CREATE` alongside the deployment (the server's devices insert is `ON CONFLICT DO NOTHING`), guaranteeing the device is in the same push and reaches the server first. Without it, a deployment whose device was never synced fails with `23503` (foreign key) and only a self-healing retry in `SupabaseSyncService` recovers it a cycle later, which the operator sees as a transient sync error (#294). A bare "touch" of the device to trigger UI reactivity records no outbox operation, so it does not count.
 
 **When the server refuses part of a push (#287).** Each table is still one `push_changes` call,
 but a refused table no longer stops the ones after it:
@@ -425,16 +425,16 @@ nor its card and not on the phone, before anything is written to the camera.
 
 ## Conflict Resolution
 
-**Strategy: Last Write Wins** — compares `updated_at` timestamps.
+**Strategy: Last Write Wins**. Compares `updated_at` timestamps.
 
 Conflicts occur when the same record is modified both locally (offline) and on the server (by another user) before sync runs.
 
 ```typescript
 async resolveConflict(localRecord, serverRecord) {
   if (serverRecord.updated_at > localRecord.updated_at) {
-    return serverRecord   // Server wins — update local
+    return serverRecord   // Server wins, update local
   } else {
-    return localRecord    // Local wins — push to server
+    return localRecord    // Local wins, push to server
   }
 }
 ```
@@ -541,11 +541,11 @@ The reset is also available from the **Database Dev Tools** UI section (`Databas
 
 The project uses a **5-layer defence strategy** to prevent the mobile WatermelonDB schema from drifting from the backend Supabase schema:
 
-1. **Backend Pre-Commit** — blocks commits if types aren't regenerated
-2. **Coordination Messages** — manual notifications from backend devs
-3. **Mobile Inbox Check** — daily manual check by mobile devs
-4. **Mobile Pre-Commit** — blocks commits if types don't match schema
-5. **GitHub Actions** — blocks PRs if types are out of sync
+1. **Backend Pre-Commit**: blocks commits if types aren't regenerated
+2. **Coordination Messages**: manual notifications from backend devs
+3. **Mobile Inbox Check**: daily manual check by mobile devs
+4. **Mobile Pre-Commit**: blocks commits if types don't match schema
+5. **GitHub Actions**: blocks PRs if types are out of sync
 
 ### Schema Change Workflow
 
@@ -652,9 +652,9 @@ Based on past architectural issues, adhere strictly to these operational guardra
 
 ## Next Steps
 
-1. [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md) — Where the offline code lives
-2. [05-DEVICE-FLOWS.md](./05-DEVICE-FLOWS.md) — Device deployment lifecycle
-3. [01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md) — Complete dependency and sync service reference
+1. [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md): Where the offline code lives
+2. [05-DEVICE-FLOWS.md](./05-DEVICE-FLOWS.md): Device deployment lifecycle
+3. [01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md): Complete dependency and sync service reference
 
 ## Resources
 

@@ -419,7 +419,7 @@ The backend seeds **17 pre-configured user accounts** across 4 organisations for
 | **Project Admin** | Nancy Admin | `nancy@ww.org` | Wildlife Research | Project-scoped admin (no org-level) |
 | **Project Member** | Mark Member | `mark@ww.org` | Wildlife Research | Read-only project access |
 | **Project Member** | Carol White | `carol@ww.org` | General | Cross-org project membership |
-| **Unassigned** | Emma Davis | `emma@ww.org` | General | No projects — empty state testing |
+| **Unassigned** | Emma Davis | `emma@ww.org` | General | No projects, empty state testing |
 
 > **Full list**: 17 users across General, Wildlife Research Institute, Conservation Society, and Park Rangers Network. See the backend reference doc for the complete table.
 

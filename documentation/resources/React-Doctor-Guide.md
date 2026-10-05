@@ -18,13 +18,13 @@ It outputs a **0–100 health score** (75+ Great, 50–74 Needs work, <50 Critic
 
 ## How It's Integrated
 
-### Automatic — Every PR
+### Automatic: Every PR
 
 The `react-doctor.yml` workflow runs automatically on every pull request. The health score is posted to the **job summary** (visible in the PR's Checks tab) and as a sticky PR comment. The workflow runs with `blocking: 'error'`, so a finding at error severity fails the check on a PR; warnings never do. On a push to a branch the run is a health snapshot and never fails.
 
 The action tag and the CLI `version:` in the workflow are pinned as a pair. A Dependabot bump moves only the action tag, so bump the CLI with it (#329 showed the failure mode: the action passes a flag the old CLI rejects).
 
-### Manual — On Demand
+### Manual: On Demand
 
 1. Go to **Actions** → **React Doctor Review** → **Run workflow**
 2. Optionally toggle verbose output
@@ -87,9 +87,9 @@ Alternatively, use the `"reactDoctor"` key in `package.json` (config file takes 
 
 ## Interpreting Results
 
-- **Score 75–100** — Great. No action needed.
-- **Score 50–74** — Needs work. Review the flagged diagnostics.
-- **Score <50** — Critical. Prioritise fixing the most severe issues.
+- **Score 75–100**: Great. No action needed.
+- **Score 50–74**: Needs work. Review the flagged diagnostics.
+- **Score <50**: Critical. Prioritise fixing the most severe issues.
 
 - The CLI's score moves with its rule set: 0.5.1 reported no issues, 0.9.14 reported 85 warnings and a score of 62 before #380, 70 warnings after. Compare scores only across the same CLI version.
 

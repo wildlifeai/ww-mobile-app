@@ -9,12 +9,12 @@ The WW500 device contains two processors with independent firmware:
 | Processor | Role | Update Method |
 |-----------|------|---------------|
 | **nRF52840** | BLE radio, relay, power management | Nordic DFU (separate flow via `DfuScreen`) |
-| **HX6538** (Himax) | AI inference, camera, SD card | This flow — flash from SD card over BLE |
+| **HX6538** (Himax) | AI inference, camera, SD card | This flow: flash from SD card over BLE |
 
-This document covers the **HX6538 firmware update** — flashing a firmware image (`<filename>.IMG` derived dynamically in 8.3 format or defaulting to `OUTPUT.IMG`) from the device's SD card to the Himax processor's XIP flash.
+This document covers the **HX6538 firmware update**, flashing a firmware image (`<filename>.IMG` derived dynamically in 8.3 format or defaulting to `OUTPUT.IMG`) from the device's SD card to the Himax processor's XIP flash.
 
 > [!IMPORTANT]
-> **The normal update flashes two images, not one.** The two A/B slots hold the two **camera-variant** builds (RP3 and HM0360), and the device must end up running the variant matching its physical camera. The app orchestrates both passes automatically — see [Dual-Image Update](#dual-image-update-camera-variant-pair). A single-image update happens only when just one variant is available, or when an explicit SD filename is given.
+> **The normal update flashes two images, not one.** The two A/B slots hold the two **camera-variant** builds (RP3 and HM0360), and the device must end up running the variant matching its physical camera. The app orchestrates both passes automatically. See [Dual-Image Update](#dual-image-update-camera-variant-pair). A single-image update happens only when just one variant is available, or when an explicit SD filename is given.
 >
 > Budget **~8–9 minutes** for a full pair from the cloud (transfer dominates), or 20–60 seconds per image when it is already staged on the SD card.
 
@@ -124,7 +124,7 @@ aifirmware: createSingleLineCommand<boolean>(
 - Waits up to **120 seconds** for `/Firmware update (OK|FAILED)/i`
 - All intermediate lines (`Wake`, `Error bits`, progress) are **ignored**
 - On `OK` → returns `true`; on `FAILED` → throws with error code
-- **No retries** — firmware flash is never automatically retried
+- **No retries**: firmware flash is never automatically retried
 
 ### Pipeline Execution
 
@@ -145,7 +145,7 @@ aifirmware: createSingleLineCommand<boolean>(
 After `"Firmware update OK..."` the app advances to the `rebooting` phase and sends **`AI reset`** (`commandRegistry.aireset`, matches `/Forcing reset/i`, 8 s timeout, no retries) to boot the newly-written slot and reload parameters.
 
 > [!NOTE]
-> This is `AI reset`, **not** the bare `reset` command. `reset` reboots the nRF52 after disconnect; `AI reset` reboots only the Himax, leaving the BLE link to the nRF intact. A timeout or error here is tolerated and logged — the reset frequently tears down the AI session before a reply arrives.
+> This is `AI reset`, **not** the bare `reset` command. `reset` reboots the nRF52 after disconnect; `AI reset` reboots only the Himax, leaving the BLE link to the nRF intact. A timeout or error here is tolerated and logged. The reset frequently tears down the AI session before a reply arrives.
 
 ---
 
@@ -160,7 +160,7 @@ Slot A and Slot B each hold one **camera-variant** build. `xip_update_firmware_f
 1. If the chosen firmware record carries a `cameraVariant`, the app fetches the latest build of the *other* variant via `ReferenceDataService.getLatestHimaxByVariant()`.
 2. If no variant is set, it tries to build the pair from the latest RP3 + latest HM0360.
 3. If only one is available → single-image update (logged as such).
-4. An explicit SD-card filename (a bare string) always takes the legacy single-pass path — the variant cannot be inferred from a filename.
+4. An explicit SD-card filename (a bare string) always takes the legacy single-pass path. The variant cannot be inferred from a filename.
 
 ### Ordering rule
 
@@ -171,7 +171,7 @@ AI slots  →  "Active slot 1 running 'RP3'. Slot A: 'HM0360', Slot B: 'RP3'"
 The app queries `AI slots` to learn the running variant, then flashes **the other variant first and the device's current variant last**, so the device finishes on the (now updated) camera it started with.
 
 > [!NOTE]
-> On firmware without the `slots` command the query fails, the default order is used, and a warning is logged. Correctness is unaffected — only which camera ends up active.
+> On firmware without the `slots` command the query fails, the default order is used, and a warning is logged. Correctness is unaffected; only which camera ends up active.
 
 ### Per-pass sequence
 
@@ -182,9 +182,9 @@ The app queries `AI slots` to learn the running variant, then flashes **the othe
 | Transfer | `transferring` | `runFileTransferPipeline` stages the `.IMG` into `/MANIFEST/`. The pipeline's whole-file CRC16 is reused as the `AI firmware` CRC argument. It sends one `ver` first and refuses on [BLE firmware below the floor](File-Transfer-Protocol.md#the-ble-firmware-floor), so an old nRF needs its BLE update before the Himax one. |
 | Flash | `sending` → `flashing` | `AI firmware <file> <0xCRC>`. The phase advances to `flashing` on an 8-second timer because the HX goes silent during erase/write. |
 | Reboot | `rebooting` | `AI reset` |
-| Boundary | — | Between passes: `waitForAiReady(25000)` — waits for the device to answer again rather than racing the reboot. |
+| Boundary | none | Between passes: `waitForAiReady(25000)`: waits for the device to answer again rather than racing the reboot. |
 
-A pass that fails with a transient error (`Session Reset`, `DEVICE_DISCONNECTED`, or a timeout — the `AI reset` routinely drops the session) is **retried once** after contact is re-established.
+A pass that fails with a transient error (`Session Reset`, `DEVICE_DISCONNECTED`, or a timeout; the `AI reset` routinely drops the session) is **retried once** after contact is re-established.
 
 ### Flashing a file already on the card
 
@@ -202,8 +202,8 @@ compares against the release's `crc_checksum` and `file_size_bytes`, which is wh
 *which* file is wrong and by how much, rather than surfacing a bare failure, and it is the only
 check available at all when the record carries no CRC.
 
-When there is nothing to check against — an SD-card-only file with no matching release row, or
-a row whose `crc_checksum` is null, as every nRF row currently is — the app says so in the log
+When there is nothing to check against: an SD-card-only file with no matching release row, or
+a row whose `crc_checksum` is null, as every nRF row currently is. The app says so in the log
 rather than letting an unverified flash look checked.
 
 ### Verification (`verifyAndComplete`)
@@ -252,7 +252,7 @@ IDLE
 ```
 
 > [!IMPORTANT]
-> `"Error bits = 0x0000"` starts with the word "Error" but indicates **no errors** — it is a selftest result, not a firmware failure. The app ignores it.
+> `"Error bits = 0x0000"` starts with the word "Error" but indicates **no errors**. It is a selftest result, not a firmware failure. The app ignores it.
 
 ---
 
@@ -274,10 +274,10 @@ The firmware identifies the **active slot** and programs the **other**:
 > [!IMPORTANT]
 > **The two slots are NOT handled symmetrically.** The ROM bootloader always loads the boot chain (`0x00000–0x26FFF`) from **Slot A**, regardless of which slot is selected. Erasing that region while running from Slot B bricks the board with no recovery except SWD. Therefore:
 >
-> - **Slot A (slot 0):** erase/write/verify from **`FLASH_OTA_OFFSET = 0x27000`** onward — i.e. the OTA descriptor sector **plus** the application. The boot chain at `0x00000–0x26FFF` is left untouched in flash.
+> - **Slot A (slot 0):** erase/write/verify from **`FLASH_OTA_OFFSET = 0x27000`** onward, i.e. the OTA descriptor sector **plus** the application. The boot chain at `0x00000–0x26FFF` is left untouched in flash.
 > - **Slot B (slot 1):** erase/write/verify the **full 1 MB image** from byte 0. A complete image is required so the 2nd-stage bootloader (always loaded from Slot A) can read Slot B's `hx_mem_descriptor_ota` (`Slot B base + 0x27000`) and locate the application.
 >
-> The descriptor at `0x27000` holds a **2-byte CRC of the application** and changes with every build. The 2nd-stage bootloader reads it **from the selected slot**, so it must be rewritten whenever the application is — that is why the Slot A lower bound is `0x27000` (the descriptor) and not `0x28000` (the application). See the root-cause note below.
+> The descriptor at `0x27000` holds a **2-byte CRC of the application** and changes with every build. The 2nd-stage bootloader reads it **from the selected slot**, so it must be rewritten whenever the application is, which is why the Slot A lower bound is `0x27000` (the descriptor) and not `0x28000` (the application). See the root-cause note below.
 
 ### Flash Sequence
 
@@ -288,16 +288,16 @@ The target slot determines the region written:
 | **1. Erase** | Descriptor + application: `0x27000`→end (phase 0: 1 × 4KB descriptor sector; phase 1: 8 × 4KB sectors; phase 2: 13 × 64KB blocks). Boot chain preserved. | Full erase: 16 × 64KB blocks. |
 | **2. Write** | Descriptor + application (`file 0x27000`→EOF), verified per-chunk. | Entire image from byte 0, verified per-chunk. |
 | **3. Full verify** | Read-back verify of the descriptor + application area. | Read-back verify of the full slot. |
-| **4. Slot selector update** | Points bootloader to new slot — **only on success**. | Same. |
+| **4. Slot selector update** | Points bootloader to new slot, **only on success**. | Same. |
 
-Device log strings for each phase (used by the app's progress parser): `erase_firmware_slot:` / `erased OK`, `write_firmware_from_sd: slot N — descriptor + application | full image`, `chunk-verified OK`, `verify_firmware_slot: slot N verify OK`.
+Device log strings for each phase (used by the app's progress parser): `erase_firmware_slot:` / `erased OK`, `write_firmware_from_sd: slot N - descriptor + application | full image`, `chunk-verified OK`, `verify_firmware_slot: slot N verify OK`.
 
 ### Safety Guarantee
 
 The slot selector is only updated after a successful write **and** verify, so a failure during erase/write/verify leaves the previously active slot intact and bootable.
 
 > [!NOTE]
-> **Root cause of the June 2026 Slot A bricking (fixed in `firmware_updates_CGP3`).** An earlier version used `FLASH_APP_OFFSET = 0x28000` as the Slot A lower bound and wrote the **application only**, preserving the OTA descriptor sector at `0x27000`. Because that descriptor carries a CRC of the application and changes with every build, preserving it left a **stale CRC pointing at the old application** under a freshly written new application. The write passed per-chunk and full verify (the application bytes were correct), the firmware reported `Firmware update OK`, and the slot selector was updated — but on reboot the 2nd-stage bootloader compared the stale descriptor CRC against the new application, rejected it, and dropped into the Xmodem recovery menu. The fix lowers the Slot A bound to `FLASH_OTA_OFFSET = 0x27000` so the descriptor sector is erased and rewritten together with the application, keeping CRC and application in sync. (Recovery of a board already in this state: re-flash a full image over the UART console `[1] Xmodem`, or via SWD.)
+> **Root cause of the June 2026 Slot A bricking (fixed in `firmware_updates_CGP3`).** An earlier version used `FLASH_APP_OFFSET = 0x28000` as the Slot A lower bound and wrote the **application only**, preserving the OTA descriptor sector at `0x27000`. Because that descriptor carries a CRC of the application and changes with every build, preserving it left a **stale CRC pointing at the old application** under a freshly written new application. The write passed per-chunk and full verify (the application bytes were correct), the firmware reported `Firmware update OK`, and the slot selector was updated, but on reboot the 2nd-stage bootloader compared the stale descriptor CRC against the new application, rejected it, and dropped into the Xmodem recovery menu. The fix lowers the Slot A bound to `FLASH_OTA_OFFSET = 0x27000` so the descriptor sector is erased and rewritten together with the application, keeping CRC and application in sync. (Recovery of a board already in this state: re-flash a full image over the UART console `[1] Xmodem`, or via SWD.)
 
 ---
 
@@ -311,7 +311,7 @@ The slot selector is only updated after a successful write **and** verify, so a 
 | `-2` | SD card read error |
 | `-3` | Flash erase failed |
 | `-4` | Flash write failed |
-| `-5` | Flash verify mismatch — data written does not match source |
+| `-5` | Flash verify mismatch: data written does not match source |
 | `-6` | Slot selector write failed |
 
 ### App-Side Errors
@@ -330,14 +330,14 @@ The app synthesises a deterministic progress bar from UART lines:
 
 | Phase | Progress | Trigger (current firmware) | Legacy trigger (older builds) |
 |-------|----------|----------------------------|-------------------------------|
-| `sending` | 5% | Command sent | — |
-| `waking` | 8% | Line contains `"Wake"` | — |
+| `sending` | 5% | Command sent | none |
+| `waking` | 8% | Line contains `"Wake"` | none |
 | `erasing` | 15% | `"erase_firmware_slot"` or `"erased OK"` | `"Erasing firmware slot"` |
 | `writing` | 60% | `"write_firmware_from_sd"` | `"Writing"` + `"bytes to firmware"` |
 | `verifying` | 85% | `"chunk-verified OK"`, `"verify_firmware_slot"`, or `"verify OK"` | `"full verify OK"` |
-| `complete` | 100% | `aifirmware` command resolves | — |
+| `complete` | 100% | `aifirmware` command resolves | none |
 
-The parser ([`useFirmwareUpdate.ts`](../../src/screens/Devices/hooks/useFirmwareUpdate.ts)) matches both the current and legacy strings so it works across HX6538 builds. Phases only advance forward. If the nRF52 does not relay intermediate HX6538 output, progress jumps from 5% to 100% — the update still succeeds.
+The parser ([`useFirmwareUpdate.ts`](../../src/screens/Devices/hooks/useFirmwareUpdate.ts)) matches both the current and legacy strings so it works across HX6538 builds. Phases only advance forward. If the nRF52 does not relay intermediate HX6538 output, progress jumps from 5% to 100%, the update still succeeds.
 
 ---
 
@@ -358,7 +358,7 @@ The parser ([`useFirmwareUpdate.ts`](../../src/screens/Devices/hooks/useFirmware
 | Max image size | 1 MB (flash slot size) |
 
 > [!NOTE]
-> Transfer dominates a cloud update. See [File-Transfer-Protocol.md](File-Transfer-Protocol.md#measured-performance) — throughput is ~8 KB/s for the first ~24 s, then ~1.3 KB/s once Android decays the connection interval. Build ETAs from that two-phase profile, not a flat rate.
+> Transfer dominates a cloud update. See [File-Transfer-Protocol.md](File-Transfer-Protocol.md#measured-performance): throughput is ~8 KB/s for the first ~24 s, then ~1.3 KB/s once Android decays the connection interval. Build ETAs from that two-phase profile, not a flat rate.
 
 ---
 

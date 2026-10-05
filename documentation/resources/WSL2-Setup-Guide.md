@@ -20,10 +20,10 @@ Create/edit `C:\Users\<YourUsername>\.wslconfig`:
 # Prevent auto-hibernation (critical for stability)
 vmIdleTimeout=-1
 
-# Memory — adjust to your system (leave 6GB for Windows)
+# Memory: adjust to your system (leave 6GB for Windows)
 memory=26GB
 
-# CPU — adjust to your system (leave 4 threads for Windows)
+# CPU: adjust to your system (leave 4 threads for Windows)
 processors=16
 
 # Swap

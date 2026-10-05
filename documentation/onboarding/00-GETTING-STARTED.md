@@ -2,19 +2,19 @@
 
 ## Welcome! 👋
 
-You're joining the development team for the **Wildlife Watcher Mobile App** — a React Native application that helps conservation researchers deploy and manage wildlife monitoring cameras in remote locations worldwide.
+You're joining the development team for the **Wildlife Watcher Mobile App**, a React Native application that helps conservation researchers deploy and manage wildlife monitoring cameras in remote locations worldwide.
 
 This guide is your single entry point to understanding the project, setting up your environment, and learning our core architecture.
 
 ### What This App Does
 
-- **Device Management** — Scan, connect to, and configure wildlife camera devices via BLE
-- **Firmware Updates** — Over-the-air firmware updates using Nordic DFU
-- **Project Management** — Create and manage wildlife monitoring projects
-- **Deployment Tracking** — Track where devices are deployed with GPS coordinates
-- **User Collaboration** — Invite team members with role-based permissions (Admin/Member)
-- **Sync & Offline** — Full offline support with WatermelonDB and Supabase sync
-- **Maps Integration** — Visualise device deployments on interactive maps
+- **Device Management**: Scan, connect to, and configure wildlife camera devices via BLE
+- **Firmware Updates**: Over-the-air firmware updates using Nordic DFU
+- **Project Management**: Create and manage wildlife monitoring projects
+- **Deployment Tracking**: Track where devices are deployed with GPS coordinates
+- **User Collaboration**: Invite team members with role-based permissions (Admin/Member)
+- **Sync & Offline**: Full offline support with WatermelonDB and Supabase sync
+- **Maps Integration**: Visualise device deployments on interactive maps
 
 ---
 
@@ -51,8 +51,8 @@ This folder contains six onboarding guides:
 | [React-Doctor-Guide.md](../resources/React-Doctor-Guide.md) | React health-score CI check (60+ rules, 0–100 scoring) |
 | [whitelist.md](../resources/whitelist.md) | Source of truth: all active screens, services, hooks, and BLE modules |
 | [AI-Model-Integration.md](../resources/AI-Model-Integration.md) | AI model family/version architecture, firmware ID mapping, BLE transfer safety protocol |
-| [File-Transfer-Protocol.md](../resources/File-Transfer-Protocol.md) | BLE file transfer protocol — packet format, CRC, stop-and-wait, error codes |
-| [Himax-Firmware-Update.md](../resources/Himax-Firmware-Update.md) | Himax AI processor firmware update — A/B slot flash, sequence diagram, error codes |
+| [File-Transfer-Protocol.md](../resources/File-Transfer-Protocol.md) | BLE file transfer protocol: packet format, CRC, stop-and-wait, error codes |
+| [Himax-Firmware-Update.md](../resources/Himax-Firmware-Update.md) | Himax AI processor firmware update: A/B slot flash, sequence diagram, error codes |
 
 ---
 
@@ -78,7 +78,7 @@ This folder contains six onboarding guides:
    ```
 
 > [!WARNING]
-> `postinstall` is where `patch-package` applies everything in `patches/` — skipping it produces native build failures that look unrelated to the install step. So don't reach for `--ignore-scripts` casually.
+> `postinstall` is where `patch-package` applies everything in `patches/`. Skipping it produces native build failures that look unrelated to the install step. So don't reach for `--ignore-scripts` casually.
 >
 > On Windows plain `npm install` works since October 2026, when the npm package `maestro` (an unrelated AWS tool whose shell postinstall `cmd.exe` could not run) left `devDependencies`. If an install still aborts in a postinstall, `npm install --ignore-scripts` followed by `npx patch-package` reaches the same state without the broken script.
 
@@ -101,7 +101,7 @@ This folder contains six onboarding guides:
    npm install
    npm run db:sync-schema
    ```
-6. **Configure Supabase** — the app cannot reach the backend without this:
+6. **Configure Supabase**. The app cannot reach the backend without this:
    ```bash
    cp .env.example .env.development
    # then paste the Dev anon key into EXPO_PUBLIC_SUPABASE_ANON_KEY
@@ -224,7 +224,7 @@ npm run type-check      # Run TypeScript check
 npm test                # Run Jest tests
 ```
 
-> **Note:** `npm run android` syncs Supabase types and the backend database schema before building. Once you have a build on the device, `npm run android:local` is the faster iteration loop — it skips both network steps. If the type sync cannot reach Supabase it warns and continues with the committed types rather than failing the build (CI still fails hard).
+> **Note:** `npm run android` syncs Supabase types and the backend database schema before building. Once you have a build on the device, `npm run android:local` is the faster iteration loop. It skips both network steps. If the type sync cannot reach Supabase it warns and continues with the committed types rather than failing the build (CI still fails hard).
 
 ### Troubleshooting Quick Fixes
 - **Clear Cache**: `npx expo start --clear`

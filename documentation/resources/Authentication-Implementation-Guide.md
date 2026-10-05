@@ -20,7 +20,7 @@ Navigation reads Redux state.authentication.token
 
 ### Navigation Gate (Priority Chain)
 
-`MainNavigation` (`src/navigation/index.tsx`) uses conditional rendering with a priority chain — auth is one gate among several:
+`MainNavigation` (`src/navigation/index.tsx`) uses conditional rendering with a priority chain, and auth is one gate among several:
 
 ```tsx
 // Simplified from src/navigation/index.tsx
@@ -59,7 +59,7 @@ else                     → Main app (Home, Devices, Projects, etc.)
 
 **File**: `src/providers/AuthProvider.tsx`
 
-The provider is minimal — no Context, no `useAuth()` hook. It:
+The provider is minimal: no Context, no `useAuth()` hook. It:
 1. Calls `getCurrentSession()` from `auth.ts` on mount
 2. Dispatches `setInitialState(session)` to Redux
 3. Sets up `setupAuthListener()` which dispatches `setCredentials` or `logout` on auth state changes
@@ -197,7 +197,7 @@ type AuthState = {
 | `setCredentials(authResponse)` | Sets token, user, permissions, current org; persists to storage |
 | `setOrganisationsAndRole(data)`| Merges background fetched profile configurations gracefully |
 | `logout()` | Clears all state, resets permissions to empty, clears storage |
-| `setInitialState(authResponse \| null)` | First load — sets state without triggering persistence writes |
+| `setInitialState(authResponse \| null)` | First load: sets state without triggering persistence writes |
 | `setCurrentOrganisation(orgId)` | Switches active org, recalculates permissions based on org role, and sets `user.organisation_id` so a token refresh keeps it |
 | `updateUserProfile(profile)` | Updates profile fields and re-persists |
 
@@ -268,8 +268,8 @@ The `getStateFromPath` override defers auth routes to `useDeepLinking` to avoid 
 
 Handles two auth deep link flows:
 
-1. **Password reset** (`auth/reset-password`) — Parses both query params and URL fragment params (Supabase uses `#` for tokens), navigates to `ForgotPassword` with `{ token, refreshToken, mode: "reset" }`
-2. **Email confirmation** (`auth/callback`) — Navigates to `Login` with `{ confirmed: true }`
+1. **Password reset** (`auth/reset-password`): Parses both query params and URL fragment params (Supabase uses `#` for tokens), navigates to `ForgotPassword` with `{ token, refreshToken, mode: "reset" }`
+2. **Email confirmation** (`auth/callback`): Navigates to `Login` with `{ confirmed: true }`
 
 ```tsx
 // Supports multiple token formats
@@ -371,7 +371,7 @@ native code, so a JS reload on an existing dev client is not enough.
 ## Troubleshooting
 
 ### Deep links not working
-- Must use **Development Client** (not Expo Go) — Expo Go doesn't support custom URL schemes
+- Must use **Development Client** (not Expo Go), since Expo Go doesn't support custom URL schemes
 - Verify the `scheme` field in `app.config.ts` matches `wildlifewatcher://`
 - Test: `adb shell am start -W -a android.intent.action.VIEW -d "wildlifewatcher://auth/reset-password?token_hash=test&type=recovery" com.wildlife.wildlifewatcher`
 
@@ -383,7 +383,7 @@ native code, so a JS reload on an existing dev client is not enough.
 ### Auth state not updating navigation
 - Check that `AuthProvider` is in the provider hierarchy (it must wrap `MainNavigation`)
 - Verify the `setupAuthListener` callback is dispatching correctly
-- The navigation gate reads `state.authentication.token` — if it's `undefined`, auth screens show
+- The navigation gate reads `state.authentication.token`: if it's `undefined`, auth screens show
 
 ---
 

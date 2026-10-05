@@ -1,11 +1,11 @@
 # BLE File Transfer: 2-Packet Sliding Window Protocol Spec
 
 > [!CAUTION]
-> **Superseded — never implemented as specified.** The HX6538 needed no change: the nRF-side packet FIFO keeps the I2C leg stop-and-wait while the app overlaps the BLE leg. The shipped transport is credit-based streaming with cumulative ACKs (`windowSize ?? 12`), not this 2-packet window. Its `FILE_START` field order is also reversed relative to the wire format — see [File-Transfer-Protocol.md](../resources/File-Transfer-Protocol.md), which is authoritative.
+> **Superseded: never implemented as specified.** The HX6538 needed no change: the nRF-side packet FIFO keeps the I2C leg stop-and-wait while the app overlaps the BLE leg. The shipped transport is credit-based streaming with cumulative ACKs (`windowSize ?? 12`), not this 2-packet window. Its `FILE_START` field order is also reversed relative to the wire format; see [File-Transfer-Protocol.md](../resources/File-Transfer-Protocol.md), which is authoritative.
 >
 > Kept for historical context only. Do not implement from this document.
 
-**Status:** Superseded (was: Draft — for review by nRF52 + HX6538 engineering teams)  
+**Status:** Superseded (was: Draft, for review by nRF52 + HX6538 engineering teams)  
 **Author:** Wildlife Watcher Mobile Team  
 **Date:** 2026-04-28  
 
@@ -27,7 +27,7 @@ Replace the current stop-and-wait (S&W) protocol with a **2-packet sliding windo
 
 - Same packet format (types 7/8/9)
 - Same CRC + `FILE_END` verification
-- Backward-compatible — the app will offer both modes via the test screen
+- Backward-compatible: the app will offer both modes via the test screen
 - No large buffers required (max 1 extra 241-byte slot)
 
 ---
@@ -101,7 +101,7 @@ void handleFileData(uint8_t pktNum, uint8_t *data, uint8_t len) {
     }
 
     if (pktNum == expected_pkt) {
-        // Case 1: Expected packet — write immediately
+        // Case 1: Expected packet, write immediately
         writeToSd(data, len);
         sendAck(pktNum);
         expected_pkt = nextWireNum(expected_pkt);
@@ -114,12 +114,12 @@ void handleFileData(uint8_t pktNum, uint8_t *data, uint8_t len) {
             expected_pkt = nextWireNum(expected_pkt);
         }
     } else {
-        // Case 2: Next packet arrived early — buffer it
+        // Case 2: Next packet arrived early, buffer it
         memcpy(slots[1].data, data, len);
         slots[1].len = len;
         slots[1].pktNum = pktNum;
         slots[1].occupied = true;
-        // Do NOT ACK yet — ACK only after SD write
+        // Do NOT ACK yet, ACK only after SD write
     }
 }
 ```
@@ -152,7 +152,7 @@ if (i2c_busy || hx6538_buffer_full) {
 }
 ```
 
-The nRF52 does not need to track window state — it simply acts as a pass-through.
+The nRF52 does not need to track window state: it simply acts as a pass-through.
 
 ---
 
@@ -216,7 +216,7 @@ function checkTimeouts() {
 ```
 
 > [!WARNING]
-> If a packet times out, do NOT send new packets — only retry the missing one. This prevents the window from growing beyond 2.
+> If a packet times out, do NOT send new packets: only retry the missing one. This prevents the window from growing beyond 2.
 
 ### 5.5 ACK matcher update
 
@@ -228,7 +228,7 @@ expected: { min: nextExpectedAck, max: nextExpectedAck + WINDOW_SIZE - 1 }
 
 // Accept if ackNum ∈ [min, max]
 // Ignore if ackNum < min (duplicate)
-// Ignore if ackNum > max (future — shouldn't happen)
+// Ignore if ackNum > max (future, shouldn't happen)
 ```
 
 ---

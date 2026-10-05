@@ -30,9 +30,9 @@ src/features/maps/
 
 - **`PROVIDER_GOOGLE`** on both platforms for visual consistency
 - **`expo-location`** over `@react-native-community/geolocation` (better Expo integration)
-- **Gesture-only region updates** — `handleRegionChangeComplete` ignores programmatic changes to prevent infinite loops
+- **Gesture-only region updates**: `handleRegionChangeComplete` ignores programmatic changes to prevent infinite loops
 - **5-second location interval** with `balanced` priority for battery efficiency
-- **Custom controls** — built-in Android toolbar disabled, custom `MapControls` used instead
+- **Custom controls**: built-in Android toolbar disabled, custom `MapControls` used instead
 
 ---
 
@@ -153,7 +153,7 @@ const MyMapScreen = () => {
 |---------|-------|
 | Transparent map / spinner | Maps SDK for Android not enabled in Cloud Console |
 | Key not working after setup | Wait 5 min; verify package name + SHA-1 match exactly |
-| Tiles load in dev but not prod | Different package name — add production entry to key restrictions |
+| Tiles load in dev but not prod | Different package name, add production entry to key restrictions |
 | Still broken | Temporarily remove all key restrictions to isolate the issue |
 
 ---
