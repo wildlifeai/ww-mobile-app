@@ -333,6 +333,11 @@ The `quality-gate-validation.yml` GitHub Action runs on all PRs:
 - Console.log pollution check
 - Type system size validation
 
+`codeql.yml` runs GitHub's CodeQL for JavaScript and TypeScript on pull requests, on pushes to
+`dev` and every Monday. Findings are code scanning alerts in the Security tab; the job passes
+whatever it finds until it is made a required check (#392). `android/`, `supabase/`, `patches/`
+and the tests are left out of the scan.
+
 The `react-doctor.yml` GitHub Action also runs on all PRs, and fails the PR on an error-severity finding (warnings never fail it):
 - Scans for 60+ React / React Native best-practice rules
 - Outputs a 0–100 health score in the job summary and a sticky PR comment
