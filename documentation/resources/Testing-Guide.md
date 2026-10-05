@@ -190,6 +190,17 @@ id, text, accessibility text, bounds), the tail of each command log, and the app
 the hierarchy there to find a real id before changing a selector; the `maestro-smoke` and
 `maestro-full` artifacts hold the same files plus the screenshots.
 
+iOS gets a real build once a week, not per pull request: `ios-weekly-build.yml` runs
+`eas build --local --profile e2e --platform ios` on `macos-latest` every Monday and on
+`workflow_dispatch`, for a check before a release. The `e2e` profile sets `ios.simulator: true`,
+so the build needs no signing and no Apple credentials, and the result is uploaded as the
+`app-ios-simulator` artifact for two weeks. On pull requests only `iOS Prebuild Sanity Check`
+runs, which proves that `expo prebuild` produces an Xcode project and nothing more; a native
+module that fails to compile for iOS or a CocoaPods resolution failure shows up here, as a red
+scheduled run, rather than at the next release build by hand. macOS runners bill at ten times
+the Linux rate, which is why it is weekly: a cold build is 25 to 40 minutes, the CocoaPods cache
+cuts the later ones (#394).
+
 ### Existing Test Flows
 
 | File | Proves | Status |
