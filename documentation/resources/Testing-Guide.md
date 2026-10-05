@@ -333,6 +333,29 @@ The `quality-gate-validation.yml` GitHub Action runs on all PRs:
 - Console.log pollution check
 - Type system size validation
 
+`knip.yml` looks for dead code: files nothing imports, exports nothing uses, dependencies
+nothing imports, and imports of packages `package.json` does not list. The entry points are the
+ones `knip.json` names (the Expo config plugins in `plugins/` and `scripts/`) plus what knip's
+Expo, Metro, Babel and Jest plugins find on their own: `index.js`, `app.config.ts`, the Jest
+setup files. It runs on pull requests that touch source, tests, scripts or the dependency list,
+and weekly. On a pull request it is advisory (a warning annotation and the report in the job
+summary), because the first report, October 2026, listed 27 unused files, 13 packages imported
+but not listed, 13 listed but not imported, 5 duplicate default exports and some 70 unused
+exports: a mix of real dead code and transitive packages imported directly. The weekly run
+blocks. What `knip.json` tells it, and why:
+
+- Unused exports and exported types are warnings and never fail it: the Redux slices export
+  every action creator and the barrel files re-export by design.
+- `buffer` is ignored as a dependency: knip takes it for the Node built-in, the app needs the
+  npm polyfill.
+- `maestro` is ignored as a binary: it is a separate CLI the `test:maestro*` scripts call, not an
+  npm package (see "Maestro E2E Testing").
+- `src/types/database.types.ts` is generated and not inspected.
+
+React Doctor's own dead-code pass stays off in `doctor.config.json` (`deadCode: false`): it could
+not see the Expo entry points and flagged every screen. Working the report down and making the
+pull request run blocking is #393.
+
 The `react-doctor.yml` GitHub Action also runs on all PRs, and fails the PR on an error-severity finding (warnings never fail it):
 - Scans for 60+ React / React Native best-practice rules
 - Outputs a 0–100 health score in the job summary and a sticky PR comment

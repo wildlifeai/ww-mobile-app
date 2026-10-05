@@ -1,0 +1,23 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": ["plugins/**/*.js", "scripts/**/*.js"],
+  "project": [
+    "src/**/*.{ts,tsx,js}",
+    "tests/**/*.{ts,tsx,js}",
+    "__tests__/**/*.{ts,tsx,js}",
+    "scripts/**/*.js",
+    "plugins/**/*.js"
+  ],
+  "ignore": ["src/types/database.types.ts"],
+  "ignoreDependencies": ["buffer"],
+  "ignoreBinaries": ["maestro"],
+  "ignoreExportsUsedInFile": true,
+  "rules": {
+    "exports": "warn",
+    "types": "warn",
+    "nsExports": "warn",
+    "nsTypes": "warn",
+    "enumMembers": "warn",
+    "classMembers": "warn"
+  }
+}

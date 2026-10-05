@@ -1,0 +1,65 @@
+# Dead code: files nothing imports, exports nothing uses, dependencies nothing
+# imports, and imports of packages package.json does not list. knip starts from
+# the entry points in knip.json plus what its Expo, Metro, Babel and Jest plugins
+# find on their own. React Doctor's own dead-code pass is off in doctor.config.json
+# because it could not see the Expo entry points; this is the replacement.
+#
+# Advisory on pull requests (a warning annotation, the job stays green) until the
+# first report is worked through, blocking on the weekly run. The reasons for
+# every exclusion in knip.json are in documentation/resources/Testing-Guide.md.
+name: Dead Code
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - '__tests__/**'
+      - 'scripts/**'
+      - 'plugins/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - 'knip.json'
+      - '.github/workflows/knip.yml'
+  schedule:
+    - cron: '20 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  knip:
+    name: knip
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # No postinstall: patch-package only matters to the native build.
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: knip
+        id: knip
+        continue-on-error: ${{ github.event_name != 'schedule' }}
+        run: |
+          set -o pipefail
+          npx --yes knip@6.39.0 --no-progress --reporter markdown 2>&1 | tee knip-report.md
+
+      - name: Report
+        if: always()
+        run: |
+          echo "## knip" >> "$GITHUB_STEP_SUMMARY"
+          cat knip-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Warn when knip found dead code
+        if: steps.knip.outcome == 'failure'
+        run: echo "::warning::knip found unused files, exports or dependencies (advisory on pull requests, see the job summary and issue 393)."
