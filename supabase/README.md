@@ -15,6 +15,13 @@ While the backend repository is the owner of all shared migrations, the mobile r
 2. **CI/CD Integration Testing**: Automated E2E tests (like Maestro) use the local Supabase configuration to spin up a fresh database environment for every test run, ensuring isolation and reproducibility.
 3. **Stand-alone Development**: Mobile-only developers can start a local database and begin testing features even if they haven't cloned the backend repository, thanks to the automated schema synchronization script.
 
+## Is the copy current?
+
+`node scripts/check-schema-mirror.js <path-to-ww-backend>` compares the mirror with a backend
+checkout and lists the files that differ, the ones the backend added and the ones it dropped
+(the `PRESERVE_FILES` in `scripts/schema-sync-config.js` excepted). CI runs it weekly and on
+pull requests that touch `supabase/` (`.github/workflows/schema-mirror-drift.yml`), advisory.
+
 ## Workflow
 
 1. **Sync from Backend**: Pull the latest schema before starting work.

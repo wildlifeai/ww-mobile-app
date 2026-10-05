@@ -333,6 +333,13 @@ The `quality-gate-validation.yml` GitHub Action runs on all PRs:
 - Console.log pollution check
 - Type system size validation
 
+`schema-mirror-drift.yml` is advisory, like the op-index check: on a pull request that touches
+`supabase/`, the schema files or the sync scripts, and every Monday, it checks out ww-backend's
+dev with the repo's read-only token and runs `scripts/check-schema-mirror.js`, which compares the
+folders `sync-db-schema.js` copies and lists what differs, what the backend added and what it
+dropped. `scripts/validate-watermelon-schema.js` runs beside it. Both report as warnings; the fix
+for drift is `npm run db:sync-schema` and a commit.
+
 The `react-doctor.yml` GitHub Action also runs on all PRs, and fails the PR on an error-severity finding (warnings never fail it):
 - Scans for 60+ React / React Native best-practice rules
 - Outputs a 0–100 health score in the job summary and a sticky PR comment

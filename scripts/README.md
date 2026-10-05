@@ -108,3 +108,7 @@ When adding new scripts:
 3. Use descriptive script names
 4. Read environment config from `.env.development`, never hardcode project refs
 5. Add to `package.json` scripts section
+
+## check-schema-mirror.js and schema-sync-config.js
+
+`node scripts/check-schema-mirror.js <ww-backend checkout>` reports how `supabase/schemas` differs from the backend's declarative schema: files that differ, files the backend added, files it dropped. It shares `schema-sync-config.js` (the folder list and the files the sync never deletes) with `sync-db-schema.js`, so a compare and a copy cannot disagree. Exit 1 on drift, 2 when the folder list itself is stale.
