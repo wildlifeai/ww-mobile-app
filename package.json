@@ -171,5 +171,12 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "expo": {
+    "doctor": {
+      "appConfigFieldsNotSyncedCheck": {
+        "enabled": false
+      }
+    }
   }
 }

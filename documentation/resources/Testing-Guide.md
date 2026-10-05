@@ -333,6 +333,14 @@ The `quality-gate-validation.yml` GitHub Action runs on all PRs:
 - Console.log pollution check
 - Type system size validation
 
+`expo-doctor.yml` runs `npx expo-doctor` and `npx expo install --check` on a pull request that
+changes `package.json`, the lockfile, `app.config.ts`, `eas.json` or `android/`: package versions
+against the SDK, the app config schema, the native folders, the React Native Directory. Both read
+the Expo API, which is why they are not in the offline quality gate. One check is turned off in
+`package.json` (`expo.doctor.appConfigFieldsNotSyncedCheck`): the `android/` folder is committed
+on purpose and prebuild runs before a build, so "EAS will not sync app.config.ts into the native
+folders" describes the setup, not a problem (see the Expo-EAS Guide).
+
 The `react-doctor.yml` GitHub Action also runs on all PRs, and fails the PR on an error-severity finding (warnings never fail it):
 - Scans for 60+ React / React Native best-practice rules
 - Outputs a 0–100 health score in the job summary and a sticky PR comment
