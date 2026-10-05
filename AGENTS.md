@@ -47,6 +47,7 @@ npm run type-check       # tsc --noEmit
 npm run lint             # ESLint
 npm run version:check    # the 5 files carrying the app version agree
 npm run docs:validate    # every path/link in documentation/ resolves
+npm run docs:emdash      # no em dash anywhere in the prose
 npm run test:maestro:smoke   # the one E2E flow CI requires: install, launch, the login screen renders
 ```
 

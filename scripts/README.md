@@ -112,3 +112,7 @@ When adding new scripts:
 ## check-schema-mirror.js and schema-sync-config.js
 
 `node scripts/check-schema-mirror.js <ww-backend checkout>` reports how `supabase/schemas` differs from the backend's declarative schema: files that differ, files the backend added, files it dropped. It shares `schema-sync-config.js` (the folder list and the files the sync never deletes) with `sync-db-schema.js`, so a compare and a copy cannot disagree. Exit 1 on drift, 2 when the folder list itself is stale.
+
+## check-em-dashes.js
+
+`npm run docs:emdash`. The em dash rule as a check: walks the prose (`documentation/`, `.agents/`, `AGENTS.md`, `CLAUDE.md`, `README.md`) and fails on a U+2014 in any Markdown file, naming the lines. Commas, or a new sentence.

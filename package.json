@@ -57,7 +57,8 @@
     "prepare": "node -e \"if(process.env.CI||process.env.EAS_BUILD)process.exit(0)\" && npx husky",
     "test:maestro:smoke": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/smoke/",
     "test:maestro:full": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/",
-    "test:maestro:crud": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/project-crud-workflow.yaml"
+    "test:maestro:crud": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/project-crud-workflow.yaml",
+    "docs:emdash": "node scripts/check-em-dashes.js"
   },
   "dependencies": {
     "@getquip/expo-nordic-dfu": "^2.0.3",

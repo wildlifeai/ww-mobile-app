@@ -64,6 +64,9 @@ jobs:
       - name: Documentation references resolve
         run: npm run docs:validate
 
+      - name: No new em dashes in prose
+        run: npm run docs:emdash
+
       - name: Run tests with coverage
         run: npm test -- --coverage --ci
 
