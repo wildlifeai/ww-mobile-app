@@ -1,7 +1,8 @@
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { View, ScrollView, StyleSheet } from "react-native"
-import { Modal, Portal, IconButton, Divider, Button, Chip, Text } from "react-native-paper"
+import { Modal, Portal, IconButton, Divider, Button, Text, TouchableRipple, Icon } from "react-native-paper"
 import { WWText } from "./ui/WWText"
+import { HelpDialog } from "./ui/HelpDialog"
 import { useExtendedTheme } from "../theme"
 import { CommandNames, COMMANDS } from "../ble/types"
 
@@ -16,6 +17,10 @@ interface FlowGroup {
     icon: string
     commands: { name: CommandNames; description: string }[]
 }
+
+/** Behind the ? next to the title. */
+export const FLOWS_HELP =
+    'Pre-built workflows and multi-step processes, grouped by what they are for. Tap Run to open one.'
 
 /**
  * Resolve the named flows, in the order given, dropping any that no longer
@@ -97,9 +102,21 @@ export const getFlowGroups = (): FlowGroup[] => {
     return groups.filter(g => g.commands.length > 0)
 }
 
+/**
+ * Laid out like the Commands list beside it (CommandReferenceModal): the title
+ * with a ? that says how the list works, then each group as a toggle, all
+ * closed when the list opens and one open at a time. The Commands list has a
+ * heading per processor above its toggles; flows have no processor, so the
+ * groups are the top level here.
+ */
 export const FlowsReferenceModal = ({ visible, onDismiss, onRunFlow }: Props) => {
-    const { colors, spacing } = useExtendedTheme()
+    const { colors } = useExtendedTheme()
     const groups = useMemo(() => getFlowGroups(), [])
+
+    const [openGroup, setOpenGroup] = useState<string | null>(null)
+    const [helpVisible, setHelpVisible] = useState(false)
+
+    const toggleGroup = (title: string) => setOpenGroup(prev => (prev === title ? null : title))
 
     const dynamicStyles = useMemo(() => ({
         modal: {
@@ -107,9 +124,6 @@ export const FlowsReferenceModal = ({ visible, onDismiss, onRunFlow }: Props) =>
         },
         groupHeader: {
             backgroundColor: colors.surfaceVariant,
-        },
-        groupHeaderText: {
-            color: colors.onSurfaceVariant,
         },
         rowBorder: {
             borderBottomColor: colors.outlineVariant
@@ -123,50 +137,82 @@ export const FlowsReferenceModal = ({ visible, onDismiss, onRunFlow }: Props) =>
         <Portal>
             <Modal visible={visible} onDismiss={onDismiss} contentContainerStyle={[styles.modal, dynamicStyles.modal]}>
                 <View style={styles.header}>
-                    <WWText variant="titleLarge"><Text>Flows & Processes</Text></WWText>
+                    <View style={styles.headerTitle}>
+                        <WWText variant="titleLarge"><Text>Flows & Processes</Text></WWText>
+                        <IconButton
+                            icon="help-circle-outline"
+                            size={22}
+                            iconColor={colors.primary}
+                            onPress={() => setHelpVisible(true)}
+                            accessibilityLabel="About the flows"
+                            testID="flows-help"
+                        />
+                    </View>
                     <IconButton icon="close" onPress={onDismiss} />
                 </View>
 
                 <Divider />
 
                 <ScrollView style={styles.content}>
-                    <WWText style={{ marginBottom: spacing, marginTop: spacing }}>
-                        <Text>Pre-built workflows and multi-step processes. Click Run to execute.</Text>
-                    </WWText>
+                    {groups.map((group) => {
+                        const open = openGroup === group.title
+                        return (
+                            <View key={group.title}>
+                                <TouchableRipple
+                                    onPress={() => toggleGroup(group.title)}
+                                    style={[styles.groupHeader, dynamicStyles.groupHeader]}
+                                    accessibilityRole="button"
+                                    accessibilityState={{ expanded: open }}
+                                    testID={`group-${group.title}`}
+                                >
+                                    <View style={styles.groupHeaderContent}>
+                                        <Icon source={group.icon} size={20} color={colors.onSurfaceVariant} />
+                                        <WWText variant="titleSmall" style={styles.groupTitle}>
+                                            <Text>{group.title}</Text>
+                                        </WWText>
+                                        <Icon source={open ? 'chevron-up' : 'chevron-down'} size={22} color={colors.onSurfaceVariant} />
+                                    </View>
+                                </TouchableRipple>
 
-                    {groups.map((group) => (
-                        <View key={group.title}>
-                            <View style={[styles.groupHeaderRow, dynamicStyles.groupHeader]}>
-                                <Chip icon={group.icon} compact style={styles.groupChip}>
-                                    <Text>{group.title}</Text>
-                                </Chip>
+                                {open ? group.commands.map((cmd) => (
+                                    <View key={cmd.name} style={[styles.row, styles.rowBorder, dynamicStyles.rowBorder]}>
+                                        <View style={styles.rowInfo}>
+                                            <WWText style={styles.boldText}><Text>{cmd.name}</Text></WWText>
+                                            {cmd.description ? (
+                                                <WWText variant="bodySmall" style={dynamicStyles.descriptionText}>
+                                                    <Text>{cmd.description}</Text>
+                                                </WWText>
+                                            ) : null}
+                                        </View>
+                                        <View style={styles.rowAction}>
+                                            <Button
+                                                mode="contained"
+                                                compact
+                                                onPress={() => onRunFlow(cmd.name)}
+                                                testID={`run-${cmd.name}`}
+                                            >
+                                                <Text>Run</Text>
+                                            </Button>
+                                        </View>
+                                    </View>
+                                )) : null}
                             </View>
-
-                            {group.commands.map((cmd) => (
-                                <View key={cmd.name} style={[styles.row, dynamicStyles.rowBorder]}>
-                                    <View style={styles.rowInfo}>
-                                        <WWText style={styles.boldText}><Text>{cmd.name}</Text></WWText>
-                                        {cmd.description ? (
-                                            <WWText variant="bodySmall" style={dynamicStyles.descriptionText}>
-                                                <Text>{cmd.description}</Text>
-                                            </WWText>
-                                        ) : null}
-                                    </View>
-                                    <View style={styles.rowAction}>
-                                        <Button mode="contained" compact onPress={() => onRunFlow(cmd.name)}>
-                                            <Text>Run</Text>
-                                        </Button>
-                                    </View>
-                                </View>
-                            ))}
-                        </View>
-                    ))}
+                        )
+                    })}
                 </ScrollView>
+
+                <HelpDialog
+                    visible={helpVisible}
+                    title="Flows & Processes"
+                    content={FLOWS_HELP}
+                    onDismiss={() => setHelpVisible(false)}
+                />
             </Modal>
         </Portal>
     )
 }
 
+// The same spacing as CommandReferenceModal, so the two lists read as one tool.
 const styles = StyleSheet.create({
     modal: {
         margin: 20,
@@ -180,25 +226,36 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 0
     },
+    headerTitle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
     content: {
         flex: 1
     },
-    groupHeaderRow: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
+    groupHeader: {
         borderRadius: 6,
-        marginTop: 12,
-        marginBottom: 4,
+        marginTop: 6,
+        overflow: 'hidden',
     },
-    groupChip: {
-        alignSelf: 'flex-start'
+    groupHeaderContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+    },
+    groupTitle: {
+        flex: 1,
     },
     row: {
         flexDirection: 'row',
         paddingVertical: 12,
         paddingHorizontal: 4,
-        borderBottomWidth: 1,
         alignItems: 'center'
+    },
+    rowBorder: {
+        borderBottomWidth: 1,
     },
     rowInfo: {
         flex: 2

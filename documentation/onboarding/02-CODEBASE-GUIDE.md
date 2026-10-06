@@ -116,7 +116,6 @@ screens/                                  navigation/screens/
 │   ├── DeviceDiscoveryScreen / EngineerConsoleScreen
 │   ├── DevDeploymentTestScreen / DeviceResetScreen
 │   ├── DfuScreen / FirmwareUpdateScreen / FirmwareStatusScreen
-│   ├── AiModelTransferScreen  (defined and routed, but absent from the Flows modal)
 │   ├── FileTransferTestScreen / ModelValidationTestScreen
 │   ├── CapturePictureScreen / LightSensorScreen
 │   ├── StandaloneMotionDetectionScreen

@@ -23,9 +23,9 @@ day are in [traps.md](traps.md).
   from a hand-maintained allowlist, a `pick([...])` per group, so a command can be fully
   defined in `COMMANDS`, work when typed, and never appear in the UI. `slots` and
   `switchslot` were unreachable that way until August 2026. A coverage test now fails CI if a
-  `type: 'command'` entry belongs to no group. **`FlowsReferenceModal` has the same shape and
-  no equivalent guard**, so `type: 'process'` entries can still go missing silently. When you
-  add one, open the modal and confirm it renders.
+  `type: 'command'` entry belongs to no group. `FlowsReferenceModal` has the same shape and
+  the same guard, `FlowsReferenceModal.coverage.test.ts`, for `type: 'process'` and
+  `type: 'local'` entries.
 - **A console command never fills in a value for the operator.** A `COMMANDS` entry whose
   `writeCommand` takes arguments declares them as `params`; the Commands list asks for each and
   sends nothing until they check out, and `useEngineerConsoleActions` refuses one that arrives
