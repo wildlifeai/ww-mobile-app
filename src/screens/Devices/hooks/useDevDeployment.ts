@@ -655,6 +655,9 @@ export const useDevDeployment = ({
                 // writes it (#342). No field here: the model chosen on this
                 // screen is tried at the threshold the project would deploy it at.
                 detectionThreshold: project,
+                // LoRaWAN on or off (op32) from this screen's switch, the
+                // value it saves to the project
+                lorawanRequired: lorawanOverride,
             }, cb, opsAfterReset)
 
             // 7. Flash brightness, dev only (the LED and the mode went in above).
@@ -709,7 +712,7 @@ export const useDevDeployment = ({
         flashMode, flashLed, flashWindowStart, flashWindowMinutes, ledBrightness,
         numPictures, cameraChoice, camera, readSelfTestBits, refreshActiveDeployment,
         sensitivityOptions, motionSensitivityOverride,
-        aiModelIdOverride, recordGpsOverride,
+        aiModelIdOverride, recordGpsOverride, lorawanOverride,
         effectiveCaptureMethod, effectiveTimelapseInterval,
         monitoring
     ])

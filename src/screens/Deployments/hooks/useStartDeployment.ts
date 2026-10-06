@@ -596,6 +596,9 @@ export const useStartDeployment = ({
                     // The detection threshold (op16), from the project since
                     // #342. The reset sets op16 to 18, which is the default 57%.
                     detectionThreshold: project,
+                    // LoRaWAN on or off (op32) as the project asks: the 720 min
+                    // ping when it is required, 0 (never join) when not
+                    lorawanRequired: project.lorawan_required ?? false,
                 }, cb, opsAfterReset)
             } catch (configError) {
                 logError('[Deployment] Configuration failed:', configError)

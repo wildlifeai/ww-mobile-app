@@ -122,6 +122,26 @@ describe('executeResetToDefaults resulting ops', () => {
         expect(session.writes).toContain('AI setop 24 0')
     })
 
+    it('puts LoRaWAN back on at the default ping, op32 720', async () => {
+        const session = makeSession()
+        const result = await executeResetToDefaults(session as any, {
+            currentOps: opTable(37, { [OP_PARAMETER.LORAWAN_PING_MINUTES]: '0' }),
+            skipIdentityReset: true,
+        })
+        expect(session.writes).toContain('AI setop 32 720')
+        expect(result![OP_PARAMETER.LORAWAN_PING_MINUTES]).toBe('720')
+    })
+
+    it('never writes op32 to firmware where it was the hi-res switch', async () => {
+        // Before ae_review: 34 parameters, no flash mode, op32 = CAM_RESOLUTION
+        const session = makeSession()
+        await executeResetToDefaults(session as any, {
+            currentOps: opTable(34, { [OP_PARAMETER.LORAWAN_PING_MINUTES]: '0' }),
+            skipIdentityReset: true,
+        })
+        expect(session.writes.filter(w => w.startsWith('AI setop 32 '))).toEqual([])
+    })
+
     it('returns null when the ops could not be read, so callers keep their own view', async () => {
         const session = makeSession()
 

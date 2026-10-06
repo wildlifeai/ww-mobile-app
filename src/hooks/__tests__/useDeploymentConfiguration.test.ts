@@ -509,3 +509,50 @@ describe('useDeploymentConfiguration detection threshold', () => {
         expect(op16Lines(session.lines)).toEqual([])
     })
 })
+
+/**
+ * op32, the LoRaWAN ping period (Charles Palmer, 6 October 2026): 0 never
+ * joins, 720 is the default. A deployment writes it from the project's
+ * lorawan_required, after the reset has put the default there.
+ */
+describe('useDeploymentConfiguration configureLorawan', () => {
+    const makeSession = () => {
+        const lines: string[] = []
+        return {
+            lines,
+            execute: jest.fn(async (build: any) => {
+                const command = typeof build === 'function' ? build() : build
+                lines.push(command?.build?.() ?? '')
+                return true
+            }),
+        }
+    }
+    const ops = (length: number, op32: string) =>
+        Array.from({ length }, (_, index) => (index === OP_PARAMETER.LORAWAN_PING_MINUTES ? op32 : '0'))
+    const configureLorawan = () => renderHook(() => useDeploymentConfiguration()).result.current.configureLorawan
+
+    it('turns LoRaWAN off for a project that does not require it', async () => {
+        const session = makeSession()
+        await configureLorawan()(session, false, ops(37, '720'))
+        expect(session.lines).toEqual(['AI setop 32 0'])
+    })
+
+    it('turns it on, at the default ping, for a project that requires it', async () => {
+        const session = makeSession()
+        await configureLorawan()(session, true, ops(37, '0'))
+        expect(session.lines).toEqual(['AI setop 32 720'])
+    })
+
+    it('writes nothing when the device already holds it', async () => {
+        const session = makeSession()
+        await configureLorawan()(session, true, ops(37, '720'))
+        expect(session.lines).toEqual([])
+    })
+
+    it('leaves op32 alone on firmware where it was the hi-res switch', async () => {
+        // Before ae_review the table stopped at op33 and op32 was CAM_RESOLUTION
+        const session = makeSession()
+        await configureLorawan()(session, false, ops(34, '0'))
+        expect(session.lines).toEqual([])
+    })
+})

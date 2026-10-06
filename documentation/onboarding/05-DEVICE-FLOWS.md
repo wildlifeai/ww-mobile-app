@@ -300,6 +300,19 @@ next deployment. It is written whatever the model; with none on the device the
 firmware never reads it. The Dev Deployment Test screen writes the selected project's
 threshold the same way.
 
+**F. Configure LoRaWAN:** the project's `lorawan_required`, as the LoRaWAN ping period
+(OP 32, `LORAWAN_PING_MINUTES`, agreed with Charles Palmer on 6 October 2026):
+
+```
+AI setop 32 720   (LoRaWAN required: ping every 12 hours, the factory default)
+AI setop 32 0     (not required: never try to join, so no join failures without a gateway)
+```
+
+The reset (step 5) has just written 720, so a project that requires LoRaWAN writes
+nothing here. The Dev Deployment Test screen writes its own LoRaWAN switch the same way.
+Firmware without the flash mode (OP 34) is left alone: before ae_review OP 32 was
+`CAM_RESOLUTION`, the hi-res switch, and the reset skips it there too.
+
 ---
 
 ## Part 3: Ending a Deployment

@@ -182,6 +182,7 @@ The following subset is directly used during deployment:
 | 18 | `TEST_MODE_BITS` | Diagnostic bitmask (bit 1 = `TEST_BIT_SAVE_BMP`, bit 3 = `TEST_BIT_SKIP_FILE_CREATION`). Neither deployment writes it since 21 September 2026; the reset leaves it 0 |
 | 19 | `IMAGES_COUNT` | Total images captured (reset on new deployment) |
 | 20 | `IMAGES_FILE_INDEX` | Image subdirectory counter (reset on new deployment) |
+| 32 | `LORAWAN_PING_MINUTES` | LoRaWAN ping period in minutes, 0 = never join. Factory 720 (12 h); a deployment writes 720 or 0 from the project's `lorawan_required`. Was `CAM_RESOLUTION` before ae_review, so firmware without op34 is never written |
 | 34 | `FLASH_MODE` | When the flash is armed: 0 = off, 1 = light sensor, 2 = always on, 3 = time of day. Written from the project's `flash_mode`. With op13 it is the gate the firmware's `ledFlashIsActive()` tests, so it also decides whether motion frames get IR light at night |
 | 35 | `FLASH_TOD_START` | Time-of-day mode only: minutes after midnight UTC when the flash turns on |
 | 36 | `FLASH_TOD_DURATION` | Time-of-day mode only: how many minutes it stays on, wrapping past midnight |
