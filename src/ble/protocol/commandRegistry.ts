@@ -227,6 +227,15 @@ export function isMdRefusal(error: unknown): boolean {
 }
 
 /**
+ * A time as both processors' `setutc` takes it, whole seconds and `Z`:
+ * `2026-10-06T04:12:33Z`, now when none is given. Formatted from a Date, so a
+ * time with or without milliseconds comes out the same; cutting the string at
+ * the `.` turned one without into `...33ZZ`.
+ */
+const utcSeconds = (isoDateStr?: string): string =>
+  new Date(isoDateStr || Date.now()).toISOString().replace(/\.\d{3}Z$/, 'Z');
+
+/**
  * Exported registry of constructed commands.
  */
 export const commandRegistry = {
@@ -376,10 +385,7 @@ export const commandRegistry = {
   ),
   setutc: createSingleLineCommand<boolean>(
     'setutc',
-    (isoDateStr?: string) => {
-      const stamp = (isoDateStr || new Date().toISOString()).split('.')[0] + 'Z';
-      return `setutc ${stamp}`;
-    },
+    (isoDateStr?: string) => `setutc ${utcSeconds(isoDateStr)}`,
     /(RTC\s+set\s+to|System\s+time\s+set\s+successfully|UTC\s+is:)/i,
     () => true
   ),
@@ -550,7 +556,7 @@ export const commandRegistry = {
    */
   aiSetutc: createSingleLineCommand<boolean>(
     'aiSetutc',
-    (isoDateStr?: string) => `AI setutc ${(isoDateStr || new Date().toISOString()).split('.')[0]}Z`,
+    (isoDateStr?: string) => `AI setutc ${utcSeconds(isoDateStr)}`,
     /^RTC set to/i,
     () => true,
     { timeoutMs: 8000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Error -?\d+/i }

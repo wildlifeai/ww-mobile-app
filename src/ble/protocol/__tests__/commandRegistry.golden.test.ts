@@ -196,6 +196,16 @@ describe('commandRegistry golden wire format', () => {
         })
     }
 
+    it('sends both clocks whole seconds, given a time with or without milliseconds', () => {
+        // Cutting the string at the `.` sent `...54ZZ` for one without.
+        for (const time of ['2026-09-20T05:17:54.123Z', '2026-09-20T05:17:54Z']) {
+            expect(commandRegistry.setutc(time).build()).toBe('setutc 2026-09-20T05:17:54Z')
+            expect(commandRegistry.aiSetutc(time).build()).toBe('AI setutc 2026-09-20T05:17:54Z')
+        }
+        // And now, when no time is given.
+        expect(commandRegistry.aiSetutc().build()).toMatch(/^AI setutc \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/)
+    })
+
     it('has a golden row for every command in the registry', () => {
         // A new command with no row is the only way to reintroduce #315.
         const registered = Object.keys(commandRegistry).sort()
