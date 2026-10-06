@@ -227,6 +227,10 @@ or connects.
 
 **Flows & Processes** (`FlowsReferenceModal`): multi-step workflows or convenience wrappers. These either compose multiple BLE commands, interact with app services (cloud, GPS, navigation), or wrap a single `setop` with a human-readable name. Tapping "Run" executes the full sequence.
 
+The Flows list is laid out like the Commands list: its groups are toggles, all closed when it
+opens and one open at a time, and the ? beside the title says how it works. Flows have no
+processor, so there is no heading above the groups.
+
 > [!NOTE]
 > In the codebase, commands have `type: 'command'` and flows have `type: 'process'` or `type: 'local'` in `COMMANDS` ([types.ts](../../src/ble/types.ts)).
 
@@ -282,11 +286,6 @@ From the console, all three open the **engineer view** of the update screen (`en
 | `TX_FILE` | Deleted. It was the only `process` entry with no navigation handler, so it fell through to `writeRaw` and bypassed the command registry: its `Failed to open ''. (6)` never reached the operator, while `commandRegistry.txfile` handles that case and `useCapturePreview` already calls it properly. |
 | `CLEAR_CONSOLE` | Deleted as a flow, since it sent nothing to the device. Clearing the output is the trash icon in the screen header, beside the Commands and Flows icons (#302, 21 September 2026). The September tidy recorded a Clear button on the console header that was never actually added. |
 | `TRANSFER_CONFIG` | Deleted with its screen and hook, 455 lines reachable from nowhere. The deployment pipeline transfers config as part of a real deployment. |
-
-> [!WARNING]
-> `TRANSFER_AI_MODEL` is still defined and routed but **absent from the Flows modal**, so there is
-> no way to run it. The modal is a hand-maintained allowlist with no coverage test, unlike
-> `CommandReferenceModal`, so an entry can be fully wired and still invisible.
 
 ## Hardware Testing Tools (Detailed)
 
