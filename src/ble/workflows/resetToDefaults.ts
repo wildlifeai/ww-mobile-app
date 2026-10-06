@@ -35,7 +35,7 @@ export interface ResetToDefaultsOptions {
  * parameters the reset has just changed underneath it.
  */
 export async function executeResetToDefaults(
-    session: BleSession,
+    session: Pick<BleSession, 'execute'>,
     options?: ResetToDefaultsOptions
 ): Promise<string[] | null> {
     const { onProgress, isCancelled } = options || {}

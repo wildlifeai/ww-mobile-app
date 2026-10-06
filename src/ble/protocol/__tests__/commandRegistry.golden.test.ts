@@ -63,6 +63,7 @@ const GOLDEN: Record<keyof typeof commandRegistry, Row> = {
     aiinfo: { wire: 'AI info', accepts: '30000K total, 29000K available' },
     aiver: { wire: 'AI ver', accepts: 'WW500_C02 05:31:26 Sep 15 2026' },
     aireset: { wire: 'AI reset', accepts: 'Forcing reset' },
+    aidpd: { wire: 'AI dpd', accepts: 'Forcing DPD by clearing inactivity period', rejects: 'Unrecognised command' },
     aifirmware: {
         args: ['OUTPUT.IMG', '0x1A2B'],
         wire: 'AI firmware OUTPUT.IMG 0x1A2B',

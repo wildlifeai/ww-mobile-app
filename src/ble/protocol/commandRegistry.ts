@@ -296,6 +296,19 @@ export const commandRegistry = {
     () => true,
     { timeoutMs: 8000, retryPolicy: { maxRetries: 0 } }
   ),
+  /**
+   * Send the AI processor to sleep now instead of when op8 runs out. `AI reset`
+   * only restarts it at its next sleep, so this after it makes the restart
+   * happen at once: about 5 s on a unit whose op8 was 60 s, which otherwise
+   * waited the full minute (bench, 7 October 2026).
+   */
+  aidpd: createSingleLineCommand<boolean>(
+    'aidpd',
+    () => 'AI dpd',
+    /Forcing DPD/i,
+    () => true,
+    { timeoutMs: 8000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Unrecogni[sz]ed/i }
+  ),
   version: createSingleLineCommand<string>(
     'version',
     () => 'ver',

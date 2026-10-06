@@ -171,7 +171,7 @@ day are in [traps.md](traps.md).
   packets into an image URI with byte-level progress. Use it whenever a screen needs an image. What
   Capture Picture does around it is in
   [Capture-Picture.md](../../../documentation/resources/Capture-Picture.md). The Device Check
-  is the one exception: it takes about 20 photos and keeps two, so it captures through the
+  is the one exception: it takes about 25 photos and keeps four, so it captures through the
   registry inside one keepAwake hold and downloads with `workflows/downloadPhoto.ts`. Anything
   else capturing that way needs the same op10/op18 pre-flight and the hold.
 - **The focus lens forgets its position when the AI processor sleeps.** `AI vcm` only holds

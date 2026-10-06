@@ -12,6 +12,16 @@ import { logError, logWarn } from '../../../utils/logger'
 
 type Steps = Record<CheckStepId, CheckStepState>
 
+/**
+ * A question for the operator, and the photos to show beside it. With a
+ * `button`, a prompt to tap that one button instead of answering yes or no.
+ */
+export interface CheckQuestion {
+    text: string
+    photos: CheckPhoto[]
+    button?: string
+}
+
 const pendingSteps = (): Steps =>
     Object.fromEntries(CHECK_STEPS.map(s => [s.id, { status: 'pending', summary: '' }])) as Steps
 
@@ -28,7 +38,8 @@ export const useDeviceCheck = ({ device }: { device: ExtendedPeripheral | undefi
     const [running, setRunning] = useState(false)
     const [finished, setFinished] = useState(false)
     const [instruction, setInstruction] = useState<string | null>(null)
-    const [question, setQuestion] = useState<string | null>(null)
+    const [question, setQuestion] = useState<CheckQuestion | null>(null)
+    const [notice, setNotice] = useState<string | null>(null)
     const [photos, setPhotos] = useState<Partial<Record<CheckPhoto, string>>>({})
     const [lens, setLens] = useState<{ verdict: LensVerdict; movesFreely: boolean } | null>(null)
     const [reference, setReference] = useState<CheckReference | null>(null)
@@ -72,6 +83,7 @@ export const useDeviceCheck = ({ device }: { device: ExtendedPeripheral | undefi
         setSteps(pendingSteps())
         setPhotos({})
         setLens(null)
+        setNotice(null)
         setFinished(false)
         setRunning(true)
         try {
@@ -80,15 +92,28 @@ export const useDeviceCheck = ({ device }: { device: ExtendedPeripheral | undefi
                 deviceId: device.id,
                 referencePeak: reference?.lensPeak ?? null,
                 switchCamera: (target) => switchRef.current(target),
-                ask: (text) => new Promise<boolean>(resolve => {
+                ask: (text, photosToShow = []) => new Promise<boolean>(resolve => {
                     if (cancelledRef.current) return resolve(false)
                     answerRef.current = (yes) => {
                         answerRef.current = null
                         if (mountedRef.current) setQuestion(null)
                         resolve(yes)
                     }
-                    if (mountedRef.current) setQuestion(text)
+                    if (mountedRef.current) setQuestion({ text, photos: photosToShow })
                 }),
+                waitForTap: (text, button, ms) => new Promise<boolean>(resolve => {
+                    if (cancelledRef.current) return resolve(false)
+                    const done = (tapped: boolean) => {
+                        clearTimeout(timer)
+                        answerRef.current = null
+                        if (mountedRef.current) setQuestion(null)
+                        resolve(tapped)
+                    }
+                    const timer = setTimeout(() => done(false), ms)
+                    answerRef.current = done
+                    if (mountedRef.current) setQuestion({ text, photos: [], button })
+                }),
+                notify: ifMounted(setNotice),
                 instruct: ifMounted(setInstruction),
                 onStep: ifMounted((id: CheckStepId, state: CheckStepState) => setSteps(prev => ({ ...prev, [id]: state }))),
                 onPhoto: ifMounted((photo: CheckPhoto, uri: string) => setPhotos(prev => ({ ...prev, [photo]: uri }))),
@@ -103,12 +128,15 @@ export const useDeviceCheck = ({ device }: { device: ExtendedPeripheral | undefi
                 setFinished(true)
                 setInstruction(null)
                 setQuestion(null)
+                setNotice(null)
                 setCameraStage('')
             }
         }
     }, [device, running, reference])
 
     const answer = useCallback((yes: boolean) => answerRef.current?.(yes), [])
+
+    const dismissNotice = useCallback(() => setNotice(null), [])
 
     const stop = useCallback(() => {
         cancelledRef.current = true
@@ -136,6 +164,8 @@ export const useDeviceCheck = ({ device }: { device: ExtendedPeripheral | undefi
         instruction,
         question,
         answer,
+        notice,
+        dismissNotice,
         photos,
         lens,
         reference,

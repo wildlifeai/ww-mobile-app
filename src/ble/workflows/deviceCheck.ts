@@ -6,19 +6,23 @@
  * not answer makes every photo step meaningless, and those steps are skipped
  * then), firmware and both camera images, the clocks, the SD card, the
  * LEDs, the light sensor, motion detection, both cameras' photos, the colour
- * camera's focus lens and the IR flash. Each step reports pass, warn or fail and
+ * camera's focus lens and both flashes. Each step reports pass, warn or fail and
  * the check carries on, so one run lists every fault on the unit.
  *
- * Three things only a person can judge are asked, not measured: whether the
- * LEDs lit, and whether both photos show the test card framed alike. The app
- * has no JPEG decoder, so the photos are judged by what the camera reports
- * (file size, and the HM0360's own mean brightness) plus the operator's eye.
- * See `utils/deviceCheck/` for the rules and where their numbers came from.
+ * What only a person can judge is asked, not measured: whether the LEDs lit,
+ * whether each flash photo is lit beside its plain one, and whether both
+ * cameras show the test card framed alike. The app has no JPEG decoder, so the
+ * photos are judged by what the camera reports (file size, and the HM0360's
+ * own mean brightness) plus the operator's eye. See `utils/deviceCheck/` for
+ * the rules and where their numbers came from.
  *
- * Everything the check changes on the device is put back: op8 and op34 through
- * their holds (which survive a dropped link), op18 and op11 after the motion
- * step, op9 and op13 after the IR shot, and the camera that was running when
- * the check started.
+ * It starts by writing the factory defaults, as Reset to Defaults does but
+ * keeping the AI model, the deployment ID and GPS, so no setting left by a
+ * deployment or a bench session can change a step. What it changes after that
+ * goes back to those defaults, so the unit leaves on them: op8 and op34
+ * through their holds (which survive a dropped link), op12 after the LED test,
+ * op18 and op11 after the motion step, op9 and op13 after each flash photo,
+ * and the camera that was running when the check started.
  */
 import type { CommandContext } from '../protocol/commandRegistry'
 import { commandRegistry } from '../protocol/commandRegistry'
@@ -29,6 +33,7 @@ import { keepAwake, DEFAULT_HOLD_MS } from '../session/keepAwake'
 import { flashHold, FLASH_MODE_ALWAYS_ON } from '../session/flashHold'
 import { mdIntervalHold } from '../session/mdIntervalHold'
 import { downloadPhoto } from './downloadPhoto'
+import { executeResetToDefaults } from './resetToDefaults'
 import { OP_PARAMETER } from '../../hooks/useDeviceSettings'
 import { decodeSelfTest, formatSelfTestBits, parseSelfTestBits, SelfTestBit } from '../../utils/deviceSelfTest'
 import { CAMERA_VARIANT_LABELS, CameraVariant, parseVariant } from '../../utils/cameraVariant'
@@ -38,11 +43,12 @@ import { log, logWarn } from '../../utils/logger'
 
 export type CheckStepId =
     | 'cameras' | 'identity' | 'health' | 'clock' | 'storage' | 'leds' | 'light'
-    | 'motion' | 'colour' | 'mono' | 'ir' | 'framing'
+    | 'motion' | 'colour' | 'white' | 'mono' | 'ir' | 'framing'
 
 export type CheckStatus = 'pending' | 'running' | 'pass' | 'warn' | 'fail' | 'skipped'
 
-export type CheckPhoto = 'RP3' | 'HM0360' | 'IR'
+/** The photos the check shows: each camera's plain one, and each lit by its flash. */
+export type CheckPhoto = 'RP3' | 'WHITE' | 'HM0360' | 'IR'
 
 export interface CheckStepState {
     status: CheckStatus
@@ -50,20 +56,24 @@ export interface CheckStepState {
     summary: string
 }
 
-/** The steps in the order they run, with the name the operator sees. */
-export const CHECK_STEPS: { id: CheckStepId; title: string }[] = [
-    { id: 'cameras', title: 'Cameras connected (self-test after a restart)' },
-    { id: 'identity', title: 'Firmware and camera images' },
-    { id: 'colour', title: 'Colour camera and focus lens' },
-    { id: 'health', title: 'Battery and temperature' },
-    { id: 'clock', title: 'Clocks' },
-    { id: 'storage', title: 'SD card' },
-    { id: 'leds', title: 'LEDs' },
-    { id: 'light', title: 'Light sensor' },
-    { id: 'motion', title: 'Motion detection' },
-    { id: 'mono', title: 'Black & white camera' },
-    { id: 'ir', title: 'IR flash' },
-    { id: 'framing', title: 'Both cameras see the card' },
+/**
+ * The steps in the order they run: the name in the results, and what the
+ * screen says while the step runs.
+ */
+export const CHECK_STEPS: { id: CheckStepId; title: string; doing: string }[] = [
+    { id: 'cameras', title: 'Cameras connected (self-test after a restart)', doing: 'Checking the cameras are connected' },
+    { id: 'identity', title: 'Firmware and camera images', doing: 'Reading the firmware and camera images' },
+    { id: 'colour', title: 'Colour camera and focus lens', doing: 'Checking the colour camera and its focus lens' },
+    { id: 'white', title: 'White flash', doing: 'Taking a colour photo with the white flash' },
+    { id: 'health', title: 'Battery and temperature', doing: 'Reading the battery and temperature' },
+    { id: 'clock', title: 'Clocks', doing: 'Setting the clocks' },
+    { id: 'storage', title: 'SD card', doing: 'Checking the SD card' },
+    { id: 'leds', title: 'LEDs', doing: 'Checking the LEDs' },
+    { id: 'light', title: 'Light sensor', doing: 'Checking the light sensor' },
+    { id: 'motion', title: 'Motion detection', doing: 'Checking motion detection' },
+    { id: 'mono', title: 'Black & white camera', doing: 'Checking the black & white camera' },
+    { id: 'ir', title: 'IR flash', doing: 'Taking a black & white photo with the IR flash' },
+    { id: 'framing', title: 'Both cameras see the card', doing: 'Comparing the two cameras' },
 ]
 
 /** The subset of a BLE session the check needs. `createBleSession` satisfies it. */
@@ -81,12 +91,16 @@ export interface DeviceCheckDeps {
     referencePeak: number | null
     /** Boot the other firmware image; true once the device is running `target` */
     switchCamera: (target: 'RP3' | 'HM0360') => Promise<boolean>
-    /** A yes/no question for the operator */
-    ask: (question: string) => Promise<boolean>
+    /** A yes/no question for the operator, with the photos it is about */
+    ask: (question: string, photos?: CheckPhoto[]) => Promise<boolean>
+    /** A prompt with one button: true when the operator taps it within `ms`, false otherwise */
+    waitForTap: (text: string, button: string, ms: number) => Promise<boolean>
+    /** A message the operator dismisses with OK, while the check carries on */
+    notify: (text: string) => void
     /** What the operator should do now, or null when nothing */
     instruct: (text: string | null) => void
     onStep: (id: CheckStepId, state: CheckStepState) => void
-    /** A photo to show: one from each camera, and the black & white one lit by the IR flash */
+    /** A photo to show: one from each camera, and each of those lit by its flash */
     onPhoto: (photo: CheckPhoto, uri: string) => void
     /**
      * The lens verdict, and whether the lens moved freely leaving the reference
@@ -103,8 +117,11 @@ export interface DeviceCheckDeps {
 export const CHECK_KEEP_AWAKE_MS = DEFAULT_HOLD_MS
 /** op34 off: no flash on the camera steps, so a dark bench cannot change the sweep's photos */
 const FLASH_MODE_OFF = 0
-/** op13 2 lights the IR LED */
+/** op13: 1 lights the white LED, 2 the IR LED */
+const FLASH_LED_WHITE = 1
 const FLASH_LED_IR = 2
+/** The white LED test's length, which `AI flash` also saves as op12 */
+const LED_TEST_MS = 500
 /** op18 bit 3: the motion burst writes no files */
 const TEST_BIT_SKIP_FILE_CREATION = 8
 
@@ -115,6 +132,14 @@ export const CLOCK_TOLERANCE_MS = 5000
 
 /** Long enough for three 200 ms flashes, and a gap before the next colour */
 const LED_GAP_MS = 1500
+/**
+ * A `flashb` period the BLE firmware takes as "on until told otherwise"
+ * (LEDONFOREVER in ww-hardware), the call it makes itself on connecting: the
+ * solid blue LED that says the app is connected.
+ */
+const LED_ON_FOR_GOOD_MS = 65535
+/** How long the operator has to tap while waving, about the length of the burst */
+const WAVE_TAP_MS = 5000
 const MOTION_FRAMES = 10
 /** How long the burst has to say `About to capture` before it is sent again, and how many times */
 const BURST_ACK_MS = 10000
@@ -275,6 +300,12 @@ export const runDeviceCheck = async (deps: DeviceCheckDeps): Promise<void> => {
     /** Take one photo and return its file name on the card. */
     const capture = async (count: number = 1): Promise<string> => {
         const name = await session.execute(() => commandRegistry.capture(count, CAPTURE_INTERVAL_MS))
+            .catch((e) => {
+                // On the bench (WILD-HSAN, AI firmware of 15 September 2026) the
+                // first colour photo after the restart started and never finished.
+                if (messageOf(e) === 'TIMEOUT') throw new StepFailure('The camera started the photo but did not finish it.')
+                throw e
+            })
         if (typeof name !== 'string') throw new StepFailure('The camera took the photo but did not name the file.')
         return name.toUpperCase()
     }
@@ -320,7 +351,7 @@ export const runDeviceCheck = async (deps: DeviceCheckDeps): Promise<void> => {
 
     /** Download a photo and show it; resolves with its size, as the camera gave it. */
     const fetchPhoto = async (photo: CheckPhoto, fileName: string): Promise<number> => {
-        const name = photo === 'IR' ? 'IR' : CAMERA_VARIANT_LABELS[photo]
+        const name = photo === 'IR' ? 'IR' : photo === 'WHITE' ? 'white flash' : CAMERA_VARIANT_LABELS[photo]
         deps.instruct(`Downloading the ${name} photo (about half a minute)`)
         const { uri, bytes } = await downloadPhoto(session, deviceId, fileName)
         photos[photo] = uri
@@ -328,15 +359,59 @@ export const runDeviceCheck = async (deps: DeviceCheckDeps): Promise<void> => {
         return bytes ?? 0
     }
 
+    /**
+     * A photo with one flash LED forced on: op34 always on through the flash
+     * hold, op13 the LED, op9 full brightness. The firmware picks these up when
+     * it wakes, so the photo follows a sleep; `afterWake` runs first, for what
+     * the sleep lost. op13 and op9 are put back, and op34 to off for the rest.
+     */
+    const flashPhoto = async (led: number, afterWake: () => Promise<void> = async () => undefined): Promise<string> => {
+        const ops = await session.getOps()
+        const saved = [[OP_PARAMETER.FLASH_LED, ops[OP_PARAMETER.FLASH_LED]], [OP_PARAMETER.LED_BRIGHTNESS, ops[OP_PARAMETER.LED_BRIGHTNESS]]] as const
+        try {
+            await flashHold.release(session, deviceId)
+            await flashHold.acquire(session, deviceId, FLASH_MODE_ALWAYS_ON)
+            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_LED, value: led }))
+            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.LED_BRIGHTNESS, value: 100 }))
+            await session.waitForSleep(SLEEP_WAIT_MS)
+            await afterWake()
+            return await capture()
+        } finally {
+            for (const [index, value] of saved) {
+                if (value === undefined) continue
+                await session.execute(() => commandRegistry.setop({ index, value }))
+                    .catch((e) => logWarn(`[DeviceCheck] could not restore op${index}:`, e))
+            }
+            await flashHold.release(session, deviceId)
+                .then(() => flashHold.acquire(session, deviceId, FLASH_MODE_OFF))
+                .catch((e) => logWarn('[DeviceCheck] could not put the flash hold back to off:', e))
+        }
+    }
+
+    /** Where the sweep found the colour camera sharpest; the white flash photo is taken there. */
+    let sharpestLens: number | null = null
+
     // Raised for the whole check and put back at the end. Both are written to
     // CONFIG.TXT, which both camera images read, so they hold across the
     // camera switches too.
     let holding = false
-    // The sleep timer before the hold: the first sleep still runs on it.
+    // The sleep timer before the reset: the first sleep still runs on it.
     let firstSleepMs = CHECK_KEEP_AWAKE_MS
+    // Why the settings could not all be reset, shown on the firmware step.
+    let resetProblem: string | null = null
     try {
         const ops = await session.getOps()
         firstSleepMs = Math.max(CHECK_KEEP_AWAKE_MS, parseInt(ops[OP_PARAMETER.INTERVAL_BEFORE_DPD] ?? '', 10) || 0)
+        // Before the holds, so they keep the defaults as the values to go
+        // back to. The model, deployment ID and GPS are not settings a step
+        // depends on, and the model is a slow transfer to put back.
+        deps.instruct('Resetting the settings to factory defaults')
+        try {
+            await executeResetToDefaults(session, { currentOps: ops, preserveModel: true, skipIdentityReset: true })
+        } catch (e) {
+            logWarn('[DeviceCheck] could not reset the settings:', e)
+            resetProblem = messageOf(e)
+        }
         // Exactly 3 s, not at least: the check waits for a sleep several times,
         // and a unit left at 60 s turned every one of those into a timeout.
         await keepAwake.acquire(session, deviceId, CHECK_KEEP_AWAKE_MS, { exact: true })
@@ -357,11 +432,17 @@ export const runDeviceCheck = async (deps: DeviceCheckDeps): Promise<void> => {
             // every warm wake after it (Capture Picture, 5 September 2026).
             // `AI reset` restarts the AI processor at its next sleep and keeps
             // the Bluetooth link, so its boot self-test is a fresh reading.
-            // Nothing may be sent while waiting, or the sleep moves away.
+            // `AI dpd` brings that sleep forward: a unit at op8 60 s took a
+            // minute to restart without it and 5 s with it (7 October 2026).
+            // Firmware without it still restarts, on its own timer, so the
+            // wait allows for that. Nothing else may be sent while waiting,
+            // or the sleep moves away.
             const restartMs = firstSleepMs + 10000
-            deps.instruct(`Restarting the camera to read its self-test (up to ${Math.round((restartMs + BOOT_WAKE_WAIT_MS) / 1000)} s)`)
+            deps.instruct('Restarting the camera to read its self-test')
             const since = Date.now()
             await session.execute(() => commandRegistry.aireset())
+            await session.execute(() => commandRegistry.aidpd())
+                .catch((e) => logWarn('[DeviceCheck] AI dpd failed, waiting for the sleep timer:', e))
             const restarted = (await session.waitForSleep(restartMs)) && (await session.waitForWake(BOOT_WAKE_WAIT_MS))
             const boot = restarted ? await selfTestCache.waitForFresh(deviceId, since, BOOT_SELFTEST_WAIT_MS) : null
             if (boot) {
@@ -392,16 +473,12 @@ export const runDeviceCheck = async (deps: DeviceCheckDeps): Promise<void> => {
             if (a !== 'unknown' && a === b) {
                 return { status: 'fail', summary: `${summary} Both slots hold the ${CAMERA_VARIANT_LABELS[a]} image, so the other camera cannot be tested. Load its image first.` }
             }
+            // The reset already enabled the camera and cleared the test bits; a
+            // leftover of either fails every photo below.
+            if (resetProblem) {
+                return { status: 'warn', summary: `${summary} The settings could not all be reset to factory defaults (${resetProblem}), so a leftover setting may change a step.` }
+            }
             const ops = await session.getOps()
-            // Capture Picture's pre-flight (useCapturePreview), and not put back
-            // either: a camera a stopped deployment left disabled, or test bits
-            // a motion test left set, would fail every photo below.
-            if (ops[OP_PARAMETER.CAMERA_ENABLED] !== undefined && ops[OP_PARAMETER.CAMERA_ENABLED] !== '1') {
-                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.CAMERA_ENABLED, value: 1 }))
-            }
-            if ((parseInt(ops[OP_PARAMETER.TEST_MODE_BITS] ?? '0', 10) || 0) !== 0) {
-                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TEST_MODE_BITS, value: 0 }))
-            }
             const autoSwitch = ops.length > OP_PARAMETER.SLOT_SWITCH && ops[OP_PARAMETER.SLOT_SWITCH] === '1'
             if (autoSwitch) {
                 return { status: 'warn', summary: `${summary} Automatic camera switching is on, which can change camera during the check. A unit normally ships with it off.` }
@@ -445,8 +522,31 @@ export const runDeviceCheck = async (deps: DeviceCheckDeps): Promise<void> => {
                 .reduce((a, b) => ((photoBytes.get(b.file) ?? 0) > (photoBytes.get(a.file) ?? 0) ? b : a))
             const problem = photoProblem(photoBytes.get(best.file) ?? 0)
             if (problem) return { status: 'fail', summary: problem }
+            sharpestLens = best.position
             await fetchPhoto('RP3', best.file)
             return { status: verdict.status, summary: verdict.message }
+        }, { needsCameras: true })
+
+        // While the colour image still runs. Judged by eye, as the IR flash is.
+        await step('white', async () => {
+            if (!photos.RP3 || sharpestLens === null) {
+                return { status: 'skipped', summary: 'Needs the colour photo first.' }
+            }
+            const lens = sharpestLens
+            deps.instruct('Keep the camera and the test card still. The white LED flashes for each photo.')
+            await bootCamera('RP3')
+            // The sleep loses the lens position and the exposure, so both are
+            // set up again as the colour step did, the warm-ups lit too.
+            const file = await flashPhoto(FLASH_LED_WHITE, async () => {
+                await session.execute(() => commandRegistry.vcm(lens))
+                await capture(WARM_UPS)
+            })
+            const problem = photoProblem(await fetchPhoto('WHITE', file))
+            if (problem) return { status: 'fail', summary: problem }
+            const lit = await deps.ask('Is the white flash photo clearly brighter than the colour one beside it?', ['RP3', 'WHITE'])
+            return lit
+                ? { status: 'pass', summary: 'The white flash lit the photo.' }
+                : { status: 'fail', summary: 'The white flash photo is no brighter. Check the white LED and its cable.' }
         }, { needsCameras: true })
 
         await step('health', async () => {
@@ -461,9 +561,9 @@ export const runDeviceCheck = async (deps: DeviceCheckDeps): Promise<void> => {
 
         // Both clocks are set and read back. The AI processor's has to be set
         // here, not left to the BLE processor: the restart in the first step
-        // rewinds it to 2024, and the BLE processor only passes the time on
-        // every 15 minutes (SENDUTCINTERVAL in ww-hardware), so without this
-        // the unit would leave with photos stamped 2024 (bench, 6 October 2026).
+        // rewinds it to 2024 (Seeed #152), and the BLE processor does not put
+        // it right straight away (Seeed #56), so without this the unit would
+        // leave with photos stamped 2024 (bench, 6 October 2026).
         await step('clock', async () => {
             const off = (ms: number) => isNaN(ms) || Math.abs(ms - Date.now()) > CLOCK_TOLERANCE_MS
             await session.execute(() => commandRegistry.setutc())
@@ -496,10 +596,22 @@ export const runDeviceCheck = async (deps: DeviceCheckDeps): Promise<void> => {
                 await session.execute(() => commandRegistry.boardLed(colour, 3, 200))
                 await pause(LED_GAP_MS)
             }
+            // The flashes leave the blue LED off; it says the app is connected.
+            await session.execute(() => commandRegistry.boardLed('b', 1, LED_ON_FOR_GOOD_MS))
+                .catch((e) => logWarn('[DeviceCheck] could not turn the blue LED back on:', e))
             // `AI flash` answers with nothing; the command resolves on the
-            // Sleep after it, and a timeout still means it was sent.
-            await session.execute(() => commandRegistry.aiflash(50, 500))
-                .catch((e) => { if (messageOf(e) !== 'TIMEOUT') throw e })
+            // Sleep after it, and a timeout still means it was sent. It also
+            // saves its length as op12, so the unit's own value goes back.
+            const flashMs = (await session.getOps())[OP_PARAMETER.FLASH_DURATION]
+            try {
+                await session.execute(() => commandRegistry.aiflash(50, LED_TEST_MS))
+                    .catch((e) => { if (messageOf(e) !== 'TIMEOUT') throw e })
+            } finally {
+                if (flashMs !== undefined && flashMs !== String(LED_TEST_MS)) {
+                    await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_DURATION, value: flashMs }))
+                        .catch((e) => logWarn('[DeviceCheck] could not restore op12:', e))
+                }
+            }
             deps.instruct(null)
 
             const board = await deps.ask('Did the small LED flash red, then green, then blue?')
@@ -510,9 +622,16 @@ export const runDeviceCheck = async (deps: DeviceCheckDeps): Promise<void> => {
         })
 
         await step('light', async () => {
-            const wait = awaitAeRegisters(deviceId)
+            const wait = awaitAeRegisters(deviceId, AE_WAIT_MS)
             try {
                 await session.execute(() => commandRegistry.light())
+                    .catch(async (e) => {
+                        // Sent as the processor fell asleep, `AI light` was lost,
+                        // reply and reading both (bench, 7 October 2026). The
+                        // registry never retries it, so the step does, once.
+                        if (messageOf(e) !== 'TIMEOUT') throw e
+                        await session.execute(() => commandRegistry.light())
+                    })
             } catch (e) {
                 wait.cancel()
                 throw e
@@ -522,12 +641,19 @@ export const runDeviceCheck = async (deps: DeviceCheckDeps): Promise<void> => {
             return { status: 'pass', summary: `Mean brightness ${ae.aeMean}, gain ${ae.analogGain}.` }
         }, { needsCameras: true })
 
+        // The operator taps while waving, within the burst. Without a tap the
+        // frames say nothing about the detector (nobody waved: no motion in 10
+        // frames on WILD-DJUU, 7 October 2026), so the step is not judged.
         await step('motion', async () => {
             const blocks: number[] = []
+            // Set from the line listener when the burst starts.
+            const tap: { tapped: Promise<boolean> | null } = { tapped: null }
             const onLine = (event: BleEvent & { type: 'TEXT_LINE' }) => {
                 if (event.deviceId !== deviceId) return
-                if (new RegExp(`About to capture\\s+${MOTION_FRAMES}\\s+images`, 'i').test(event.line)) {
-                    deps.instruct('Wave your hand in front of the camera now, until the next step starts.')
+                if (!tap.tapped && new RegExp(`About to capture\\s+${MOTION_FRAMES}\\s+images`, 'i').test(event.line)) {
+                    // What the screen says once the tap is in.
+                    deps.instruct('Keep waving until the Watcher says hi back.')
+                    tap.tapped = deps.waitForTap('Wave your hand in front of the camera now, and tap while you wave.', "I'm waving", WAVE_TAP_MS)
                 }
                 const m = /HM0360 motion in (\d+) blocks/i.exec(event.line)
                 if (m) blocks.push(parseInt(m[1], 10))
@@ -541,6 +667,13 @@ export const runDeviceCheck = async (deps: DeviceCheckDeps): Promise<void> => {
                 await session.waitForSleep(SLEEP_WAIT_MS)
                 bleEventBus.on('textLine', onLine)
                 await runBurst()
+                // The operator is still waving: tell them to stop straight
+                // away. The rest of the check does not wait for their OK.
+                if (await (tap.tapped ?? Promise.resolve(false))) {
+                    deps.notify(blocks.some(n => n > 0)
+                        ? 'The Watcher says hi back! You can stop waving now.'
+                        : 'You can stop waving now.')
+                }
             } finally {
                 bleEventBus.removeListener('textLine', onLine)
                 // Cleared at the start, so 0 is the value to go back to, and
@@ -550,6 +683,9 @@ export const runDeviceCheck = async (deps: DeviceCheckDeps): Promise<void> => {
                 await mdIntervalHold.release(session, deviceId)
                     .then(() => mdIntervalHold.restorePending(session, deviceId))
                     .catch((e) => logWarn('[DeviceCheck] could not restore op11:', e))
+            }
+            if (!(await (tap.tapped ?? Promise.resolve(false)))) {
+                return { status: 'skipped', summary: 'Not checked: nobody tapped to say they were waving. Run the check again to test motion.' }
             }
             // The first frame after a wake has nothing to compare with and always reads 0.
             const most = blocks.length > 0 ? Math.max(...blocks) : 0
@@ -585,31 +721,10 @@ export const runDeviceCheck = async (deps: DeviceCheckDeps): Promise<void> => {
             if (!passed('mono') || !photos.HM0360) {
                 return { status: 'skipped', summary: 'Needs the black & white photo first.' }
             }
-            const ops = await session.getOps()
-            const led = ops[OP_PARAMETER.FLASH_LED]
-            const brightness = ops[OP_PARAMETER.LED_BRIGHTNESS]
-            let file: string
-            try {
-                await flashHold.release(session, deviceId)
-                await flashHold.acquire(session, deviceId, FLASH_MODE_ALWAYS_ON)
-                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_LED, value: FLASH_LED_IR }))
-                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.LED_BRIGHTNESS, value: 100 }))
-                // The firmware picks up the flash settings when it wakes.
-                await session.waitForSleep(SLEEP_WAIT_MS)
-                file = await capture()
-            } finally {
-                for (const [index, value] of [[OP_PARAMETER.FLASH_LED, led], [OP_PARAMETER.LED_BRIGHTNESS, brightness]] as const) {
-                    if (value === undefined) continue
-                    await session.execute(() => commandRegistry.setop({ index, value }))
-                        .catch((e) => logWarn(`[DeviceCheck] could not restore op${index}:`, e))
-                }
-                await flashHold.release(session, deviceId)
-                    .then(() => flashHold.acquire(session, deviceId, FLASH_MODE_OFF))
-                    .catch((e) => logWarn('[DeviceCheck] could not put the flash hold back to off:', e))
-            }
+            const file = await flashPhoto(FLASH_LED_IR)
             const problem = photoProblem(await fetchPhoto('IR', file))
             if (problem) return { status: 'fail', summary: problem }
-            const lit = await deps.ask('Is the IR photo clearly brighter than the black & white one beside it?')
+            const lit = await deps.ask('Is the IR photo clearly brighter than the black & white one beside it?', ['HM0360', 'IR'])
             return lit
                 ? { status: 'pass', summary: 'The IR flash lit the photo.' }
                 : { status: 'fail', summary: 'The IR photo is no brighter. Check the IR LED and its cable.' }
@@ -619,7 +734,7 @@ export const runDeviceCheck = async (deps: DeviceCheckDeps): Promise<void> => {
             if (!photos.RP3 || !photos.HM0360) {
                 return { status: 'skipped', summary: 'Needs a photo from each camera.' }
             }
-            const alike = await deps.ask('Look at the colour and black & white photos. Do both show the test card, centred alike?')
+            const alike = await deps.ask('Do both photos show the test card, centred alike?', ['RP3', 'HM0360'])
             return alike
                 ? { status: 'pass', summary: 'Both cameras see the card alike.' }
                 : { status: 'fail', summary: 'The cameras do not see the card alike. Check that both modules sit square in the case.' }

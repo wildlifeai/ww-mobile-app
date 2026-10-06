@@ -8,6 +8,7 @@ import { keepAwake } from '../../session/keepAwake'
 import { flashHold } from '../../session/flashHold'
 import { mdIntervalHold } from '../../session/mdIntervalHold'
 import { SWEEP_UP, SWEEP_DOWN } from '../../../utils/deviceCheck/lensSweep'
+import { FACTORY_DEFAULTS } from '../../../hooks/useDeviceSettings'
 
 // An in-memory store, as the hold tests use: the holds write their owed
 // restores to it, and `restoreMocks` would strip the global mock between steps.
@@ -57,6 +58,14 @@ interface FakeOptions {
     aiSetutcSilent?: boolean
     /** After the first `AI dir`, the firmware lists MANIFEST, as it does once CONFIG.TXT is saved */
     dirMovesAway?: boolean
+    /** Colour photos start and never finish, as on WILD-HSAN after the restart */
+    colourHangs?: boolean
+    /** Firmware without `AI dpd` */
+    noDpd?: boolean
+    /** A `setop` the firmware refuses */
+    refuseOp?: number
+    /** The first `AI light` is lost, reply and reading both, as when it crosses a sleep */
+    lightLostOnce?: boolean
 }
 
 /**
@@ -70,6 +79,7 @@ const fakeDevice = (opts: FakeOptions = {}) => {
     ops[9] = '5'
     ops[10] = '1'
     ops[11] = '0'
+    ops[12] = '100'
     ops[13] = '0'
     ops[18] = '0'
     ops[34] = '1'
@@ -80,6 +90,7 @@ const fakeDevice = (opts: FakeOptions = {}) => {
     let next = 0
     let bursts = 0
     let dirs = 0
+    let lights = 0
     const files = new Map<string, number>()
     const sent: string[] = []
     const means = opts.means ?? [60, 140]
@@ -105,7 +116,15 @@ const fakeDevice = (opts: FakeOptions = {}) => {
         }
         if (cmd === 'AI getop -1') return reply(ops.slice())
         if (cmd === 'AI reset') return reply(true)
-        if (cmd.startsWith('AI setop ')) { ops[+words[2]] = words[3]; return reply(true) }
+        if (cmd === 'AI dpd') {
+            if (opts.noDpd) throw new Error('Unrecognised command')
+            return reply(true)
+        }
+        if (cmd.startsWith('AI setop ')) {
+            if (+words[2] === opts.refuseOp) throw new Error('TIMEOUT')
+            ops[+words[2]] = words[3]
+            return reply(true)
+        }
         if (cmd === 'selftest') return reply('Error bits = 0x0000')
         if (cmd === 'battery') return reply(87)
         if (cmd === 'temp') return reply(24.5)
@@ -117,10 +136,16 @@ const fakeDevice = (opts: FakeOptions = {}) => {
         }
         if (cmd === 'AI getutc') return reply(opts.aiClockStuck ? Date.UTC(2024, 0, 1) : Date.now())
         if (cmd === 'AI info') return reply({ total: 31166976, free: 31000000 })
-        if (/^flash[rgb] /.test(cmd) || cmd.startsWith('AI flash ')) return reply(true)
+        if (/^flash[rgb] /.test(cmd)) return reply(true)
+        // As the firmware does, `AI flash` saves its length as op12.
+        if (cmd.startsWith('AI flash ')) { ops[12] = words[3]; return reply(true) }
         // The reading follows the acknowledgement on a real device. Sent at
         // once here: every test runs on fake timers (tests/setup/sanitySetup.ts).
-        if (cmd === 'AI light') { emitAe(80); return reply(true) }
+        if (cmd === 'AI light') {
+            if (opts.lightLostOnce && lights++ === 0) throw new Error('TIMEOUT')
+            emitAe(80)
+            return reply(true)
+        }
         if (cmd.startsWith('AI vcm ')) { lens = +words[2]; return reply(lens) }
         if (cmd.startsWith('AI capture ')) {
             const count = +words[2]
@@ -132,6 +157,7 @@ const fakeDevice = (opts: FakeOptions = {}) => {
                 ;(opts.motionBlocks ?? [0, 3, 12, 7]).forEach(n => emit(`HM0360 motion in ${n} blocks:`))
                 return reply(count)
             }
+            if (opts.colourHangs && running === 'RP3') throw new Error('TIMEOUT')
             let name = ''
             for (let i = 0; i < count; i++) {
                 name = `F${String(next++).padStart(6, '0')}.JPG`
@@ -164,12 +190,16 @@ const run = async (device: ReturnType<typeof fakeDevice>, overrides: Partial<Dev
     const steps: Partial<Record<CheckStepId, CheckStepState>> = {}
     const photos: Record<string, string> = {}
     const ask = jest.fn(async () => true)
+    const waitForTap = jest.fn(async () => true)
+    const notify = jest.fn()
     await runDeviceCheck({
         session: device.session,
         deviceId: DEVICE,
         referencePeak: null,
         switchCamera: device.switchCamera,
         ask,
+        waitForTap,
+        notify,
         instruct: jest.fn(),
         onStep: (id, state) => { steps[id] = state },
         onPhoto: (camera, uri) => { photos[camera] = uri },
@@ -178,11 +208,12 @@ const run = async (device: ReturnType<typeof fakeDevice>, overrides: Partial<Dev
         pause: async () => undefined,
         ...overrides,
     })
-    return { steps, photos, ask }
+    return { steps, photos, ask, waitForTap, notify }
 }
 
-/** The parameters the check changes on the way, which it must put back. */
-const TOUCHED = [8, 9, 11, 13, 18, 34]
+/** The parameters the check changes on the way, which must end on their factory defaults. */
+const TOUCHED = [8, 9, 11, 12, 13, 18, 34]
+const DEFAULTS = TOUCHED.map(i => String(FACTORY_DEFAULTS[i]))
 
 describe('runDeviceCheck', () => {
     beforeEach(async () => {
@@ -195,19 +226,19 @@ describe('runDeviceCheck', () => {
     })
     afterEach(() => bleEventBus.removeAllListeners('textLine'))
 
-    it('passes a good unit and leaves it as it found it', async () => {
+    it('passes a good unit and leaves it on factory defaults', async () => {
         const device = fakeDevice()
         const { steps, photos } = await run(device)
 
         expect(Object.fromEntries(Object.entries(steps).map(([id, s]) => [id, s!.status]))).toEqual({
             cameras: 'pass', identity: 'pass', health: 'pass', clock: 'pass', storage: 'pass', leds: 'pass', light: 'pass',
-            motion: 'pass', colour: 'pass', mono: 'pass', ir: 'pass', framing: 'pass',
+            motion: 'pass', colour: 'pass', white: 'pass', mono: 'pass', ir: 'pass', framing: 'pass',
         })
         expect(overallVerdict(steps)).toBe('pass')
-        expect(Object.keys(photos).sort()).toEqual(['HM0360', 'IR', 'RP3'])
-        // Back on the camera it started with, and every setting restored.
+        expect(Object.keys(photos).sort()).toEqual(['HM0360', 'IR', 'RP3', 'WHITE'])
+        // Back on the camera it started with, and every setting on its default.
         expect(device.running()).toBe('RP3')
-        expect(TOUCHED.map(i => device.ops[i])).toEqual(TOUCHED.map(i => device.original[i]))
+        expect(TOUCHED.map(i => device.ops[i])).toEqual(DEFAULTS)
     })
 
     it('sweeps the lens up and back, a photo at each position', async () => {
@@ -215,7 +246,8 @@ describe('runDeviceCheck', () => {
         await run(device)
 
         const positions = device.sent.filter(c => c.startsWith('AI vcm ')).map(c => +c.split(' ')[2])
-        expect(positions).toEqual([512, ...SWEEP_UP, ...SWEEP_DOWN])
+        // Then the white flash photo, at the sharpest position.
+        expect(positions).toEqual([512, ...SWEEP_UP, ...SWEEP_DOWN, 640])
         // Each position is followed by its photo, so the lens cannot move between them.
         device.sent.forEach((cmd, i) => {
             if (cmd.startsWith('AI vcm ') && i > 0) expect(device.sent[i + 1]).toMatch(/^AI capture /)
@@ -249,18 +281,64 @@ describe('runDeviceCheck', () => {
         expect(steps.ir?.status).toBe('fail')
         // The flash was armed for the IR photo: LED 2 at 100% in mode 2.
         expect(device.sent).toEqual(expect.arrayContaining(['AI setop 34 2', 'AI setop 13 2', 'AI setop 9 100']))
-        expect(TOUCHED.map(i => device.ops[i])).toEqual(TOUCHED.map(i => device.original[i]))
+        expect(TOUCHED.map(i => device.ops[i])).toEqual(DEFAULTS)
     })
 
-    it('enables a disabled camera and clears test bits before the photos, as Capture Picture does', async () => {
+    it('takes the white flash photo at the sharpest lens position and puts the flash back', async () => {
+        const device = fakeDevice()
+        const { steps, ask } = await run(device)
+
+        expect(steps.white?.status).toBe('pass')
+        const lit = device.sent.indexOf('AI setop 13 1')
+        expect(lit).toBeGreaterThan(-1)
+        expect(device.sent.slice(lit)).toEqual(expect.arrayContaining(['AI setop 9 100', 'AI vcm 640']))
+        expect(device.sent.slice(0, lit)).toContain('AI setop 34 2')
+        expect(ask).toHaveBeenCalledWith(expect.stringMatching(/white flash photo/), ['RP3', 'WHITE'])
+        expect(TOUCHED.map(i => device.ops[i])).toEqual(DEFAULTS)
+    })
+
+    it('fails a white flash the operator does not see in the photo', async () => {
+        const device = fakeDevice()
+        const ask = jest.fn(async (q: string) => !/white flash photo/.test(q))
+        const { steps } = await run(device, { ask })
+
+        expect(steps.white?.status).toBe('fail')
+        expect(steps.leds?.status).toBe('pass')
+    })
+
+    it('puts op12 back after the white LED test, which saves its length there', async () => {
+        const device = fakeDevice()
+        await run(device)
+
+        const test = device.sent.findIndex(c => c.startsWith('AI flash '))
+        expect(device.sent[test + 1]).toBe('AI setop 12 100')
+        expect(device.ops[12]).toBe('100')
+    })
+
+    it('resets the settings to factory defaults first, keeping the model and the deployment', async () => {
         const device = fakeDevice()
         device.ops[10] = '0'
         device.ops[18] = '8'
+        device.ops[12] = '500'
+        device.ops[14] = '3'
         const { steps } = await run(device)
 
-        expect(device.sent.slice(0, 10)).toEqual(expect.arrayContaining(['AI setop 10 1', 'AI setop 18 0']))
+        const restart = device.sent.indexOf('AI reset')
+        expect(device.sent.slice(0, restart)).toEqual(expect.arrayContaining(['AI setop 10 1', 'AI setop 18 0', 'AI setop 12 100']))
+        expect(device.sent.some(c => /^AI (erasemodel|setdid|setgps)/.test(c))).toBe(false)
+        expect(device.ops[14]).toBe('3')
+        expect(steps.identity?.status).toBe('pass')
         expect(steps.colour?.status).toBe('pass')
-        expect(device.ops[18]).toBe('0')
+        expect(TOUCHED.map(i => device.ops[i])).toEqual(DEFAULTS)
+    })
+
+    it('warns on the firmware step when a setting could not be reset', async () => {
+        const device = fakeDevice({ refuseOp: 16 })
+        const { steps } = await run(device)
+
+        expect(steps.identity?.status).toBe('warn')
+        expect(steps.identity?.summary).toMatch(/could not all be reset to factory defaults/)
+        expect(steps.colour?.status).toBe('pass')
     })
 
     it('sends the motion burst again when the camera does not start it', async () => {
@@ -315,13 +393,24 @@ describe('runDeviceCheck', () => {
 
         expect(steps.colour?.status).toBe('fail')
         expect(steps.colour?.summary).toMatch(/listed another folder/)
+        expect(steps.white?.status).toBe('skipped')
+    })
+
+    it('says a photo that never finished in words, and skips the white flash without its colour photo', async () => {
+        const device = fakeDevice({ colourHangs: true })
+        const { steps } = await run(device)
+
+        expect(steps.colour?.status).toBe('fail')
+        expect(steps.colour?.summary).toBe('The camera started the photo but did not finish it.')
+        expect(steps.white?.status).toBe('skipped')
+        expect(steps.mono?.status).toBe('pass')
     })
 
     it('runs the colour camera straight after the firmware step', async () => {
         const device = fakeDevice()
         const order: CheckStepId[] = []
         await run(device, { onStep: (id, state) => { if (state.status === 'running') order.push(id) } })
-        expect(order.slice(0, 4)).toEqual(['cameras', 'identity', 'colour', 'health'])
+        expect(order.slice(0, 5)).toEqual(['cameras', 'identity', 'colour', 'white', 'health'])
     })
 
     it('fails motion detection when no frame saw anything', async () => {
@@ -332,6 +421,51 @@ describe('runDeviceCheck', () => {
         // op18 bit 3 is off again, or every later photo would be thrown away.
         expect(device.ops[18]).toBe('0')
         expect(steps.colour?.status).toBe('pass')
+    })
+
+    it('leaves the blue LED on after the colour test, as the connection light', async () => {
+        const device = fakeDevice()
+        await run(device)
+
+        const blue = device.sent.indexOf('flashb 3 200')
+        expect(device.sent[blue + 1]).toBe('flashb 1 65535')
+    })
+
+    it('sends AI light once more when the first is lost', async () => {
+        const device = fakeDevice({ lightLostOnce: true })
+        const { steps } = await run(device)
+
+        expect(device.sent.filter(c => c === 'AI light')).toHaveLength(2)
+        expect(steps.light?.status).toBe('pass')
+    })
+
+    it('asks for a tap while waving once the burst starts, then says hi back', async () => {
+        const device = fakeDevice()
+        const { waitForTap, notify, steps } = await run(device)
+
+        expect(waitForTap).toHaveBeenCalledTimes(1)
+        expect(waitForTap).toHaveBeenCalledWith(expect.stringMatching(/Wave your hand/), "I'm waving", 5000)
+        expect(notify).toHaveBeenCalledWith('The Watcher says hi back! You can stop waving now.')
+        expect(steps.motion?.status).toBe('pass')
+    })
+
+    it('still says to stop waving when the camera saw nothing', async () => {
+        const device = fakeDevice({ motionBlocks: [0, 0, 0] })
+        const { notify } = await run(device)
+
+        expect(notify).toHaveBeenCalledWith('You can stop waving now.')
+    })
+
+    it('does not judge motion when nobody taps, and still restores the test bits', async () => {
+        const device = fakeDevice({ motionBlocks: [0, 0, 0] })
+        const notify = jest.fn()
+        const { steps } = await run(device, { waitForTap: jest.fn(async () => false), notify })
+
+        expect(notify).not.toHaveBeenCalled()
+        expect(steps.motion?.status).toBe('skipped')
+        expect(steps.motion?.summary).toMatch(/nobody tapped/)
+        expect(overallVerdict(steps)).toBe('incomplete')
+        expect(device.ops[18]).toBe('0')
     })
 
     it('names the LED the operator did not see', async () => {
@@ -349,7 +483,17 @@ describe('runDeviceCheck', () => {
 
         const first = device.sent.findIndex(c => c === 'AI reset')
         expect(first).toBeGreaterThan(-1)
+        // Then straight to sleep, so the restart does not wait for op8.
+        expect(device.sent[first + 1]).toBe('AI dpd')
         expect(device.sent.slice(0, first).filter(c => !c.startsWith('AI setop') && c !== 'AI slots')).toEqual([])
+        expect(steps.cameras?.summary).toBe('0x0000: both cameras answered.')
+    })
+
+    it('still restarts the camera on firmware without AI dpd, on its own timer', async () => {
+        const device = fakeDevice({ noDpd: true })
+        const { steps } = await run(device)
+
+        expect(steps.cameras?.status).toBe('pass')
         expect(steps.cameras?.summary).toBe('0x0000: both cameras answered.')
     })
 
@@ -360,7 +504,7 @@ describe('runDeviceCheck', () => {
 
         expect(steps.cameras?.status).toBe('fail')
         expect(steps.cameras?.summary).toMatch(/^0x0100: the colour camera \(RP3\) did not answer\./)
-        for (const id of ['light', 'motion', 'colour', 'mono', 'ir', 'framing'] as const) {
+        for (const id of ['light', 'motion', 'colour', 'white', 'mono', 'ir', 'framing'] as const) {
             expect(steps[id]?.status).toBe('skipped')
         }
         expect(device.sent.some(c => c.startsWith('AI vcm') || c.startsWith('AI capture'))).toBe(false)
@@ -377,16 +521,16 @@ describe('runDeviceCheck', () => {
         expect(steps.cameras?.summary).toMatch(/the HM0360 sensor did not answer/)
     })
 
-    it('brings a long sleep timer down for the check and puts it back', async () => {
+    it('brings a long sleep timer down for the check and leaves it on the default', async () => {
         const device = fakeDevice()
         device.ops[8] = '60000'
-        device.original[8] = '60000'
         await run(device)
 
-        expect(device.sent[0]).toBe('AI setop 8 3000')
-        // The restart's sleep still runs on the old timer, so it is waited for.
+        expect(device.sent.filter(c => c.startsWith('AI setop 8 '))).toEqual(['AI setop 8 1000', 'AI setop 8 3000', 'AI setop 8 1000'])
+        // `AI dpd` brings the restart forward, but the wait still allows for
+        // the old timer, for firmware without it.
         expect(device.session.waitForSleep).toHaveBeenCalledWith(70000)
-        expect(device.ops[8]).toBe('60000')
+        expect(device.ops[8]).toBe('1000')
     })
 
     it('fails the camera step when the new image boots without its sensor', async () => {
@@ -434,6 +578,6 @@ describe('runDeviceCheck', () => {
         expect(steps.storage?.status).toBe('pass')
         expect(steps.leds?.status).toBe('skipped')
         expect(device.sent.some(c => /^flash[rgb] /.test(c))).toBe(false)
-        expect(TOUCHED.map(i => device.ops[i])).toEqual(TOUCHED.map(i => device.original[i]))
+        expect(TOUCHED.map(i => device.ops[i])).toEqual(DEFAULTS)
     })
 })
