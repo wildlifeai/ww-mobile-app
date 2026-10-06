@@ -12,30 +12,9 @@ const { execSync } = require('child_process');
 
 // Configuration
 const MOBILE_SUPABASE_PATH = path.resolve(__dirname, '../supabase');
-// Mirrors the backend's own directory names. The aaa_/xxx_/yyy_/zzz_ prefixes encode
-// apply order there, so copying them verbatim keeps a local `supabase db reset` correct.
-//
-// These names are a cross-repo contract: when the backend renamed `policies` ->
-// `yyy_policies` this list was not updated, and because a missing source directory was
-// only a warning, RLS quietly stopped syncing. The app sat on 21 stale policy files
-// while the backend had 38. Missing directories are now fatal — see below.
-const SCHEMA_MAP = [
-    'schemas/public/tables',
-    'schemas/public/functions',
-    'schemas/public/triggers',
-    'schemas/public/views',
-    'schemas/public/xxx_rls',        // ENABLE ROW LEVEL SECURITY — policies do nothing without it
-    'schemas/public/yyy_policies',   // was 'schemas/public/policies'
-    'schemas/public/zzz_indexes',
-    'schemas/public/aaa_default_privileges',
-];
-
-// Files that should NEVER be deleted even if they don't exist in the backend
-const PRESERVE_FILES = [
-    '01_watermelon_sync.sql',
-    '99_push_changes.sql',
-    '01_auth_user_trigger.sql'
-];
+// The folders copied and the files kept are in schema-sync-config.js, shared with
+// check-schema-mirror.js so a compare and a copy cannot disagree.
+const { SCHEMA_MAP, PRESERVE_FILES } = require('./schema-sync-config');
 
 const GITHUB_REPO_URL = 'https://github.com/wildlifeai/wildlife-watcher-backend.git';
 const TEMP_DIR = path.resolve(__dirname, '../.tmp-backend');

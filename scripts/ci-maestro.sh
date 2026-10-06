@@ -24,6 +24,9 @@ adb install -r ./app-debug.apk
 # screen while the adapter is off, and the emulator's emulated adapter starts
 # in whatever state the image left it. Harmless when it is already on.
 adb shell svc bluetooth enable || true
+# A system "isn't responding" dialog (Pixel Launcher, on 5 Oct 2026) sat over the app while
+# the first assertion ran, and a flow that cannot see the screen fails for nothing.
+adb shell settings put global hide_error_dialogs 1 || true
 echo "bluetooth_on=$(adb shell settings get global bluetooth_on 2>/dev/null)"
 
 env_args=(-e APP_ID=com.wildlife.wildlifewatcher -e E2E_TEST_EMAIL="${E2E_TEST_EMAIL:-}" -e E2E_TEST_PASSWORD="${E2E_TEST_PASSWORD:-}")

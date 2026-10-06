@@ -1,0 +1,51 @@
+# Expo's own project health checks, on the pull requests that can break them.
+# `expo-doctor` checks the installed package versions against the SDK, the
+# app config schema, the native folders and the React Native Directory;
+# `expo install --check` lists packages whose version the SDK does not expect.
+# Both read the Expo API, so they run here rather than in the offline quality
+# gate. A failure here is cheaper than the 20-minute native build finding it.
+#
+# The "app config fields not synced" check is turned off in package.json: the
+# android/ folder is committed on purpose, and prebuild runs before a build
+# (see documentation/resources/Expo-EAS-Guide.md), so the warning that EAS will
+# not sync app.config.ts into it describes the setup, not a problem. The other
+# exclusions (expo.doctor.reactNativeDirectoryCheck, expo.install.exclude) and
+# the reason for each are in documentation/resources/Testing-Guide.md.
+name: Expo Doctor
+
+on:
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - 'app.config.ts'
+      - 'eas.json'
+      - 'android/**'
+      - '.github/workflows/expo-doctor.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  expo-doctor:
+    name: Expo Doctor
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: expo-doctor
+        run: npx expo-doctor
+
+      - name: Package versions match the SDK
+        run: npx expo install --check
