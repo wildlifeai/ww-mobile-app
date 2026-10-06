@@ -52,6 +52,7 @@ export enum CommandNames {
 	MOTION_DETECTION_PREVIEW = "MOTION_DETECTION_PREVIEW",
 	CAPTURE_PICTURE = "CAPTURE_PICTURE",
 	LIGHT_SENSOR = "LIGHT_SENSOR",
+	FLASH_SETTINGS = "FLASH_SETTINGS",
 	FILE_TRANSFER_TEST = "FILE_TRANSFER_TEST",
 	MODEL_VALIDATION = "MODEL_VALIDATION",
 	FIRMWARE_STATUS = "FIRMWARE_STATUS",
@@ -532,6 +533,11 @@ export const COMMANDS: {
 	[CommandNames.LIGHT_SENSOR]: {
 		name: CommandNames.LIGHT_SENSOR,
 		description: "Light sensor testing and logs",
+		type: 'process',
+	},
+	[CommandNames.FLASH_SETTINGS]: {
+		name: CommandNames.FLASH_SETTINGS,
+		description: "Flash mode, its time-of-day window in local time, which LED and how bright",
 		type: 'process',
 	},
 	[CommandNames.FILE_TRANSFER_TEST]: {

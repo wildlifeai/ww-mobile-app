@@ -37,6 +37,7 @@ export interface RootStackParamList extends ParamListBase {
 	StandaloneMotionDetectionScreen: { deviceId: string }
 	CapturePictureScreen: { deviceId: string }
 	LightSensorScreen: { deviceId: string }
+	FlashSettingsScreen: { deviceId: string }
 	// engineer: the Engineer Console's view, with the build picker and the step log (#344)
 	FirmwareUpdateScreen: { deviceId: string; target: 'ble' | 'himax'; engineer?: boolean }
 	FileTransferTestScreen: { deviceId: string }

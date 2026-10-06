@@ -103,6 +103,15 @@ const GOLDEN: Record<keyof typeof commandRegistry, Row> = {
         accepts: 'Captured 1 images. Last is AAF67400.JPG (File write 20ms avg.)',
     },
     light: { wire: 'AI light', accepts: 'Checking light level...', rejects: 'Unrecognised command' },
+    // The firmware's `flash` replies with an empty line; the processor's Sleep
+    // a second later is the first thing to match. Bench 3 September 2026,
+    // capture-flash-and-keep-awake: `AI flash 50 500` lit the LED.
+    aiflash: {
+        args: [50, 500],
+        wire: 'AI flash 50 500',
+        accepts: 'Sleep',
+        rejects: ['Unrecognised command', 'Must supply brightness in range 0-100'],
+    },
     txfile: { args: ['AAF67400.JPG'], wire: 'AI txfile AAF67400.JPG', accepts: '251568 bytes in 34 packets' },
     // `Unrecognised` is the RP3 build's answer, bench 4 September 2026 (Seeed #211).
     md: {

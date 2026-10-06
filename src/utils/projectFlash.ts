@@ -203,6 +203,46 @@ export const parseUtcMinutes = (text?: string | null): number | null => {
     return hours * 60 + minutes
 }
 
+/**
+ * The phone's offset from UTC today, in minutes east: NZDT is +780.
+ *
+ * Today's offset, not the window's: a window set before a daylight-saving
+ * change lands an hour out after it, until it is set again. The device keeps
+ * only UTC (op35), so there is nothing on its side to follow the change.
+ */
+export const localUtcOffsetMinutes = (now: Date = new Date()): number => -now.getTimezoneOffset()
+
+/**
+ * A time-of-day flash window typed as local start and end times, as the device
+ * holds it: op35 minutes after midnight UTC, op36 minutes on, wrapping past
+ * midnight. Null when either time is not `hh:mm` or the two are equal, since a
+ * window of nothing and a window of the whole day are both better said with
+ * another flash mode.
+ */
+export const flashWindowFromLocal = (
+    startText: string,
+    endText: string,
+    offsetMinutes: number,
+): { startUtc: number; minutes: number } | null => {
+    const start = parseUtcMinutes(startText)
+    const end = parseUtcMinutes(endText)
+    if (start === null || end === null || start === end) return null
+    return {
+        startUtc: (((start - offsetMinutes) % 1440) + 1440) % 1440,
+        minutes: (((end - start) % 1440) + 1440) % 1440,
+    }
+}
+
+/** What the device holds (op35, op36) as local `hh:mm` start and end. */
+export const flashWindowToLocal = (
+    startUtc: number,
+    minutes: number,
+    offsetMinutes: number,
+): { start: string; end: string } => ({
+    start: formatUtcMinutes(startUtc + offsetMinutes),
+    end: formatUtcMinutes(startUtc + offsetMinutes + minutes),
+})
+
 /** Two or three words for an icon label, e.g. "IR auto", "IR 22:00", "No flash". */
 export const shortFlashLabel = (project?: ProjectFlashColumns | null): string => {
     const { mode, led, windowStart, windowMinutes } = resolveProjectFlash(project)

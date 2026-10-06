@@ -128,6 +128,10 @@ export const useEngineerConsoleActions = ({
             navigation.navigate('LightSensorScreen', { deviceId: device?.id })
             return
         }
+        if (cmdName === CommandNames.FLASH_SETTINGS) {
+            navigation.navigate('FlashSettingsScreen', { deviceId: device?.id })
+            return
+        }
         if (cmdName === CommandNames.UPDATE_HIMAX_FIRMWARE) {
             navigation.navigate('FirmwareUpdateScreen', { deviceId: device?.id, target: 'himax', engineer: true })
             return

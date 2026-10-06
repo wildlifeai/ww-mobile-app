@@ -44,6 +44,7 @@ import { EngineerConsoleScreen } from "../screens/Devices/EngineerConsoleScreen"
 import { StandaloneMotionDetectionScreen } from "../screens/Devices/StandaloneMotionDetectionScreen"
 import { CapturePictureScreen } from "../screens/Devices/CapturePictureScreen"
 import { LightSensorScreen } from "../screens/Devices/LightSensorScreen"
+import { FlashSettingsScreen } from "../screens/Devices/FlashSettingsScreen"
 import { DevDeploymentTestScreen } from "../screens/Devices/DevDeploymentTestScreen"
 import { FirmwareUpdateScreen } from "../screens/Devices/FirmwareUpdateScreen"
 import { FileTransferTestScreen } from "../screens/Devices/FileTransferTestScreen"
@@ -233,6 +234,11 @@ export const MainNavigation = () => {
 							name="LightSensorScreen"
 							component={LightSensorScreen}
 							options={{ title: "Light Sensor" }}
+						/>
+						<Stack.Screen
+							name="FlashSettingsScreen"
+							component={FlashSettingsScreen}
+							options={{ title: "Flash Settings" }}
 						/>
 						<Stack.Screen
 							name="FirmwareUpdateScreen"

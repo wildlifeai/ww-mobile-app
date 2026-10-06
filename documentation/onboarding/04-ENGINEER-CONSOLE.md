@@ -173,7 +173,7 @@ The following subset is directly used during deployment:
 | 9 | `LED_BRIGHTNESS` | Flash brightness 0–100% |
 | 10 | `CAMERA_ENABLED` | 1 = on, 0 = off (always sent last) |
 | 11 | `MD_INTERVAL` | 1000ms for activity/mixed, 0 for timelapse |
-| 12 | `FLASH_DURATION` | Flash pulse duration in ms |
+| 12 | `FLASH_DURATION` | Read by nothing: the firmware turns the LED off when the image arrives. Only `AI flash` writes it |
 | 13 | `FLASH_LED` | Which LED the capture flash uses: 0 = none, 1 = visible, 2 = IR. Written from the project's `flash_led` at deployment |
 | 14 | `MODEL_PROJECT` | Currently loaded AI model ID |
 | 15 | `MODEL_VERSION` | Currently loaded AI model version |
@@ -249,6 +249,7 @@ trying to do rather than by the mechanism underneath.
 | `CAPTURE_PICTURE` | The single camera flow: camera mode, flash, one capture with a step list, the picture and a gallery. Holds the device awake for the visit and forces a chosen flash on; like every flow, it writes to the device only once the user has opened it. Everything about it is in [Capture-Picture.md](../resources/Capture-Picture.md). |
 | `MOTION_DETECTION_PREVIEW` | Real-time 16×16 grid. The best-behaved multi-step flow: reads the op array once and restores op18/op8 on the way out. |
 | `LIGHT_SENSOR` | The AE registers via `AI light`, about 2 s and no photo. Single shot, or streamed every few seconds from Settings. The screen shows the level and registers; every row is logged with the app's mean and gain verdicts beside the device's own, and exportable. Turns automatic camera switching (op26) off on entry. See [Light-Sensor.md](../resources/Light-Sensor.md). |
+| `FLASH_SETTINGS` | Flash Settings: the capture flash mode (op34) with its time-of-day window typed in the phone's local time and stored in UTC (op35, op36), which LED (op13) and how bright (op9), and the motion-detection light's brightness (op22). Writes only what changed, on Save, and the camera applies it at its next wake; a deployment rewrites op13 and op34 to op36 from the project. A button lights the white LED with `AI flash` at the brightness on screen. op12 is left out, see below. |
 
 ### 📲 Firmware Updates
 
@@ -370,7 +371,7 @@ Three OPs control the LED flash hardware:
 | OP | Constant | Range | Notes |
 |----|----------|-------|-------|
 | 9 | `LED_BRIGHTNESS` | 0–100 | Percentage. **0 = dim, not off.** Use OP 13 = 0 to fully disable the flash. |
-| 12 | `FLASH_DURATION` | ms | Flash pulse duration. Currently only applies to the RP3 camera, untested on HM0360. |
+| 12 | `FLASH_DURATION` | ms | Read by nothing: the firmware turns the LED off when the image arrives (Charles Palmer, 6 October 2026). Only `AI flash` writes it. |
 | 13 | `FLASH_LED` | 0, 1, 2 | 0 = off (no flash), 1 = visible (white) LED, 2 = IR LED |
 
 > [!IMPORTANT]

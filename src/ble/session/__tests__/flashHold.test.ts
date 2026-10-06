@@ -154,4 +154,19 @@ describe('flashHold', () => {
 
         expect(writes).toEqual([])
     })
+
+    it('forget drops the hold and the owed restore, disk included, and writes nothing', async () => {
+        const { session } = fakeSession('1')
+        await flashHold.acquire(session, DEVICE)
+        disconnect(DEVICE)
+
+        // The operator then sets time-of-day mode on purpose (Flash settings)
+        await flashHold.forget(DEVICE)
+
+        // Not even after an app restart: the owed 1 is gone from disk too
+        flashHold.clear()
+        const { session: later, writes } = fakeSession('3')
+        await flashHold.restorePending(later, DEVICE)
+        expect(writes).toEqual([])
+    })
 })

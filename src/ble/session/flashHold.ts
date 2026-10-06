@@ -150,6 +150,22 @@ class FlashHold {
         await this.writeBack(session, deviceId, owed, 'reconnect')
     }
 
+    /**
+     * Hand op34 to whoever just set it on purpose: drop any hold and any owed
+     * restore, on disk too, so neither puts an older mode back over it later.
+     * Writes nothing. The Flash settings flow calls this when it saves op34; a
+     * Capture Picture visit cut short by a dropped link would otherwise restore
+     * its remembered mode over the operator's choice on the next visit.
+     */
+    public async forget(deviceId: string): Promise<void> {
+        const hadHold = this.holdsByDevice.delete(deviceId)
+        const owed = await this.owed(deviceId)
+        if (owed !== null) await this.clearOwed(deviceId)
+        if (hadHold || owed !== null) {
+            log(`[FlashHold] ${deviceId}: op34 set on purpose; ${hadHold ? 'hold dropped' : 'no hold'}${owed !== null ? `, owed restore to ${owed} dropped` : ''}`)
+        }
+    }
+
     /** Forget every hold and owed restore in memory. Tests only: disk is untouched. */
     public clear() {
         this.holdsByDevice.clear()

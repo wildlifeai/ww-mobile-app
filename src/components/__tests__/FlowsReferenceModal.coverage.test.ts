@@ -58,14 +58,16 @@ describe('FlowsReferenceModal coverage', () => {
     })
 
     it('keeps the camera flows together and in the order an operator reads them', () => {
-        // Called out by name because these three are the everyday flows and the
-        // group was assembled deliberately: they were one group each, which made
-        // three single-item lists.
+        // Called out by name because these are the everyday flows and the group
+        // was assembled deliberately: the first three were one group each, which
+        // made three single-item lists. Flash settings joined them in October
+        // 2026, last, because it sets up the flash the other three fire.
         const camera = getFlowGroups().find(g => g.title === 'Camera & Sensors')
         expect(camera?.commands.map(c => c.name)).toEqual([
             CommandNames.CAPTURE_PICTURE,
             CommandNames.MOTION_DETECTION_PREVIEW,
             CommandNames.LIGHT_SENSOR,
+            CommandNames.FLASH_SETTINGS,
         ])
     })
 

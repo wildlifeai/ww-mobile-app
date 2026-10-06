@@ -118,7 +118,7 @@ screens/                                  navigation/screens/
 │   ├── DfuScreen / FirmwareUpdateScreen / FirmwareStatusScreen
 │   ├── AiModelTransferScreen  (defined and routed, but absent from the Flows modal)
 │   ├── FileTransferTestScreen / ModelValidationTestScreen
-│   ├── CapturePictureScreen / LightSensorScreen
+│   ├── CapturePictureScreen / LightSensorScreen / FlashSettingsScreen
 │   ├── StandaloneMotionDetectionScreen
 │   ├── DeviceMonitoringSummaryScreen
 │   ├── components/

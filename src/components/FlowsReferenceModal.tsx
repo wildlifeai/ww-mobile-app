@@ -41,11 +41,12 @@ const pick = (names: CommandNames[]): FlowGroup['commands'] =>
  */
 export const getFlowGroups = (): FlowGroup[] => {
     const groups: FlowGroup[] = [
-        // The three flows that point the camera at something and report what it
-        // saw. They were a group each, which made three one-item lists and hid
-        // how much they have in common: all three drive the camera, all three
-        // are safe to run on a bench device, and an operator reaching for one
-        // is usually deciding between them.
+        // The flows that point the camera at something and report what it saw,
+        // then the one that sets up the flash they fire. The first three were a
+        // group each, which made three one-item lists and hid how much they have
+        // in common: all drive the camera, all are safe to run on a bench
+        // device, and an operator reaching for one is usually deciding between
+        // them.
         {
             title: 'Camera & Sensors',
             icon: 'camera',
@@ -53,6 +54,7 @@ export const getFlowGroups = (): FlowGroup[] => {
                     CommandNames.CAPTURE_PICTURE,
                     CommandNames.MOTION_DETECTION_PREVIEW,
                     CommandNames.LIGHT_SENSOR,
+                    CommandNames.FLASH_SETTINGS,
             ]),
         },
         // MODEL_VALIDATION sits here rather than under File Transfer: the
