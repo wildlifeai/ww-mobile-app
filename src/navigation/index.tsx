@@ -45,6 +45,7 @@ import { StandaloneMotionDetectionScreen } from "../screens/Devices/StandaloneMo
 import { CapturePictureScreen } from "../screens/Devices/CapturePictureScreen"
 import { LightSensorScreen } from "../screens/Devices/LightSensorScreen"
 import { DevDeploymentTestScreen } from "../screens/Devices/DevDeploymentTestScreen"
+import { DeviceCheckScreen } from "../screens/Devices/DeviceCheckScreen"
 import { FirmwareUpdateScreen } from "../screens/Devices/FirmwareUpdateScreen"
 import { FileTransferTestScreen } from "../screens/Devices/FileTransferTestScreen"
 import { ModelValidationTestScreen } from "../screens/Devices/ModelValidationTestScreen"
@@ -282,6 +283,12 @@ export const MainNavigation = () => {
 							name="DevDeploymentTestScreen"
 							component={DevDeploymentTestScreen}
 							options={{ title: "Dev Deployment Test" }}
+						/>
+
+						<Stack.Screen
+							name="DeviceCheckScreen"
+							component={DeviceCheckScreen}
+							options={{ title: "Device Check" }}
 						/>
 
 						{__DEV__ && (

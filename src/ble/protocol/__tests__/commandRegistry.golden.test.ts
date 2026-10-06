@@ -55,11 +55,15 @@ const GOLDEN: Record<keyof typeof commandRegistry, Row> = {
     selftest: { wire: 'selftest', accepts: 'Error bits = 0x0000' },
     wake: { wire: 'wake', accepts: ['Wake', 'Waking AI processor', 'AI processor is awake'] },
     camera_type: { wire: 'camera_type', accepts: 'Camera type: RP3' },
+    temp: { wire: 'temp', accepts: 'Temperature: 24.75C' },
+    getutc: { wire: 'getutc', accepts: 'UTC is: 2026-10-06T04:12:33Z' },
+    boardLed: { args: ['g', 2, 300], wire: 'flashg 2 300', accepts: 'Flashing 300ms 2 times' },
 
     // -- relayed to the Himax with the `AI ` prefix --
     aiinfo: { wire: 'AI info', accepts: '30000K total, 29000K available' },
     aiver: { wire: 'AI ver', accepts: 'WW500_C02 05:31:26 Sep 15 2026' },
     aireset: { wire: 'AI reset', accepts: 'Forcing reset' },
+    aidpd: { wire: 'AI dpd', accepts: 'Forcing DPD by clearing inactivity period', rejects: 'Unrecognised command' },
     aifirmware: {
         args: ['OUTPUT.IMG', '0x1A2B'],
         wire: 'AI firmware OUTPUT.IMG 0x1A2B',
@@ -106,6 +110,21 @@ const GOLDEN: Record<keyof typeof commandRegistry, Row> = {
     // The firmware's `flash` replies with an empty line; the processor's Sleep
     // a second later is the first thing to match. Bench 3 September 2026,
     // capture-flash-and-keep-awake: `AI flash 50 500` lit the LED.
+    // Bench, 6 October 2026, WILD-5WGJ on a 5 October RP3 build
+    vcm: {
+        args: [1023],
+        wire: 'AI vcm 1023',
+        accepts: 'VCM position set to 1023',
+        rejects: ['VCM write failed (1). Is the camera powered?', 'Unrecognised command'],
+    },
+    aiSetutc: {
+        args: ['2026-10-06T04:12:33.123Z'],
+        wire: 'AI setutc 2026-10-06T04:12:33Z',
+        accepts: 'RTC set to 2026-10-06T04:12:33Z (this took 1012ms)',
+        rejects: 'Error -2 setting RTC',
+    },
+    aiGetutc: { wire: 'AI getutc', accepts: ['2026-10-06T04:12:33Z', '2026:10:06 04:12:33'], rejects: 'Error -3' },
+    captureBurst: { args: [10, 300], wire: 'AI capture 10 300', accepts: 'Captured 10 images.' },
     aiflash: {
         args: [50, 500],
         wire: 'AI flash 50 500',
@@ -176,6 +195,16 @@ describe('commandRegistry golden wire format', () => {
             }
         })
     }
+
+    it('sends both clocks whole seconds, given a time with or without milliseconds', () => {
+        // Cutting the string at the `.` sent `...54ZZ` for one without.
+        for (const time of ['2026-09-20T05:17:54.123Z', '2026-09-20T05:17:54Z']) {
+            expect(commandRegistry.setutc(time).build()).toBe('setutc 2026-09-20T05:17:54Z')
+            expect(commandRegistry.aiSetutc(time).build()).toBe('AI setutc 2026-09-20T05:17:54Z')
+        }
+        // And now, when no time is given.
+        expect(commandRegistry.aiSetutc().build()).toMatch(/^AI setutc \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/)
+    })
 
     it('has a golden row for every command in the registry', () => {
         // A new command with no row is the only way to reintroduce #315.

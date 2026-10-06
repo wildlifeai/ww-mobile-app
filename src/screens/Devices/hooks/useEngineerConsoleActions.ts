@@ -152,6 +152,10 @@ export const useEngineerConsoleActions = ({
             navigation.navigate('DeviceResetScreen', { deviceId: device?.id })
             return
         }
+        if (cmdName === CommandNames.DEVICE_CHECK) {
+            navigation.navigate('DeviceCheckScreen', { deviceId: device?.id })
+            return
+        }
         if (cmdName === CommandNames.DEV_DEPLOYMENT_TEST) {
             navigation.navigate('DevDeploymentTestScreen', { deviceId: device?.id, bleDeviceId: device?.id })
             return

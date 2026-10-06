@@ -120,6 +120,7 @@ what it proves and whether it blocks.
 | BLE engine | `src/ble/`, meaning protocol/, session/ and workflows/; deep dive in `documentation/resources/BLE_Architecture.md` |
 | Day/night light sensor | `documentation/resources/Light-Sensor.md`: op23 to op26, `AI light`, why op25 reads stale, and the flash mode op34 that decides whether any of it reaches the LED |
 | Capture Picture | `documentation/resources/Capture-Picture.md`: the capture in order, the 3 s hold, what applies at wake, and the flash hold that arms the LED for the visit |
+| Device Check | `documentation/resources/Device-Check.md`: the ship check's steps and pass rules, why sharpness is the JPEG's size, and what it changes and puts back |
 | Device flows | `documentation/onboarding/05-DEVICE-FLOWS.md`, `06-BLE-CONNECTIONS.md` |
 | Offline/sync | `documentation/onboarding/03-DATA-AND-SYNC.md` |
 | Sign-in, sessions, Google sign-in and its setup | `documentation/resources/Authentication-Implementation-Guide.md` |

@@ -114,7 +114,7 @@ screens/                                  navigation/screens/
 │       └── useDeploymentMonitor.ts
 ├── Devices/
 │   ├── DeviceDiscoveryScreen / EngineerConsoleScreen
-│   ├── DevDeploymentTestScreen / DeviceResetScreen
+│   ├── DevDeploymentTestScreen / DeviceResetScreen / DeviceCheckScreen
 │   ├── DfuScreen / FirmwareUpdateScreen / FirmwareStatusScreen
 │   ├── FileTransferTestScreen / ModelValidationTestScreen
 │   ├── CapturePictureScreen / LightSensorScreen
@@ -127,7 +127,8 @@ screens/                                  navigation/screens/
 │       ├── useDeviceDiscovery.ts         # Scanner auto-connect + routing
 │       ├── useAutoConnectStateMachine.ts
 │       ├── useFirmwareUpdate.ts          # Himax update orchestration
-│       └── useMotionDetectionStream.ts
+│       ├── useMotionDetectionStream.ts
+│       └── useDeviceCheck.ts             # Screen state for the ship check
 ├── Projects/
 ```
 
@@ -288,7 +289,9 @@ ble/
     ├── deploymentPipeline.ts   # Shared deployment pipeline
     ├── resetToDefaults.ts      # executeResetToDefaults, shared OP factory reset
     ├── configVerification.ts   # Post-firmware-update CONFIG.TXT handshake
-    └── checkSdCard.ts          # SD card health validation
+    ├── checkSdCard.ts          # SD card health validation
+    ├── deviceCheck.ts          # The ship check's steps (rules in utils/deviceCheck/)
+    └── downloadPhoto.ts        # One photo off the SD card, outside a screen
 ```
 
 ### `src/providers/`: Context Providers
