@@ -8,13 +8,13 @@ The Dev Deployment flow is a **developer-facing** alternative to the standard St
 
 - Choose which camera the deployment runs on, Colour or Black & White, switched at Start (#301)
 - Try any of the project's capture methods (Activity Detection, Timelapse, Mixed) and motion sensitivities
-- Try any of the project's capture flash settings (mode, LED, time-of-day window), plus the LED brightness that has no project column
+- Try any of the project's capture flash settings (mode, LED, time-of-day window in local time), plus the two brightnesses that have no project column, and light the white LED to check it
 - Set the number of pictures per trigger
 - Override the AI model, LoRaWAN and GPS settings per deployment
 - Validate device health (battery, SD card, self-test) before committing to a full deployment
 
 > [!IMPORTANT]
-> Dev Deployment changes to project settings (capture method, sensitivity, flash, model, and so on) **persist to the database**. This is by design: it allows developers to iterate on project configuration without leaving the deployment screen. The camera choice and the LED brightness are the two settings with no project home; they reach the device and nothing else.
+> Dev Deployment changes to project settings (capture method, sensitivity, flash, model, and so on) **persist to the database**. This is by design: it allows developers to iterate on project configuration without leaving the deployment screen. The camera choice, the LED brightness and the motion-detection light are the settings with no project home; they reach the device and nothing else.
 
 ## Access
 
@@ -33,7 +33,7 @@ The Dev Deployment screen is only accessible from the Engineer Console's Flows m
 | **Access** | Scanner tab → auto-connect → "Start Monitoring" | Engineer Console → Flows → "Dev Deployment Test" |
 | **Camera** | Whatever slot is running when the deployment starts; Start Monitoring warns on a flash that does not suit it (#321) and never switches | Chosen on screen and switched as the first pipeline step when it is not the one running |
 | **Capture method** | Inherited from project settings | The project's own fields, chosen on screen and persisted |
-| **Flash settings** | Mode and LED inherited from the project (op34, op13, and op35/op36 for the window) | The same fields, chosen on screen and persisted, plus the LED brightness (op9) as a dev-only extra |
+| **Flash settings** | Mode and LED inherited from the project (op34, op13, and op35/op36 for the window) | The same fields, chosen on screen and persisted, plus the LED brightness (op9) and the motion-detection light (op22) as dev-only extras |
 | **Pictures per trigger** | The project's count and interval (op5, op6), with op8 raised past the interval for a burst (#317) | Any number, default 3; op6 stays at the reset's 500 ms and op8 at 1000 |
 | **AI model** | Inherited from project | Overridable dropdown (including "None"), applied to this deployment and persisted |
 | **Detection threshold** | The project's `detection_threshold_pct`, written as op16 (#342) | The same, from the selected project; no field, so a model chosen here runs at the threshold the project would deploy it at |
@@ -83,7 +83,7 @@ Both flows share these pipeline functions from `deploymentPipeline.ts`:
 | 4 | Reset OPs |
 | 5 | Create DB Record |
 | 6 | Configure Device (capture method, deployment ID, GPS, the flash as the project's four columns, and the project's detection threshold as op16) |
-| 7 | Flash brightness (`LED_BRIGHTNESS`), only when the flash mode is not off |
+| 7 | Flash brightness (`LED_BRIGHTNESS`, op9) and motion-detection light (`MD_FLASH_BRIGHTNESS_PERCENT`, op22), only when the flash mode is not off |
 | 8 | Pictures per trigger (`NUM_PICTURES`), written explicitly because the reset preserves OP 5 |
 | 9 | Live Monitor |
 
@@ -122,8 +122,10 @@ A device carries one deployment at a time. The scanner routes a deployed device 
 - **Flash Mode**: Off / Always on / Time of day / Light sensor (in development), the project form's list, from `FLASH_MODE_OPTIONS` in
   [`projectFlash.ts`](../../src/utils/projectFlash.ts)
 - **Flash LED**: IR / white, shown when the mode is not off
-- **Window starts / Window length**: shown in time-of-day mode, UTC
+- **Flash on at / Flash off at**: shown in time-of-day mode, in the phone's local time. The project and the camera keep the window in UTC (op35 start, op36 minutes), and the line under the fields shows what they will get. The conversion uses today's offset, so a window set before a daylight-saving change is an hour out after it until it is set again
 - **LED Brightness**: numeric input 0-100% (OP 9), shown when the mode is not off. Written to the device only; it has no project column, so a real deployment of the project uses the factory value
+- **Motion-detection light**: 0-100% (OP 22), shown when the mode is not off. How bright the light is that the HM0360's motion frames get at night, through the LED op21 picks (IR by default). Device only, like op9; a real deployment uses the factory 50%
+- **Test the white LED**: sends `AI flash <op9> 500`, which lights the white LED directly whatever the mode and LED say. It proves the LED, its driver and the command path. The camera sends no reply, so the screen reports only a refusal. The firmware's `flash` also writes op12, which nothing reads
 
 The flash goes to the device as the project's four columns, through the same `configureFlash` a standard deployment uses, so a mode and LED tried here are what a real deployment of the project would write. See [Light-Sensor.md](Light-Sensor.md), "How the decision reaches the flash LED".
 

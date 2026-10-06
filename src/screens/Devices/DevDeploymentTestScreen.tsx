@@ -37,7 +37,10 @@ import { SdCardStatusCard } from '../Deployments/components/SdCardStatusCard'
 import { useDevDeployment, type DeployableCamera } from './hooks/useDevDeployment'
 import { useModelOnPhone } from '../../hooks/useOfflineFiles'
 import { CAMERA_VARIANT_LABELS } from '../../hooks/useCameraSwitch'
-import { FLASH_MODE_OPTIONS, FLASH_LED_OPTIONS, type ProjectFlashMode, type ProjectFlashLed } from '../../utils/projectFlash'
+import {
+    FLASH_MODE_OPTIONS, FLASH_LED_OPTIONS, formatUtcMinutes, formatUtcOffset,
+    type ProjectFlashMode, type ProjectFlashLed,
+} from '../../utils/projectFlash'
 // The Save BMP switch that used to sit under pictures per trigger, retired
 // 21 September 2026; see the commented-out block in the Pictures card.
 //   import { TEST_BIT_SAVE_BMP } from '../../hooks/useDeviceSettings'
@@ -67,9 +70,12 @@ export const DevDeploymentTestScreen = () => {
         captureMethodOptions, sensitivityOptions, aiModelOptions,
         flashMode, setFlashMode,
         flashLed, setFlashLed,
-        flashWindowStart, setFlashWindowStart,
-        flashWindowMinutes, setFlashWindowMinutes,
+        flashWindowOn, setFlashWindowOn,
+        flashWindowOff, setFlashWindowOff,
+        flashWindow, utcOffset,
         ledBrightnessText, setLedBrightnessText, ledBrightness,
+        mdLightText, setMdLightText,
+        testWhiteLed, testFlash,
         numPicturesText, setNumPicturesText, numPictures,
         //   testModeBits, setTestModeBits,
         cameraChoice, setCameraChoice, activeCamera, cameraBusy, cameraStage,
@@ -370,7 +376,9 @@ export const DevDeploymentTestScreen = () => {
                 {/* ═══════════════════════════════════════ */}
                 {/* The project form's Capture Flash card, same choices, same
                     columns (op34, op13, and op35/op36 for the window), plus
-                    the brightness (op9) that has no project column. */}
+                    the two brightnesses with no project column: the capture
+                    flash's (op9) and the motion-detection light's (op22). The
+                    window is typed in local time; the camera keeps UTC. */}
                 <Card style={styles.card}>
                     <Card.Title title="Capture Flash" />
                     <Card.Content style={styles.cardContent}>
@@ -395,24 +403,25 @@ export const DevDeploymentTestScreen = () => {
                         {flashMode === 'time_of_day' && (
                             <>
                                 <WWTextInput
-                                    label="Window starts (UTC, HH:MM)"
-                                    value={flashWindowStart}
-                                    onChange={setFlashWindowStart}
+                                    label="Flash on at (HH:MM)"
+                                    value={flashWindowOn}
+                                    onChange={setFlashWindowOn}
                                     mode="outlined"
-                                    placeholder="e.g., 18:00"
+                                    placeholder="e.g., 19:00"
                                     disabled={submitting}
                                 />
                                 <WWTextInput
-                                    label="Window length (minutes)"
-                                    value={flashWindowMinutes}
-                                    onChange={setFlashWindowMinutes}
+                                    label="Flash off at (HH:MM)"
+                                    value={flashWindowOff}
+                                    onChange={setFlashWindowOff}
                                     mode="outlined"
-                                    keyboardType="numeric"
-                                    placeholder="e.g., 720"
+                                    placeholder="e.g., 07:00"
                                     disabled={submitting}
                                 />
-                                <Text variant="bodySmall" style={styles.hint}>
-                                    The camera runs on UTC, so this window is in UTC too. It may wrap past midnight.
+                                <Text variant="bodySmall" style={[styles.hint, !flashWindow && { color: colors.error }]}>
+                                    {flashWindow
+                                        ? `Phone time, ${formatUtcOffset(utcOffset)}. The camera keeps ${formatUtcMinutes(flashWindow.startUtc)} UTC for ${flashWindow.minutes} min.`
+                                        : 'Two different times, as HH:MM. The window may wrap past midnight.'}
                                 </Text>
                             </>
                         )}
@@ -429,6 +438,34 @@ export const DevDeploymentTestScreen = () => {
                                 keyboardType="numeric"
                                 disabled={submitting}
                             />
+                        )}
+
+                        {/* op22: lights the HM0360's motion frames at night,
+                            through the LED that op21 picks (IR by default). */}
+                        {flashMode !== 'off' && (
+                            <TextInput
+                                label="Motion-detection light (0-100%)"
+                                value={mdLightText}
+                                onChangeText={(t) => setMdLightText(t.replace(/[^0-9]/g, ''))}
+                                mode="outlined"
+                                keyboardType="numeric"
+                                disabled={submitting}
+                            />
+                        )}
+
+                        <WWButton
+                            mode="outlined"
+                            icon="flash"
+                            onPress={testWhiteLed}
+                            disabled={submitting || testFlash === 'sending'}
+                            loading={testFlash === 'sending'}
+                        >
+                            {`Test the white LED at ${ledBrightness}%`}
+                        </WWButton>
+                        {testFlash === 'failed' && (
+                            <Text variant="bodySmall" style={[styles.hint, { color: colors.error }]}>
+                                The camera did not take the test flash.
+                            </Text>
                         )}
                     </Card.Content>
                 </Card>
