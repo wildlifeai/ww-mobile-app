@@ -80,6 +80,12 @@ export async function executeResetToDefaults(
                  index === OP_PARAMETER.MD_FLASH_BRIGHTNESS_PERCENT)) {
                 continue
             }
+            // op32 was CAM_RESOLUTION, the hi-res switch, on firmware before
+            // ae_review, which is also the firmware without the flash mode
+            // (op34). The LoRaWAN default there would turn hi-res on.
+            if (index === OP_PARAMETER.LORAWAN_PING_MINUTES && currentOps.length <= OP_PARAMETER.FLASH_MODE) {
+                continue
+            }
         }
 
         // 1b) Preserve the model binding when the caller owns model state

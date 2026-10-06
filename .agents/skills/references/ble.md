@@ -135,10 +135,12 @@ day are in [traps.md](traps.md).
   could hold needs the same `forget`. With the detector armed through the setup sleep, a motion
   wake can take and report a capture of its own first, so the test counts grids and ends only
   after its own `About to capture` (bench, 1 October 2026).
-- **The app runs ahead of the firmware on op indices, deliberately.** op32, `CAM_RESOLUTION`,
-  exists here before it ships on the device. Guard on the array length before touching a high
-  index, the way `useCapturePicture` does for the white balance gains, rather than reading it
-  and hoping. `getop` now has a `failureRegex` for the out-of-range error and it is
+- **The app runs ahead of the firmware on op indices, deliberately, and one index changed
+  meaning.** Guard on the array length before touching a high index, the way
+  `useCapturePicture` does for the white balance gains, rather than reading it and hoping. op32
+  was `CAM_RESOLUTION` (the hi-res switch) before ae_review and is `LORAWAN_PING_MINUTES` since
+  October 2026, so anything that writes it checks the table reaches op34 first, as the reset and
+  `configureLorawan` do. `getop` now has a `failureRegex` for the out-of-range error and it is
   non-retryable: without it a rejection matched neither success nor failure and burned 8 s,
   then retried, which silently broke a whole flow for 16 s at a time.
 - **The nRF strips the op array out of the Sleep broadcast.** The Himax sends all 32 values on

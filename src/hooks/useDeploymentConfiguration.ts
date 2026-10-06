@@ -3,7 +3,7 @@ import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { createBleSession } from '../ble/session/createBleSession'
 import { mdIntervalHold } from '../ble/session/mdIntervalHold'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
-import { OP_PARAMETER } from './useDeviceSettings'
+import { OP_PARAMETER, LORAWAN_PING_DEFAULT_MINUTES } from './useDeviceSettings'
 import { log, logError, logWarn } from '../utils/logger'
 import { describeProjectFlash, ProjectFlashColumns, resolveProjectFlashOps } from '../utils/projectFlash'
 import { DEPLOYMENT_INTERVAL_BEFORE_DPD_MS, ProjectBurstColumns, resolveProjectBurstOps } from '../utils/projectBurst'
@@ -49,6 +49,13 @@ export interface DeploymentConfig {
      * leaves op16 at the reset's factory 18, which is 57%, the column default.
      */
     detectionThreshold?: ProjectDetectionThresholdColumns
+    /**
+     * The project's `lorawan_required`, written as op32: the default ping
+     * period when it is on, 0 (never join) when it is off, which also stops
+     * the join failures at sites with no gateway. Omitted leaves the reset's
+     * default, LoRaWAN on.
+     */
+    lorawanRequired?: boolean
 }
 
 export const useDeploymentConfiguration = () => {
@@ -267,6 +274,25 @@ export const useDeploymentConfiguration = () => {
     }, [applyUpdates])
 
     /**
+     * op32 from the project's `lorawan_required`. Firmware without the flash
+     * mode (op34) predates op32's LoRaWAN meaning: there it was the hi-res
+     * switch, so it is left alone.
+     */
+    const configureLorawan = useCallback(async (
+        session: any,
+        required: boolean,
+        currentOps: string[]
+    ): Promise<void> => {
+        if (currentOps.length <= OP_PARAMETER.FLASH_MODE) {
+            logWarn(`[DeployConfig] Firmware reports ${currentOps.length} parameters, so op32 is not the LoRaWAN ping on it; not writing it`)
+            return
+        }
+        const minutes = required ? LORAWAN_PING_DEFAULT_MINUTES : 0
+        log(`[DeployConfig] LoRaWAN ${required ? `on, ping every ${minutes} min` : 'off'} (op32 ${minutes})`)
+        await applyUpdates(session, [{ index: OP_PARAMETER.LORAWAN_PING_MINUTES, value: minutes }], currentOps)
+    }, [applyUpdates])
+
+    /**
      * Complete deployment configuration in one atomic operation
      */
     const configure = useCallback(async (
@@ -316,12 +342,17 @@ export const useDeploymentConfiguration = () => {
                 await configureDetectionThreshold(session, config.detectionThreshold, currentOps)
             }
 
+            // 6. LoRaWAN on or off (op32), likewise
+            if (config.lorawanRequired !== undefined) {
+                await configureLorawan(session, config.lorawanRequired, currentOps)
+            }
+
             log('[DeployConfig] Deployment configuration complete (Atomic)')
         } catch (error) {
             logError('[DeployConfig] Configuration transaction failed:', error)
             throw new Error(`Failed to configure deployment: ${error}`)
         }
-    }, [setDeploymentId, configureCaptureMethod, configureFlash, configureBurst, configureDetectionThreshold])
+    }, [setDeploymentId, configureCaptureMethod, configureFlash, configureBurst, configureDetectionThreshold, configureLorawan])
 
     return {
         configure,
@@ -329,6 +360,7 @@ export const useDeploymentConfiguration = () => {
         configureCaptureMethod,
         configureFlash,
         configureBurst,
-        configureDetectionThreshold
+        configureDetectionThreshold,
+        configureLorawan,
     }
 }
