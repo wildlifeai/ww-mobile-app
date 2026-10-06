@@ -59,7 +59,9 @@ export const useDeviceCheck = ({ device }: { device: ExtendedPeripheral | undefi
     })
     // The check runs for minutes; it calls the latest switch, not the one it started with.
     const switchRef = useRef(cameraSwitch.switchTo)
-    switchRef.current = cameraSwitch.switchTo
+    useEffect(() => {
+        switchRef.current = cameraSwitch.switchTo
+    }, [cameraSwitch.switchTo])
 
     const ifMounted = <A extends unknown[]>(fn: (...args: A) => void) =>
         (...args: A) => { if (mountedRef.current) fn(...args) }
