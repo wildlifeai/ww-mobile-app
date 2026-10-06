@@ -86,6 +86,7 @@ export const getFlowGroups = (): FlowGroup[] => {
             title: 'Tests',
             icon: 'play-circle-outline',
             commands: pick([
+                    CommandNames.DEVICE_CHECK,
                     CommandNames.DEV_DEPLOYMENT_TEST,
                     CommandNames.FILE_TRANSFER_TEST,
             ]),

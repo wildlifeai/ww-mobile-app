@@ -55,6 +55,9 @@ const GOLDEN: Record<keyof typeof commandRegistry, Row> = {
     selftest: { wire: 'selftest', accepts: 'Error bits = 0x0000' },
     wake: { wire: 'wake', accepts: ['Wake', 'Waking AI processor', 'AI processor is awake'] },
     camera_type: { wire: 'camera_type', accepts: 'Camera type: RP3' },
+    temp: { wire: 'temp', accepts: 'Temperature: 24.75C' },
+    getutc: { wire: 'getutc', accepts: 'UTC is: 2026-10-06T04:12:33Z' },
+    boardLed: { args: ['g', 2, 300], wire: 'flashg 2 300', accepts: 'Flashing 300ms 2 times' },
 
     // -- relayed to the Himax with the `AI ` prefix --
     aiinfo: { wire: 'AI info', accepts: '30000K total, 29000K available' },
@@ -106,6 +109,21 @@ const GOLDEN: Record<keyof typeof commandRegistry, Row> = {
     // The firmware's `flash` replies with an empty line; the processor's Sleep
     // a second later is the first thing to match. Bench 3 September 2026,
     // capture-flash-and-keep-awake: `AI flash 50 500` lit the LED.
+    // Bench, 6 October 2026, WILD-5WGJ on a 5 October RP3 build
+    vcm: {
+        args: [1023],
+        wire: 'AI vcm 1023',
+        accepts: 'VCM position set to 1023',
+        rejects: ['VCM write failed (1). Is the camera powered?', 'Unrecognised command'],
+    },
+    aiSetutc: {
+        args: ['2026-10-06T04:12:33.123Z'],
+        wire: 'AI setutc 2026-10-06T04:12:33Z',
+        accepts: 'RTC set to 2026-10-06T04:12:33Z (this took 1012ms)',
+        rejects: 'Error -2 setting RTC',
+    },
+    aiGetutc: { wire: 'AI getutc', accepts: ['2026-10-06T04:12:33Z', '2026:10:06 04:12:33'], rejects: 'Error -3' },
+    captureBurst: { args: [10, 300], wire: 'AI capture 10 300', accepts: 'Captured 10 images.' },
     aiflash: {
         args: [50, 500],
         wire: 'AI flash 50 500',

@@ -122,7 +122,10 @@ day are in [traps.md](traps.md).
   connect time. Never `setop 8` from a screen and never keep the original only in a ref, which
   the motion test did until #271. The one exception is a deployment, which sets op8 as the
   field value (above 1000 for a burst, #317) and calls `keepAwake.forget` first, so no hold or
-  owed restore from before it can write the old value back. Every way out of a flow must release its holds, failures
+  owed restore from before it can write the old value back. `acquire(..., { exact: true })` also
+  brings a longer value down for the visit and puts it back, for a flow that needs the device to
+  sleep soon as well as to stay awake: the Device Check waits for a sleep several times, and a
+  bench unit left at 60 s made each wait time out. Every way out of a flow must release its holds, failures
   included: a hold left in memory makes the next `acquire` a no-op. While `keepAwake.holds(deviceId)` the capture path sends `txfile` straight after
   `Captured` instead of paying a wake: 22 s to 13 s for the same picture.
 - **op11 is a field setting too, and the motion test holds it through
@@ -165,9 +168,17 @@ day are in [traps.md](traps.md).
   State and DPD waits that stop `txfile` racing FatFS and corrupting the file handle (the
   post-capture one is skipped while `keepAwake.holds(deviceId)`, the pre-capture one always
   runs because that wake applies any changed setting), and the reassembly that turns binary
-  packets into an image URI with byte-level progress. Use it whenever you need an image. What
+  packets into an image URI with byte-level progress. Use it whenever a screen needs an image. What
   Capture Picture does around it is in
-  [Capture-Picture.md](../../../documentation/resources/Capture-Picture.md).
+  [Capture-Picture.md](../../../documentation/resources/Capture-Picture.md). The Device Check
+  is the one exception: it takes about 20 photos and keeps two, so it captures through the
+  registry inside one keepAwake hold and downloads with `workflows/downloadPhoto.ts`. Anything
+  else capturing that way needs the same op10/op18 pre-flight and the hold.
+- **The focus lens forgets its position when the AI processor sleeps.** `AI vcm` only holds
+  while the processor is awake, because the camera powers off with it, so a photo at a lens
+  position must follow its `vcm` inside one keepAwake hold. Below about 256 the lens does not
+  move at all (bench, 6 October 2026). The Device Check judges focus by JPEG size, see
+  [Device-Check.md](../../../documentation/resources/Device-Check.md).
 - **To measure light, do not take a photo.** `AI light` is about a second, no JPEG, no flash and
   no transfer, against 13 to 50 s for a capture. It is **two-phase**, because the command's reply
   is only an acknowledgement and the reading arrives afterwards as unsolicited telemetry, so the
@@ -178,6 +189,11 @@ day are in [traps.md](traps.md).
   deployment cannot disagree on what a complete reading is. The deployment took a capture here
   until #304, which cost 21 s on the bench the day it was replaced. See
   [Light-Sensor.md](../../../documentation/resources/Light-Sensor.md).
+- **`AI dir` lists the firmware's current folder, which is not always the photo folder.** Writing
+  a photo moves it into `/MEDIA/<deployment>/IMAGES.NNN`, but saving CONFIG.TXT after any op
+  change moves it to MANIFEST, and `dir` takes no path. Read sizes from `dir` only straight after
+  the photos, or take one photo's size from the `N bytes in FILE` reply to `txfile`, which changes
+  into the photo folder itself (bench, 6 October 2026).
 - **Ask what the device already tells you before adding a poll.** Self-test bits arrive
   unprompted after *every* wake, and the light decision after every light check. A September
   2026 bench run counted 25 `Error bits` lines received against 6 `selftest` commands sent.

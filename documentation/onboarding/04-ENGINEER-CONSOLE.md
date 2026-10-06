@@ -271,6 +271,7 @@ From the console, all three open the **engineer view** of the update screen (`en
 
 | Flow | What It Does |
 |------|-------------|
+| `DEVICE_CHECK` | The ship check for a finished unit, about five minutes: first a restart and its self-test, which flags a camera that does not answer before anything else, then firmware and both camera images, the colour camera and its focus lens, battery, clocks, SD card, LEDs, light sensor, motion, the black and white camera and the IR flash, with a pass, warn or fail per step. The operator confirms the LEDs, the IR flash and the framing. See [Device-Check.md](../resources/Device-Check.md). |
 | `DEV_DEPLOYMENT_TEST` | Full deployment with the project's capture method and capture flash chosen on screen (the time-of-day window in local time), plus the camera, pictures per trigger, LED brightness, motion-detection light and AI model, and a button that lights the white LED. See [Dev-Deployment-Guide.md](../resources/Dev-Deployment-Guide.md). |
 | `FILE_TRANSFER_TEST` | Sends a test file to the SD card to exercise the `ftx` pipeline end to end. |
 

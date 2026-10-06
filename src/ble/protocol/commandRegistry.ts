@@ -322,6 +322,28 @@ export const commandRegistry = {
     /(Device will reset after disconnecting.)\s*/,
     () => true
   ),
+  /** The BLE chip's own die temperature, in degrees C. */
+  temp: createSingleLineCommand<number>(
+    'temp',
+    () => 'temp',
+    /Temperature: (-?\d+)\.(\d+)C/,
+    (match) => parseFloat(`${match[1]}.${match[2]}`)
+  ),
+  /** The BLE processor's clock, as the ISO time it reports. */
+  getutc: createSingleLineCommand<string>(
+    'getutc',
+    () => 'getutc',
+    /UTC is: (\S+)/i,
+    (match) => match[1]
+  ),
+  /** Flash one of the BLE board's own LEDs: `r`, `g` or `b`, `count` times for `ms` each. */
+  boardLed: createSingleLineCommand<boolean>(
+    'boardLed',
+    (colour: 'r' | 'g' | 'b', count: number, ms: number) => `flash${colour} ${count} ${ms}`,
+    /Flashing\s+\d+ms\s+\d+\s+times/i,
+    () => true,
+    { retryPolicy: { maxRetries: 0 } }
+  ),
   ping: createSingleLineCommand<boolean>(
     'ping',
     () => 'ping',
@@ -475,6 +497,63 @@ export const commandRegistry = {
     /^Sleep/i,
     () => true,
     { timeoutMs: 8000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Unrecogni[sz]ed|^Must supply/i }
+  ),
+
+  /**
+   * Move the RP3's focus lens: 0 (infinity) to 1023 (closest). Only the RP3
+   * image has it; the HM0360 image answers `Unrecognised`. The position holds
+   * while the AI processor stays awake and is lost when it sleeps, because the
+   * camera powers off, so a caller photographing at a position must keep the
+   * device awake between the two commands (bench, 6 October 2026).
+   */
+  vcm: createSingleLineCommand<number>(
+    'vcm',
+    (position: number) => `AI vcm ${position}`,
+    /^VCM position set to (\d+)/i,
+    (match) => parseInt(match[1], 10),
+    { timeoutMs: 8000, failureRegex: /^VCM (?:write failed|not detected)|^Position must be|^Unrecogni[sz]ed/i }
+  ),
+
+  /**
+   * The AI processor's own clock. It answers with the bare time, which
+   * `exif_utc_time_to_utc_string` writes; both the ISO and the EXIF shapes are
+   * accepted, and the parser returns it as epoch milliseconds.
+   */
+  aiGetutc: createSingleLineCommand<number>(
+    'aiGetutc',
+    () => 'AI getutc',
+    /^(\d{4})[-:](\d{2})[-:](\d{2})[T ](\d{2}):(\d{2}):(\d{2})Z?$/,
+    (match) => Date.UTC(+match[1], +match[2] - 1, +match[3], +match[4], +match[5], +match[6]),
+    { timeoutMs: 8000, failureRegex: /^Error -?\d+|^Unrecogni[sz]ed/i }
+  ),
+
+  /**
+   * Set the AI processor's own clock, which photos are stamped with. Its
+   * reply echoes the string it was given, but setting the RTC holds the
+   * processor's interrupts off for about a second and the reply can be lost
+   * while the clock did change (bench, 6 October 2026): read it back with
+   * `aiGetutc` rather than trusting a timeout. Never retried, since a retry
+   * only sets it again.
+   */
+  aiSetutc: createSingleLineCommand<boolean>(
+    'aiSetutc',
+    (isoDateStr?: string) => `AI setutc ${(isoDateStr || new Date().toISOString()).split('.')[0]}Z`,
+    /^RTC set to/i,
+    () => true,
+    { timeoutMs: 8000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Error -?\d+/i }
+  ),
+
+  /**
+   * `capture` for a burst whose files may not be kept: with test-mode bit 3
+   * set the firmware writes no file, so its summary carries no `Last is` and
+   * `capture` would wait out its timeout. Resolves on `Captured N images`.
+   */
+  captureBurst: createSingleLineCommand<number>(
+    'captureBurst',
+    (count: number, interval: number) => `AI capture ${count} ${interval}`,
+    /^Captured\s+(\d+)\s+images/i,
+    (match) => parseInt(match[1], 10),
+    { timeoutMs: 45000, retryPolicy: { maxRetries: 0 } }
   ),
 
   txfile: createSingleLineCommand<boolean>(

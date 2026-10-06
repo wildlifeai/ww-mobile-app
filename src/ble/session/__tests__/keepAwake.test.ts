@@ -73,6 +73,15 @@ describe('keepAwake', () => {
         expect(keepAwake.holds(DEVICE)).toBe(false)
     })
 
+    it('brings a longer value down when asked for exactly the hold, and puts it back', async () => {
+        const { session, writes } = fakeSession('60000')
+        await keepAwake.acquire(session, DEVICE, HOLD, { exact: true })
+        expect(writes).toEqual(['AI setop 8 20000'])
+
+        await keepAwake.release(session, DEVICE)
+        expect(writes).toEqual(['AI setop 8 20000', 'AI setop 8 60000'])
+    })
+
     it('release puts the original back and ends the hold', async () => {
         const { session, writes } = fakeSession('3000')
         await keepAwake.acquire(session, DEVICE, HOLD)

@@ -57,6 +57,7 @@ export enum CommandNames {
 	FIRMWARE_STATUS = "FIRMWARE_STATUS",
 	RESET_TO_DEFAULTS = "RESET_TO_DEFAULTS",
 	DEV_DEPLOYMENT_TEST = "DEV_DEPLOYMENT_TEST",
+	DEVICE_CHECK = "DEVICE_CHECK",
 
 	// Local commands (UPPERCASE - app-only actions)
 }
@@ -557,6 +558,11 @@ export const COMMANDS: {
 	[CommandNames.DEV_DEPLOYMENT_TEST]: {
 		name: CommandNames.DEV_DEPLOYMENT_TEST,
 		description: "Start monitoring with full parameter control (developer testing)",
+		type: 'process',
+	},
+	[CommandNames.DEVICE_CHECK]: {
+		name: CommandNames.DEVICE_CHECK,
+		description: "Ship check for a finished unit: both cameras, the focus lens, LEDs, sensors, SD card and clocks",
 		type: 'process',
 	},
 }
