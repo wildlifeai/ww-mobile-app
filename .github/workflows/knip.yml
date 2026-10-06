@@ -40,7 +40,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       # No postinstall: patch-package only matters to the native build.

@@ -170,7 +170,7 @@
     "yaml": "^2.9.0"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "expo": {
     "doctor": {
