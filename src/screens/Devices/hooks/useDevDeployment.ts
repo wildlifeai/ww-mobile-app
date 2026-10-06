@@ -5,11 +5,13 @@
  * - Switches to the camera the operator chose before anything else (#301)
  * - Lets the capture method and the capture flash be overridden on screen,
  *   with the project's own fields, and persists the overrides to the project
- * - Writes the LED brightness (op9), which has no project column
+ * - Writes the LED brightness (op9) and the motion-detection light's (op22),
+ *   which have no project column
+ * - Takes the flash's time-of-day window in local time, and can test the white LED
  * - Skips firmware update warnings
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Alert } from 'react-native'
 import { useFocusEffect } from '@react-navigation/native'
 import { useAppSelector } from '../../../redux'
@@ -25,7 +27,7 @@ import { useBleActions } from '../../../providers/BleEngineProvider'
 import { useDeploymentConfiguration } from '../../../hooks/useDeploymentConfiguration'
 import { useBle } from '../../../hooks/useBle'
 import { useGPSLocation } from '../../../hooks/useGPSLocation'
-import { useDeviceSettings, OP_PARAMETER } from '../../../hooks/useDeviceSettings'
+import { useDeviceSettings, OP_PARAMETER, FACTORY_DEFAULTS } from '../../../hooks/useDeviceSettings'
 import { useDeploymentProgress } from '../../../hooks/useDeploymentProgress'
 import { useMonitoringActions, endDeploymentSequence } from '../../../hooks/useMonitoringActions'
 import { useCameraSwitch, CAMERA_VARIANT_LABELS, type CameraVariant } from '../../../hooks/useCameraSwitch'
@@ -35,6 +37,7 @@ import { selfTestCache } from '../../../ble/protocol/selfTestCache'
 import { SelfTestBit, parseSelfTestBits, isBootPreset, formatSelfTestBits, SD_CARD_POWER_CYCLE_HINT } from '../../../utils/deviceSelfTest'
 import {
     resolveProjectFlash, formatUtcMinutes, describeProjectFlash, flashColumnsFromFields,
+    flashWindowFromLocal, flashWindowToLocal, localUtcOffsetMinutes,
     type ProjectFlashMode, type ProjectFlashLed,
 } from '../../../utils/projectFlash'
 import * as pipeline from '../../../ble/workflows/deploymentPipeline'
@@ -55,6 +58,12 @@ export type DeployableCamera = Exclude<CameraVariant, 'unknown'>
  * Picture flow's FlashSelector. The operator can type anything from 0 to 100.
  */
 const DEFAULT_LED_BRIGHTNESS = 50
+
+/** op22 when the screen opens: the factory value, which a reset also writes. */
+const DEFAULT_MD_LIGHT = FACTORY_DEFAULTS[OP_PARAMETER.MD_FLASH_BRIGHTNESS_PERCENT]
+
+/** How long the white LED test lights it */
+const TEST_FLASH_MS = 500
 
 /** op5 when the screen opens. The operator can type anything from 1 up. */
 const DEFAULT_NUM_PICTURES = 3
@@ -128,12 +137,23 @@ export const useDevDeployment = ({
     // form's own choices (#301) and persisted with the rest of the overrides.
     const [flashMode, setFlashMode] = useState<ProjectFlashMode>('off')
     const [flashLed, setFlashLed] = useState<ProjectFlashLed>('ir')
-    const [flashWindowStart, setFlashWindowStart] = useState('')     // HH:MM UTC
-    const [flashWindowMinutes, setFlashWindowMinutes] = useState('')
-    // op9, the one flash setting with no project column. Dev only, written
-    // to the device after configure and never saved to the project.
+    // The time-of-day window as typed, in the phone's local time (Charles
+    // Palmer asked, 6 October 2026). The project and the device keep it in UTC;
+    // flashWindowStart and flashWindowMinutes are what they get.
+    const utcOffset = useMemo(() => localUtcOffsetMinutes(), [])
+    const [flashWindowOn, setFlashWindowOn] = useState('')      // HH:MM local
+    const [flashWindowOff, setFlashWindowOff] = useState('')
+    const flashWindow = flashWindowFromLocal(flashWindowOn, flashWindowOff, utcOffset)
+    const flashWindowStart = flashWindow ? formatUtcMinutes(flashWindow.startUtc) : ''
+    const flashWindowMinutes = flashWindow ? String(flashWindow.minutes) : ''
+    // op9 and op22, the flash settings with no project column. Dev only,
+    // written to the device after configure and never saved to the project.
+    // op22 is the light the camera's motion detection uses at night, lit
+    // from the HM0360's strobe; op9 is the capture flash's.
     const [ledBrightnessText, setLedBrightnessText] = useState(String(DEFAULT_LED_BRIGHTNESS))
     const ledBrightness = Math.min(100, Math.max(0, intFromText(ledBrightnessText, DEFAULT_LED_BRIGHTNESS)))
+    const [mdLightText, setMdLightText] = useState(String(DEFAULT_MD_LIGHT))
+    const mdLight = Math.min(100, Math.max(0, intFromText(mdLightText, DEFAULT_MD_LIGHT)))
 
     // Pictures per trigger (op5). Three when the screen opens, Victor's choice
     // on the bench on 22 September 2026: one frame per trigger too often catches
@@ -305,8 +325,14 @@ export const useDevDeployment = ({
         const flash = resolveProjectFlash(p)
         setFlashMode(flash.mode)
         setFlashLed(flash.led)
-        setFlashWindowStart(typeof p.flash_window_start_minutes_utc === 'number' ? formatUtcMinutes(p.flash_window_start_minutes_utc) : '')
-        setFlashWindowMinutes(p.flash_window_minutes ? String(p.flash_window_minutes) : '')
+        if (typeof p.flash_window_start_minutes_utc === 'number' && p.flash_window_minutes) {
+            const local = flashWindowToLocal(p.flash_window_start_minutes_utc, p.flash_window_minutes, localUtcOffsetMinutes())
+            setFlashWindowOn(local.start)
+            setFlashWindowOff(local.end)
+        } else {
+            setFlashWindowOn('')
+            setFlashWindowOff('')
+        }
     }, [])
 
     // --- Load projects ---
@@ -667,7 +693,8 @@ export const useDevDeployment = ({
                 progress.setFinishStep('Flash brightness...')
                 progress.setFinishProgress(0.7)
                 await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.LED_BRIGHTNESS, value: ledBrightness }))
-                progress.addLog(`Flash: ${describeProjectFlash(flash)} @ ${ledBrightness}%`)
+                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.MD_FLASH_BRIGHTNESS_PERCENT, value: mdLight }))
+                progress.addLog(`Flash: ${describeProjectFlash(flash)} @ ${ledBrightness}%, motion-detection light ${mdLight}%`)
             }
 
             // 7b. Pictures per trigger. op5 is in RESET_PRESERVED_OPS, so the
@@ -706,13 +733,34 @@ export const useDevDeployment = ({
         startConfigure, progress, persistProjectSettings,
         batteryLevel, gpsLocation, locationName, cameraHeight, notes,
         sdCardStatus, sdCardMissing,
-        flashMode, flashLed, flashWindowStart, flashWindowMinutes, ledBrightness,
+        flashMode, flashLed, flashWindowStart, flashWindowMinutes, ledBrightness, mdLight,
         numPictures, cameraChoice, camera, readSelfTestBits, refreshActiveDeployment,
         sensitivityOptions, motionSensitivityOverride,
         aiModelIdOverride, recordGpsOverride,
         effectiveCaptureMethod, effectiveTimelapseInterval,
         monitoring
     ])
+
+    // Light the white LED with `AI flash` at the brightness on screen: the
+    // LED, its driver and the command path, whatever op13 and op34 say. The
+    // firmware sends no reply, so a timeout still means it was sent.
+    const [testFlash, setTestFlash] = useState<'idle' | 'sending' | 'failed'>('idle')
+    const testWhiteLed = useCallback(async () => {
+        if (!bleDevice?.connected || !bleSession) return
+        setTestFlash('sending')
+        try {
+            await bleSession.execute(() => commandRegistry.aiflash(ledBrightness, TEST_FLASH_MS))
+            setTestFlash('idle')
+        } catch (e) {
+            const message = e instanceof Error ? e.message : String(e)
+            if (message === 'TIMEOUT') {
+                setTestFlash('idle')
+            } else {
+                logWarn('[DevDeploy] white LED test failed:', e)
+                setTestFlash('failed')
+            }
+        }
+    }, [bleDevice, bleSession, ledBrightness])
 
     // Keep track of start time when deployment is created
     const [deploymentStartTime, setDeploymentStartTime] = useState<Date | null>(null)
@@ -751,9 +799,12 @@ export const useDevDeployment = ({
         // Capture flash (the project's columns) and the dev-only brightness
         flashMode, setFlashMode,
         flashLed, setFlashLed,
-        flashWindowStart, setFlashWindowStart,
-        flashWindowMinutes, setFlashWindowMinutes,
+        flashWindowOn, setFlashWindowOn,
+        flashWindowOff, setFlashWindowOff,
+        flashWindow, utcOffset,
         ledBrightnessText, setLedBrightnessText, ledBrightness,
+        mdLightText, setMdLightText, mdLight,
+        testWhiteLed, testFlash,
         // Pictures per trigger
         numPicturesText, setNumPicturesText, numPictures,
         //   testModeBits, setTestModeBits,

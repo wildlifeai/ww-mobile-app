@@ -173,7 +173,7 @@ The following subset is directly used during deployment:
 | 9 | `LED_BRIGHTNESS` | Flash brightness 0–100% |
 | 10 | `CAMERA_ENABLED` | 1 = on, 0 = off (always sent last) |
 | 11 | `MD_INTERVAL` | 1000ms for activity/mixed, 0 for timelapse |
-| 12 | `FLASH_DURATION` | Flash pulse duration in ms |
+| 12 | `FLASH_DURATION` | Read by nothing: the firmware turns the LED off when the image arrives. Only `AI flash` writes it |
 | 13 | `FLASH_LED` | Which LED the capture flash uses: 0 = none, 1 = visible, 2 = IR. Written from the project's `flash_led` at deployment |
 | 14 | `MODEL_PROJECT` | Currently loaded AI model ID |
 | 15 | `MODEL_VERSION` | Currently loaded AI model version |
@@ -271,7 +271,7 @@ From the console, all three open the **engineer view** of the update screen (`en
 
 | Flow | What It Does |
 |------|-------------|
-| `DEV_DEPLOYMENT_TEST` | Full deployment with the project's capture method and capture flash chosen on screen, plus the camera, pictures per trigger, LED brightness and AI model. See [Dev-Deployment-Guide.md](../resources/Dev-Deployment-Guide.md). |
+| `DEV_DEPLOYMENT_TEST` | Full deployment with the project's capture method and capture flash chosen on screen (the time-of-day window in local time), plus the camera, pictures per trigger, LED brightness, motion-detection light and AI model, and a button that lights the white LED. See [Dev-Deployment-Guide.md](../resources/Dev-Deployment-Guide.md). |
 | `FILE_TRANSFER_TEST` | Sends a test file to the SD card to exercise the `ftx` pipeline end to end. |
 
 ### Removed, and why
@@ -370,7 +370,7 @@ Three OPs control the LED flash hardware:
 | OP | Constant | Range | Notes |
 |----|----------|-------|-------|
 | 9 | `LED_BRIGHTNESS` | 0–100 | Percentage. **0 = dim, not off.** Use OP 13 = 0 to fully disable the flash. |
-| 12 | `FLASH_DURATION` | ms | Flash pulse duration. Currently only applies to the RP3 camera, untested on HM0360. |
+| 12 | `FLASH_DURATION` | ms | Read by nothing: the firmware turns the LED off when the image arrives (Charles Palmer, 6 October 2026). Only `AI flash` writes it. |
 | 13 | `FLASH_LED` | 0, 1, 2 | 0 = off (no flash), 1 = visible (white) LED, 2 = IR LED |
 
 > [!IMPORTANT]

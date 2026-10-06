@@ -459,6 +459,24 @@ export const commandRegistry = {
     { timeoutMs: 8000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Unrecognised|^Failed to queue light check/i },
   ),
 
+  /**
+   * Light the white LED directly, at `brightness` percent for `ms` (1 to 1000),
+   * whatever op13 and op34 say: the hardware and command path on their own.
+   *
+   * The firmware answers with an empty line once the LED is off again, so
+   * there is nothing to match until the processor sleeps a second later; the
+   * Dev Deployment Test's LED test treats a timeout as sent, not failed. Never retried:
+   * a retry would light it twice. It also writes op12 FLASH_DURATION, which
+   * nothing else reads.
+   */
+  aiflash: createSingleLineCommand<boolean>(
+    'aiflash',
+    (brightness: number, ms: number) => `AI flash ${brightness} ${ms}`,
+    /^Sleep/i,
+    () => true,
+    { timeoutMs: 8000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Unrecogni[sz]ed|^Must supply/i }
+  ),
+
   txfile: createSingleLineCommand<boolean>(
     'txfile',
     (filename: string = '.') => `AI txfile ${filename}`,
