@@ -107,8 +107,10 @@ Helpers: `tests/setup/helpers/bdd.ts`
 [Maestro](https://maestro.mobile.dev/) runs declarative YAML flows against a real device or
 emulator. The flows live in `tests/maestro/`.
 
-**Install**: the Maestro CLI is not an npm package. `curl -Ls "https://get.maestro.mobile.dev" | bash`
-is what CI runs; `./scripts/install-maestro-wsl2.sh` does the same on WSL2 with the JDK. The npm
+**Install**: the Maestro CLI is not an npm package. `bash scripts/install-maestro.sh` installs the
+version CI pins (2.11.0) into `~/.maestro`, after checking the release zip's SHA-256, and both E2E
+jobs run it; `./scripts/install-maestro-wsl2.sh` adds the JDK on WSL2 and calls it. Bumping Maestro
+is a deliberate change to the two lines at the top of that script, as its header describes. The npm
 package called `maestro` is an unrelated AWS Step Functions tool (`maestro-framework`). It sat in
 `devDependencies` until October 2026, where it shadowed the real CLI on every `npm run test:maestro*`
 and its shell postinstall aborted `npm install` on Windows.

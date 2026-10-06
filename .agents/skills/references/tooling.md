@@ -55,7 +55,8 @@ shell boundary, and none of them reproduced in a Linux container.
   cost a run: Maestro only runs the top-level files of a directory unless `config.yaml` lists the
   subfolders; `runScript` cannot shell out (`Android.shell` is not an API, airplane mode is the
   `setAirplaneMode` command); and the npm package `maestro` is an AWS tool, not Maestro, which
-  installs with `curl -Ls https://get.maestro.mobile.dev | bash`. Read a failed run from the job
+  installs with `scripts/install-maestro.sh`, pinned to a version and its SHA-256 so an upstream
+  release cannot change the flows without a commit. Read a failed run from the job
   log, where `scripts/ci-maestro-output.sh` prints every screen hierarchy, before touching a
   selector.
 - **A required check that never triggers blocks the merge forever, and the obvious fix is a

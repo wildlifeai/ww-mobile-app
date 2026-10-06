@@ -57,8 +57,9 @@ jobs:
           # it). This file is included so a change to the build logic is
           # exercised by the workflow it changes.
           # `tests/maestro/` is in the list so a flow change runs the flows: the
-          # APK cache below makes that cheap when nothing native moved.
-          if echo "$CHANGED" | grep -qE '^(src/|android/|patches/|package\.json|package-lock\.json|app\.config\.ts|app\.json|eas\.json|babel\.config\.js|metro\.config\.js|tsconfig\.json|tests/maestro/|\.github/workflows/native-build-validation\.yml)'; then
+          # APK cache below makes that cheap when nothing native moved. So are
+          # the scripts the E2E jobs run, so a Maestro bump runs the flows too.
+          if echo "$CHANGED" | grep -qE '^(src/|android/|patches/|package\.json|package-lock\.json|app\.config\.ts|app\.json|eas\.json|babel\.config\.js|metro\.config\.js|tsconfig\.json|tests/maestro/|scripts/(install-maestro|ci-maestro|ci-maestro-output|maestro-offline)\.sh|\.github/workflows/native-build-validation\.yml)'; then
             echo "native=true" >> "$GITHUB_OUTPUT"
             echo "=> native build required"
           else
@@ -236,7 +237,7 @@ jobs:
       - name: Install Maestro
         if: needs.changes.outputs.native == 'true'
         run: |
-          curl -Ls "https://get.maestro.mobile.dev" | bash
+          bash scripts/install-maestro.sh  # pinned and checksum-verified
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
 
       # Both CI profiles are release-type and install as the release package;
@@ -320,7 +321,7 @@ jobs:
 
       - name: Install Maestro
         run: |
-          curl -Ls "https://get.maestro.mobile.dev" | bash
+          bash scripts/install-maestro.sh  # pinned and checksum-verified
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
 
       # The flows take APP_ID from the run (#376) and the account from the two

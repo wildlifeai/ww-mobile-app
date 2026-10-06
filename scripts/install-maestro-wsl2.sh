@@ -31,9 +31,9 @@ fi
 echo "📋 Verifying Java installation..."
 java -version
 
-# Step 2: Install Maestro using official installation script
+# Step 2: Install the Maestro version CI pins, checksum-verified
 echo "🚀 Installing Maestro CLI..."
-curl -Ls "https://get.maestro.mobile.dev" | bash
+bash "$(dirname "$0")/install-maestro.sh"
 
 # Step 3: Add to PATH (the script should handle this, but let's be explicit)
 echo "🔧 Setting up PATH..."
