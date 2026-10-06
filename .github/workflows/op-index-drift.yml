@@ -34,7 +34,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Compare OP_PARAMETER against Seeed dev OP_PARAMETERS_E
         run: node scripts/check-op-indices.js
