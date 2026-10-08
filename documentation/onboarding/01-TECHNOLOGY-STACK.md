@@ -201,7 +201,7 @@ const client = getSupabaseClient()  // Throws if not initialized
 
 **Service:** [SupabaseSyncService.ts](../../src/services/SupabaseSyncService.ts)
 
-Bidirectional sync between WatermelonDB and Supabase. Sync is debounced (2s) and tracks per-entity status via `syncSlice` in Redux.
+Bidirectional sync between WatermelonDB and Supabase, tracking per-entity status via `syncSlice` in Redux. Most local writes ask for a sync 2 s later; starting or ending a deployment asks at once, and a sync asked for while one runs follows it (see [When the outbox is pushed](./03-DATA-AND-SYNC.md#when-the-outbox-is-pushed)).
 
 > For the full sync flow diagrams, push/pull logic, retry behaviour, and conflict resolution, see [03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md#supabasesynservice).
 

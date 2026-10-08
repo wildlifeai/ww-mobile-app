@@ -79,6 +79,8 @@ const describeOutcome = (tableName: string, outcome: PushOutcome): string => {
 class SupabaseSyncService {
     private realtimeChannel: RealtimeChannel | null = null
     private isSyncing = false
+    /** A sync was asked for while one was running, see sync() */
+    private syncAgain = false
     private syncDebounceTimer: NodeJS.Timeout | null = null
     private readonly SYNC_DEBOUNCE_MS = 2000 // 2 seconds
     private store: any = null
@@ -122,6 +124,10 @@ class SupabaseSyncService {
             await SyncStateService.set(SYNC_STATE_KEYS.SYNC_IN_PROGRESS, 'false')
         })
         log('✅ Sync state reset complete')
+
+        // A run killed mid-sync leaves the flag behind, and the sign-in sync
+        // can read it before this clears it
+        this.syncAgainIfAsked()
     }
 
     /**
@@ -146,13 +152,34 @@ class SupabaseSyncService {
     }
 
     /**
+     * Start a sync and do not wait for it, for a change the website should
+     * see while the app is still open, such as a deployment started or ended
+     * on the phone. Never throws: sync() logs its own failures. Offline it
+     * does nothing, and the reconnect sync uploads the change later.
+     */
+    requestSync() {
+        this.sync().catch(() => {})
+    }
+
+    /** Run the sync asked for while the last one ran */
+    private syncAgainIfAsked() {
+        if (!this.syncAgain) return
+        this.syncAgain = false
+        log('🔁 A sync was asked for while the last one ran, syncing again')
+        this.requestSync()
+    }
+
+    /**
      * Immediate sync - bypasses debouncing
      */
     async sync() {
         // Check if sync already in progress (via SyncStateService)
         const inProgress = await SyncStateService.isSyncInProgress()
         if (inProgress || this.isSyncing) {
-            // log('⏳ Sync already in progress, skipping.')
+            // The running sync may have read the outbox before the caller's
+            // change was queued, so it syncs once more when it ends: one more,
+            // however many ask meanwhile
+            this.syncAgain = true
             return
         }
 
@@ -336,6 +363,8 @@ class SupabaseSyncService {
                     logWarn('⚠️ [SupabaseSyncService] Failed to dispatch sync end:', e)
                 }
             }
+
+            this.syncAgainIfAsked()
         }
     }
 

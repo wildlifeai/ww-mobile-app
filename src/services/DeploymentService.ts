@@ -223,8 +223,10 @@ export const DeploymentService = {
             logWarn('[DeploymentService] Failed to ensure device is queued for sync:', e)
         }
 
-        // Trigger background sync
-        SupabaseSyncService.debouncedSync()
+        // Send it now rather than after the 2 s debounce. The camera is given
+        // this id next and stamps every photo with it, and the operator may
+        // quit the app on the live view before anything else syncs
+        SupabaseSyncService.requestSync()
 
         return newDeployment
     },
@@ -239,7 +241,7 @@ export const DeploymentService = {
     ): Promise<Deployment> => {
         log('[DeploymentService] Ending deployment:', deploymentId)
 
-        return await database.write(async () => {
+        const ended = await database.write(async () => {
             const deploymentsCollection = database.get<Deployment>('deployments')
             const deployment = await deploymentsCollection.find(deploymentId)
 
@@ -264,11 +266,13 @@ export const DeploymentService = {
             // 3. Execute batch
             await database.batch(updateOp, outboxOp)
 
-            // Trigger background sync
-            SupabaseSyncService.debouncedSync()
-
             return deployment
         })
+
+        // The end, as soon as it is written, as for createDeployment
+        SupabaseSyncService.requestSync()
+
+        return ended
     },
 
     /**

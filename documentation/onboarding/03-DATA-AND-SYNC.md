@@ -237,7 +237,10 @@ if (user.role === 'admin') {
 
 ```typescript
 async sync(): Promise<void> {
-  if (this.isSyncing) return
+  if (this.isSyncing) {
+    this.syncAgain = true             // one more when this one ends
+    return
+  }
   this.isSyncing = true
 
   try {
@@ -252,11 +255,33 @@ async sync(): Promise<void> {
     await SyncStateService.set(SYNC_STATE_KEYS.LAST_SYNC_ERROR, error.message)
   } finally {
     this.isSyncing = false
+    this.syncAgainIfAsked()
   }
 }
 ```
 
-Sync is debounced (2s) and tracks per-entity status via `syncSlice` in Redux. See the full sync method table in [01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md#sync-architecture).
+Sync tracks per-entity status via `syncSlice` in Redux. See the full sync method table in [01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md#sync-architecture).
+
+### When the outbox is pushed
+
+Nothing pushes on a timer. A sync runs when:
+
+- the app starts with a signed-in user, or someone signs in (`AppSetupProvider`);
+- the connection comes back and stays for 3 s (`connectivityWatch.ts`, `reconnectSync.ts`);
+- a deployment is started or ended on the phone, at once: `DeploymentService.createDeployment`
+  and `endDeployment` call `SupabaseSyncService.requestSync()`, so Start Monitoring, the Dev
+  Deployment Test, End Deployment and Stop Monitoring all send it while the app is open;
+- 2 s after a project is made or edited, a site photo is uploaded, or a realtime change arrives
+  from the server (`debouncedSync()`);
+- the Projects list is pulled to refresh, the organisation is switched, or an invitation is
+  accepted.
+
+A sync asked for while one is running is not dropped (8 October 2026). The running one read the
+outbox before the new change was queued, so it syncs once more when it ends: one more, however
+many asked. Before, a deployment started during a sync waited for the next trigger while its
+camera stamped photos with an id the website did not have. A sync turned away by the in-progress
+flag a killed run left behind runs once `resetSyncState` clears the flag at start-up. Offline, a
+request does nothing, and the reconnect sync uploads the change.
 
 A push that does not complete no longer skips the pull (#287). The pulls run, the initial sync
 is marked complete, and only then is the push error thrown, so one refused change cannot stop
