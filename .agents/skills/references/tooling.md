@@ -94,6 +94,11 @@ shell boundary, and none of them reproduced in a Linux container.
   out on a real `requestAnimationFrame` and fires after teardown. The tests pass, but the line
   is noise. Unmount in the test's own `afterEach` (`screen.unmount()`, then
   `jest.runOnlyPendingTimers()`), as `GoogleSignIn.integration.test.tsx` does (1 October 2026).
+- **A render test's first render can take longer than the 15 s test limit.** React Native loads
+  its components lazily, so the first render in a test file pays for loading them: 16 s for
+  `SideNavigation` on a cold run, 0.2 s for the next test (#416, 8 October 2026). Render once in
+  a `beforeAll` with its own limit and unmount, as `SideNavigation.signOut.test.tsx` does, rather
+  than raising the test timeout.
 - **The coverage floor is a ratchet, not a target.** `quality-gate-validation` fails below
   20% statements, set just under the 21.29% measured on 21 September 2026. Until then the
   awk checked `< 10` while the message claimed 70. Raise the floor by hand when coverage
