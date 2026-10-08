@@ -1,4 +1,5 @@
 CREATE TABLE media_embeddings (
+  -- Columns stay in the order the migrations created them; add new ones at the end (#220, MIGRATIONS.md).
   media_id uuid PRIMARY KEY,
   created_at timestamptz DEFAULT (now()),
   updated_at timestamptz DEFAULT (now()),
@@ -8,12 +9,6 @@ CREATE TABLE media_embeddings (
 
   -- Linkage to the run that produced these values (current run; history in embedding_runs).
   embedding_run_id uuid REFERENCES embedding_runs (id) ON DELETE SET NULL,
-
-  -- DINOv3 vector (pgvector). Unbounded dim so one column holds both variants
-  -- (384-d dinov3-vits / 1280-d dinov3-vith); reads filter by embedding_model so
-  -- compared vectors share a dim. Replaces the former Qdrant point.
-  embedding extensions.vector,
-  embedding_model text CHECK (embedding_model IS NULL OR embedding_model IN ('dinov3-vith', 'dinov3-vits')),
 
   qdrant_point_id uuid, -- DEPRECATED: vectors now live in `embedding`; retained transitionally
 
@@ -30,6 +25,12 @@ CREATE TABLE media_embeddings (
   -- Active learning (Phase 8).
   active_learning_score float4 CHECK (active_learning_score IS NULL OR (active_learning_score >= 0 AND active_learning_score <= 1)),
   al_score_updated_at timestamptz,
+
+  -- DINOv3 vector (pgvector). Unbounded dim so one column holds both variants
+  -- (384-d dinov3-vits / 1280-d dinov3-vith); reads filter by embedding_model so
+  -- compared vectors share a dim. Replaces the former Qdrant point.
+  embedding extensions.vector,
+  embedding_model text CHECK (embedding_model IS NULL OR embedding_model IN ('dinov3-vith', 'dinov3-vits')),
 
   -- UMAP is a 2D point: both coords are set together or both NULL.
   CONSTRAINT chk_umap_coords_complete CHECK (

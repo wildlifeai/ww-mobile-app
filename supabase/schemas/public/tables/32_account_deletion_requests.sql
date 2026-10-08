@@ -29,4 +29,6 @@ COMMENT ON COLUMN account_deletion_requests.notes IS 'Admin notes about the dele
 
 ALTER TABLE account_deletion_requests ENABLE ROW LEVEL SECURITY;
 
-
+-- Written by the request-account-deletion Edge Function with the service role. Stated
+-- explicitly rather than left to default privileges, which production lacked (#247).
+GRANT ALL ON public.account_deletion_requests TO service_role;

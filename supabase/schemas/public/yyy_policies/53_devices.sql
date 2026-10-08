@@ -7,27 +7,11 @@ CREATE POLICY "Project members can view active devices"
   FOR SELECT
   TO authenticated
   USING (
-    EXISTS (
-      SELECT 1
-      FROM deployments AS d
-      INNER JOIN user_roles AS ur ON ur.scope_type = 'project' AND d.project_id = ur.scope_id
-      WHERE d.device_id = devices.id
-        AND d.deleted_at IS NULL
-        AND ur.user_id = auth.uid()
-        AND ur.is_active = TRUE
-        AND ur.deleted_at IS NULL
-    )
-    OR
-    -- Organisation members can view devices in their organisation
-    EXISTS (
-      SELECT 1
-      FROM user_roles AS ur
-      WHERE ur.scope_type = 'organisation'
-        AND ur.scope_id = devices.organisation_id
-        AND ur.user_id = auth.uid()
-        AND ur.is_active = TRUE
-        AND ur.deleted_at IS NULL
-    )
+    -- Soft-deleted rows are invisible to clients (#160); pull_changes learns of
+    -- deletions through sync_deleted_ids. The read rule is can_read_device, shared
+    -- with that helper.
+    devices.deleted_at IS NULL
+    AND can_read_device(devices.id, devices.organisation_id)
   );
 
 -- INSERT: Organisation members and admins can register a device
@@ -84,18 +68,9 @@ CREATE POLICY "Organisation managers can update devices"
     )
   );
 
--- UPDATE: Organisation managers and admins can soft-delete devices
-CREATE POLICY "Organisation managers can soft-delete devices"
-  ON devices
-  FOR UPDATE
-  TO authenticated
-  USING (
-    has_system_role((SELECT auth.uid()), 'ww_admin')
-    OR has_organisation_role((SELECT auth.uid()), devices.organisation_id, 'organisation_manager')
-  )
-  WITH CHECK (
-    deleted_at IS NOT NULL
-  );
+-- Soft deletes go through soft_delete_device (SECURITY DEFINER), not an UPDATE policy:
+-- the SELECT policy hides soft-deleted rows, and Postgres checks an UPDATE's new row
+-- against it, so no client UPDATE that sets deleted_at can pass (#160).
 
 COMMENT ON POLICY "Project members can view active devices" ON devices
 IS 'Uses user_roles and deployments for project/organisation association';

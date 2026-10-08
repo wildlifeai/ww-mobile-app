@@ -35,6 +35,14 @@ BEGIN
     RAISE EXCEPTION 'Parameter p_updated_by cannot be null' USING ERRCODE = '22004';
   END IF;
 
+  -- The updater is the caller. p_updated_by is an argument the caller chooses,
+  -- so authorising it as supplied let anyone change roles with a real admin's
+  -- authority by passing that admin's id (test 21). A service-role call has no
+  -- auth.uid() and is refused too; nothing server-side calls this function.
+  IF p_updated_by IS DISTINCT FROM (SELECT auth.uid()) THEN
+    RAISE EXCEPTION 'Unauthorized: p_updated_by must be the calling user' USING ERRCODE = '42501';
+  END IF;
+
   -- Security check: Only project admins can change roles
   IF NOT public.has_project_role(p_updated_by, p_project_id, 'project_admin') THEN
     RAISE EXCEPTION 'Unauthorized: Only project admins can change roles' USING ERRCODE = '42501';

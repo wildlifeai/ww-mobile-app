@@ -1,3 +1,14 @@
+-- Error contract for the invitation RPCs (clients map on SQLSTATE; keep the
+-- messages too, ww-website also matches them):
+--   42501  the caller is not a project admin (send, list, cancel)
+--   22023  the email is not an email address
+--   23505  already a member of the project, or already invited and pending
+--          (the unique index raises the second one)
+--   P0002  no such pending, unexpired invitation for this caller (respond, cancel)
+--
+-- Emails are compared with lower() on both sides. Auth stores them lowercased,
+-- so an invitation to Kiri@Example.org has to reach kiri@example.org.
+
 -- RPC: Send invitation (no email sent - handled by app notification system)
 CREATE OR REPLACE FUNCTION public.send_project_invitation(
   p_project_id UUID,
@@ -12,16 +23,36 @@ AS $$
 DECLARE
   v_invitation_id UUID;
   v_inviter_id UUID;
+  v_email TEXT;
 BEGIN
   -- Get current user ID
   v_inviter_id := auth.uid();
-  
+
   -- Verify user is project admin
   IF NOT public.has_project_role(v_inviter_id, p_project_id, 'project_admin') THEN
-    RAISE EXCEPTION 'Only project admins can send invitations';
+    RAISE EXCEPTION 'Only project admins can send invitations' USING ERRCODE = '42501';
   END IF;
-  
-  
+
+  v_email := pg_catalog.lower(pg_catalog.btrim(COALESCE(p_invitee_email, '')));
+  IF v_email !~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' THEN
+    RAISE EXCEPTION 'Invalid email address' USING ERRCODE = '22023';
+  END IF;
+
+  -- The invitation would be accepted into a role the account already holds,
+  -- and ON CONFLICT DO NOTHING would swallow it without telling anyone.
+  IF EXISTS (
+    SELECT 1
+    FROM auth.users u
+    JOIN public.user_roles ur ON ur.user_id = u.id
+    WHERE pg_catalog.lower(u.email) = v_email
+      AND ur.scope_type = 'project'
+      AND ur.scope_id = p_project_id
+      AND ur.is_active = true
+      AND ur.deleted_at IS NULL
+  ) THEN
+    RAISE EXCEPTION 'Already a member of this project' USING ERRCODE = '23505';
+  END IF;
+
   -- Create invitation
   INSERT INTO public.project_invitations (
     project_id,
@@ -32,11 +63,11 @@ BEGIN
   VALUES (
     p_project_id,
     v_inviter_id,
-    p_invitee_email,
+    v_email,
     p_role
   )
   RETURNING id INTO v_invitation_id;
-  
+
   RETURN v_invitation_id;
 END;
 $$;
@@ -71,12 +102,12 @@ BEGIN
   SELECT * INTO v_invitation
   FROM public.project_invitations
   WHERE id = p_invitation_id
-    AND invitee_email = v_user_email
+    AND pg_catalog.lower(invitee_email) = pg_catalog.lower(v_user_email)
     AND status = 'pending'
     AND expires_at > NOW();
-    
+
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'Invitation not found or expired';
+    RAISE EXCEPTION 'Invitation not found or expired' USING ERRCODE = 'P0002';
   END IF;
   
   IF p_accept THEN
@@ -113,7 +144,7 @@ BEGIN
         v_invitation.inviter_id,
         v_user_id
       )
-      ON CONFLICT (user_id, role, scope_type, (COALESCE(scope_id, '00000000-0000-0000-0000-000000000000'::uuid))) 
+      ON CONFLICT (user_id, scope_type, COALESCE(scope_id, '00000000-0000-0000-0000-000000000000'::uuid)) 
       WHERE deleted_at IS NULL AND is_active = true
       DO NOTHING;
     END IF;
@@ -171,7 +202,7 @@ BEGIN
   JOIN public.projects p ON p.id = pi.project_id
   JOIN auth.users u ON u.id = pi.inviter_id
   LEFT JOIN public.users up ON up.id = pi.inviter_id
-  WHERE pi.invitee_email = v_user_email
+  WHERE pg_catalog.lower(pi.invitee_email) = pg_catalog.lower(v_user_email)
     AND pi.status = 'pending'
     AND pi.expires_at > NOW()
   ORDER BY pi.created_at DESC;
@@ -197,7 +228,7 @@ AS $$
 BEGIN
   -- Verify requester is project admin
   IF NOT public.has_project_role(auth.uid(), p_project_id, 'project_admin') THEN
-    RAISE EXCEPTION 'Only project admins can view invitations';
+    RAISE EXCEPTION 'Only project admins can view invitations' USING ERRCODE = '42501';
   END IF;
 
   RETURN QUERY
@@ -215,6 +246,39 @@ BEGIN
     AND pi.status = 'pending'
     AND pi.expires_at > NOW()
   ORDER BY pi.created_at DESC;
+END;
+$$;
+
+-- RPC: Cancel a pending invitation (project admins of its project)
+CREATE OR REPLACE FUNCTION public.cancel_project_invitation(p_invitation_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_project_id UUID;
+BEGIN
+  SELECT project_id INTO v_project_id
+  FROM public.project_invitations
+  WHERE id = p_invitation_id;
+
+  -- Checked before the status, so a non-admin learns nothing about the row.
+  IF v_project_id IS NULL
+     OR NOT public.has_project_role(auth.uid(), v_project_id, 'project_admin') THEN
+    RAISE EXCEPTION 'Only project admins can cancel invitations' USING ERRCODE = '42501';
+  END IF;
+
+  UPDATE public.project_invitations
+  SET status = 'cancelled',
+      responded_at = NOW()
+  WHERE id = p_invitation_id
+    AND status = 'pending'
+    AND expires_at > NOW();
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Invitation not found or expired' USING ERRCODE = 'P0002';
+  END IF;
 END;
 $$;
 

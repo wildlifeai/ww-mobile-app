@@ -53,7 +53,7 @@ COMMENT ON TABLE device_alert_rules IS
     'Complements notification_rules, which govern per-user delivery on the cloud side.';
 COMMENT ON COLUMN device_alert_rules.label IS 'Model output class the rule fires on; must be a target label in the deployed version''s label_map.';
 COMMENT ON COLUMN device_alert_rules.mode IS 'instant = uplink per qualifying detection (rate-limited); digest = one daily summary; backoff = immediate first alert then progressive suppression.';
-COMMENT ON COLUMN device_alert_rules.threshold_pct IS 'Minimum confidence (percent) for a detection to qualify. Converted to device logit units at manifest compile time using the model''s output quantization.';
+COMMENT ON COLUMN device_alert_rules.threshold_pct IS 'Minimum confidence (percent) for a detection to qualify. Nothing reads it yet: the website manifest job that is to compile these rules for the device is specified (ww-website lorawan-alert-execution-spec.md) but not built. The camera cannot act below 50 percent; convert as projects.detection_threshold_pct does, op = ceil(pct * 2.56) - 128.';
 COMMENT ON COLUMN device_alert_rules.digest_send_utc IS 'digest mode only: UTC hour (0-23) at which the daily digest uplink is sent.';
 COMMENT ON COLUMN device_alert_rules.backoff_steps_min IS 'backoff mode only: minutes of suppression after each successive alert while the target remains present.';
 COMMENT ON COLUMN device_alert_rules.clear_window_min IS 'backoff mode only: minutes without a qualifying detection before the sequence resets (next detection alerts instantly again).';

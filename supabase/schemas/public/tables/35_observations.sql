@@ -1,34 +1,70 @@
 CREATE TABLE observations (
+  -- Columns stay in the order the migrations created them; add new ones at the end (#220, MIGRATIONS.md).
   id uuid PRIMARY KEY NOT NULL DEFAULT (gen_random_uuid()),
   created_at timestamptz DEFAULT (now()),
   updated_at timestamptz DEFAULT (now()),
   deleted_at timestamptz,
-
-  -- Deployment, media, and event links
   deployment_id uuid NOT NULL REFERENCES deployments (id) ON DELETE CASCADE,
   media_id uuid,
+  -- CamtrapDP observationLevel and observationType discriminators
+  observation_level text CHECK (observation_level IS NULL OR (observation_level IN ('media', 'event'))),
+  observation_type text CHECK (observation_type IS NULL OR (observation_type IN ('animal', 'human', 'vehicle', 'blank', 'unknown'))),
+  scientific_name text, -- Denormalised for direct CamtrapDP compatibility
+  count int CHECK (count IS NULL OR count >= 0),
+  life_stage text CHECK (life_stage IS NULL OR (life_stage IN ('adult', 'subadult', 'juvenile', 'hatchling', 'unknown'))),
+  sex text CHECK (sex IS NULL OR (sex IN ('male', 'female', 'unknown'))),
+  behavior text,
+  individual_id text,
+  classification_method text CHECK (classification_method IS NULL OR (classification_method IN ('human', 'machine'))),
+  classified_by text,
+  classification_timestamp timestamptz,
+  classification_probability float4 CHECK (
+    classification_probability IS NULL
+    OR (classification_probability >= 0 AND classification_probability <= 1)
+  ),
+  observation_tags text [],
+  observation_comments text,
+  annotator_id uuid REFERENCES users (id) ON DELETE SET NULL,
+  -- Bounding box, normalised 0 to 1 (observation_level = 'media' only)
+  bbox_h float4 CHECK (bbox_h IS NULL OR (bbox_h >= 0 AND bbox_h <= 1)),
+  bbox_w float4 CHECK (bbox_w IS NULL OR (bbox_w >= 0 AND bbox_w <= 1)),
+  bbox_x float4 CHECK (bbox_x IS NULL OR (bbox_x >= 0 AND bbox_x <= 1)),
+  bbox_y float4 CHECK (bbox_y IS NULL OR (bbox_y >= 0 AND bbox_y <= 1)),
+  classifier_category text, -- 'animal' | 'person' | 'vehicle' | 'blank'
+  confidence float4 CHECK (
+    confidence IS NULL
+    OR (confidence >= 0 AND confidence <= 1)
+  ),
   observation_event_id uuid,
+  review_status text NOT NULL DEFAULT 'unreviewed' CHECK (
+    review_status IN ('unreviewed', 'ai_reviewed', 'human_reviewed', 'expert_reviewed', 'consensus_approved')
+  ),
+  reviewer_id uuid REFERENCES users (id) ON DELETE SET NULL,
+  source_model_id uuid REFERENCES ai_models (id) ON DELETE SET NULL,
+  source_model_version text,
+  -- Provenance (traceable lineage)
+  source_type text CHECK (source_type IS NULL OR (source_type IN ('ai', 'human', 'imported', 'consensus'))),
+  taxon_id uuid REFERENCES taxa (id) ON DELETE SET NULL,
+  vernacular_name text,
+  -- Embedding provenance (Wildlife Brain): links a label back to the run and
+  -- cluster that proposed it.
+  cluster_id int, -- HDBSCAN label this observation was confirmed from (NULL for non-cluster labels)
+  embedding_run_id uuid REFERENCES embedding_runs (id) ON DELETE SET NULL,
+  -- Per-observation rendition: this detection's bbox cropped from the frame
+  -- (Supabase Storage, media-renditions bucket). Complements the single hero
+  -- crop on media_assets.animal_crop_url so multi-animal frames get one crop per
+  -- box. NULL for whole-image/blank observations or until the crop pipeline runs.
+  crop_url text,
+  -- For source_type='ai': which AI layer produced the row. 'edge' = the camera's
+  -- on-device model (ingested from EXIF UserComment); 'cloud' = the website
+  -- pipeline (SpeciesNet/BioCLIP). NULL for human/imported/consensus rows.
+  ai_origin text CHECK (ai_origin IS NULL OR (ai_origin IN ('edge', 'cloud'))),
   CONSTRAINT fk_observations_media
     FOREIGN KEY (media_id, deployment_id)
     REFERENCES media (id, deployment_id) ON DELETE SET NULL,
   CONSTRAINT fk_observations_event
     FOREIGN KEY (observation_event_id, deployment_id)
     REFERENCES observation_events (id, deployment_id) ON DELETE SET NULL,
-
-  -- CamtrapDP observationLevel and observationType discriminators
-  observation_level text CHECK (observation_level IS NULL OR (observation_level IN ('media', 'event'))),
-  observation_type text CHECK (observation_type IS NULL OR (observation_type IN ('animal', 'human', 'vehicle', 'blank', 'unknown'))),
-
-  -- Taxonomy references
-  taxon_id uuid REFERENCES taxa (id) ON DELETE SET NULL,
-  scientific_name text, -- Denormalised for direct CamtrapDP compatibility
-  vernacular_name text,
-
-  -- Bounding Box geometry (observation_level = 'media' only)
-  bbox_x float4 CHECK (bbox_x IS NULL OR (bbox_x >= 0 AND bbox_x <= 1)),
-  bbox_y float4 CHECK (bbox_y IS NULL OR (bbox_y >= 0 AND bbox_y <= 1)),
-  bbox_w float4 CHECK (bbox_w IS NULL OR (bbox_w >= 0 AND bbox_w <= 1)),
-  bbox_h float4 CHECK (bbox_h IS NULL OR (bbox_h >= 0 AND bbox_h <= 1)),
   CONSTRAINT chk_bbox_complete CHECK (
     (bbox_x IS NULL AND bbox_y IS NULL AND bbox_w IS NULL AND bbox_h IS NULL)
     OR (bbox_x IS NOT NULL AND bbox_y IS NOT NULL AND bbox_w IS NOT NULL AND bbox_h IS NOT NULL)
@@ -37,57 +73,8 @@ CREATE TABLE observations (
     (bbox_x IS NULL AND bbox_y IS NULL AND bbox_w IS NULL AND bbox_h IS NULL)
     OR (observation_level IS NOT DISTINCT FROM 'media')
   ),
-  classifier_category text, -- 'animal' | 'person' | 'vehicle' | 'blank'
-
-  -- Per-observation rendition: this detection's bbox cropped from the frame
-  -- (Supabase Storage, media-renditions bucket). Complements the single hero
-  -- crop on media_assets.animal_crop_url so multi-animal frames get one crop per
-  -- box. NULL for whole-image/blank observations or until the crop pipeline runs.
-  crop_url text,
-
-  -- Count and physical metrics
-  count int CHECK (count IS NULL OR count >= 0),
-  life_stage text CHECK (life_stage IS NULL OR (life_stage IN ('adult', 'subadult', 'juvenile', 'hatchling', 'unknown'))),
-  sex text CHECK (sex IS NULL OR (sex IN ('male', 'female', 'unknown'))),
-  behavior text,
-  individual_id text,
-
-  -- Provenance (traceable lineage)
-  source_type text CHECK (source_type IS NULL OR (source_type IN ('ai', 'human', 'imported', 'consensus'))),
-  -- For source_type='ai': which AI layer produced the row. 'edge' = the camera's
-  -- on-device model (ingested from EXIF UserComment); 'cloud' = the website
-  -- pipeline (SpeciesNet/BioCLIP). NULL for human/imported/consensus rows.
-  ai_origin text CHECK (ai_origin IS NULL OR (ai_origin IN ('edge', 'cloud'))),
-  source_model_id uuid REFERENCES ai_models (id) ON DELETE SET NULL,
-  source_model_version text,
-  annotator_id uuid REFERENCES users (id) ON DELETE SET NULL,
-  reviewer_id uuid REFERENCES users (id) ON DELETE SET NULL,
-  review_status text NOT NULL DEFAULT 'unreviewed' CHECK (
-    review_status IN ('unreviewed', 'ai_reviewed', 'human_reviewed', 'expert_reviewed', 'consensus_approved')
-  ),
-
-  -- Confidence metrics
-  confidence float4 CHECK (
-    confidence IS NULL
-    OR (confidence >= 0 AND confidence <= 1)
-  ),
-  classification_method text CHECK (classification_method IS NULL OR (classification_method IN ('human', 'machine'))),
-  classified_by text,
-  classification_timestamp timestamptz,
-  classification_probability float4 CHECK (
-    classification_probability IS NULL
-    OR (classification_probability >= 0 AND classification_probability <= 1)
-  ),
-
-  -- Embedding provenance (Wildlife Brain — links a label back to the run/cluster that proposed it)
-  embedding_run_id uuid REFERENCES embedding_runs (id) ON DELETE SET NULL,
-  cluster_id int, -- HDBSCAN label this observation was confirmed from (NULL for non-cluster labels)
   -- A cluster-derived label must record which run it came from (traceable provenance).
-  CONSTRAINT chk_obs_cluster_provenance CHECK (cluster_id IS NULL OR embedding_run_id IS NOT NULL),
-
-  -- Extra metadata
-  observation_tags text [],
-  observation_comments text
+  CONSTRAINT chk_obs_cluster_provenance CHECK (cluster_id IS NULL OR embedding_run_id IS NOT NULL)
 );
 
 -- Indexes

@@ -33,15 +33,28 @@ BEGIN
       USING ERRCODE = '28000';  -- Invalid authorization specification
   END IF;
 
-  -- Security check: Only system admins or organisation members can view org users
-  -- Note: The actual permission to add members to projects is checked in add_project_member RPC
-  -- This function just returns the user pool for selection
+  -- General is refused outright. handle_new_user enrols every account in it, so
+  -- listing General lists the whole platform, emails included, and there is no
+  -- team to build from it. This used to be reachable by any account at all,
+  -- since every account is an organisation_member of General (test 22).
+  IF EXISTS (
+    SELECT 1 FROM public.organisations o
+    WHERE o.id = p_organisation_id AND o.slug = 'general'
+  ) THEN
+    RAISE EXCEPTION 'Unauthorized: the General organisation contains every account and cannot be listed'
+      USING ERRCODE = '42501';
+  END IF;
+
+  -- Security check: only an organisation manager of this organisation, or a
+  -- system admin, may see its people and their emails. Ordinary members could,
+  -- before; that is what made General a full email list. This is the rule the
+  -- COMMENT below always described. The actual permission to add members to
+  -- projects is still checked in add_project_member.
   IF NOT (
     public.has_system_role(check_user_id, 'ww_admin'::text) OR
-    public.has_organisation_role(check_user_id, p_organisation_id, 'organisation_member'::text) OR
     public.has_organisation_role(check_user_id, p_organisation_id, 'organisation_manager'::text)
   ) THEN
-    RAISE EXCEPTION 'Unauthorized: Only organisation members can view organisation users'
+    RAISE EXCEPTION 'Unauthorized: Only organisation managers can view organisation users'
       USING ERRCODE = '42501';  -- Insufficient privilege
   END IF;
 
