@@ -3,9 +3,10 @@
 # insecure randomness. GitGuardian scans for secrets and React Doctor for
 # React patterns; this is the third leg (#392).
 #
-# Advisory: findings go to the Security tab as code scanning alerts and the
-# job passes whatever it finds. Make it a required check once the first
-# runs have been read and the alerts that matter are fixed or dismissed.
+# Findings go to the Security tab as code scanning alerts. This job passes
+# whatever it finds; the separate `CodeQL` check that code scanning adds to a
+# pull request fails when the PR brings a new alert at or above the
+# repository's failure threshold, so that is the check to require.
 name: CodeQL
 
 on:
@@ -36,9 +37,11 @@ jobs:
       - uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
-          # Generated or vendored code, and the SQL mirror, would only add noise.
+          # Generated or vendored code, the SQL mirror, and archive/ (old tools
+          # that are not run, also skipped by ESLint) would only add noise.
           config: |
             paths-ignore:
+              - archive
               - android
               - supabase
               - patches
