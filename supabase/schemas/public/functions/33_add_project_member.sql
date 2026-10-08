@@ -32,6 +32,20 @@ DECLARE
   v_result JSONB;
 BEGIN
   -- =============================================================================
+  -- VALIDATION 0: The granter is the caller
+  -- =============================================================================
+  -- p_granted_by is an argument, so the caller chooses it. Authorising it as
+  -- supplied let any signed-in user act with a real admin's authority simply by
+  -- passing that admin's id: an organisation member could grant themselves
+  -- project_admin (test 21). It must be the session's own user. A service-role
+  -- call has no auth.uid() and is refused as well; nothing server-side calls
+  -- this function, so there is no caller to carve an exception out for.
+  IF p_granted_by IS DISTINCT FROM (SELECT auth.uid()) THEN
+    RAISE EXCEPTION 'Unauthorized: p_granted_by must be the calling user'
+      USING ERRCODE = '42501';
+  END IF;
+
+  -- =============================================================================
   -- VALIDATION 1: Authorization Check
   -- =============================================================================
   -- Only project admins can add members to their projects

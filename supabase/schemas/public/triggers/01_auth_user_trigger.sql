@@ -11,15 +11,27 @@ DECLARE
   v_surname text;
   v_name text;
 BEGIN
-  -- Extract name from metadata or email
-  v_name := COALESCE(NEW.raw_user_meta_data->>'name', NEW.email);
+  -- Google sign-in (#159) sends given_name and family_name; use them when present,
+  -- so a two-word first name is not split. The apps' email sign-up sends `name`,
+  -- and Google also sends `name` and `full_name`, so those follow.
+  v_name := COALESCE(
+    NULLIF(NEW.raw_user_meta_data->>'name', ''),
+    NULLIF(NEW.raw_user_meta_data->>'full_name', ''),
+    NEW.email
+  );
 
-  -- Split name into firstname and surname
+  -- Otherwise split the name into firstname and surname
   -- If name contains space, split on first space
   -- Otherwise, use full name as firstname and email domain as surname
   -- position()/substring(... from ...) are SQL-syntax constructs (not search_path
   -- resolved); split_part is a catalog function so qualify it for search_path=''.
-  IF position(' ' IN v_name) > 0 THEN
+  IF NULLIF(NEW.raw_user_meta_data->>'given_name', '') IS NOT NULL THEN
+    v_firstname := NEW.raw_user_meta_data->>'given_name';
+    v_surname := COALESCE(
+      NULLIF(NEW.raw_user_meta_data->>'family_name', ''),
+      pg_catalog.split_part(NEW.email, '@', 1)
+    );
+  ELSIF position(' ' IN v_name) > 0 THEN
     v_firstname := pg_catalog.split_part(v_name, ' ', 1);
     v_surname := substring(v_name from position(' ' IN v_name) + 1);
   ELSE
@@ -27,55 +39,66 @@ BEGIN
     v_surname := pg_catalog.split_part(NEW.email, '@', 1);
   END IF;
 
-  -- Create public.users entry (email mirrored so public views avoid auth.users)
+  -- firstname and surname are NOT NULL. A sign-up with neither an email nor a name
+  -- (a phone sign-up, if one is ever enabled) would leave both NULL.
+  v_firstname := COALESCE(NULLIF(v_firstname, ''), 'User');
+  v_surname := COALESCE(v_surname, '');
+
+  -- Create public.users entry (email mirrored so public views avoid auth.users).
+  -- Outside the exception block below on purpose: if the profile cannot be written,
+  -- the sign-up must fail, not leave an account with no profile (a catch-all here
+  -- used to log a warning and carry on).
   INSERT INTO public.users (id, firstname, surname, email, modified_by)
   VALUES (NEW.id, v_firstname, v_surname, NEW.email, NEW.id);
 
-  -- MVP2: Auto-assign to General organisation
-  -- Get the General organisation ID (slug = 'general')
-  SELECT id INTO general_org_id
-  FROM public.organisations
-  WHERE slug = 'general'
-  AND deleted_at IS NULL
-  LIMIT 1;
+  -- Enrolment in General is best effort: a failure here is logged, the account and
+  -- its profile stay.
+  BEGIN
+    -- MVP2: Auto-assign to General organisation
+    -- Get the General organisation ID (slug = 'general')
+    SELECT id INTO general_org_id
+    FROM public.organisations
+    WHERE slug = 'general'
+    AND deleted_at IS NULL
+    LIMIT 1;
 
-  -- Only assign if General organisation exists
-  IF general_org_id IS NOT NULL THEN
-    -- Check if user-role association already exists (not deleted)
-    IF NOT EXISTS (
-      SELECT 1 FROM public.user_roles
-      WHERE user_id = NEW.id
-      AND scope_type = 'organisation'
-      AND scope_id = general_org_id
-      AND role = 'organisation_member'
-      AND deleted_at IS NULL
-    ) THEN
-      INSERT INTO public.user_roles (
-        user_id, 
-        role, 
-        scope_type, 
-        scope_id, 
-        granted_by,
-        modified_by,
-        is_active
-      )
-      VALUES (
-        NEW.id, 
-        'organisation_member', 
-        'organisation', 
-        general_org_id, 
-        NEW.id, -- Self-granted via system trigger
-        NEW.id, -- Modified by self (system trigger)
-        true
-      );
+    -- Only assign if General organisation exists
+    IF general_org_id IS NOT NULL THEN
+      -- Any live role in General already counts: one role per scope (#248).
+      IF NOT EXISTS (
+        SELECT 1 FROM public.user_roles
+        WHERE user_id = NEW.id
+        AND scope_type = 'organisation'
+        AND scope_id = general_org_id
+        AND is_active = true
+        AND deleted_at IS NULL
+      ) THEN
+        INSERT INTO public.user_roles (
+          user_id, 
+          role, 
+          scope_type, 
+          scope_id, 
+          granted_by,
+          modified_by,
+          is_active
+        )
+        VALUES (
+          NEW.id, 
+          'organisation_member', 
+          'organisation', 
+          general_org_id, 
+          NEW.id, -- Self-granted via system trigger
+          NEW.id, -- Modified by self (system trigger)
+          true
+        );
+      END IF;
     END IF;
-  END IF;
 
-  RAISE NOTICE 'Auto-assigning user % to General organisation (%)', NEW.id, general_org_id;
-  RETURN NEW;
+    RAISE NOTICE 'Auto-assigning user % to General organisation (%)', NEW.id, general_org_id;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'Failed to auto-assign user % to General organisation: %', NEW.id, SQLERRM;
+  END;
 
-EXCEPTION WHEN OTHERS THEN
-  RAISE WARNING 'Failed to auto-assign user to General organisation: %', SQLERRM;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';

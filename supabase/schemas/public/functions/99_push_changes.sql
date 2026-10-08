@@ -5,6 +5,11 @@
 -- demonstrated by renaming another org's project from an unrelated user's session.
 -- The `deleted` branches were cheaper still, needing only an id.
 --
+-- Since #160 the `deleted` branches call the soft_delete_* functions (SECURITY
+-- DEFINER, with their own permission checks) instead of updating the tables: the
+-- SELECT policies now hide soft-deleted rows, which makes RLS refuse any client
+-- UPDATE that sets deleted_at.
+--
 -- As INVOKER the existing INSERT/UPDATE policies authorise each write, so a row the
 -- caller may not touch simply does not match and is reported in `conflicts` rather
 -- than silently applied. `authenticated` already holds INSERT/UPDATE/DELETE on all
@@ -63,6 +68,8 @@ BEGIN
                 lorawan_required, record_gps_in_images, is_archived,
                 flash_mode, flash_led,
                 flash_window_start_minutes_utc, flash_window_minutes,
+                photos_per_trigger, photo_interval_milliseconds,
+                detection_threshold_pct,
                 created_at, updated_at
             )
             VALUES (
@@ -100,6 +107,9 @@ BEGIN
                 COALESCE(_item->>'flash_led', 'ir'),
                 (_item->>'flash_window_start_minutes_utc')::int,
                 (_item->>'flash_window_minutes')::int,
+                COALESCE((_item->>'photos_per_trigger')::int, 3),
+                COALESCE((_item->>'photo_interval_milliseconds')::int, 1000),
+                COALESCE((_item->>'detection_threshold_pct')::int, 57),
                 (_item->>'created_at')::timestamptz,
                 (_item->>'updated_at')::timestamptz
             )
@@ -125,11 +135,15 @@ BEGIN
             -- older app build wipe a website-set flash value on an unrelated edit.
             -- The `?` operator distinguishes "key absent" (keep the stored value)
             -- from "key present but null" (clear the field), which COALESCE cannot.
+            --
+            -- organisation_id is set on insert only, like created_by (#260). A
+            -- payload's value is ignored rather than applied: the app sends whole
+            -- records, and trg_projects_lock_organisation refuses a change, so
+            -- applying a stale value would fail the push or revert a ww_admin's move.
             UPDATE public.projects
             SET
                 name = CASE WHEN _item ? 'name' THEN _item->>'name' ELSE name END,
                 description = CASE WHEN _item ? 'description' THEN _item->>'description' ELSE description END,
-                organisation_id = CASE WHEN _item ? 'organisation_id' THEN (_item->>'organisation_id')::uuid ELSE organisation_id END,
                 modified_by = CASE WHEN _item ? 'modified_by' THEN (_item->>'modified_by')::uuid ELSE modified_by END,
                 is_active = CASE WHEN _item ? 'is_active' THEN COALESCE((_item->>'is_active')::boolean, true) ELSE is_active END,
                 sampling_design_id = CASE WHEN _item ? 'sampling_design_id' THEN (_item->>'sampling_design_id')::int ELSE sampling_design_id END,
@@ -165,6 +179,12 @@ BEGIN
                 flash_led = CASE WHEN _item ? 'flash_led' THEN COALESCE(_item->>'flash_led', flash_led) ELSE flash_led END,
                 flash_window_start_minutes_utc = CASE WHEN _item ? 'flash_window_start_minutes_utc' THEN COALESCE((_item->>'flash_window_start_minutes_utc')::int, flash_window_start_minutes_utc) ELSE flash_window_start_minutes_utc END,
                 flash_window_minutes = CASE WHEN _item ? 'flash_window_minutes' THEN COALESCE((_item->>'flash_window_minutes')::int, flash_window_minutes) ELSE flash_window_minutes END,
+                -- Burst capture (#218). NOT NULL, so a null keeps the stored value rather
+                -- than failing the whole push.
+                photos_per_trigger = CASE WHEN _item ? 'photos_per_trigger' THEN COALESCE((_item->>'photos_per_trigger')::int, photos_per_trigger) ELSE photos_per_trigger END,
+                photo_interval_milliseconds = CASE WHEN _item ? 'photo_interval_milliseconds' THEN COALESCE((_item->>'photo_interval_milliseconds')::int, photo_interval_milliseconds) ELSE photo_interval_milliseconds END,
+                -- #244, NOT NULL like the burst columns: a null keeps the stored value.
+                detection_threshold_pct = CASE WHEN _item ? 'detection_threshold_pct' THEN COALESCE((_item->>'detection_threshold_pct')::int, detection_threshold_pct) ELSE detection_threshold_pct END,
                 updated_at = CASE WHEN _item ? 'updated_at' THEN (_item->>'updated_at')::timestamptz ELSE updated_at END
             WHERE id = (_item->>'id')::uuid;
             GET DIAGNOSTICS _affected = ROW_COUNT;
@@ -182,10 +202,15 @@ BEGIN
     IF _projects_deleted IS NOT NULL THEN
         FOR _item IN SELECT * FROM pg_catalog.jsonb_array_elements(_projects_deleted)
         LOOP
-            UPDATE public.projects
-            SET deleted_at = pg_catalog.now()
-            WHERE id = (_item#>>'{}'::text[])::uuid;
-            GET DIAGNOSTICS _affected = ROW_COUNT;
+            -- Through soft_delete_project, not an UPDATE: the SELECT policy hides the
+            -- soft-deleted row, so RLS refuses a client UPDATE that sets deleted_at
+            -- (#160). A refusal or unknown id is reported like any write that did not apply.
+            BEGIN
+                PERFORM public.soft_delete_project((_item#>>'{}'::text[])::uuid);
+                _affected := 1;
+            EXCEPTION WHEN insufficient_privilege OR no_data_found THEN
+                _affected := 0;
+            END;
             IF _affected = 0 THEN
                 _conflicts := _conflicts || pg_catalog.jsonb_build_object(
                     'id', COALESCE(_item->>'id', _item#>>'{}'),
@@ -260,10 +285,15 @@ BEGIN
     IF _devices_deleted IS NOT NULL THEN
         FOR _item IN SELECT * FROM pg_catalog.jsonb_array_elements(_devices_deleted)
         LOOP
-            UPDATE public.devices
-            SET deleted_at = pg_catalog.now()
-            WHERE id = (_item#>>'{}'::text[])::uuid;
-            GET DIAGNOSTICS _affected = ROW_COUNT;
+            -- Through soft_delete_device, not an UPDATE: the SELECT policy hides the
+            -- soft-deleted row, so RLS refuses a client UPDATE that sets deleted_at
+            -- (#160). A refusal or unknown id is reported like any write that did not apply.
+            BEGIN
+                PERFORM public.soft_delete_device((_item#>>'{}'::text[])::uuid);
+                _affected := 1;
+            EXCEPTION WHEN insufficient_privilege OR no_data_found THEN
+                _affected := 0;
+            END;
             IF _affected = 0 THEN
                 _conflicts := _conflicts || pg_catalog.jsonb_build_object(
                     'id', COALESCE(_item->>'id', _item#>>'{}'),
@@ -400,9 +430,13 @@ BEGIN
     IF _deployments_updated IS NOT NULL THEN
         FOR _item IN SELECT * FROM pg_catalog.jsonb_array_elements(_deployments_updated)
         LOOP
+            -- project_id and setup_by are set on insert only (#260). The app sends
+            -- the whole record on every update (mapModelToPayload), so a phone that
+            -- has not pulled since a move still carries the old project. Ignoring
+            -- the key keeps the move, and keeps the rest of the edit: applying it
+            -- would make trg_deployments_lock_columns fail the whole push.
             UPDATE public.deployments
             SET
-                project_id = CASE WHEN _item ? 'project_id' THEN (_item->>'project_id')::uuid ELSE project_id END,
                 name = CASE WHEN _item ? 'name' THEN _item->>'name' ELSE name END,
                 deployment_start = CASE WHEN _item ? 'deployment_start' THEN (_item->>'deployment_start')::timestamptz ELSE deployment_start END,
                 deployment_end = CASE WHEN _item ? 'deployment_end' THEN (_item->>'deployment_end')::timestamptz ELSE deployment_end END,
@@ -485,10 +519,15 @@ BEGIN
     IF _deployments_deleted IS NOT NULL THEN
         FOR _item IN SELECT * FROM pg_catalog.jsonb_array_elements(_deployments_deleted)
         LOOP
-            UPDATE public.deployments
-            SET deleted_at = pg_catalog.now()
-            WHERE id = (_item#>>'{}'::text[])::uuid;
-            GET DIAGNOSTICS _affected = ROW_COUNT;
+            -- Through soft_delete_deployment, not an UPDATE: the SELECT policy hides the
+            -- soft-deleted row, so RLS refuses a client UPDATE that sets deleted_at
+            -- (#160). A refusal or unknown id is reported like any write that did not apply.
+            BEGIN
+                PERFORM public.soft_delete_deployment((_item#>>'{}'::text[])::uuid);
+                _affected := 1;
+            EXCEPTION WHEN insufficient_privilege OR no_data_found THEN
+                _affected := 0;
+            END;
             IF _affected = 0 THEN
                 _conflicts := _conflicts || pg_catalog.jsonb_build_object(
                     'id', COALESCE(_item->>'id', _item#>>'{}'),

@@ -58,3 +58,21 @@ CREATE POLICY "Project members can update observations"
         AND has_project_role((SELECT auth.uid()), d.project_id, 'project_member')
     )
   );
+
+-- Members remove a wrong label outright (ww-website MediaDetail). Same rule as
+-- UPDATE: a member can already rewrite any observation in the project. Without
+-- this policy the grant let the DELETE through and RLS matched 0 rows, so the
+-- website reported a removal that never happened (#222).
+CREATE POLICY "Project members can delete observations"
+  ON observations
+  FOR DELETE
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM deployments AS d
+      WHERE d.id = observations.deployment_id
+        AND d.deleted_at IS NULL
+        AND has_project_role((SELECT auth.uid()), d.project_id, 'project_member')
+    )
+  );

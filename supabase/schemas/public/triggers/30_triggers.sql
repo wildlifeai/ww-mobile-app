@@ -82,6 +82,20 @@ BEFORE INSERT OR UPDATE ON public.deployments
 FOR EACH ROW
 EXECUTE FUNCTION public.sync_geolocation();
 
+-- No client update moves a deployment or rewrites its creator (#260). UPDATE OF
+-- fires only when one of these columns is in the SET list; the function then
+-- refuses a real change, so a PATCH repeating the stored values still passes.
+CREATE TRIGGER trg_deployments_lock_columns
+BEFORE UPDATE OF project_id, setup_by ON public.deployments
+FOR EACH ROW
+EXECUTE FUNCTION public.lock_deployment_columns();
+
+-- No client update moves a project to another organisation, except a ww_admin's (#260).
+CREATE TRIGGER trg_projects_lock_organisation
+BEFORE UPDATE OF organisation_id ON public.projects
+FOR EACH ROW
+EXECUTE FUNCTION public.lock_project_organisation();
+
 -- Trigger for project_invitations (moved from table file)
 CREATE TRIGGER update_project_invitations_updated_at
   BEFORE UPDATE ON project_invitations

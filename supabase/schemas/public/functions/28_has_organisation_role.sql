@@ -20,8 +20,9 @@ BEGIN
     RETURN false;
   END IF;
 
-  -- Check organisation role with hierarchy
-  -- organisation_manager > organisation_member/project_admin > project_member
+  -- Check organisation role with hierarchy: organisation_manager > organisation_member.
+  -- The required levels are named after project roles for historical reasons; at
+  -- organisation scope only these two roles exist (user_roles constraint).
   IF EXISTS (
     SELECT 1
     FROM public.user_roles ur
@@ -37,9 +38,9 @@ BEGIN
         -- requirement, never the reverse (a viewer must NOT satisfy a member check).
         CASE required_role
           WHEN 'project_viewer' THEN
-            ur.role IN ('organisation_member', 'project_admin', 'project_member', 'project_viewer')
+            ur.role = 'organisation_member'
           WHEN 'project_member' THEN
-            ur.role IN ('organisation_member', 'project_admin', 'project_member')
+            ur.role = 'organisation_member'
           ELSE
             ur.role = required_role
         END

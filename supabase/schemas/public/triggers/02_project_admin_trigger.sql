@@ -9,8 +9,16 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 BEGIN
-  -- Insert project_admin role for the project creator
-  IF NEW.created_by IS NOT NULL THEN
+  -- Insert project_admin role for the project creator, unless they already hold a
+  -- live role in it: one role per scope (#248).
+  IF NEW.created_by IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = NEW.created_by
+      AND scope_type = 'project'
+      AND scope_id = NEW.id
+      AND is_active = true
+      AND deleted_at IS NULL
+  ) THEN
     INSERT INTO public.user_roles (
       user_id,
       role,

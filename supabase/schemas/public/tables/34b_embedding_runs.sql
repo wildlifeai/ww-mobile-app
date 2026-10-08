@@ -1,4 +1,5 @@
 CREATE TABLE embedding_runs (
+  -- Columns stay in the order the migrations created them; add new ones at the end (#220, MIGRATIONS.md).
   id uuid PRIMARY KEY NOT NULL DEFAULT (gen_random_uuid()),
   created_at timestamptz DEFAULT (now()),
   completed_at timestamptz CHECK (completed_at IS NULL OR completed_at >= created_at),
@@ -8,7 +9,6 @@ CREATE TABLE embedding_runs (
     CHECK (scope IN ('deployment', 'project', 'global')),
   scope_id uuid, -- deployment_id or project_id depending on scope; NULL for global
   deployment_id uuid REFERENCES deployments (id) ON DELETE CASCADE,  -- convenience FK for deployment scope
-  project_id uuid REFERENCES projects (id) ON DELETE CASCADE,  -- referential integrity for project scope
 
   -- Model identity (variant explicit at the data level — see ww-website embedding_registry).
   model_name text NOT NULL CHECK (model_name IN ('dinov3-vith', 'dinov3-vits')),
@@ -31,6 +31,7 @@ CREATE TABLE embedding_runs (
     CHECK (status IN ('running', 'complete', 'failed', 'superseded')),
   image_count int NOT NULL DEFAULT 0 CHECK (image_count >= 0),
   created_by uuid REFERENCES users (id) ON DELETE SET NULL,
+  project_id uuid REFERENCES projects (id) ON DELETE CASCADE,  -- referential integrity for project scope
 
   CONSTRAINT chk_embedding_run_scope CHECK (
     (scope = 'global' AND scope_id IS NULL)

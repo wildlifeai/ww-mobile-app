@@ -1,5 +1,6 @@
 -- AI Models table for managing machine learning models per organisation
 CREATE TABLE ai_models (
+  -- Columns stay in the order the migrations created them; add new ones at the end (#220, MIGRATIONS.md).
   id uuid PRIMARY KEY NOT NULL DEFAULT (gen_random_uuid()),
   created_at timestamptz DEFAULT (now()),
   updated_at timestamptz DEFAULT (now()),
@@ -10,8 +11,6 @@ CREATE TABLE ai_models (
   description text,
   organisation_id uuid NOT NULL REFERENCES organisations (id),
   uploaded_by uuid REFERENCES auth.users (id) ON DELETE SET NULL,
-  model_path text UNIQUE,
-  labels_path text UNIQUE,
   file_size_bytes bigint,
   file_type text,
   detection_capabilities text [],
@@ -22,6 +21,8 @@ CREATE TABLE ai_models (
   compiled_format text,
   error_message text,
   processing_log jsonb DEFAULT '[]' CHECK (jsonb_typeof(processing_log) = 'array'),
+  model_path text UNIQUE,
+  labels_path text UNIQUE,
   -- Per-label interpretation set by the uploader after validation: which output
   -- classes are target species (mapped to a taxon) vs background/negative classes.
   -- Shape: { "<label>": { "role": "target"|"background",

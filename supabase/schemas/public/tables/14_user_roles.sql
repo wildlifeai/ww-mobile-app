@@ -24,10 +24,13 @@ CREATE TABLE user_roles (
     CHECK (scope_type = 'system' OR scope_id IS NOT null)
 );
 
--- Create unique constraint to prevent duplicate role assignments
--- User can only have one specific role per scope
+-- One live role per person per scope (#248). The member functions, the invitations
+-- and the app all assume it; with role in the key, a person could hold project_admin
+-- and project_member in one project, or organisation_manager and organisation_member
+-- in one organisation, and a role change then hit this index. A promotion replaces
+-- the role on the existing row. ON CONFLICT clauses name exactly these columns.
 CREATE UNIQUE INDEX user_roles_unique_idx
-ON user_roles (user_id, role, scope_type, coalesce(scope_id, '00000000-0000-0000-0000-000000000000'::uuid))
+ON user_roles (user_id, scope_type, coalesce(scope_id, '00000000-0000-0000-0000-000000000000'::uuid))
 WHERE deleted_at IS null AND is_active = true;
 
 -- Create indexes for performance
@@ -35,14 +38,16 @@ CREATE INDEX user_roles_user_id_idx ON user_roles (user_id);
 CREATE INDEX user_roles_scope_idx ON user_roles (scope_type, scope_id);
 CREATE INDEX user_roles_active_idx ON user_roles (is_active, expires_at);
 
--- Add role validation constraint
+-- Add role validation constraint. The project roles are project-scope only: an
+-- organisation-wide project_member used to be allowed, and was then granted the
+-- organisation's deployments but none of its project rows. None existed anywhere, so
+-- the scope was removed rather than completed (2026-10-01). Organisation-wide reading
+-- is the organisation_manager's (#162).
 ALTER TABLE user_roles ADD CONSTRAINT user_roles_role_scope_validation CHECK (
   (role = 'ww_admin' AND scope_type = 'system')
   OR (role = 'organisation_manager' AND scope_type IN ('system', 'organisation'))
   OR (role = 'organisation_member' AND scope_type = 'organisation')
-  OR (role = 'project_admin' AND scope_type IN ('organisation', 'project'))
-  OR (role = 'project_member' AND scope_type IN ('organisation', 'project'))
-  OR (role = 'project_viewer' AND scope_type IN ('organisation', 'project'))
+  OR (role IN ('project_admin', 'project_member', 'project_viewer') AND scope_type = 'project')
 );
 
 COMMENT ON TABLE user_roles IS 'Stores user role assignments with hierarchical scope (system > organisation > project). Implements the 6-tier role system for Wildlife Watcher.';

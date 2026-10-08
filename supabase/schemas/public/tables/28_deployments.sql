@@ -1,4 +1,5 @@
 CREATE TABLE deployments (
+  -- Columns stay in the order the migrations created them; add new ones at the end (#220, MIGRATIONS.md).
   id uuid PRIMARY KEY NOT NULL DEFAULT (gen_random_uuid()),
   created_at timestamptz DEFAULT (now()),
   updated_at timestamptz DEFAULT (now()),
@@ -25,7 +26,6 @@ CREATE TABLE deployments (
   altitude double precision,
   accuracy double precision,
   location GEOGRAPHY (POINT, 4326),
-  timezone text, -- IANA tz resolved from latitude/longitude (display-only)
   -- Camera configuration
   camera_height float,
   activity_detection_sensitivity_id int REFERENCES activity_sensitivity (id),
@@ -58,7 +58,8 @@ CREATE TABLE deployments (
   bait_use text CHECK (bait_use IS null OR (bait_use IN ('none', 'scent', 'food', 'visual', 'acoustic', 'other'))),
   feature_type text CHECK (feature_type IS null OR (feature_type IN ('roadTrail', 'waterSource', 'burrow', 'nestSite', 'other'))),
   habitat text,
-  deployment_tags text []
+  deployment_tags text [],
+  timezone text -- IANA tz resolved from latitude/longitude (display-only)
 );
 
 -- Indexes
