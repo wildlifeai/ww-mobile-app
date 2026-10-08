@@ -198,13 +198,16 @@ describe("Authentication Service", () => {
 			await expect(logout()).resolves.toBeUndefined()
 
 			expect(mockSupabaseClient.auth.signOut).toHaveBeenCalledTimes(1)
+			expect(mockSupabaseClient.auth.signOut).toHaveBeenCalledWith({ scope: "local" })
 		})
 
-		test("should throw error when logout fails", async () => {
-			const errorMessage = authErrorMessages.serverError
-			mockAuthSignOutError(errorMessage)
+		// #360: the stored session is already gone by then, so a sign-out
+		// auth-js could not finish is not the caller's error. The offline
+		// cases are in src/services/__tests__/logout.test.ts.
+		test("should resolve when auth-js reports a failed sign-out", async () => {
+			mockAuthSignOutError(authErrorMessages.serverError)
 
-			await expect(logout()).rejects.toThrow(errorMessage)
+			await expect(logout()).resolves.toBeUndefined()
 		})
 	})
 
