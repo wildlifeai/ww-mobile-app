@@ -291,7 +291,8 @@ ble/
     ├── configVerification.ts   # Post-firmware-update CONFIG.TXT handshake
     ├── checkSdCard.ts          # SD card health validation
     ├── deviceCheck.ts          # The ship check's steps (rules in utils/deviceCheck/)
-    └── downloadPhoto.ts        # One photo off the SD card, outside a screen
+    ├── downloadPhoto.ts        # One photo off the SD card, outside a screen
+    └── lorawanPing.ts          # LoRaWAN test uplink: sent, not joined, busy, off (op32 0) or no answer, and its words
 ```
 
 ### `src/providers/`: Context Providers

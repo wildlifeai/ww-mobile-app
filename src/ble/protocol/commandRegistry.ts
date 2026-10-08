@@ -235,6 +235,22 @@ export function isMdRefusal(error: unknown): boolean {
 const utcSeconds = (isoDateStr?: string): string =>
   new Date(isoDateStr || Date.now()).toISOString().replace(/\.\d{3}Z$/, 'Z');
 
+/** What the nRF did with a `ping`, the LoRaWAN uplink it sends on request. */
+export type LorawanPingReply = 'sent' | 'not_joined' | 'busy';
+
+/**
+ * The nRF's three answers to `ping`, word for word: processPing() in
+ * ww-hardware MokoTech/Workspace/WildlifeWatcher_1/ble_commands.c, on dev in
+ * October 2026. `OK` means joined and the uplink is scheduled, `Busy` means
+ * joined but the radio is already in use, and nothing is sent for either of
+ * the other two.
+ */
+const LORAWAN_PING_REPLIES: Record<string, LorawanPingReply> = {
+  'OK': 'sent',
+  'Not joined yet.': 'not_joined',
+  'Busy': 'busy',
+};
+
 /**
  * Exported registry of constructed commands.
  */
@@ -366,11 +382,19 @@ export const commandRegistry = {
     () => true,
     { retryPolicy: { maxRetries: 0 } }
   ),
-  ping: createSingleLineCommand<boolean>(
+  /**
+   * Ask the nRF for a LoRaWAN uplink now. Every answer resolves, because none
+   * is the command failing: callers go through `workflows/lorawanPing.ts`,
+   * which says what each one means. Until #348 the Signal Test waited for
+   * `Pong`, which the nRF never sends, so every test timed out. Never retried,
+   * because a lost `OK` still sent an uplink.
+   */
+  ping: createSingleLineCommand<LorawanPingReply>(
     'ping',
     () => 'ping',
-    /(Joined|Not Joined)/i,
-    (match) => match[1].toLowerCase() === 'joined'
+    /^(OK|Not joined yet\.|Busy)$/,
+    (match) => LORAWAN_PING_REPLIES[match[1]],
+    { retryPolicy: { maxRetries: 0 } }
   ),
   network: createSingleLineCommand<{ rssi: number; snr: number; joined: boolean }>(
     'network',
@@ -589,14 +613,6 @@ export const commandRegistry = {
   ),
 
   // -- LoRaWAN Network Commands --
-  pingToNetwork: createSingleLineCommand<boolean>(
-    'pingToNetwork',
-    () => 'ping',
-    /^Pong|Sent ping/i,
-    () => true,
-    { failureRegex: /^Error|Failed/i }
-  ),
-  
   deveui: createSingleLineCommand<string>(
     'deveui',
     () => 'get deveui',
