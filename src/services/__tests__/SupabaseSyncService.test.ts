@@ -29,6 +29,7 @@ jest.mock('../SyncStateService', () => {
 			set: jest.fn(async (key: string, value: string) => { mockState.set(key, value) }),
 			delete: jest.fn(async (key: string) => { mockState.delete(key) }),
 			isSyncInProgress: jest.fn(async () => false),
+			getLastPullTimestamp: jest.fn(async () => 0),
 		},
 	}
 })
@@ -635,5 +636,153 @@ describe('a project created on this phone', () => {
 		expect(rolesOn(projectId)).toHaveLength(1)
 		expect(rolesOn(projectId)[0].id).toBe(provisional.id)
 		expect(rolesOn(projectId)[0]).toEqual(expect.objectContaining({ role: 'project_admin', isActive: true }))
+	})
+})
+
+describe('a sync asked for while one runs (8 October 2026)', () => {
+	// A deployment started on the phone asks for a sync. When one is already
+	// running, that one read the outbox before the deployment was queued, and
+	// the request used to be dropped: the camera stamped its photos with an id
+	// the website did not have until something else synced.
+	const { __setNetworkState, __resetNetworkState } = require('@react-native-community/netinfo') as {
+		__setNetworkState: (state: { isConnected: boolean }) => void
+		__resetNetworkState: () => void
+	}
+	const store = (isOnline: boolean) => ({
+		getState: () => ({ network: { isOnline }, sync: { hasCompletedInitialSync: true } }),
+		dispatch: jest.fn(),
+	})
+	const goOffline = () => {
+		SupabaseSyncService.setStore(store(false))
+		__setNetworkState({ isConnected: false })
+	}
+	const pulls = () => mockRpc.mock.calls.filter(([name]) => name === 'pull_changes').length
+	/** Lets the promise chains settle; timers are fake here, so no setImmediate */
+	const settle = async (until: () => boolean = () => false) => {
+		for (let i = 0; i < 2000 && !until(); i++) await Promise.resolve()
+	}
+	/** Holds the next sync at its pull, by when its push has read the outbox */
+	const holdNextPull = () => {
+		let release!: () => void
+		const gate = new Promise<void>((resolve) => { release = resolve })
+		const answer = mockRpc.getMockImplementation()!
+		let held = false
+		mockRpc.mockImplementation(async (name: string, args: any) => {
+			if (name === 'pull_changes' && !held) {
+				held = true
+				await gate
+			}
+			return answer(name, args)
+		})
+		return release
+	}
+	const queueDeployment = () => queue({ id: 'dep1', table: 'deployments', type: 'CREATE', recordId: 'dep-1', userId: USER_B,
+		payload: { project_id: 'project-1', device_id: 'device-1' } })
+
+	beforeEach(() => {
+		service.syncAgain = false
+		state.set(SYNC_STATE_KEYS.LAST_SYNC_USER_ID, USER_B)
+		serverRows.projects = [{ id: 'project-1' }]
+		serverRows.devices = [{ id: 'device-1' }]
+		SupabaseSyncService.setStore(store(true))
+	})
+
+	afterEach(() => {
+		__resetNetworkState()
+	})
+
+	it('pushes a deployment queued during a running sync in one more sync when that one ends', async () => {
+		const release = holdNextPull()
+		const syncs = jest.spyOn(SupabaseSyncService, 'sync')
+
+		const running = SupabaseSyncService.sync()
+		await settle(() => pulls() === 1)
+		expect(pulls()).toBe(1)
+
+		queueDeployment()
+		SupabaseSyncService.requestSync()
+		await settle()
+		expect(sentIds('deployments')).toEqual([])
+
+		release()
+		await running
+		expect(syncs).toHaveBeenCalledTimes(3)
+		await syncs.mock.results[2].value
+
+		expect(sentIds('deployments')).toEqual([['dep-1']])
+		expect(op('dep1').status).toBe('synced')
+		expect(pulls()).toBe(2)
+	})
+
+	it('syncs once more, not once per request', async () => {
+		const release = holdNextPull()
+		const syncs = jest.spyOn(SupabaseSyncService, 'sync')
+
+		const running = SupabaseSyncService.sync()
+		await settle(() => pulls() === 1)
+		queueDeployment()
+		SupabaseSyncService.requestSync()
+		SupabaseSyncService.requestSync()
+		SupabaseSyncService.debouncedSync()
+		jest.runOnlyPendingTimers()
+		await settle()
+
+		release()
+		await running
+		await syncs.mock.results[syncs.mock.results.length - 1].value
+		await settle()
+
+		expect(pulls()).toBe(2)
+		expect(sentIds('deployments')).toEqual([['dep-1']])
+		expect(service.syncAgain).toBe(false)
+	})
+
+	it('does nothing offline, and leaves nothing behind to run later', async () => {
+		goOffline()
+		queueDeployment()
+
+		SupabaseSyncService.requestSync()
+		await settle()
+
+		expect(mockGetUser).not.toHaveBeenCalled()
+		expect(mockRpc).not.toHaveBeenCalled()
+		expect(op('dep1').status).toBe('pending')
+		expect(service.syncAgain).toBe(false)
+	})
+
+	it('does not sync again when the phone went offline before the running sync ended', async () => {
+		const release = holdNextPull()
+		const syncs = jest.spyOn(SupabaseSyncService, 'sync')
+
+		const running = SupabaseSyncService.sync()
+		await settle(() => pulls() === 1)
+		queueDeployment()
+		SupabaseSyncService.requestSync()
+		await settle()
+		goOffline()
+
+		release()
+		await running
+		await expect(syncs.mock.results[2].value).resolves.toBeUndefined()
+
+		expect(pulls()).toBe(1)
+		expect(op('dep1').status).toBe('pending')
+		expect(service.syncAgain).toBe(false)
+	})
+
+	it('runs a sync turned away by the in-progress flag of a killed run once start-up clears it', async () => {
+		;(SyncStateService.isSyncInProgress as jest.Mock).mockResolvedValueOnce(true)
+		queueDeployment()
+
+		await SupabaseSyncService.sync()
+		expect(pulls()).toBe(0)
+
+		const syncs = jest.spyOn(SupabaseSyncService, 'sync')
+		await SupabaseSyncService.resetSyncState()
+		expect(syncs).toHaveBeenCalledTimes(1)
+		await syncs.mock.results[0].value
+
+		expect(pulls()).toBe(1)
+		expect(op('dep1').status).toBe('synced')
 	})
 })

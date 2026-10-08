@@ -73,6 +73,14 @@ version for humans is
   is `connectivityWatch.ts` and `reconnectSync.ts`, wired in `AppSetupProvider`: 3 s of connection,
   a valid session, one sync. Redux `network.isOnline` stays false throughout, so read NetInfo, as
   `SupabaseSyncService.sync()` does.
+- **A sync asked for while one runs is not dropped** (8 October 2026). `sync()` used to return
+  and forget it, and the running sync had read the outbox before the change was queued, so a
+  deployment started then waited for the next trigger. It now sets `syncAgain` and the running
+  sync runs once more as it ends; `resetSyncState` does the same for a sync turned away at
+  start-up by the in-progress flag of a killed run. A write the website needs while the app is
+  open calls `requestSync()` (fire and forget, never throws, nothing offline), as
+  `DeploymentService` does on start and end. The full list of triggers is in
+  [03-DATA-AND-SYNC.md](../../../documentation/onboarding/03-DATA-AND-SYNC.md#when-the-outbox-is-pushed).
 - **Offline is not an error.** The "Offline Mode" banner, rendered once by `OfflineAwareRoot`, is
   the only sign. Cloud calls that fail for network reasons log with `logCloudFailure`, not
   `logError`, and skip themselves when NetInfo reports no connection. supabase-js prints its own
