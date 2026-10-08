@@ -109,7 +109,7 @@ Standalone exported functions (not a class):
 | `login(credentials)` | Sign in with email/password via Supabase, fetches user orgs |
 | `signInWithGoogle()` | Native Google sign-in, then `signInWithIdToken`; null when the user cancels. See [Google sign-in](#google-sign-in) |
 | `register(credentials)` | Create account, handles email confirmation flow |
-| `logout()` | Sign out from Supabase |
+| `logout()` | Sign out of this phone, offline too; see [Offline](#offline). Called through `useSupabaseAuth().logout`, which then clears the Redux state |
 | `getCurrentSession()` | Get existing session, transforms to `AuthResponse`; offline, falls back to the stored session |
 | `setupAuthListener(callback, onProfileData)` | Subscribes to `onAuthStateChange`, fires fast UI-unblocking callback, and triggers deduplicated background profile fetch. Opens from the stored session at once; see [Offline](#offline) |
 | `readStoredSession()`, `getStoredUserId()` | The session auth-js keeps on disk, read without asking auth-js to refresh it; the user id for local reads |
@@ -242,6 +242,7 @@ The field is offline more often than not, so a signed-in user stays signed in un
 - **Local reads never ask auth-js.** `ProjectService` takes the user from `getStoredUserId()`: `getSession()` would refresh an expired token first, and offline that is half a minute and then no user.
 - **Nothing is written with a token the server would refuse.** Supabase calls get their token from `getSession()`, which never returns an expired one, and the sync checks the user with the server (`getUser`) before it uploads. The reconnect sync also waits for `ensureValidSession()`. The Redux `token` can hold the expired one while offline, and nothing writes with it.
 - **Organisations come from the local database first** (#332): the tables the last sync left, then the cloud's answer when it arrives. An empty cloud answer is kept. The organisation the user last had open is remembered per user (`currentOrganisation:<userId>` in AsyncStorage) and reopened while the roles still allow it.
+- **Signing out needs no network** (#360). auth-js's `signOut` asks the server first and keeps the stored session when it cannot be reached, and the app opens from the stored session, so the next launch signed the same account back in. `logout()` removes the stored session itself, then lets `signOut` clear the rest and announce `SIGNED_OUT` without waiting for it, since it can sit behind a token refresh. When there is a connection it also asks the server to end the session, `local` scope: this phone only, not the website or another phone. Every Sign out goes through `useSupabaseAuth().logout`.
 - **Network failures are not errors.** Offline, a failed Supabase call is logged with `log`, not `logError`, and supabase-js's own `console.error` for each failed fetch goes to `console.log` (`installNetworkErrorFilter`, installed in `index.js`). The "Offline Mode" banner is the only sign in the UI.
 
 ---
