@@ -67,8 +67,9 @@ const USER_A = 'user-a'
 const USER_B = 'user-b'
 
 // Rows the "server" has and shows this account, per table. projects_with_stats
-// answers from the projects rows, as the view does.
-let serverRows: Record<string, { id: string, deleted_at?: string | null }[]>
+// answers from the projects rows, as the view does. user_roles answers with
+// whole rows, the other tables with ids.
+let serverRows: Record<string, { id: string, deleted_at?: string | null, [column: string]: any }[]>
 // The watermark each pull asked from, per table
 let pulledSince: Record<string, string>
 // A table whose reads fail, and a count the server claims instead of the real one
@@ -149,7 +150,7 @@ beforeEach(() => {
 			const source = table === 'projects_with_stats' ? 'projects' : table
 			const rows = (serverRows[source] ?? []).filter((row) => filters.every((f) => f(row)))
 			return {
-				data: rows.map((row) => ({ id: row.id })),
+				data: rows.map((row) => (table === 'user_roles' ? { ...row } : { id: row.id })),
 				error: null,
 				count: counted ? (claimedCount[table] ?? rows.length) : null,
 			}
@@ -165,6 +166,10 @@ beforeEach(() => {
 			},
 			is: (column: string, value: any) => {
 				filters.push((row) => (row[column] ?? null) === value)
+				return chain
+			},
+			eq: (column: string, value: any) => {
+				filters.push((row) => row[column] === value)
 				return chain
 			},
 			gt: (_column: string, value: string) => {
@@ -323,15 +328,19 @@ describe('another account on the same phone (#267)', () => {
 		for (const key of PULL_WATERMARK_KEYS) expect(state.has(key)).toBe(false)
 		expect(state.get(SYNC_STATE_KEYS.LAST_SYNC_USER_ID)).toBe(USER_B)
 
-		state.set(SYNC_STATE_KEYS.USER_ROLES_LAST_PULLED_AT, '1756900000000')
+		state.set(SYNC_STATE_KEYS.PROJECTS_LAST_PULLED_AT, '1756900000000')
 		await service.resetWatermarksOnUserChange(USER_B)
-		expect(state.get(SYNC_STATE_KEYS.USER_ROLES_LAST_PULLED_AT)).toBe('1756900000000')
+		expect(state.get(SYNC_STATE_KEYS.PROJECTS_LAST_PULLED_AT)).toBe('1756900000000')
 	})
 
-	it('gives the second account a full pull of its roles and projects', async () => {
+	it('gives the second account a full pull of its projects, and all of its roles', async () => {
 		state.set(SYNC_STATE_KEYS.LAST_SYNC_USER_ID, USER_A)
-		state.set(SYNC_STATE_KEYS.USER_ROLES_LAST_PULLED_AT, String(Date.parse('2026-08-09T21:49:51.806Z')))
 		state.set(SYNC_STATE_KEYS.PROJECTS_LAST_PULLED_AT, String(Date.parse('2026-09-03T23:41:52.332Z')))
+		// Granted long before the first account's last sync (#375 reads every role, every sync)
+		serverRows.user_roles = [{
+			id: 'b-general', user_id: USER_B, role: 'organisation_member', scope_type: 'organisation',
+			scope_id: 'org-general', is_active: true, updated_at: '2026-06-01T00:00:00Z',
+		}]
 		SupabaseSyncService.setStore({
 			getState: () => ({ network: { isOnline: true }, sync: { hasCompletedInitialSync: true } }),
 			dispatch: jest.fn(),
@@ -339,7 +348,7 @@ describe('another account on the same phone (#267)', () => {
 
 		await SupabaseSyncService.sync()
 
-		expect(pulledSince.user_roles).toBe(new Date(0).toISOString())
+		expect(rowsIn('user_roles').map((r) => r.id)).toEqual(['b-general'])
 		expect(pulledSince.projects_with_stats).toBe(new Date(0).toISOString())
 	})
 })
@@ -357,7 +366,7 @@ describe('sync after a refused push (#287)', () => {
 
 		await expect(SupabaseSyncService.sync()).rejects.toThrow('devices: 1 refused by the server')
 
-		expect(pulledSince.user_roles).toBeDefined()
+		expect(mockFrom).toHaveBeenCalledWith('user_roles')
 		expect(pulledSince.deployments).toBeDefined()
 		expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: 'sync/markInitialSyncComplete' }))
 		expect(state.get(SYNC_STATE_KEYS.LAST_SYNC_ERROR)).toContain('devices: 1 refused by the server')
@@ -525,7 +534,6 @@ describe('a project gone from the server (#330)', () => {
 		await service.reconcileProjects(TAMA)
 
 		expect(state.has(SYNC_STATE_KEYS.PROJECTS_LAST_PULLED_AT)).toBe(false)
-		expect(state.has(SYNC_STATE_KEYS.USER_ROLES_LAST_PULLED_AT)).toBe(false)
 		expect(state.has(SYNC_STATE_KEYS.DEPLOYMENTS_LAST_PULLED_AT)).toBe(false)
 	})
 
@@ -615,7 +623,7 @@ describe('a project created on this phone', () => {
 		const projectId = await createOffline()
 		const [provisional] = rolesOn(projectId)
 		expect(provisional).toBeDefined()
-		pullRows.user_roles = [{
+		serverRows.user_roles = [{
 			id: 'server-role-id',
 			user_id: USER_B,
 			role: 'project_admin',
@@ -629,7 +637,7 @@ describe('a project created on this phone', () => {
 			updated_at: '2026-09-29T04:00:00Z',
 		}]
 
-		await service.syncUserRoles()
+		await service.syncUserRoles(USER_B)
 
 		// The server's row updated the provisional one in place
 		expect(rolesOn(projectId)).toHaveLength(1)
