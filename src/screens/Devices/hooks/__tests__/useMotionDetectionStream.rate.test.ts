@@ -327,6 +327,27 @@ describe('useMotionDetectionStream op11 hold', () => {
         expect(camera.op11()).toBe('1000')
     })
 
+    // BLE firmware with ww-hardware #60 renames the wake; cameras run both (#412)
+    it.each(['Wake (MD)', 'Wake (Motion)', 'MD 2026-10-08T05:51:02Z', 'Motion 2026-10-08T05:51:02Z'])(
+        'shows motion for %s, and not for the reply to md',
+        async (wake) => {
+            const camera = makeCamera('0')
+            const rendered = await startAcknowledged(camera)
+
+            await act(async () => {
+                emit(camera.device.id, 'MD sensitivity set to 2')
+                await settle()
+            })
+            expect(rendered.result.current.motionDetected).toBe(false)
+
+            await act(async () => {
+                emit(camera.device.id, wake)
+                await settle()
+            })
+            expect(rendered.result.current.motionDetected).toBe(true)
+        },
+    )
+
     it('captures without waiting when op11 cannot be read', async () => {
         const camera = makeCamera('0')
         camera.session.getOps.mockResolvedValue(Array.from({ length: 9 }, () => '0'))

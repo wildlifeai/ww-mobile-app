@@ -13,6 +13,18 @@ describe('classifyForMonitor', () => {
     expect(event?.skipStats).toBeUndefined()
   })
 
+  // BLE firmware with ww-hardware #60 renames the wake; cameras run both (#412)
+  it('counts the renamed wake, Wake (Motion), the same way', () => {
+    expect(classifyForMonitor('Wake (Motion)')).toMatchObject({ category: 'motion', label: 'Motion detected' })
+  })
+
+  it('counts the AI processor\'s own MD wake line, but not the reply to md', () => {
+    expect(classifyForMonitor('MD 2026-10-08T05:51:02Z')).toMatchObject({ category: 'motion' })
+    expect(classifyForMonitor('MD...')).toMatchObject({ category: 'motion' })
+    // Since #60 the nRF passes this on instead of taking it for a wake
+    expect(classifyForMonitor('MD sensitivity set to 1')?.category).not.toBe('motion')
+  })
+
   // Listing the blocks line instead left the log empty on the bench on
   // 29 Sep 2026: with one picture per trigger every wake reported 0 blocks.
   it('neither lists nor counts the blocks line, so a wake is one row', () => {

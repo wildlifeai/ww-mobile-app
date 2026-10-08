@@ -624,10 +624,11 @@ export const commandRegistry = {
   // the sensitivity is persisted to CONFIG.TXT regardless of whether
   // the response arrives over BLE.
   //
-  // 2 s, not 5: the Himax answers within 0.2 s, and on the HM0360 build the
-  // nRF takes that answer for its `MD <time>` motion wake and drops it
-  // (ww-hardware #52), so a longer wait only paid for a reply that never
-  // comes (#272, 23 September 2026). The RP3 build has no `md` and answers
+  // 2 s, not 5: the Himax answers within 0.2 s. On the HM0360 build an nRF
+  // from before ww-hardware #60 takes that answer for its `MD <time>` motion
+  // wake and drops it (ww-hardware #52); since #60 the wake is `Motion <time>`
+  // and the reply arrives (BLE 0.30.55, bench 8 October 2026), well inside the
+  // 2 s (#272, #412). The RP3 build has no `md` and answers
   // `Unrecognised` (Seeed #211); that and the firmware's own `Error:` lines
   // are refusals, told apart from a lost reply by `isMdRefusal`. Since #385
   // the motion test writes the level with `setop 17`, which is acknowledged,

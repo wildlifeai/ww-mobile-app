@@ -136,7 +136,7 @@ if the unit should leave with an empty card.
   WILD-5WGJ (fail) and 4.3 s on WILD-DJUU (pass), 7 October 2026.
 - The motion step asks the operator to wave and tap only once the camera says `About to capture 10
   images`: with the detector armed through the setup sleep, a hand in front of the camera wakes
-  it first (`Wake (MD)`), and a burst sent into that wake went unanswered for 45 s on the bench
+  it first (`Wake (MD)`, or `Wake (Motion)` from newer BLE firmware), and a burst sent into that wake went unanswered for 45 s on the bench
   until the step learned to send it again.
 - On the first bench run (6 October 2026) op18, op11 and op12, written back shortly before a
   camera switch that timed out, came back from the card at their earlier values after the

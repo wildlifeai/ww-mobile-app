@@ -259,8 +259,13 @@ export function classifyForMonitor(rawMessage: string): MonitorEvent | null {
   // and listing it instead left the log empty: with one picture per trigger
   // the HM0360 reports 0 blocks on every wake, because the first frame has no
   // reference, so no wake was ever listed (bench, 29 Sep 2026).
-  if (/^Wake\s*\(MD\)/i.test(content)) return { category: 'motion', label: 'Motion detected', icon: 'run', details: content }
-  if (/^MD[\s.]/i.test(content)) return { category: 'motion', label: 'Motion detected', icon: 'run', details: content }
+  //
+  // The wake is `Wake (Motion)` from BLE firmware with ww-hardware #60 and
+  // `Wake (MD)` before it; both stay while cameras run either (#412). `MD`
+  // alone counts only before `...` or a time: that firmware also passes on
+  // `MD sensitivity set to N`, the reply to `md`, which is not motion.
+  if (/^Wake\s*\((MD|Motion)\)/i.test(content)) return { category: 'motion', label: 'Motion detected', icon: 'run', details: content }
+  if (/^MD(\.\.\.|\s+\d)/i.test(content)) return { category: 'motion', label: 'Motion detected', icon: 'run', details: content }
 
   // Himax WW500 hardware outputs block counts dynamically
   const motionMatch = content.match(/^HM0360 motion in (\d+) blocks:/i)
