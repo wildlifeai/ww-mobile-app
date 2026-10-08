@@ -65,6 +65,9 @@ export default class Deployment extends Model {
 
     @field('modified_by') modifiedBy!: string
 
+    // Local only: GONE_FROM_SERVER (services/goneFromServer.ts) or empty
+    @field('_custom_sync_status') customSyncStatus?: string
+
     @readonly @date('created_at') createdAt!: Date
     @readonly @date('updated_at') updatedAt!: Date
     @readonly @date('deleted_at') deletedAt?: Date | null

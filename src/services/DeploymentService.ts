@@ -245,25 +245,19 @@ export const DeploymentService = {
             const deploymentsCollection = database.get<Deployment>('deployments')
             const deployment = await deploymentsCollection.find(deploymentId)
 
-            // 1. Prepare update
-            const updateOp = deployment.prepareUpdate((record) => {
-                record.deploymentStatusId = DEPLOYMENT_STATUS.ENDED
-                record.deploymentEnd = new Date()
-                record.endedBy = endedBy ?? undefined
-                record.endDeploymentComments = notes
-                record.modifiedBy = endedBy ?? 'system'
-            })
+            // The end and its outbox record, which carries only the columns the end changed
+            const [updateOp, outboxOp] = prepareDeploymentUpdate(
+                deployment,
+                endedBy ?? 'system', // Fallback if null, but should be provided
+                (record) => {
+                    record.deploymentStatusId = DEPLOYMENT_STATUS.ENDED
+                    record.deploymentEnd = new Date()
+                    record.endedBy = endedBy ?? undefined
+                    record.endDeploymentComments = notes
+                    record.modifiedBy = endedBy ?? 'system'
+                },
+            )
 
-            // 2. Prepare outbox record
-            const outboxOp = OutboxService.recordOperation({
-                operation: 'UPDATE',
-                tableName: 'deployments',
-                recordId: deployment.id,
-                payload: mapModelToPayload(deployment),
-                userId: endedBy ?? 'system', // Fallback if null, but should be provided
-            })
-
-            // 3. Execute batch
             await database.batch(updateOp, outboxOp)
 
             return deployment
@@ -427,10 +421,39 @@ export const DeploymentService = {
 }
 
 /**
- * Helper to map model to plain object for sync (snake_case).
- * Exported because sync payloads must always be complete records:
- * push_changes overwrites every column, so partial payloads would
- * null out the missing fields.
+ * Prepare a change to a deployment, and its outbox UPDATE carrying only the
+ * columns the change touched (#411), for the caller to batch. push_changes
+ * keeps any column an update leaves out (ww-backend #172). The whole record
+ * let a phone holding an older copy put the old location_name, latitude and
+ * longitude back over a website edit when it ended the deployment or swapped
+ * in a photo path, since the push runs before the pull.
+ */
+export function prepareDeploymentUpdate(
+    deployment: Deployment,
+    userId: string,
+    change: (record: Deployment) => void,
+): [Deployment, SyncOutbox] {
+    const before = mapModelToPayload(deployment)
+    // prepareUpdate applies the change to the record at once, and stamps updated_at
+    const updateOp = deployment.prepareUpdate(change)
+    const after = mapModelToPayload(deployment)
+    const changed = Object.fromEntries(
+        Object.entries(after).filter(([key, value]) => JSON.stringify(value) !== JSON.stringify(before[key]))
+    )
+    const outboxOp = OutboxService.recordOperation({
+        operation: 'UPDATE',
+        tableName: 'deployments',
+        recordId: deployment.id,
+        payload: { ...changed, id: deployment.id, updated_at: after.updated_at },
+        userId,
+    })
+    return [updateOp, outboxOp]
+}
+
+/**
+ * Helper to map model to plain object for sync (snake_case): the whole
+ * record, for a CREATE. An update sends only what it changed, through
+ * prepareDeploymentUpdate.
  */
 export function mapModelToPayload(model: Deployment): any {
     return {
