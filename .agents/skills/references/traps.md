@@ -95,8 +95,10 @@ file is the list of things that look like an app bug and are not, and the revers
   cell, so a low reading there is not a reason to stop, charge anything or doubt a result.
   Raising it as a risk mid-run has wasted time more than once. On the bench, only treat the
   battery as real when the unit is deliberately running from a cell.
-- **`AI md N` never answers over BLE, and the wait the app then pays is the nRF, not the
-  Himax.** The Himax replies `MD sensitivity set to N` within 0.2 s, but the nRF's prefix table
+- **`AI md N` never answers over BLE before ww-hardware #60, and the wait the app then pays is
+  the nRF, not the Himax.** BLE firmware with #60 (0.30.55) renames the motion wake to
+  `Motion <time>`, announced as `Wake (Motion)`, and passes the reply on (bench, 8 October
+  2026); the app accepts both wake names while cameras run either (#412). The Himax replies `MD sensitivity set to N` within 0.2 s, but the nRF's prefix table
   of Himax-originated messages matches it against `"MD "`, the motion-wake announcement, raises
   `Wake (MD)` while it is still waiting for that very reply, logs `UNHANDLED event Wake (MD) in
   PROCESSING` and drops it (ww-hardware #52; nRF 0.30.51, 23 September 2026). On the RP3 slot

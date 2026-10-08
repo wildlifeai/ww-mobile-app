@@ -150,8 +150,10 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
 
             if (/About to capture\s+\d+\s+images/i.test(msg)) captureStartedRef.current = true
 
-            // Detect Wake (MD) — HM0360 internal threshold exceeded
-            if (/Wake \(MD\)/i.test(msg) || /^MD \d{4}-/i.test(msg.trim())) {
+            // The motion wake, HM0360 threshold exceeded: `Wake (MD)` and
+            // `MD <time>`, or `Wake (Motion)` and `Motion <time>` from the
+            // firmware of ww-hardware #60 and Seeed #260 (#412)
+            if (/Wake \((MD|Motion)\)/i.test(msg) || /^(MD|Motion) \d{4}-/i.test(msg.trim())) {
                 log('[MotionDetectionStream] Motion threshold exceeded!')
                 setMotionDetected(true)
                 if (motionTimeoutRef.current) clearTimeout(motionTimeoutRef.current)
