@@ -51,7 +51,10 @@ interface Hold {
  * white LED, a light in a forest. So a hold must always be undone, and the two
  * ways it can fail to be undone are handled the way `keepAwake` handles them:
  * the original is remembered in memory and on disk, and written back on the
- * next visit if the link drops or the app is killed first.
+ * next visit if the link drops or the app is killed first. The next hold
+ * keeps it, and the motion test's cleanup pays it with or without a flash of
+ * its own (#383). A deployment writes op34 for the field and calls `forget`
+ * first, so nothing owed from before it is paid over the project's mode.
  *
  * Nothing is written at connect time. Only a flow a person opened may write.
  */
@@ -148,6 +151,22 @@ class FlashHold {
         const owed = await this.owed(deviceId)
         if (owed === null) return
         await this.writeBack(session, deviceId, owed, 'reconnect')
+    }
+
+    /**
+     * Drop the hold and any owed restore for one device, writing nothing.
+     *
+     * For a deployment, which writes op34 from the project. A restore owed
+     * from before it would otherwise put a bench visit's original back over
+     * the project's mode, the next time a motion test pays what is owed.
+     */
+    public async forget(deviceId: string): Promise<void> {
+        const hadHold = this.holdsByDevice.delete(deviceId)
+        const owed = await this.owed(deviceId)
+        if (owed !== null) await this.clearOwed(deviceId)
+        if (hadHold || owed !== null) {
+            log(`[FlashHold] ${deviceId}: op34 now belongs to the deployment; ${hadHold ? 'hold dropped' : 'no hold'}${owed !== null ? `, owed restore to ${owed} dropped` : ''}`)
+        }
     }
 
     /** Forget every hold and owed restore in memory. Tests only: disk is untouched. */

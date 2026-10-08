@@ -303,7 +303,7 @@ The following screens are accessed from the Engineer Console → Flows modal. Th
 - Sets `TEST_BIT_SKIP_FILE_CREATION` (OP 18, bit 3) before capture so firmware streams MD data without saving JPEGs
 - Parses `HM0360 motion in N blocks:` header + 32 hex-byte grid data from BLE text lines
 - Renders the 16×16 grid as a precomputed text string, a visual feedback loop that helps understand environmental threshold behaviour. The grid is the HM0360's own detector read once per test frame, not motion between the test's frames, and frame 1 is always empty
-- Sends `AI md` only when op17 differs from the chosen level. When it is sent, a refusal (`Unrecognised`, the RP3 build) or a reply that never comes is shown on the card rather than swallowed; after a refusal the selector is disabled for the visit (#272)
+- Writes the sensitivity only when op17 differs from the chosen level, as `AI setop 17 <level>`, which the camera acknowledges, then sends `AI md <level>` only to learn whether the build applies a level. The HM0360 build applies op17 at the sleep before the capture and at the capture's wake; its `md` reply never arrives (ww-hardware #52) and is no longer shown (#385). The RP3 build refuses `md` (`Unrecognised`, Seeed #211): the card says the colour camera ignores the sensitivity, in the neutral colour since the test still runs, op17 goes back to its previous value, and the selector is disabled for the visit (#272). "May not have taken" now means the `setop` itself went unanswered
 - The interval floor is 0.5 s, the fastest the device has been shown to sustain
 - **On completion/stop**, automatically resets `TEST_MODE_BITS` to 0 so subsequent captures (e.g., photo preview) save JPEG files normally
 
@@ -317,7 +317,20 @@ deployment instead of a dimmer version of it.
 
 The gate itself is op34 with op13: since `ae_review` the LED fires only when the flash mode arms
 it, so the screen holds op34 at always-on for a test that asks for an LED and puts the previous
-mode back when the test ends ([`flashHold.ts`](../../src/ble/session/flashHold.ts)).
+mode back when the test ends ([`flashHold.ts`](../../src/ble/session/flashHold.ts)). The LED and
+brightness are held the same way, op13 and op9 through
+[`flashLedHold.ts`](../../src/ble/session/flashLedHold.ts): both are the camera's own photo
+settings, and until #387 a test left them at its values for good.
+
+Putting op13 back is also what stops the camera flashing after the test (#383). On the way into
+Deep Power Down the firmware arms the HM0360's STROBE, which lights op21's LED on every motion
+frame, when op11 is non-zero, op21 names an LED and `ledFlashIsActive()` is non-zero, and that
+returns op13, read live, whenever the flash is armed. The flash mode is only read at wake, and the
+wake the test ends in read op34 at always-on, so an op13 left at the test's LED kept a camera with
+op11 set flashing through the sleep after the test, link or no link, until the next wake, however
+promptly op34 went back. The cleanup runs inside that wake and puts op13 back before the sleep.
+A test whose app died or whose link dropped leaves all of them owed on disk, and the next motion
+test on the camera pays them, with a flash of its own or without.
 
 **The detector's rate is the test's interval, held for the test (#274).** The HM0360 takes its
 rate from op11 `MD_INTERVAL` on the way into Deep Power Down, and nothing re-arms it while the

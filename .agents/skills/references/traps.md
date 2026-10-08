@@ -53,6 +53,14 @@ file is the list of things that look like an app bug and are not, and the revers
   proposed from index 32, which this app already uses for `CAM_RESOLUTION` and 33 for
   `MD_BLOCK_NUM_MAX`. Agree the index before either side ships, Seeed #209, then replace the
   op25 write with the new parameter.
+- **A sleeping camera whose LED blinks at the motion rate is its STROBE, armed by settings, not a
+  fault.** On the way into Deep Power Down the firmware arms the HM0360's STROBE when op11 is
+  non-zero, op21 names an LED and the flash is armed with op13 set, and from then on op21's LED
+  lights every motion frame, op11 ms apart, with or without a link. #383 reported a camera that
+  kept flashing after the app crashed during a motion test with the flash on, and in the code a
+  test that dies before its cleanup leaves op34 at always-on, op13 at its LED and op11 at its
+  interval. `AI getop -1` shows all four; the motion test now holds and restores them, see
+  [ble.md](ble.md). Read from the code on 8 October 2026, not yet seen on the bench.
 - **A multi-image capture with a gap above op8 is cut short by the device** (Seeed #208).
   Images after the first never come, `Captured` is never sent, and the app receives `Sleep`
   instead. Keep any `capture N interval` below op8, and treat a `Sleep` during a capture as the
@@ -93,11 +101,15 @@ file is the list of things that look like an app bug and are not, and the revers
   `Wake (MD)` while it is still waiting for that very reply, logs `UNHANDLED event Wake (MD) in
   PROCESSING` and drops it (ww-hardware #52; nRF 0.30.51, 23 September 2026). On the RP3 slot
   the command is refused with `Unrecognised` instead (Seeed #211), and that reply gets through.
-  The level is persisted in op17 either way, so since #272 the motion test skips `md` when the
-  op table it has just read already holds the level, waits 2 s rather than 5 when it does send,
-  and shows a refusal (`isMdRefusal`) or a lost reply on the card instead of swallowing it. A
-  lost reply on the HM0360 build usually means the level did land; the next run's `getop -1`
-  shows it.
+  On the HM0360 build the level lands in op17 all the same, so since #272 the motion test skips
+  the write when the op table it has just read already holds the level, and waits 2 s rather
+  than 5 for `md`. That made Med and High, which a reset camera does not hold, the only levels
+  that ever sent it, and every one ended in "may not have taken" on the HM0360 build or the
+  refusal, in red, on the RP3 build; #385 reported an error on exactly those two levels. The
+  test now writes the level with `setop 17`, which is acknowledged and which the HM0360 build
+  applies at the next sleep and wake, and sends `md` only to learn whether the build applies a
+  level at all: a lost reply is expected and not shown, and a refusal (`isMdRefusal`) is shown
+  in the neutral colour and puts op17 back.
 - **op19 is not the number of images on the card.** It counts the files in the current
   `IMAGES.NNN` folder, and the firmware starts a new folder at the first boot after it passes
   100 (`directory_manager.c`, `generateImageDirName`), setting op19 back to 0. The live

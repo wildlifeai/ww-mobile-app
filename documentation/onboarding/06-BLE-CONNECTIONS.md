@@ -35,7 +35,8 @@ ever run.
   which raises op8 for the visit and puts it back on exit, or the next
   time a hold is taken if the link dropped first. Capture Picture and the
   motion test do this. The motion test also holds op11, the HM0360's
-  motion rate, the same way through `ble/session/mdIntervalHold.ts`.
+  motion rate, the same way through `ble/session/mdIntervalHold.ts`, and
+  with a flash chosen, op13 and op9 through `ble/session/flashLedHold.ts`.
   Connecting itself never writes to the device.
 - iOS: `peripheral.id` is a phone-local CoreBluetooth UUID (never a MAC —
   Android's id IS the MAC). Pending iOS connects never time out on their

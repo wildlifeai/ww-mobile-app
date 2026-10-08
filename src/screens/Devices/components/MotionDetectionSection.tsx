@@ -357,11 +357,14 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                     </Banner>
                 )}
 
-                {/* What became of the sensitivity: shown during the run and after it */}
+                {/* What became of the sensitivity: shown during the run and after it.
+                    Not in the error colour: the test runs either way, and a
+                    refusal comes from the colour camera's firmware, which in
+                    red read as the app failing (#385). */}
                 {sensitivityNote && (
                     <WWText
                         variant="bodySmall"
-                        style={[styles.sensitivityNote, { color: sensitivityDisabled ? theme.colors.error : theme.colors.onSurfaceVariant }]}
+                        style={[styles.sensitivityNote, { color: theme.colors.onSurfaceVariant }]}
                     >
                         {sensitivityNote.message}
                     </WWText>
