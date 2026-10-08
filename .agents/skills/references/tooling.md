@@ -35,7 +35,9 @@ shell boundary, and none of them reproduced in a Linux container.
   genuinely lack them upstream, and 3 were legacy columns already labelled `// Legacy fields`
   in `models/Deployment.ts`. Query the live database for the real column list rather than
   reasoning from the generated types, and check whether the code still uses the field, before
-  proposing a fix.
+  proposing a fix. A difference that proves deliberate goes in a named allowlist, never a
+  pattern, as in `validate-watermelon-schema.js` since #399: an entry fails the run once it
+  stops matching, and `scripts/README.md` says why each one is there.
 - **Absence of a tool is not proof your check works.** The JDK bug survived a container test
   because, with no JDK present, the wrong code path produced the right answer. If a check can
   only pass or fail for the same reason, it has not been tested.

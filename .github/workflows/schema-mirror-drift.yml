@@ -1,14 +1,19 @@
-# Advisory, never a required check.
+# Two jobs: the mirror check is advisory, the WatermelonDB check blocks.
 #
 # supabase/schemas is a copy of ww-backend's declarative schema, made by
 # scripts/sync-db-schema.js, and nothing checked that the copy stayed current:
-# in October 2026 it was 32 files behind (#390). This job checks out
+# in October 2026 it was 32 files behind (#390). The mirror job checks out
 # ww-backend's dev with the repo's read-only token and compares the folders the
-# sync copies, then runs the WatermelonDB schema check beside it.
+# sync copies.
 #
-# Advisory because the backend may legitimately lead the app by a pull request,
-# the same reason op-index-drift.yml is. A red step here is a prompt to run
-# `npm run db:sync-schema` and commit, not a merge block.
+# The mirror is advisory because the backend may legitimately lead the app by a
+# pull request, the same reason op-index-drift.yml is. A red step there is a
+# prompt to run `npm run db:sync-schema` and commit, not a merge block.
+#
+# The WatermelonDB job compares two files this repo commits, src/database/schema.ts
+# and the Supabase types, so a failure is this repo's own drift and fails the
+# run. Every deliberate difference is named in the script and in
+# scripts/README.md (#399). It needs no token, so it runs on a fork's pull request too.
 name: Schema Mirror Drift
 
 on:
@@ -17,6 +22,7 @@ on:
       - 'supabase/**'
       - 'src/database/schema.ts'
       - 'src/types/supabase.ts'
+      - 'src/types/database.types.ts'
       - 'scripts/sync-db-schema.js'
       - 'scripts/schema-sync-config.js'
       - 'scripts/check-schema-mirror.js'
@@ -67,14 +73,20 @@ jobs:
         continue-on-error: true
         run: node scripts/check-schema-mirror.js ww-backend
 
-      - name: WatermelonDB schema matches the Supabase types
-        id: watermelon
-        continue-on-error: true
-        run: node scripts/validate-watermelon-schema.js
-
       - name: Warn on drift
-        if: steps.mirror.outcome == 'failure' || steps.watermelon.outcome == 'failure'
-        run: |
-          [ "${{ steps.mirror.outcome }}" = "failure" ] && echo "::warning::supabase/schemas has drifted from ww-backend dev (advisory, #390): run npm run db:sync-schema and commit. The step above lists the files."
-          [ "${{ steps.watermelon.outcome }}" = "failure" ] && echo "::warning::src/database/schema.ts does not match src/types/supabase.ts (advisory): see the step above."
-          exit 0
+        if: steps.mirror.outcome == 'failure'
+        run: echo "::warning::supabase/schemas has drifted from ww-backend dev (advisory, issue 390). Run npm run db:sync-schema and commit. The step above lists the files."
+
+  watermelon:
+    name: WatermelonDB schema matches the Supabase types
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Validate src/database/schema.ts against the Supabase types
+        run: node scripts/validate-watermelon-schema.js

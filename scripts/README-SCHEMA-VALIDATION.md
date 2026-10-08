@@ -188,21 +188,8 @@ If a new column is added to Supabase that WatermelonDB should sync:
 
 ## Special Cases
 
-### Timestamp Columns
-
-Timestamp columns (`created_at`, `updated_at`, `deleted_at`, `deployment_start`, `deployment_end`) are handled specially:
-- **WatermelonDB**: Stores as `'number'` (epoch milliseconds)
-- **Supabase**: Stores as `'string'` (ISO 8601 timestamps)
-
-The validation script automatically accounts for this difference.
-
-### WatermelonDB-Specific Columns
-
-These columns are automatically skipped during validation:
-- `id` (managed by WatermelonDB)
-- `_status` (sync status)
-- `_changed` (change tracking)
-- `last_modified_at` (local modification time)
+The columns and tables the static validator skips, and its timestamp and array rules, are
+listed with the reason for each in [README.md](README.md#validate-watermelon-schemajs).
 
 ## Troubleshooting
 
@@ -221,10 +208,10 @@ These columns are automatically skipped during validation:
 
 ### False Positives
 
-If you encounter warnings/errors that are intentional (e.g., you deliberately excluded a column for performance), you can:
-1. Document the decision in code comments
-2. Create an issue to track future improvements
-3. Consider updating the validation script to skip specific known differences
+If the static validator reports a difference that is deliberate, ground-truth it first (the
+backend's `supabase/schemas`, and whether the app's code uses the column), then name it in the
+allowlists at the top of `validate-watermelon-schema.js` and in
+[README.md](README.md#validate-watermelon-schemajs), with why.
 
 ## Integration with Builds
 
