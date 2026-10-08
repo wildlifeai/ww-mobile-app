@@ -109,6 +109,27 @@ When adding new scripts:
 4. Read environment config from `.env.development`, never hardcode project refs
 5. Add to `package.json` scripts section
 
+## validate-watermelon-schema.js
+
+`npm run schema:validate` compares `src/database/schema.ts` with the Supabase types (`src/types/supabase.ts`, or `src/types/database.types.ts` while that file is empty), column by column. It prints how many columns and tables it compared, and fails if it compared none. CI runs it in Schema Mirror Drift, where it blocks.
+
+Every difference it accepts is named in the allowlists at the top of the script, never matched by pattern. An entry that stops matching fails the run: an allowlisted table or column that WatermelonDB no longer has, or that Supabase now has, so a stale skip cannot hide a column that should be compared. Add an entry only with the evidence, and add it here.
+
+| Skipped | Why |
+|---|---|
+| `id`, `created_at`, `updated_at`, `deleted_at`, `_version`, `_custom_sync_status`, `modified_by`, on every table | The sync fields `generate-watermelon-schema.js` adds to every table, some of which the Supabase table lacks. `_status`, `_changed` and `last_modified_at` are skipped too, though `schema.ts` never declares them |
+| `sync_outbox` (table) | The queue of local changes waiting to upload, never on the server |
+| `sync_state` (table) | Sync bookkeeping, such as the pull watermarks |
+| `server_id` on `capture_methods`, `activity_sensitivity`, `sampling_designs` | Holds the integer Supabase `id`, since a WatermelonDB id is a string. `ReferenceDataService` matches rows on it |
+| `server_id` on `ai_models` | The Supabase uuid, kept beside the local id. `AiModelService` uses it as the model cache key |
+| `remote_id` on `project_invitations` | The Supabase invitation id. `InvitationService` creates the local row with a WatermelonDB id and matches on this |
+| `deployment_comments`, `camera_location_description`, `camera_location_image_path` on `deployments` | Legacy names. Upstream split the first into `start_` and `end_deployment_comments`, and renamed the others `location_description` and `camera_location_image_paths`, before its December 2025 baseline. `models/Deployment.ts` still declares them, but nothing reads or writes them, and the pull and the push use the new names. Removing them changes `schema.ts`, so it waits for a schema version bump |
+
+Two type rules, which are not skips:
+
+- **Timestamps.** A column the model reads with `@date` is epoch milliseconds, a `number`, where Supabase types an ISO `string`; the pulls convert with `new Date()` (`responded_at` is never written). The validator accepts that pair only for the columns in `TIMESTAMP_COLUMNS`, and fails either side changing: `deployment_start` and `deployment_end` on `deployments`, `expires_at` and `responded_at` on `project_invitations`.
+- **Arrays and JSON.** WatermelonDB has no array column, so the generator stores a Supabase array (`number[]`, `string[]`) or `Json` as a JSON `string`, and the validator expects `string`. `device_alert_rules.backoff_steps_min` (`integer[]`) is the one number array today; the app has no model for that table.
+
 ## check-schema-mirror.js and schema-sync-config.js
 
 `node scripts/check-schema-mirror.js <ww-backend checkout>` reports how `supabase/schemas` differs from the backend's declarative schema: files that differ, files the backend added, files it dropped. It shares `schema-sync-config.js` (the folder list and the files the sync never deletes) with `sync-db-schema.js`, so a compare and a copy cannot disagree. Exit 1 on drift, 2 when the folder list itself is stale.
