@@ -101,7 +101,7 @@ A project created on the phone also gets a local `project_admin` row for its cre
 by `ProjectService.createProject` in the same batch as the project. It mirrors ww-backend's
 `on_project_created` trigger, so the creator is the project's admin offline as well. It is
 never queued for upload; when the server's own row arrives, `syncUserRoles` updates the local
-row in place, since it matches roles by user and scope rather than by id.
+row in place, since it matches a role by id and then by role and scope.
 
 The sync only ever brings the signed-in user's own `user_roles` rows, because the table's
 select policy is own-row-only, and `public.users` gives no one else's profile. Other members of
@@ -246,7 +246,7 @@ async sync(): Promise<void> {
   try {
     await this.uploadOutbox()         // Push local changes
     await this.pullRemoteChanges()    // Pull reference data
-    await this.syncUserRoles()        // Pull roles
+    await this.syncUserRoles(userId)  // Pull roles, all of them
     await this.syncDevices()          // Pull devices
     // ... more entity syncs
 
@@ -350,12 +350,29 @@ private async pullRemoteChanges() {
 ```
 
 Every pull is incremental from a "last pulled at" watermark in `sync_state`, one per table, and
-there is one set for the phone, not one per account. `LAST_SYNC_USER_ID` records whose they
+there is one set for the phone, not one per account. Roles are the exception, below. `LAST_SYNC_USER_ID` records whose they
 are. When a different account syncs, `resetWatermarksOnUserChange` clears them so its first pull
 is a full one (#267); before that, a second account only asked for rows changed after the first
 account's last sync and never received its own older roles, so its Projects tab was empty. Rows
 already on the phone are kept, and signing out also resets `syncSlice`, so the scanner waits for
 the new account's own first sync.
+
+**Roles are read whole on every sync (#375).** The server's select policy on `user_roles` hides
+soft-deleted rows, so a role taken away, or the lower of two roles in one scope that ww-backend
+#248 soft-deleted, never reaches an incremental pull: it only shows as absence. `syncUserRoles`
+reads this account's live roles, a handful of rows, and makes the phone match:
+
+- Each server role finds its local row by id, then by role and scope, where a system role's NULL
+  scope matches NULL. A new row takes the server's id, and a row that has not changed is not
+  written.
+- This account's other local roles are removed: copies, and roles the server no longer has.
+  The creator's role in a project whose `CREATE` is still queued stays, and nothing is removed
+  when the server lists no roles at all.
+- Other accounts' rows (the member cache, an earlier sign-in) are not touched.
+
+Before #375 the lookup asked for `scope_id = ''` while the row stored NULL, and left out the
+role, so each full pull added a copy of a system role, and two roles in one scope shared one
+row. A phone that holds such copies loses them at its next sync.
 
 **A record with a change still to push keeps its local copy (#349).** The project, device and
 deployment pulls skip any row whose record has an outbox operation not yet on the server
@@ -381,8 +398,8 @@ soft-deleted, with an exact count) and compares the phone with it:
 - It does nothing when the read fails, when the list is shorter than its own count, or when it
   would remove every project on the phone, which reads as a bad answer rather than deletions.
 - If a project comes back, its orphaned operations return to `pending`. If the server lists a
-  project the phone has never pulled, the project, role and deployment watermarks are cleared so
-  the next sync pulls them in full.
+  project the phone has never pulled, the project and deployment watermarks are cleared so the
+  next sync pulls them in full.
 
 The push side uses the same lookup: a deployment whose project the server does not have waits
 instead of being refused, and the reconcile then orphans it.

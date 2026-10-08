@@ -281,7 +281,7 @@ class SupabaseSyncService {
             // STEP 2: PULL REMOTE CHANGES
             // ================================================================
             await this.pullRemoteChanges()
-            await this.syncUserRoles()
+            await this.syncUserRoles(user.id)
             if (await this.syncProjects()) {
                 await this.reconcileProjects(user.id)
             } else {
@@ -1075,9 +1075,8 @@ class SupabaseSyncService {
         }
         if (missing.length === 0) return
 
-        log(`🔁 ${missing.length} project(s) on the server are not on this phone (${missing.join(', ')}), next sync pulls projects, roles and deployments in full`)
+        log(`🔁 ${missing.length} project(s) on the server are not on this phone (${missing.join(', ')}), next sync pulls projects and deployments in full`)
         await database.write(async () => {
-            await SyncStateService.delete(SYNC_STATE_KEYS.USER_ROLES_LAST_PULLED_AT)
             await SyncStateService.delete(SYNC_STATE_KEYS.PROJECTS_LAST_PULLED_AT)
             await SyncStateService.delete(SYNC_STATE_KEYS.DEPLOYMENTS_LAST_PULLED_AT)
         })
@@ -1246,59 +1245,75 @@ class SupabaseSyncService {
     }
 
     /**
-     * Sync user roles (incremental pull)
-     * Syncs the user_roles table which replaces project_members
+     * Sync this account's roles (#375)
+     *
+     * Reads every live role the server holds for this account, not only the
+     * ones changed since a watermark, and makes the phone match it. The server
+     * shows live rows only (user_roles_select_policy hides a soft-deleted one),
+     * so a role taken away, or the lower of two roles in one scope that
+     * ww-backend #248 soft-deleted, never reaches an incremental pull: it only
+     * shows as absence. It is a handful of rows.
+     *
+     * A server role finds its local row by id, then by role and scope. The
+     * second covers the creator's project_admin that createProject writes, and
+     * rows pulled before #375, which carry local ids. A system role's scope is
+     * NULL and matches NULL: the old lookup asked for '' and stored NULL, so
+     * every full pull added a copy, and it left out the role, so two roles in
+     * one scope shared a row. A new row takes the server's id.
+     *
+     * Every other local role of this account goes: a copy, or a role the
+     * server no longer has. Kept are the creator's role in a project whose
+     * CREATE has not reached the server, and everything when the server lists
+     * no roles at all, which reads as a bad answer rather than as losing them
+     * all. Other accounts' rows, from the member cache (#307) or an earlier
+     * sign-in (#267), are not touched.
      */
-    private async syncUserRoles(): Promise<void> {
-        const LAST_PULLED_KEY = SYNC_STATE_KEYS.USER_ROLES_LAST_PULLED_AT
-        const lastPulledStr = await SyncStateService.get(LAST_PULLED_KEY)
-        const lastPulledAt = lastPulledStr ? new Date(parseInt(lastPulledStr, 10)).toISOString() : new Date(0).toISOString()
+    private async syncUserRoles(userId: string): Promise<void> {
+        log('👥 Syncing user roles')
 
-        log('👥 Syncing user roles since', lastPulledAt)
-
-        const client = getSupabaseClient()
-        const { data, error } = await client
+        const { data, error } = await getSupabaseClient()
             .from('user_roles')
             .select('*')
-            .gt('updated_at', lastPulledAt)
+            .eq('user_id', userId)
+            .is('deleted_at', null)
 
-        if (error) {
+        if (error || !Array.isArray(data)) {
             logCloudFailure('❌ Failed to sync user roles:', error)
             return
         }
+        const live = data as any[]
+        const sameRole = (local: UserRole, row: any) => local.role === row.role
+            && local.scopeType === row.scope_type
+            && (local.scopeId || null) === (row.scope_id || null)
 
-        if (!data || data.length === 0) {
-            log('✅ No new user role changes')
-            return
-        }
-
-        log(`📥 Received ${data.length} user role updates`)
-
-        const usersToSync = new Set<string>()
-
+        let added = 0
+        let updated = 0
+        let removed = 0
         await database.write(async () => {
             const collection = database.get<UserRole>('user_roles')
-            const operations = []
+            const local = await collection.query(Q.where('user_id', userId)).fetch()
 
-            for (const row of data as any[]) {
-                usersToSync.add(row.user_id) // Track user ID for profile sync
+            // By id first, so a match by role and scope cannot take a row that
+            // is another server role's own record
+            const matched = new Map<any, UserRole>()
+            const taken = new Set<string>()
+            const claim = (row: any, mine: UserRole | undefined) => {
+                if (!mine) return
+                matched.set(row, mine)
+                taken.add(mine.id)
+            }
+            for (const row of live) claim(row, local.find(r => r.id === row.id))
+            for (const row of live) {
+                if (!matched.has(row)) claim(row, local.find(r => !taken.has(r.id) && sameRole(r, row)))
+            }
 
-                // Check if exists
-                const existing = await collection.query(
-                    Q.where('user_id', row.user_id),
-                    Q.where('scope_type', row.scope_type),
-                    Q.where('scope_id', row.scope_id || '')
-                ).fetch()
-
-                if (existing.length > 0) {
-                    await existing[0].update((rec) => {
-                        rec.role = row.role
-                        rec.isActive = row.is_active
-                        rec.modifiedBy = row.modified_by
-                        rec.updatedAt = new Date(row.updated_at ?? Date.now())
-                    })
-                } else {
-                    const newRec = collection.prepareCreate((rec) => {
+            const operations: any[] = []
+            for (const row of live) {
+                const mine = matched.get(row)
+                const updatedAt = new Date(row.updated_at ?? Date.now())
+                if (!mine) {
+                    operations.push(collection.prepareCreate((rec) => {
+                        rec._raw.id = row.id
                         rec.userId = row.user_id
                         rec.role = row.role
                         rec.scopeType = row.scope_type
@@ -1310,28 +1325,53 @@ class SupabaseSyncService {
                         rec.modifiedBy = row.modified_by;
                         // Use _raw to bypass @readonly check
                         (rec._raw as any).created_at = new Date(row.created_at ?? Date.now()).getTime()
-                        rec.updatedAt = new Date(row.updated_at ?? Date.now())
-                    })
-                    operations.push(newRec)
+                        rec.updatedAt = updatedAt
+                    }))
+                    added++
+                } else if (mine.role !== row.role || mine.isActive !== row.is_active
+                    || (row.updated_at && Number(mine.updatedAt) !== updatedAt.getTime())) {
+                    // A promotion changes the role on the same server row (#248)
+                    operations.push(mine.prepareUpdate((rec) => {
+                        rec.role = row.role
+                        rec.isActive = row.is_active
+                        rec.modifiedBy = row.modified_by
+                        rec.updatedAt = updatedAt
+                    }))
+                    updated++
                 }
             }
-            if (operations.length > 0) {
-                await database.batch(operations)
+
+            const unmatched = local.filter(r => !taken.has(r.id))
+            if (unmatched.length > 0 && live.length === 0) {
+                logWarn(`⚠️ The server lists no roles for this account, kept the ${unmatched.length} on this phone`)
+            } else if (unmatched.length > 0) {
+                // The creator's role in a project still to be created on the server
+                const createsQueued = new Set((await database.get<SyncOutbox>('sync_outbox')
+                    .query(
+                        Q.where('table_name', 'projects'),
+                        Q.where('status', Q.oneOf(['pending', 'failed', 'syncing'])),
+                    )
+                    .fetch())
+                    .filter(op => op.operationType.toUpperCase() === 'CREATE')
+                    .map(op => op.recordId))
+                for (const r of unmatched) {
+                    if (r.scopeType === 'project' && !!r.scopeId && createsQueued.has(r.scopeId)) continue
+                    operations.push(r.prepareDestroyPermanently())
+                    removed++
+                }
             }
-            
-            // Update timestamp
-            if (data.length > 0) {
-                const maxTimestamp = Math.max(...data.map((d: any) => new Date(d.updated_at).getTime()))
-                await SyncStateService.set(LAST_PULLED_KEY, maxTimestamp.toString())
+
+            if (operations.length > 0) {
+                await database.batch(...operations)
             }
         })
 
         // Sync missing user profiles
-        if (usersToSync.size > 0) {
-            await this.syncUserProfiles(Array.from(usersToSync))
+        if (live.length > 0) {
+            await this.syncUserProfiles(Array.from(new Set(live.map(row => row.user_id as string))))
         }
 
-        log('✅ User roles sync complete')
+        log(`✅ User roles sync complete: ${live.length} on the server, ${added} added, ${updated} updated, ${removed} removed here`)
     }
 
     /**

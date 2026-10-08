@@ -25,8 +25,17 @@ version for humans is
   check treated the creator as a stranger to their own project until a sync.
   `ProjectService.createProject` now writes that role row in the same batch as the project. It
   is never queued (the server makes its own, and `user_roles` writes from the app are refused
-  by RLS), and `syncUserRoles` later updates it in place, because it matches roles by user and
-  scope, not by id. Keep that matching, or the pull will duplicate the row.
+  by RLS), and `syncUserRoles` later updates it in place, because it matches a role by id and
+  then by role and scope. Keep that matching, or the pull will duplicate the row.
+- **The role pull reads all of this account's live roles on every sync (#375).** The select
+  policy hides soft-deleted rows, so a role taken away, or the lower of two roles in one scope
+  that ww-backend #248 soft-deleted, never shows in `updated_at > watermark`; it only shows as
+  absence. So `syncUserRoles` has no watermark: it matches each server row by id, then by role
+  plus scope, with a system role's NULL scope matching NULL, and removes this account's other
+  local roles. The old lookup asked for `scope_id = ''` and left out the role, so every full
+  pull added a copy of a system role and two roles in one scope shared a row. It keeps the
+  creator's role while the project's `CREATE` is queued, keeps everything when the server lists
+  no roles, and never touches another account's rows (the member cache, an earlier sign-in).
 - **Server-only actions say so offline, they are not queued.** Invitations are made by
   `send_project_invitation`, so the Invite card tells the user it needs a connection instead of
   calling. Role changes and removals are the same (#335): `UserRoleService` asks
@@ -128,7 +137,7 @@ version for humans is
   `getStatistics().orphaned`). Another account's held operations are not touched. It does
   nothing on a failed read, on a list shorter than its own count, or when it would remove every
   project on the phone. Orphaned operations go back to `pending` if the project reappears, and a
-  server project the phone lacks clears the project, role and deployment watermarks for a full
+  server project the phone lacks clears the project and deployment watermarks for a full
   pull. There is still no screen for orphaned work.
 - **A project edit sends only the fields it changed (#330).** The edit form passes every field,
   and a full record from a stale phone overwrote newer website values (Sinbad's model and GPS,
