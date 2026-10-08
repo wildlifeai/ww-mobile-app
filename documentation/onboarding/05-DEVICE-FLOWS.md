@@ -247,6 +247,12 @@ op34 = 0, which is why step 6 must diff against the post-reset table: against
 the older snapshot, a device that already held the project's flash before the
 reset would have had both writes skipped and stayed dark.
 
+Before writing, `configure()` calls `flashHold.forget` and `flashLedHold.forget`.
+The Engineer Console's motion test holds op34, op13 and op9 when it tests with a
+flash, and a test that dropped its link leaves their originals owed for the next
+test to pay. The project's LED can be the one that test held, so without the
+`forget` a later motion test would take the project's flash off a deployed camera.
+
 **D. Configure Pictures per Trigger:** the project's two burst columns, for motion
 and timelapse alike, and the OP 8 they need (#317):
 

@@ -10,7 +10,7 @@ import { OP_PARAMETER } from '../../../../hooks/useDeviceSettings'
 jest.mock('../../../../utils/logger', () => ({ log: jest.fn(), logWarn: jest.fn(), logError: jest.fn() }))
 jest.mock('../../../../ble/session/createBleSession', () => ({ createBleSession: jest.fn() }))
 jest.mock('../../../../ble/session/keepAwake', () => ({ keepAwake: { acquire: jest.fn(async () => true), release: jest.fn(async () => {}) } }))
-jest.mock('../../../../ble/session/flashHold', () => ({ flashHold: { acquire: jest.fn(async () => true), release: jest.fn(async () => {}) } }))
+jest.mock('../../../../ble/session/flashHold', () => ({ flashHold: { acquire: jest.fn(async () => true), release: jest.fn(async () => {}), restorePending: jest.fn(async () => {}) } }))
 jest.mock('../../../../ble/protocol/bleTransportController', () => ({ bleTransport: { clearAll: jest.fn() } }))
 // The owed restore lives on disk, so the store has to keep what it is given
 // across steps; `restoreMocks: true` empties the global mock between them.

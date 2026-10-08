@@ -629,7 +629,9 @@ export const commandRegistry = {
   // (ww-hardware #52), so a longer wait only paid for a reply that never
   // comes (#272, 23 September 2026). The RP3 build has no `md` and answers
   // `Unrecognised` (Seeed #211); that and the firmware's own `Error:` lines
-  // are refusals, told apart from a lost reply by `isMdRefusal`.
+  // are refusals, told apart from a lost reply by `isMdRefusal`. Since #385
+  // the motion test writes the level with `setop 17`, which is acknowledged,
+  // and sends this only to learn whether the build applies a level at all.
   md: createSingleLineCommand<boolean>(
     'md',
     (level: number) => `AI md ${level}`,

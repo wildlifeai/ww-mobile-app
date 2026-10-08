@@ -282,7 +282,8 @@ ble/
 ├── session/                    # Deterministic workflow API
 │   ├── createBleSession.ts     # Session factory
 │   ├── keepAwake.ts            # Hold a device awake for a screen visit (op8 raised, restored on exit or next connection)
-│   ├── flashHold.ts            # Hold the capture flash armed for a screen visit (op34 always-on, restored the same way)
+│   ├── flashHold.ts            # Hold the capture flash armed for a screen visit (op34 always-on, restored the same way; a deployment drops it)
+│   ├── flashLedHold.ts         # Hold a motion test's flash LED and brightness (op13, op9, restored the same way; a deployment drops it)
 │   ├── mdIntervalHold.ts       # Hold the HM0360 motion rate at a motion test's interval (op11, restored the same way; a deployment drops it)
 │   └── endDeploymentSession.ts # Ending a deployment: one probe, skip the camera after its first timeout, 20 s cap, `dis` exempt
 └── workflows/                  # Reusable BLE workflow functions

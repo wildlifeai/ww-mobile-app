@@ -138,6 +138,24 @@ day are in [traps.md](traps.md).
   could hold needs the same `forget`. With the detector armed through the setup sleep, a motion
   wake can take and report a capture of its own first, so the test counts grids and ends only
   after its own `About to capture` (bench, 1 October 2026).
+- **The motion test's flash is held too: op34 through `flashHold`, op13 and op9 through
+  `ble/session/flashLedHold.ts` (#387).** op13 and op9 are the camera's own photo settings, and
+  a plain `setop` left a test's LED and brightness on the card for good. op13 also decides
+  whether the camera flashes while it sleeps: `image_sleepNow()` arms the HM0360's STROBE, which
+  lights op21's LED on every motion frame, when op11 is non-zero, op21 names an LED and
+  `ledFlashIsActive()` is non-zero, and that returns op13, read live, whenever the flash is armed.
+  The mode is only read at wake (`setupLEDFlash()`), and the wake a flash test ends in read op34
+  at always-on, so the cleanup must put op13 back inside that wake, before the sleep, or a camera
+  with op11 set flashes through it with no link (#383; the code says so, the bench has not yet).
+  Putting op34 back does not help that sleep, and on a camera whose own op13 is an LED (deployed
+  with a flash) nothing the app writes in that wake does: the sleep strobes until the next wake
+  re-reads op34. Applying the mode on `setop` is the firmware question in Seeed #209.
+  flashLedHold works like mdIntervalHold: the owed record goes to disk before the writes, the
+  test's cleanup pays what a dropped test left owed on op13, op9 and op34 with or without a flash
+  of its own, and a deployment calls `flashHold.forget` and `flashLedHold.forget` first, because
+  the project's LED can be the one a test held. Its `restorePending` also checks the device still
+  reads the value the hold wrote, so a choice made since in Capture Picture or Device Settings
+  stands. Capture Picture writes op13 and op9 as settings, on purpose, and holds only op34.
 - **The app runs ahead of the firmware on op indices, deliberately, and one index changed
   meaning.** Guard on the array length before touching a high index, the way
   `useCapturePicture` does for the white balance gains, rather than reading it and hoping. op32

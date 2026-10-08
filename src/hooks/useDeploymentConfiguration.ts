@@ -10,6 +10,8 @@ import { DEPLOYMENT_INTERVAL_BEFORE_DPD_MS, ProjectBurstColumns, resolveProjectB
 import { describeDetectionThreshold, ProjectDetectionThresholdColumns, resolveModelThresholdOp } from '../utils/projectDetectionThreshold'
 import { formatGPSString } from '../utils/gpsUtils'
 import { keepAwake } from '../ble/session/keepAwake'
+import { flashHold } from '../ble/session/flashHold'
+import { flashLedHold } from '../ble/session/flashLedHold'
 
 
 export interface DeploymentConfig {
@@ -319,6 +321,14 @@ export const useDeploymentConfiguration = () => {
             // and a burst raises it). A keepAwake hold or owed restore from
             // before must not put an earlier value back over it (#317).
             await keepAwake.forget(device.id)
+
+            // The flash is the project's from here too: op34 and op13 are
+            // written from it, and op9 by the reset before this. A restore a
+            // dropped bench test left owed would put the test's originals
+            // back over them at the next motion test (#383, #387), and the
+            // project's LED can be the very one the test held.
+            await flashHold.forget(device.id)
+            await flashLedHold.forget(device.id)
 
             // 1. Set deployment ID (with auto-fallback and GPS enforce)
             await setDeploymentId(session, config.deploymentId, config.location, config.recordGpsInImages, currentOps)

@@ -23,8 +23,8 @@ Developers **must** use the correct write path for each use case. Misuse causes 
 | Deployment workflow / Safe UI actions | `bleSession.execute()` | Enqueues deterministic commands, blocks UI, handles timeout and parse matching. |
 | Internal serialization | `bleTransportController` | Underlying queue engine managing the `bleSession` promises. |
 | Binary streaming (Images) | passive `bleEventBus` only | Byte-level routing via `rxRouter`, entirely out-of-band. |
-| Motion detection `md` sensitivity | direct `writeToDevice()` | Must bypass the transport controller to avoid blocking `setop`/`capture`. |
-| Motion detection `setop`/`capture` | `bleSession.execute()` | Queued commands that follow the md sensitivity write. |
+| Motion detection sensitivity, `setop 17` then `md` | `bleSession.execute()` | The level is written with the acknowledged `setop`; `md` follows with a 2 s timeout only to learn whether the build applies it, since the nRF drops its reply on the HM0360 build (ww-hardware #52) and the RP3 build refuses it (Seeed #211). |
+| Motion detection `setop`/`capture` | `bleSession.execute()` | Queued commands, the holds included. |
 | Motion detection grid events | passive `textLine` subscription | Async text lines parsed via `useMotionDetectionStream`. |
 | Light sensor registers (`HM0360 AE regs`) and decision (`AE light check`) | passive `textLine` subscription | Both sent after every capture and every light check, including ones the app did not request. The register block is the measurement; the decision line is parsed by `lightCheck.ts` as optional metadata. Surfaced through `useLightSensor`. See [Light-Sensor.md](./Light-Sensor.md). |
 | Self-test result (`Error bits = 0x…`) | passive `textLine` subscription | The device announces this after **every wake**, unprompted. `ble/protocol/selfTestCache.ts` keeps the latest reading per connection; the pre-deployment checks, the Capture Picture health card and `useCameraReadiness` read it and send `selftest` only when nothing has been heard since the wake they care about. |
@@ -39,7 +39,7 @@ Developers **must** use the correct write path for each use case. Misuse causes 
 > [!WARNING]
 > **Never** call `writeRaw()` from a deployment workflow. Never call `bleSession.execute()` from the Engineer Console. These boundaries exist to prevent determinism violations.
 >
-> The motion detection `md` command is the **one exception** to the queue rule — it uses direct `writeToDevice()` because the command always times out (~5s) due to the nRF52 Wake(MD) race, and that timeout blocks the queue, pushing `capture` into the Himax's Save State window.
+> The motion test's `md` goes through `bleSession.execute()` like everything else, with a 2 s timeout and the test's own wait for sleep after it, so there is no exception to the queue rule.
 
 ---
 
