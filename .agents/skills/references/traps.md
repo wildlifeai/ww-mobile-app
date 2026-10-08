@@ -251,6 +251,13 @@ file is the list of things that look like an app bug and are not, and the revers
   Starting `MainActivity` first and sending the link a moment later crashed the dev launcher in
   September 2026. In Git Bash, prefix `adb shell` commands that carry a path or a URL with
   `MSYS_NO_PATHCONV=1`, or MSYS rewrites them.
+- **A file changed under a running dev build does not always reach it.** Metro serves the
+  checkout it runs in and usually pushes an edit with Fast Refresh, but on 8 October 2026 a file
+  copied into that checkout never arrived and a bench run used the old code. Before trusting a
+  result, check the run's log for a line only the new code writes. To force the new code, open
+  the developer menu (`adb shell input keyevent 82`) and tap Reload; that restarts the JS and
+  drops the Bluetooth link, so the camera has to be found again. Sending the dev-client link to
+  an app that is already open only brings it to the front, it does not reload.
 - **A new native library is missing from every binary built before it.** Metro serves the new
   JS to an old dev client all the same. `@react-native-google-signin/google-signin` looks up its
   native module as it loads (`TurboModuleRegistry.getEnforcing`), so importing it at the top of
@@ -311,4 +318,6 @@ file is the list of things that look like an app bug and are not, and the revers
 - **A worktree's `node_modules` is usually a junction to the main checkout's.** Unlink it on its
   own (`cmd /c rmdir <worktree>\node_modules`) before `git worktree remove`. A recursive delete,
   such as PowerShell 5.1's `Remove-Item -Recurse`, can follow the junction and empty the real
-  one.
+  one. Inside an isolated agent worktree `cmd /c mklink /J` is refused, and PowerShell's
+  `New-Item -ItemType Junction` works. Point the junction at an install whose
+  `package-lock.json` matches the branch's: the main checkout is not always on a current branch.

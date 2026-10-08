@@ -333,7 +333,11 @@ debug build over USB. Four things decide whether the test means anything:
 
 Check the queue, not the screen: the app's WatermelonDB file is readable with
 `adb exec-out run-as com.wildlife.wildlifewatcher.expo cat watermelon.db` (and
-`watermelon.db-wal`), and `sync_outbox` holds every queued change with its status.
+`watermelon.db-wal`), and `sync_outbox` holds every queued change with its status. This needs
+a debug build: a `preview`, `staging` or store build writes no app log to logcat and refuses
+`run-as`, so its queue cannot be read this way. Reproduce on a debug build, or check the server
+side. On 8 October 2026 a deployment started from the 0.0.70 preview build could not be traced
+on the phone for that reason.
 
 ---
 
