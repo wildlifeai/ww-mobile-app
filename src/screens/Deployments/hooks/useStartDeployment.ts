@@ -15,6 +15,7 @@ import FirmwareService from '../../../services/FirmwareService'
 import { useBleSession } from '../../../hooks/useBleSession'
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { checkSdCard } from '../../../ble/workflows/checkSdCard'
+import { pingLorawan, lorawanRequiredWarning, LORAWAN_REQUIRED_WARNING } from '../../../ble/workflows/lorawanPing'
 import { sleep } from '../../../utils/helpers'
 import { selfTestCache } from '../../../ble/protocol/selfTestCache'
 import { parseSelfTestBits, SelfTestBit, SD_CARD_POWER_CYCLE_HINT } from '../../../utils/deviceSelfTest'
@@ -335,37 +336,27 @@ export const useStartDeployment = ({
         }
     }, [availableProjects, project?.id]);
 
-    // Validate LoRaWAN connectivity if required
+    // Validate LoRaWAN connectivity if required, reading the same result as
+    // the Signal Test card (#348)
     useEffect(() => {
         let isMounted = true;
         const checkLorawan = async () => {
-             if (project?.lorawan_required && bleDevice?.connected) {
+             if (project?.lorawan_required && bleDevice?.connected && bleSession) {
                   log('[Deployment] Project requires LoRaWAN. Pinging network...')
-                  try {
-                      await bleSession?.execute(commandRegistry.ping)
-                      log('[Deployment] LoRaWAN ping successful.')
-                      if (isMounted) {
-                          setInitErrors(prev => ({
-                              ...prev,
-                              deviceHealth: (prev.deviceHealth || []).filter(msg => !msg.includes('LoRaWAN is required'))
-                          }))
-                      }
-                  } catch (err) {
-                      logWarn('[Deployment] LoRaWAN ping failed:', err)
-                      if (isMounted) {
-                          setInitErrors(prev => {
-                              const existing = prev.deviceHealth || []
-                              const msg = 'LoRaWAN is required but the test message failed.'
-                              if (!existing.includes(msg)) return { ...prev, deviceHealth: [...existing, msg] }
-                              return prev
-                          })
-                      }
+                  const result = await pingLorawan(bleSession)
+                  log(`[Deployment] LoRaWAN ping: ${result}`)
+                  const warning = lorawanRequiredWarning(result)
+                  if (isMounted) {
+                      setInitErrors(prev => {
+                          const others = (prev.deviceHealth || []).filter(msg => !msg.startsWith(LORAWAN_REQUIRED_WARNING))
+                          return { ...prev, deviceHealth: warning ? [...others, warning] : others }
+                      })
                   }
              } else if (!project?.lorawan_required) {
                  if (isMounted) {
                       setInitErrors(prev => ({
                           ...prev,
-                          deviceHealth: (prev.deviceHealth || []).filter(msg => !msg.includes('LoRaWAN is required'))
+                          deviceHealth: (prev.deviceHealth || []).filter(msg => !msg.startsWith(LORAWAN_REQUIRED_WARNING))
                       }))
                  }
              }

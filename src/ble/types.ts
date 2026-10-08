@@ -285,8 +285,9 @@ export const COMMANDS: {
 	[CommandNames.ping]: {
 		name: CommandNames.ping,
 		writeCommand: () => "ping",
-		readRegex: /(Joined|Not Joined)/i,
-		description: "Send LoRaWAN packet",
+		// The nRF's replies, ble_commands.c processPing(); the app reads them in commandRegistry.ping
+		readRegex: /^(OK|Not joined yet\.|Busy)$/,
+		description: "Send a LoRaWAN test message now",
 		type: 'command',
 	},
 	[CommandNames.reset]: {

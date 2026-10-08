@@ -3,9 +3,8 @@ import { StyleSheet, View } from 'react-native'
 import { Card, Button, Text, useTheme, List } from 'react-native-paper'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { createBleSession } from '../../../ble/session/createBleSession'
-import { commandRegistry } from '../../../ble/protocol/commandRegistry'
+import { pingLorawan, LorawanPingResult, LORAWAN_PING_WORDS } from '../../../ble/workflows/lorawanPing'
 import { WWIcon } from '../../../components/ui/WWIcon'
-import { logError } from '../../../utils/logger'
 
 
 interface Props {
@@ -15,25 +14,16 @@ interface Props {
 
 export const LoRaWANSection = ({ device, onShowHelp }: Props) => {
     const theme = useTheme()
-    const [status, setStatus] = useState<'idle' | 'testing' | 'success' | 'failed'>('idle')
-    const [message, setMessage] = useState('')
+    const [status, setStatus] = useState<'idle' | 'testing' | LorawanPingResult>('idle')
     const [expanded, setExpanded] = useState(false)
 
     const handlePing = useCallback(async () => {
         if (!device) return
         setStatus('testing')
-        setMessage('Sending ping…')
-        try {
-            const session = createBleSession(device)
-            await session.execute(commandRegistry.pingToNetwork)
-            setStatus('success')
-            setMessage('Ping command sent successfully. Verify reception on server.')
-        } catch (error) {
-            logError('Ping failed:', error)
-            setStatus('failed')
-            setMessage('Failed to send ping command.')
-        }
+        setStatus(await pingLorawan(createBleSession(device)))
     }, [device])
+
+    const words = status === 'idle' || status === 'testing' ? null : LORAWAN_PING_WORDS[status]
 
     const dynamicStyles = useMemo(() => ({
         statusText: { flex: 1, color: theme.colors.onSurface },
@@ -44,7 +34,7 @@ export const LoRaWANSection = ({ device, onShowHelp }: Props) => {
         <Button
             {...props}
             icon="help-circle-outline"
-            onPress={() => onShowHelp('LoRaWAN Signal Test', 'Sends a ping through the LoRaWAN network to verify the device can transmit data to the gateway.')}
+            onPress={() => onShowHelp('LoRaWAN Signal Test', 'Asks the camera to send one test message over LoRaWAN now. It can only send once it has joined a network through a gateway, so the result also tells you whether it has.')}
         >
             <Text>Help</Text>
         </Button>
@@ -72,15 +62,15 @@ export const LoRaWANSection = ({ device, onShowHelp }: Props) => {
                     <Card.Content style={styles.content}>
                         <View style={styles.statusRow}>
                     <Text variant="bodyMedium" style={dynamicStyles.statusText}>
-                        Status: {status === 'idle' ? 'Not Tested' :
-                            status === 'testing' ? 'Testing…' :
-                                status === 'success' ? 'Command Sent' : 'Failed'}
+                        Status: {words ? words.status : status === 'testing' ? 'Testing…' : 'Not Tested'}
                     </Text>
-                    {status === 'success' && <WWIcon source="check-circle" color={theme.colors.primary} size={24} />}
-                    {status === 'failed' && <WWIcon source="alert-circle" color={theme.colors.error} size={24} />}
+                    {status === 'sent' && <WWIcon source="check-circle" color={theme.colors.primary} size={24} />}
+                    {status === 'busy' && <WWIcon source="clock-outline" color={theme.colors.outline} size={24} />}
+                    {(status === 'not_joined' || status === 'off' || status === 'no_answer') && <WWIcon source="alert-circle" color={theme.colors.error} size={24} />}
                 </View>
 
-                {message ? <Text variant="bodySmall" style={dynamicStyles.messageText}>{message}</Text> : null}
+                {status === 'testing' && <Text variant="bodySmall" style={dynamicStyles.messageText}>Sending a test message…</Text>}
+                {words && <Text variant="bodySmall" style={dynamicStyles.messageText}>{words.detail}</Text>}
 
                 <Button
                     mode="outlined"

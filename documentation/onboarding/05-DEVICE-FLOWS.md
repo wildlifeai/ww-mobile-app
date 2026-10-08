@@ -119,7 +119,7 @@ through a subtitle under the title: the standing descriptions were removed on 22
 
 | Element | Notes |
 |---------|-------|
-| LoRaWAN connectivity check | Auto-pings network on project selection. Shows pass/fail status. |
+| LoRaWAN Signal Test | Test Connectivity sends `ping`, and the card says Sent, Not joined yet, Busy, LoRaWAN is off or No answer. Off is the app's reading of `Not joined yet.` on a camera whose OP 32 is 0. The screen also pings once the project is chosen and the camera is connected, and warns unless the answer is Sent or Busy. Both read `src/ble/workflows/lorawanPing.ts` (#348); the nRF's replies are in the [console guide](04-ENGINEER-CONSOLE.md). A ping answered `OK` sends a real uplink. |
 
 **3. Notes** (always visible)
 

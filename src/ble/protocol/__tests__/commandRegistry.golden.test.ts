@@ -39,8 +39,10 @@ const GOLDEN: Record<keyof typeof commandRegistry, Row> = {
     version: { wire: 'ver', accepts: 'WW500-C02 V 00.30.50 02:56:03 Sep 15 2026' },
     dfu: { wire: 'dfu', accepts: 'Device will enter DFU mode after disconnecting.' },
     reset: { wire: 'reset', accepts: 'Device will reset after disconnecting.' },
-    ping: { wire: 'ping', accepts: ['Joined', 'Not Joined'] },
-    pingToNetwork: { wire: 'ping', accepts: 'Pong', rejects: 'Error: no network' },
+    // Word for word from processPing() in ww-hardware ble_commands.c (dev,
+    // October 2026). `Not joined yet.` from WILD-7VQI, nRF 0.30.52, on the
+    // bench on 1 October 2026 (#348); `OK` and `Busy` from the source only.
+    ping: { wire: 'ping', accepts: ['OK', 'Not joined yet.', 'Busy'] },
     network: { wire: 'network', accepts: ['RSSI: -80dB, SNR: 5dB', 'No network comms yet'] },
     setutc: {
         args: ['2026-09-20T05:17:54.123Z'],
@@ -204,6 +206,23 @@ describe('commandRegistry golden wire format', () => {
         }
         // And now, when no time is given.
         expect(commandRegistry.aiSetutc().build()).toMatch(/^AI setutc \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/)
+    })
+
+    it('reads each ping reply as what the nRF did, and nothing else as a reply', () => {
+        // Until #348 the Signal Test waited for `Pong` and timed out on every
+        // answer, while Start Monitoring passed on `Not joined yet.`
+        const read = (line: string) => {
+            const cmd = commandRegistry.ping()
+            cmd.collect(line)
+            return cmd.parser()
+        }
+        expect(read('OK')).toBe('sent')
+        expect(read('Not joined yet.')).toBe('not_joined')
+        expect(read('Busy')).toBe('busy')
+        // The nRF's unprompted LoRaWAN lines, and what the app used to wait for
+        for (const line of ['Joined.', 'Already joined', 'Unconfirmed uplink message sent.', 'Pong', 'Not Joined']) {
+            expect(commandRegistry.ping().match(line)).toBe(false)
+        }
     })
 
     it('has a golden row for every command in the registry', () => {
