@@ -81,8 +81,10 @@ async function main() {
     if (failures) {
         console.log('\nAn index mismatch means a setop from the app lands on the wrong firmware parameter.')
         console.log('This is a three-way contract with the Seeed firmware and ww-hardware. Do not renumber unilaterally.')
-        process.exit(1)
+        process.exitCode = 1
     }
 }
 
-main().catch((e) => { console.error(e.message); process.exit(2) })
+// exitCode, not exit(): on Windows, process.exit() straight after a fetch can trip
+// a libuv assertion and replace the exit code with a crash code.
+main().catch((e) => { console.error(e.message); process.exitCode = 2 })

@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
-import { runDeviceCheck, overallVerdict, CheckStepId, CheckStepState, DeviceCheckDeps, DeviceCheckSession } from '../deviceCheck'
+import { runDeviceCheck, overallVerdict, describeSelfTest, CheckStepId, CheckStepState, DeviceCheckDeps, DeviceCheckSession } from '../deviceCheck'
 import { bleEventBus } from '../../protocol/eventBus'
 import { commandRegistry } from '../../protocol/commandRegistry'
 import type { CommandContext } from '../../protocol/commandRegistry'
@@ -579,5 +579,30 @@ describe('runDeviceCheck', () => {
         expect(steps.leds?.status).toBe('skipped')
         expect(device.sent.some(c => /^flash[rgb] /.test(c))).toBe(false)
         expect(TOUCHED.map(i => device.ops[i])).toEqual(DEFAULTS)
+    })
+})
+
+describe('describeSelfTest', () => {
+    // Bit 14 (Seeed PR #240) is a warning, not a camera fault (ww-hardware issue 56).
+    it('warns on bit 14 by its name, without failing the unit', () => {
+        const state = describeSelfTest(0x4000, 'RP3')
+
+        expect(state.status).toBe('warn')
+        expect(state.summary).toMatch(/^0x4000: .*Camera processor could not reach the Bluetooth chip at start-up\.$/)
+    })
+
+    it('names a bit the app does not know, rather than an empty list', () => {
+        const state = describeSelfTest(0x8000, 'RP3')
+
+        expect(state.status).toBe('warn')
+        expect(state.summary).not.toBe('0x8000: .')
+        expect(state.summary).toBe('0x8000: unknown self-test code 0x8000.')
+    })
+
+    it('still fails a camera fault reported beside an unknown bit', () => {
+        const state = describeSelfTest(0x8100, 'RP3')
+
+        expect(state.status).toBe('fail')
+        expect(state.summary).toMatch(/^0x8100: the colour camera \(RP3\) did not answer, unknown self-test code 0x8000\./)
     })
 })

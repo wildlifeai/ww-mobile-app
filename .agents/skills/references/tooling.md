@@ -106,6 +106,11 @@ shell boundary, and none of them reproduced in a Linux container.
   awk checked `< 10` while the message claimed 70. Raise the floor by hand when coverage
   has genuinely climbed; never lower it to make a PR pass.
 - `scripts/check-op-indices.js` diffs `OP_PARAMETER` against the firmware enum on Seeed
-  `dev`. It runs on any PR touching `useDeviceSettings.ts` and is advisory, because the
-  firmware may legitimately lead the app by one PR. Pass it a local header path to run
-  offline.
+  `dev`, and `scripts/check-selftest-bits.js` diffs `SelfTestBit` against `selfTest_type_t`
+  there. Each runs on PRs touching its app file and on Mondays, and is advisory, because the
+  firmware may legitimately lead the app by one PR. Pass either a local header path to run
+  offline. What fails and what only warns is in `scripts/README.md`.
+- **`process.exit()` straight after a `fetch` crashes Node on Windows.** The self-test check
+  printed its result and then died on a libuv assertion (`UV_HANDLE_CLOSING`, `async.c`), exit
+  code -1073740791 instead of 1, every time on Node 24 (9 October 2026). Both check scripts set
+  `process.exitCode` and let the script end; do the same in any script that fetches.

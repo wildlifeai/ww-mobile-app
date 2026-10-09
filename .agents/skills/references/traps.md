@@ -17,6 +17,14 @@ file is the list of things that look like an app bug and are not, and the revers
   `selftest` after waking the AI processor. The two are not duplicates, and neither is
   removable. Anything reading bits 8 or 9, the main camera and the HM0360, must reject the
   all-bits-set pattern or it will report five hardware failures on a healthy device.
+- **Self-test bit 14 is named but never arrives, so nothing should wait for it.** The Himax sets
+  it (`SELF_TEST_AI_NO_BLE`, Seeed PR #240) when the nRF has not read its first message within
+  300 ms of boot, then sends the nRF nothing until the nRF's next command, which clears it before
+  anything is answered: on the bench on 30 September 2026 the AI console showed `selfTest 4000`
+  for two minutes while the nRF reported `0000` (Seeed #246). What a Himax that lost the nRF at
+  boot leaves for the app to see is the preset above, still standing after the AI processor
+  should have reported, because its own report never reached the nRF to replace it. The app
+  names the bit (ww-hardware #56) only so a reading that does carry it is not shown as unknown.
 - **The device is woken only by a command, so nothing may wait for a Wake it will not cause.**
   The transport queue paused on Sleep and resumed only on Wake; when a Sleep landed while a
   slow JavaScript thread was still completing `slots`, during a screen mounting eight gallery

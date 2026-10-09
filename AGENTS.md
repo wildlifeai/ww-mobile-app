@@ -60,7 +60,7 @@ so `dev` can sit behind a merge queue without touching the workflows. PR-Agent i
 that cannot: it triggers on open and on comments, so it stays advisory.
 The coverage floor is a ratchet at 20%: it only moves up, by hand.
 Expo Doctor gates dependency changes; CodeQL, Schema Mirror Drift's mirror check,
-Dependency Audit and Op Index Drift are advisory, and iOS builds once a week. The Testing Guide's CI/CD table lists every workflow,
+Dependency Audit, Op Index Drift and Self-Test Bit Drift are advisory, and iOS builds once a week. The Testing Guide's CI/CD table lists every workflow,
 what it proves and whether it blocks.
 
 ## Non-negotiables

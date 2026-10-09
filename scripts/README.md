@@ -23,6 +23,8 @@
 | `ci-maestro.sh` | Run the Maestro flows on the CI emulator (install APK, Bluetooth on, junit report, final hierarchy, logcat) | Bash (CI) |
 | `ci-maestro-output.sh` | Redact the E2E password and print Maestro's report, hierarchies and logs into the job log | Bash (CI) |
 | `maestro-offline.sh` | Run the three offline Maestro phases, switching airplane mode and restoring Bluetooth between them | Bash |
+| `check-op-indices.js` | Diff `OP_PARAMETER` against the firmware's `OP_PARAMETERS_E` on Seeed `dev` | Cross-platform |
+| `check-selftest-bits.js` | Diff `SelfTestBit` against the firmware's `selfTest_type_t` on Seeed `dev` | Cross-platform |
 
 ## Environment Configuration
 
@@ -132,3 +134,12 @@ Two type rules, which are not skips:
 ## check-schema-mirror.js and schema-sync-config.js
 
 `node scripts/check-schema-mirror.js <ww-backend checkout>` reports how `supabase/schemas` differs from the backend's declarative schema: files that differ, files the backend added, files it dropped. It shares `schema-sync-config.js` (the folder list and the files the sync never deletes) with `sync-db-schema.js`, so a compare and a copy cannot disagree. Exit 1 on drift, 2 when the folder list itself is stale.
+
+## check-op-indices.js and check-selftest-bits.js
+
+Each compares an enum the app mirrors by hand with the firmware's, fetched from the public Seeed fork's `dev` branch on raw.githubusercontent.com, no token needed. Give a local header path as the argument to run offline: `node scripts/check-selftest-bits.js <path>/selfTest.h`. The numbers are the contract and fail the run; names only warn, and the names the two repos knowingly differ on are in an alias table at the top of each script. Exit 0 in step, 1 on drift, 2 when the header could not be fetched or parsed. CI runs them in Op Index Drift and Self-Test Bit Drift, on PRs touching the app file and on Mondays, advisory ([Testing Guide, CI/CD](../documentation/resources/Testing-Guide.md#cicd)).
+
+| Script | App side | Firmware side | Fails on |
+|---|---|---|---|
+| `check-op-indices.js` | `OP_PARAMETER` in `src/hooks/useDeviceSettings.ts` | `OP_PARAMETERS_E` in `ww500_md/fatfs_task.h`, read from the `// N` comment on each member | an index on one side only |
+| `check-selftest-bits.js` | `SelfTestBit` in `src/utils/deviceSelfTest.ts` | `selfTest_type_t` in `ww500_md/selfTest.h`, with the values computed as C computes them, counting on from an explicit `= 8` | a bit on one side only, two names on one bit, or a bit of 16 or more, which the nRF's 16-bit `%04x` cannot carry. An initialiser other than a plain number is exit 2, not a guess |

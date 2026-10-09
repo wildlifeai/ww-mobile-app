@@ -30,7 +30,7 @@ Code: [`ble/workflows/deviceCheck.ts`](../../src/ble/workflows/deviceCheck.ts) r
 
 | Step | What it sends | Fails when | Warns when |
 |------|---------------|------------|------------|
-| Cameras connected | `AI slots`, `AI reset` and `AI dpd`, then the self-test the restarted AI processor reports | Any camera bit (8, the running image's camera; 9, the HM0360) or any other error bit. The photo steps are then skipped | Any warning bit; or the restart was not seen, so the reading is the last wake's |
+| Cameras connected | `AI slots`, `AI reset` and `AI dpd`, then the self-test the restarted AI processor reports | Any camera bit (8, the running image's camera; 9, the HM0360) or any other error bit. The photo steps are then skipped | Any warning bit, or a bit the app has no name for, shown by its code; or the restart was not seen, so the reading is the last wake's |
 | Firmware and camera images | `ver`, `AI ver`, `AI slots`, `AI getop -1` | Both slots hold the same image | A slot is unlabelled; a setting could not be reset to its default at the start; or automatic camera switching (op26) is on |
 | Colour camera and focus lens | `AI vcm 512`, 3 warm-up photos, then `AI vcm` + `AI capture 1 500` at 256 to 1023 and back, `AI dir`, `AI txfile` of the sharpest | See the lens rules below; the sharpest photo is under 3000 bytes | |
 | White flash | op13 = 1, op9 = 100, op34 = 2, a sleep, `AI vcm` at the sharpest position, 3 warm-up photos and one photo, all lit, `AI txfile` | The photo is under 3000 bytes; the operator says it is no brighter than the plain colour one | |
