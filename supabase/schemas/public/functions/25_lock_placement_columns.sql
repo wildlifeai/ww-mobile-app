@@ -1,5 +1,5 @@
--- Columns that place a row in a project or an organisation, locked against client
--- updates (#260). The triggers are in triggers/30_triggers.sql.
+-- Columns that place a row in a deployment, a project or an organisation, locked
+-- against client updates (#260, #267). The triggers are in triggers/30_triggers.sql.
 --
 -- A policy cannot do this. It sees one row at a time, never the old and the new
 -- together, and permissive UPDATE policies combine with OR: a project_admin of the
@@ -24,6 +24,27 @@ BEGIN
      AND (NEW.project_id IS DISTINCT FROM OLD.project_id
           OR NEW.setup_by IS DISTINCT FROM OLD.setup_by) THEN
     RAISE EXCEPTION 'Permission denied: a deployment''s project_id and setup_by cannot be changed'
+      USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+-- media.deployment_id and uploaded_by: refused for any client role (#267). The
+-- uploader policy checked only uploaded_by, so an uploader could move their media
+-- into any deployment they could read, and a project_admin could too by also
+-- setting uploaded_by to themselves.
+CREATE OR REPLACE FUNCTION public.lock_media_columns()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = ''
+AS $$
+BEGIN
+  IF current_user IN ('authenticated', 'anon')
+     AND (NEW.deployment_id IS DISTINCT FROM OLD.deployment_id
+          OR NEW.uploaded_by IS DISTINCT FROM OLD.uploaded_by) THEN
+    RAISE EXCEPTION 'Permission denied: a media record''s deployment_id and uploaded_by cannot be changed'
       USING ERRCODE = '42501';
   END IF;
   RETURN NEW;

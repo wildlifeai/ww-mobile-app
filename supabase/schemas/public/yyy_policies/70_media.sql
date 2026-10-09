@@ -32,16 +32,34 @@ CREATE POLICY "Project members can upload media"
     )
   );
 
--- UPDATE: Media uploader can update own media records (e.g. favorite, comments)
+-- UPDATE: Media uploader can update own media records (e.g. favorite, comments, deleted_at),
+-- while they hold at least project_member on its project (#267). Without the role check an
+-- uploader downgraded to project_viewer kept write access, against "viewer is read-only".
+-- deployment_id and uploaded_by themselves are locked by trg_media_lock_columns: a policy
+-- cannot compare old and new rows.
 CREATE POLICY "Media uploader can update own media"
   ON media
   FOR UPDATE
   TO authenticated
   USING (
     uploaded_by = (SELECT auth.uid())
+    AND EXISTS (
+      SELECT 1
+      FROM deployments AS d
+      WHERE d.id = media.deployment_id
+        AND d.deleted_at IS NULL
+        AND has_project_role((SELECT auth.uid()), d.project_id, 'project_member')
+    )
   )
   WITH CHECK (
     uploaded_by = (SELECT auth.uid())
+    AND EXISTS (
+      SELECT 1
+      FROM deployments AS d
+      WHERE d.id = media.deployment_id
+        AND d.deleted_at IS NULL
+        AND has_project_role((SELECT auth.uid()), d.project_id, 'project_member')
+    )
   );
 
 -- UPDATE: Project admins can update any media in their project

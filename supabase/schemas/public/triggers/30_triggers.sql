@@ -96,6 +96,12 @@ BEFORE UPDATE OF organisation_id ON public.projects
 FOR EACH ROW
 EXECUTE FUNCTION public.lock_project_organisation();
 
+-- No client update moves media to another deployment or rewrites its uploader (#267).
+CREATE TRIGGER trg_media_lock_columns
+BEFORE UPDATE OF deployment_id, uploaded_by ON public.media
+FOR EACH ROW
+EXECUTE FUNCTION public.lock_media_columns();
+
 -- Trigger for project_invitations (moved from table file)
 CREATE TRIGGER update_project_invitations_updated_at
   BEFORE UPDATE ON project_invitations
