@@ -129,6 +129,13 @@ const TEST_BIT_SKIP_FILE_CREATION = 8
 export const TEMP_RANGE_C: [number, number] = [-20, 70]
 /** Each clock must read back within this of the time just set. */
 export const CLOCK_TOLERANCE_MS = 5000
+/**
+ * The AI processor's clock further off than this did not take the time at all.
+ * Closer than this it is the time lost while the camera slept, which the BLE
+ * processor leaves alone: it only corrects a difference of more than 300 s
+ * (ww-hardware `aiProcessor.h`, `PERMITTEDTIMEERROR`).
+ */
+export const AI_CLOCK_NOT_SET_MS = 300_000
 
 /** Long enough for three 200 ms flashes, and a gap before the next colour */
 const LED_GAP_MS = 1500
@@ -561,13 +568,23 @@ export const runDeviceCheck = async (deps: DeviceCheckDeps): Promise<void> => {
 
         // Both clocks are set and read back. The AI processor's has to be set
         // here, not left to the BLE processor: the restart in the first step
-        // rewinds it to 2024 (Seeed #152), and the BLE processor does not put
-        // it right straight away (Seeed #56), so without this the unit would
-        // leave with photos stamped 2024 (bench, 6 October 2026).
+        // sets it to 2024 on purpose, a known wrong date (Seeed #152), and the
+        // BLE processor does not put it right straight away (Seeed #56), so
+        // without this the unit would leave with photos stamped 2024 (bench,
+        // 6 October 2026).
+        //
+        // The AI processor's clock also stops while the camera sleeps (Seeed
+        // #56), so it reads back a few seconds behind whenever the camera slept
+        // between the set and the read: 4.3 to 5.6 s on 7 October. That is the
+        // firmware's known limit, not this unit's fault, and getting the BLE
+        // processor to correct it sooner is deferred to Seeed #251. So the step
+        // fails the AI clock only when it did not take the time, and warns when
+        // it lags.
         await step('clock', async () => {
-            const off = (ms: number) => isNaN(ms) || Math.abs(ms - Date.now()) > CLOCK_TOLERANCE_MS
+            const offBy = (ms: number) => ms - Date.now()
             await session.execute(() => commandRegistry.setutc())
-            if (off(Date.parse(await session.execute(() => commandRegistry.getutc())))) {
+            const ble = offBy(Date.parse(await session.execute(() => commandRegistry.getutc())))
+            if (isNaN(ble) || Math.abs(ble) > CLOCK_TOLERANCE_MS) {
                 return { status: 'fail', summary: 'The BLE clock did not keep the time it was just given.' }
             }
             // Setting the RTC holds the AI processor's interrupts off for about
@@ -575,8 +592,18 @@ export const runDeviceCheck = async (deps: DeviceCheckDeps): Promise<void> => {
             // change. So a timeout is not a failure; the read-back decides.
             await session.execute(() => commandRegistry.aiSetutc())
                 .catch((e) => { if (messageOf(e) !== 'TIMEOUT') throw e })
-            if (off(await session.execute(() => commandRegistry.aiGetutc()))) {
+            const ai = offBy(await session.execute(() => commandRegistry.aiGetutc()))
+            if (isNaN(ai) || Math.abs(ai) > AI_CLOCK_NOT_SET_MS) {
                 return { status: 'fail', summary: "The AI processor's clock did not keep the time it was just given, so photos would carry the wrong time." }
+            }
+            if (Math.abs(ai) > CLOCK_TOLERANCE_MS) {
+                const seconds = (Math.abs(ai) / 1000).toFixed(1)
+                return {
+                    status: 'warn',
+                    summary: ai < 0
+                        ? `The AI processor's clock read ${seconds} s behind. It stops while the camera sleeps, a known firmware limit, so photos can be stamped up to 5 minutes early.`
+                        : `The AI processor's clock read ${seconds} s ahead of the time it was given.`,
+                }
             }
             return { status: 'pass', summary: 'Both clocks set and read back.' }
         })
