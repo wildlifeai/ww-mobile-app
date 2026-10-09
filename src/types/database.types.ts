@@ -957,27 +957,6 @@ export type Database = {
           },
         ]
       }
-      debug_storage_logs: {
-        Row: {
-          created_at: string | null
-          details: Json | null
-          id: string
-          message: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          details?: Json | null
-          id?: string
-          message?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          details?: Json | null
-          id?: string
-          message?: string | null
-        }
-        Relationships: []
-      }
       deployment_effort: {
         Row: {
           battery_failures: number
@@ -1022,6 +1001,118 @@ export type Database = {
             columns: ["deployment_id"]
             isOneToOne: true
             referencedRelation: "deployments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deployment_moves: {
+        Row: {
+          deployment_id: string
+          from_project_id: string
+          id: string
+          moved_at: string
+          moved_by: string | null
+          to_project_id: string
+        }
+        Insert: {
+          deployment_id: string
+          from_project_id: string
+          id?: string
+          moved_at?: string
+          moved_by?: string | null
+          to_project_id: string
+        }
+        Update: {
+          deployment_id?: string
+          from_project_id?: string
+          id?: string
+          moved_at?: string
+          moved_by?: string | null
+          to_project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deployment_moves_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["deployment_id"]
+          },
+          {
+            foreignKeyName: "deployment_moves_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deployment_moves_from_project_id_fkey"
+            columns: ["from_project_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "deployment_moves_from_project_id_fkey"
+            columns: ["from_project_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "deployment_moves_from_project_id_fkey"
+            columns: ["from_project_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "deployment_moves_from_project_id_fkey"
+            columns: ["from_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deployment_moves_from_project_id_fkey"
+            columns: ["from_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_with_stats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deployment_moves_to_project_id_fkey"
+            columns: ["to_project_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "deployment_moves_to_project_id_fkey"
+            columns: ["to_project_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "deployment_moves_to_project_id_fkey"
+            columns: ["to_project_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "deployment_moves_to_project_id_fkey"
+            columns: ["to_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deployment_moves_to_project_id_fkey"
+            columns: ["to_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_with_stats"
             referencedColumns: ["id"]
           },
         ]
@@ -4170,7 +4261,6 @@ export type Database = {
         Args: { p_org_id: string; p_user_id: string }
         Returns: boolean
       }
-      debug_get_policies: { Args: never; Returns: Json }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
         | {
@@ -4437,6 +4527,10 @@ export type Database = {
           distance: number
           media_id: string
         }[]
+      }
+      move_deployment: {
+        Args: { p_deployment_id: string; p_target_project_id: string }
+        Returns: Json
       }
       my_upload_usage: {
         Args: never
