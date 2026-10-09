@@ -8,8 +8,8 @@ The app supports two data channels on the same BLE characteristic:
 - **Text commands** — ASCII strings for configuration and control (e.g. `AI capture 1 1`)
 - **Binary image data** — Raw JPEG bytes prefixed with a `0x06` marker
 
-> [!CAUTION]
-> The legacy `BleCommandManager` (`commandManager.ts`) is **dead code**. It exists only as a quarantine trap file that throws an error if imported. All command execution now flows through `bleEventBus` → `bleTransportController` → `commandRegistry`. Do NOT reference or import it.
+> [!NOTE]
+> All command execution flows through `bleEventBus` → `bleTransportController` → `commandRegistry`. The legacy `BleCommandManager` and the trap file that replaced it are gone (#393).
 
 ---
 
@@ -816,7 +816,6 @@ iOS handles this automatically at the Core Bluetooth level.
 src/
 ├── ble/
 │   ├── types.ts                    # UI command definitions (CommandNames, COMMANDS)
-│   ├── commandManager.ts           # ⛔ DEAD — trap file, throws on import
 │   ├── transport.ts                # Raw BLE write + binary write + service discovery
 │   ├── messageClassifier.ts        # UI-only log categorization (NOT protocol logic)
 │   ├── emitters.ts                 # Legacy EventEmitter3 instances (retained for ImageReassembler)
@@ -833,7 +832,7 @@ src/
 │   │   │   ├── runFileTransferPipeline.ts  # Core ACK state machine
 │   │   │   ├── bleFirmwareFloor.ts         # BLE firmware floor for the window, checked before FILE_START
 │   │   │   ├── fileTransferPackets.ts      # Binary packet builders
-│   │   │   ├── fileTransferTypes.ts        # Types, error codes, retry policies
+│   │   │   ├── fileTransferTypes.ts        # Types, error codes, error messages
 │   │   │   ├── ackMatcher.ts               # Strict ACK validation
 │   │   │   ├── crc16ccitt.ts               # CRC-16/CCITT-FALSE
 │   │   │   ├── filenameValidator.ts        # 8.3 format validation
@@ -915,7 +914,7 @@ const results = await runCommandPipeline(peripheral, [
 
 - **Adding commands**: Always start in `commandRegistry.ts` — define the factory, then use it via session.
 - **UI command definitions**: `types.ts` (`COMMANDS` object) is used only for the Engineer Console's Command Reference Modal.
-- **Protocol logic**: Check `protocol/` directory first. Never modify `commandManager.ts`.
+- **Protocol logic**: Check `protocol/` directory first.
 - **Message classifier**: Only for monitoring UI display. Never use it for command matching.
 - **Performance**: Never log binary image data. Process binary packets before any string operations.
 - **Testing**: Use `protocol/__tests__/` for command tests. Use Engineer Console for manual verification.

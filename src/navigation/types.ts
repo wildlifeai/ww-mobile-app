@@ -50,8 +50,6 @@ export interface RootStackParamList extends ParamListBase {
 	StopMonitoringDetailsStep: { deploymentId: string; deviceId: string; bleDeviceId: string; initPayload?: InitPayload }
 }
 
-export type Routes = keyof RootStackParamList
-
 export type AppParams<T extends keyof RootStackParamList> = RouteProp<
 	RootStackParamList,
 	T

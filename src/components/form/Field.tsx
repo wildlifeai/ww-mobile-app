@@ -1,4 +1,4 @@
-import { PropsWithChildren, ReactNode } from "react"
+import { ReactNode } from "react"
 import { StyleSheet, View, ViewStyle } from "react-native"
 import { Text } from "react-native-paper"
 import {
@@ -72,39 +72,6 @@ export const Field = <
 				<WWText style={styles.helpText}><Text>{helpText}</Text></WWText>
 			)}
 			{hasError && <WWText style={styles.errorText}><Text>{error?.message}</Text></WWText>}
-		</View>
-	)
-}
-
-type UncontrolledFieldProps = {
-	style?: ViewStyle
-	label?: ReactNode
-	subText?: ReactNode
-	helpText?: ReactNode
-	errorText?: string
-}
-
-export const UncontrolledField = ({
-	children,
-	style,
-	label,
-	subText,
-	helpText,
-	errorText,
-}: PropsWithChildren<UncontrolledFieldProps>) => {
-	return (
-		<View style={[style, styles.fieldWrapper]}>
-			{label && (
-				<View style={styles.labelContainer}>
-					<WWText style={styles.label}><Text>{label}</Text></WWText>
-					{subText && <WWText style={styles.subText}><Text>{subText}</Text></WWText>}
-				</View>
-			)}
-			{children}
-			{helpText && !errorText && (
-				<WWText style={styles.helpText}><Text>{helpText}</Text></WWText>
-			)}
-			{errorText && <WWText style={styles.errorText}><Text>{errorText}</Text></WWText>}
 		</View>
 	)
 }

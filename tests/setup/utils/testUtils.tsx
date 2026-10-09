@@ -25,9 +25,6 @@ export const mockNavigation = {
 	removeListener: jest.fn(),
 }
 
-// Export navigate function directly for backward compatibility
-export const mockNavigate = mockNavigation.navigate
-
 // Create test store
 export function createTestStore(preloadedState = {}) {
 	return configureStore({
@@ -82,10 +79,6 @@ export function renderWithProviders(
 
 	return { store, ...render(ui, { wrapper: Wrapper, ...renderOptions }) }
 }
-
-// Async wait utility
-export const waitForAsync = () =>
-	new Promise((resolve) => setTimeout(resolve, 0))
 
 // Reset all mocks utility
 export const resetAllMocks = () => {

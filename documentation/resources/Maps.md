@@ -23,7 +23,7 @@ src/features/maps/
 │   └── MapScreen.tsx                # Main map screen (used in tab navigation)
 ├── types/
 │   └── index.ts                     # MapRegion, MapType, MapViewConfig types
-└── index.ts                         # Public exports
+└── index.ts                         # Exports MapScreen, the one thing used from outside
 ```
 
 ### Key Design Decisions
@@ -116,12 +116,10 @@ export const Maps = MapScreen
 ### Using Components Directly
 
 ```typescript
-import {
-  BasicMapView,
-  MapControls,
-  useLocation,
-  useMapRegion,
-} from '../features/maps';
+import { BasicMapView } from '../features/maps/components/BasicMapView';
+import { MapControls } from '../features/maps/components/MapControls';
+import { useLocation } from '../features/maps/hooks/useLocation';
+import { useMapRegion } from '../features/maps/hooks/useMapRegion';
 
 const MyMapScreen = () => {
   const { location, permissions, requestPermissions } = useLocation();

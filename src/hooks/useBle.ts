@@ -22,15 +22,9 @@ import { clearLogs } from "../redux/slices/logsSlice"
 import { scanError, scanStart } from "../redux/slices/scanningSlice"
 import { clearAllDeviceIntervals } from "../utils/helpers"
 import { extractServiceAndCharacteristic, writeToDevice } from "../ble/transport"
-import {
-	CommandConstructOptions,
-	CommandNames,
-	Services,
-} from "../ble/types"
+import { Services } from "../ble/types"
 import { bleEventBus } from "../ble/protocol/eventBus"
 import { markPeripheralRemoved } from "./useScanLoop"
-
-export type WriteData = [CommandNames, CommandConstructOptions]
 
 export type ReturnType = {
 	isBleConnecting: boolean | undefined

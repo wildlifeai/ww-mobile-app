@@ -105,10 +105,7 @@ class EnvironmentConfig {
 }
 
 // Create singleton instance
-export const Config = new EnvironmentConfig()
+const Config = new EnvironmentConfig()
 
 // Default export for backward compatibility with react-native-config
 export default Config
-
-// Named export for direct access
-export { Config as ExpoConfig }

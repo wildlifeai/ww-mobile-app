@@ -9,15 +9,18 @@
     "plugins/**/*.js"
   ],
   "ignore": ["src/types/database.types.ts"],
-  "ignoreDependencies": ["buffer"],
+  "ignoreFiles": ["src/types/supabase.ts"],
+  "ignoreDependencies": [
+    "buffer",
+    "@babel/runtime",
+    "expo-keep-awake",
+    "@react-native-community/geolocation",
+    "@morrowdigital/watermelondb-expo-plugin"
+  ],
   "ignoreBinaries": ["maestro"],
   "ignoreExportsUsedInFile": true,
-  "rules": {
-    "exports": "warn",
-    "types": "warn",
-    "nsExports": "warn",
-    "nsTypes": "warn",
-    "enumMembers": "warn",
-    "classMembers": "warn"
+  "ignoreIssues": {
+    "src/services/DeploymentPhotoService.ts": ["exports", "duplicates"],
+    "tests/setup/helpers/fakeDatabase.ts": ["exports"]
   }
 }

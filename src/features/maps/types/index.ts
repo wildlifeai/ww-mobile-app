@@ -44,16 +44,6 @@ export interface LocationPermissions {
 }
 
 /**
- * Map control actions
- */
-export interface MapControls {
-	centerOnUser: () => void
-	zoomIn: () => void
-	zoomOut: () => void
-	setMapType: (type: MapType) => void
-}
-
-/**
  * Map display type
  */
 export type MapType = "standard" | "satellite" | "hybrid"

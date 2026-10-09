@@ -78,20 +78,6 @@ export const sampleProjectInputs: Record<string, CreateProjectInput> = {
 }
 
 /**
- * Expected validation errors
- */
-export const expectedErrors = {
-	missingName: "Project name is required",
-	missingOrgId: "Organisation ID is required",
-	invalidPrivacyLevel: "Invalid privacy level",
-	crossOrgAccess: "Permission denied",
-	projectNotFound: "Project not found",
-	memberNotFound: "Member not found",
-	duplicateMember: "Member already exists in project",
-	crossOrgMemberAssignment: "Cannot assign member from different organisation",
-}
-
-/**
  * Test roles
  */
 export const testRoles = {
@@ -99,12 +85,3 @@ export const testRoles = {
 	projectAdmin: "project_admin",
 	projectMember: "project_member",
 } as const
-
-/**
- * Role IDs (from seed data)
- */
-export const roleIds = {
-	wwAdmin: 1,
-	projectAdmin: 3,
-	projectMember: 4,
-}

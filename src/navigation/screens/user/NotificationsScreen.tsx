@@ -6,7 +6,7 @@ import { useState, useCallback } from "react"
 import { useFocusEffect } from "@react-navigation/native"
 import InvitationService, { PendingInvitation } from "../../../services/InvitationService"
 import { logError, log } from '../../../utils/logger'
-import useSupabaseAuth from "../../../hooks/useSupabaseAuth"
+import { useSupabaseAuth } from "../../../hooks/useSupabaseAuth"
 import SupabaseSyncService from "../../../services/SupabaseSyncService"
 
 export const Notifications = () => {

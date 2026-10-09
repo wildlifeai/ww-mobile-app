@@ -53,17 +53,16 @@ Then `npm run android`, `npm run types:cloud-dev`, etc. will all target the corr
 npm run prebuild:check
 ```
 
-**What it checks** (9 validation steps):
+**What it checks** (8 validation steps):
 
-1. **Required Configuration Files** — app.json, package.json, metro.config.js, index.js, android/build.gradle, eas.json
-2. **JavaScript Syntax** — Validates index.js entry point
-3. **Core Dependencies** — react, react-native, expo, @supabase/supabase-js, @reduxjs/toolkit
-4. **Critical Import Paths** — api.types import validation
-5. **TypeScript Configuration** — tsconfig.json presence
-6. **Android Build Configuration** — android directory, build.gradle, applicationId
-7. **Environment Configuration** — .env file, Supabase URL/key (warnings only)
-8. **Git Repository Status** — repo initialized, uncommitted changes (warnings)
-9. **Schema Validation** — WatermelonDB schema vs cloud-dev
+1. **Required Configuration Files**: app.json, package.json, metro.config.js, index.js, android/build.gradle, eas.json
+2. **JavaScript Syntax**: Validates index.js entry point
+3. **Core Dependencies**: react, react-native, expo, @supabase/supabase-js, @reduxjs/toolkit
+4. **TypeScript Configuration**: tsconfig.json presence
+5. **Android Build Configuration**: android directory, build.gradle, applicationId
+6. **Environment Configuration**: .env file, Supabase URL/key (warnings only)
+7. **Git Repository Status**: repo initialized, uncommitted changes (warnings)
+8. **Schema Validation**: WatermelonDB schema vs cloud-dev
 
 **Time**: ~2-3 seconds (vs 5-15 minutes for full build)
 

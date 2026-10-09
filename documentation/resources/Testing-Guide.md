@@ -359,7 +359,7 @@ green. The agent guide (`AGENTS.md`, "Check it") has the local commands for the 
 | Expo Doctor | PRs touching `package.json`, the lockfile, `app.config.ts`, `eas.json` or `android/` | `npx expo-doctor` and `npx expo install --check`: package versions against the SDK, the app config schema, the native folders, the React Native Directory. Both read the Expo API, which is why they are not in the offline quality gate. What they are told to skip is below | gate |
 | CodeQL | PRs, pushes to `dev`, Mondays | GitHub's JavaScript and TypeScript security queries; findings are code scanning alerts in the Security tab, and the `CodeQL` check fails a PR that adds one at or above the repository's failure threshold. `archive/`, `android/`, `supabase/`, `patches/` and the tests are left out | gate once `CodeQL` is required (#392) |
 | Schema Mirror Drift | PRs touching `supabase/`, the schema files or the sync scripts; Mondays | `supabase/schemas` still matches ww-backend's `dev` (`scripts/check-schema-mirror.js`, with the read-only token); the fix for that drift is `npm run db:sync-schema` and a commit. A second job runs `validate-watermelon-schema.js`: `src/database/schema.ts` matches the Supabase types, with every accepted difference named in `scripts/README.md` | advisory for the mirror; gate for the WatermelonDB job |
-| Dead Code | PRs touching source, tests, scripts or the dependency list; Mondays | knip: files nothing imports, exports nothing uses, dependencies nothing imports, imports of packages `package.json` does not list. What `knip.json` tells it is below | advisory on PRs; the weekly run fails (#393) |
+| Dead Code | every PR, merge queue, Mondays | knip: files nothing imports, exports and types nothing uses, dependencies nothing imports, imports of packages `package.json` does not list. What `knip.json` tells it is below | gate (#393) |
 | Dependency Audit | PRs touching `package.json` or the lockfile; Mondays | `npm audit --omit=dev --audit-level=high`, read from the lockfile with no install. Dependabot (`.github/dependabot.yml`) opens the bump PRs: one grouped PR a week for everything outside the Expo SDK set, which moves together through `npx expo install` | advisory on PRs; the Monday run fails, so an advisory published against an unchanged lockfile is still seen |
 | iOS Weekly Build | Mondays, by hand | `eas build --local --profile e2e --platform ios` on `macos-latest`, no signing because the profile sets `ios.simulator: true`; the `app-ios-simulator` artifact stays two weeks. Weekly because macOS runners bill at ten times the Linux rate and a cold build is 25 to 40 minutes (#394) | a red scheduled run |
 | EAS Build & Submit, Semantic Release & Publish | pushes, by hand | the release pipeline: the Expo-EAS Guide and the publishing guide | not a check |
@@ -390,19 +390,35 @@ The entry points are the ones `knip.json` names (the Expo config plugins in `plu
 `scripts/`) plus what knip's Expo, Metro, Babel and Jest plugins find on their own: `index.js`,
 `app.config.ts`, the Jest setup files.
 
-- Unused exports and exported types are warnings and never fail it: the Redux slices export
-  every action creator and the barrel files re-export by design.
+Every finding fails the check: an unused file, export, exported type, enum member or duplicate
+export, a dependency nothing imports, or an import of a package `package.json` does not list.
+Delete the dead code or list the package. A false positive is excluded in `knip.json` with its
+reason added below, never deleted; for one export, a `@public` JSDoc tag with a one-line reason
+above it is the narrower form (`TEST_BIT_SAVE_BMP` in `useDeviceSettings.ts`).
+
 - `buffer` is ignored as a dependency: knip takes it for the Node built-in, the app needs the
   npm polyfill.
+- `@babel/runtime` is ignored as a dependency: Babel's runtime transform, on in
+  `babel-preset-expo`, writes imports of its helpers into the compiled app, where knip cannot
+  see them.
+- `expo-keep-awake` is ignored as an unlisted dependency: the file transfer and the firmware
+  update import it, and only `expo` installs it. It has native code, so listing it is a decision
+  for the maintainer, not a CI fix.
+- `@react-native-community/geolocation` and `@morrowdigital/watermelondb-expo-plugin` are ignored
+  as unused dependencies: nothing imports either, but one is a native module and the other an
+  Expo config plugin, so removing them is a native-build decision.
 - `maestro` is ignored as a binary: it is a separate CLI the `test:maestro*` scripts call, not an
   npm package (see "Maestro E2E Testing").
-- `src/types/database.types.ts` is generated and not inspected.
+- `src/types/database.types.ts` is generated and not inspected. `src/types/supabase.ts` is empty
+  and imported by nothing, and stays: `npm run types:local` writes there, and
+  `scripts/validate-watermelon-schema.js` reads it before `database.types.ts`.
+- Revisit after #411, which changes both files: `src/services/DeploymentPhotoService.ts` is left
+  out of the export checks (its default export duplicates the named one and nothing uses it), and
+  so is `tests/setup/helpers/fakeDatabase.ts`, whose `fakeDatabase` the tests reach through
+  `require()` inside a `jest.mock` factory, which knip cannot follow.
 
-The first report, October 2026, listed 27 unused files, 13 packages imported but not listed, 13
-listed but not imported, 5 duplicate default exports and some 70 unused exports: a mix of real
-dead code and transitive packages imported directly, which is why the pull request run is
-advisory. React Doctor's own dead-code pass stays off in `doctor.config.json` (`deadCode: false`):
-it could not see the Expo entry points and flagged every screen.
+React Doctor's own dead-code pass stays off in `doctor.config.json` (`deadCode: false`): it could
+not see the Expo entry points and flagged every screen.
 
 ---
 
@@ -537,7 +553,7 @@ bash scripts/seed-local.sh
 
 ## Best Practices
 
-- **Type Imports**: Always import types from `src/types/index.ts` (the central export) instead of specific files like `database.types.ts`. This significantly reduces memory usage and Jest crash risks during test runs by avoiding parsing huge auto-generated backend schemas.
+- **Type Imports**: take anything from `database.types.ts` with `import type`. Babel removes a type-only import, so Jest never parses the generated backend schema. There is no central type index to import from (see the Codebase Guide).
 - **Async assertions**: Always use `waitFor` for UI changes after promises
 - **TestIDs**: Use `testID` props for robust selection (Jest and Maestro)
 - **State reset**: Clear mocks and reset store in `beforeEach`
@@ -545,7 +561,7 @@ bash scripts/seed-local.sh
 
 ## Known Issues
 
-- **Legacy BLE Command Manager**: `src/ble/commandManager.ts` survives only as a trap file that throws on import. Its tests have been removed. Current BLE tests live in `src/ble/__tests__/` (messageClassifier, transport), `src/ble/protocol/__tests__/` (simulatedTransport) and `src/ble/protocol/fileTransfer/__tests__/` (ackMatcher, crc16ccitt, filenameValidator, fileTransferPackets). There is no `src/ble/session/__tests__/`.
+- **BLE tests** live in `src/ble/__tests__/` (messageClassifier, transport), `src/ble/protocol/__tests__/` (simulatedTransport) and `src/ble/protocol/fileTransfer/__tests__/` (ackMatcher, crc16ccitt, filenameValidator, fileTransferPackets). There is no `src/ble/session/__tests__/`.
 
 ---
 
