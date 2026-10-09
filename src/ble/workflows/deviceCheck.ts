@@ -35,7 +35,7 @@ import { mdIntervalHold } from '../session/mdIntervalHold'
 import { downloadPhoto } from './downloadPhoto'
 import { executeResetToDefaults } from './resetToDefaults'
 import { OP_PARAMETER } from '../../hooks/useDeviceSettings'
-import { decodeSelfTest, formatSelfTestBits, parseSelfTestBits, SelfTestBit } from '../../utils/deviceSelfTest'
+import { decodeSelfTest, formatSelfTestBits, KNOWN_BITS_MASK, parseSelfTestBits, SelfTestBit } from '../../utils/deviceSelfTest'
 import { CAMERA_VARIANT_LABELS, CameraVariant, parseVariant } from '../../utils/cameraVariant'
 import { SWEEP_UP, SWEEP_DOWN, SweepPoint, LensVerdict, lensVerdict, parseDirSizes } from '../../utils/deviceCheck/lensSweep'
 import { photoProblem } from '../../utils/deviceCheck/photoStats'
@@ -168,7 +168,8 @@ const hasCameraFault = (bits: number) => (bits & CAMERA_BITS) !== 0
  * A self-test reading in the operator's words. Bit 8 is whichever camera the
  * running image drives, so it is named from `running`; bit 9 is the HM0360,
  * which the colour image also checks because it detects motion for it. A
- * camera bit or any other error fails; warning bits only warn.
+ * camera bit or any other error fails; warning bits only warn, and so does a
+ * bit the app has no name for, which is reported by its code.
  */
 export const describeSelfTest = (bits: number, running: CameraVariant): CheckStepState => {
     const code = formatSelfTestBits(bits)
@@ -187,6 +188,9 @@ export const describeSelfTest = (bits: number, running: CameraVariant): CheckSte
     // eslint-disable-next-line no-bitwise
     const others = decodeSelfTest(bits & ~CAMERA_BITS)
     parts.push(...others.map(i => i.title))
+    // eslint-disable-next-line no-bitwise
+    const unknown = bits & ~KNOWN_BITS_MASK
+    if (unknown !== 0) parts.push(`unknown self-test code ${formatSelfTestBits(unknown)}`)
     const cameraFault = hasCameraFault(bits)
     const failed = cameraFault || others.some(i => i.severity === 'error')
     return {
