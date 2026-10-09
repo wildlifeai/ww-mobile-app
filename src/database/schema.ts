@@ -12,7 +12,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 405,
+    version: 406,
     tables: [
         tableSchema({
             name: 'account_deletion_requests',
@@ -240,20 +240,6 @@ export default appSchema({
             ],
         }),
         tableSchema({
-            name: 'debug_storage_logs',
-            columns: [
-                { name: 'details', type: 'string', isOptional: true },
-                { name: 'message', type: 'string', isOptional: true },
-                // System & Sync Fields
-                { name: 'created_at', type: 'number' },
-                { name: 'updated_at', type: 'number' },
-                { name: 'deleted_at', type: 'number' },
-                { name: '_version', type: 'number' },
-                { name: '_custom_sync_status', type: 'string', isOptional: true },
-                { name: 'modified_by', type: 'string' },
-            ],
-        }),
-        tableSchema({
             name: 'deployment_effort',
             columns: [
                 { name: 'battery_failures', type: 'number' },
@@ -264,6 +250,23 @@ export default appSchema({
                 { name: 'total_events', type: 'number' },
                 { name: 'total_media', type: 'number' },
                 { name: 'trap_nights', type: 'number' },
+                // System & Sync Fields
+                { name: 'created_at', type: 'number' },
+                { name: 'updated_at', type: 'number' },
+                { name: 'deleted_at', type: 'number' },
+                { name: '_version', type: 'number' },
+                { name: '_custom_sync_status', type: 'string', isOptional: true },
+                { name: 'modified_by', type: 'string' },
+            ],
+        }),
+        tableSchema({
+            name: 'deployment_moves',
+            columns: [
+                { name: 'deployment_id', type: 'string', isIndexed: true },
+                { name: 'from_project_id', type: 'string', isIndexed: true },
+                { name: 'moved_at', type: 'string' },
+                { name: 'moved_by', type: 'string', isOptional: true },
+                { name: 'to_project_id', type: 'string', isIndexed: true },
                 // System & Sync Fields
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
