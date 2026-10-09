@@ -2,8 +2,8 @@ import * as FileSystem from 'expo-file-system/legacy'
 import database from '../database'
 import Deployment from '../database/models/Deployment'
 import Project from '../database/models/Project'
-import OutboxService from './OutboxService'
-import { mapModelToPayload } from './DeploymentService'
+import { prepareDeploymentUpdate } from './DeploymentService'
+import { isGoneFromServer } from './goneFromServer'
 import SupabaseSyncService from './SupabaseSyncService'
 import { getSupabaseClient } from './supabase'
 import { log, logError, logWarn } from '../utils/logger'
@@ -130,16 +130,10 @@ async function uploadPass(deploymentId: string, userId: string): Promise<void> {
         const updatedPaths = readPaths(fresh.cameraLocationImagePaths)
             .filter(path => !missing.has(path))
             .map(path => uploaded.get(path) ?? path)
-        const updateOp = fresh.prepareUpdate((record) => {
+        // Only the path list goes up, so a location edited on the website stays (#411)
+        const [updateOp, outboxOp] = prepareDeploymentUpdate(fresh, userId, (record) => {
             record.cameraLocationImagePaths = updatedPaths
             record.modifiedBy = userId
-        })
-        const outboxOp = OutboxService.recordOperation({
-            operation: 'UPDATE',
-            tableName: 'deployments',
-            recordId: fresh.id,
-            payload: mapModelToPayload(fresh),
-            userId,
         })
         await database.batch(updateOp, outboxOp)
     })
@@ -219,6 +213,8 @@ export const DeploymentPhotoService = {
         const projectIds = new Set((await database.get<Project>('projects').query().fetch()).map(p => p.id))
         for (const deployment of deployments) {
             if (!projectIds.has(deployment.projectId)) continue
+            // Nor one the server itself no longer has for this account (#411)
+            if (isGoneFromServer(deployment)) continue
             const rawPaths = deployment.cameraLocationImagePaths
             const paths: string[] = typeof rawPaths === 'string' ? JSON.parse(rawPaths) : (rawPaths || [])
             if (paths.some(isLocalPath)) {

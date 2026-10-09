@@ -16,7 +16,7 @@ import { scanStop } from "../redux/slices/scanningSlice"
 import { useBleActions } from "../providers/BleEngineProvider"
 import { isOurDevice } from "../utils/helpers"
 import { ImageReassembler } from "../utils/ImageReassembler"
-import { imageReassemblerEmitter, readlineParserEmitter } from "../ble/emitters"
+import { imageReassemblerEmitter } from "../ble/emitters"
 import { rxRouter } from "../ble/protocol/rxRouter"
 import { bleEventBus, BleEvent } from "../ble/protocol/eventBus"
 import { bleTransport } from "../ble/protocol/bleTransportController"
@@ -30,8 +30,6 @@ export const getBleManagerEmitter = () => {
 	}
 	return _bleManagerEmitter
 }
-
-export { readlineParserEmitter }
 
 export type UpdateValueEventType = {
 	characteristic: string

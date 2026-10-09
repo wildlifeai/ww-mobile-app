@@ -1,11 +1,6 @@
 import { forwardRef } from "react"
 import { StyleSheet, View } from "react-native"
-import {
-	Button,
-	ButtonProps,
-	IconButton,
-	IconButtonProps,
-} from "react-native-paper"
+import { Button, ButtonProps } from "react-native-paper"
 import { WWText } from "./WWText"
 
 type CommonProps = {
@@ -14,7 +9,6 @@ type CommonProps = {
 }
 
 export type WWButtonProps = CommonProps & ButtonProps
-export type WWIconButtonProps = CommonProps & IconButtonProps
 
 export const WWButton = forwardRef<View, WWButtonProps>(
 	({ hasError, errorText, style, disabled, ...props }, ref) => {
@@ -28,16 +22,6 @@ export const WWButton = forwardRef<View, WWButtonProps>(
 				{hasError && errorText && (
 					<WWText style={styles.errorText}>{errorText}</WWText>
 				)}
-			</View>
-		)
-	},
-)
-
-export const WWIconButton = forwardRef<View, WWIconButtonProps>(
-	({ style, disabled, ...props }, ref) => {
-		return (
-			<View style={styles.container} ref={ref}>
-				<IconButton {...props} disabled={disabled} style={style} />
 			</View>
 		)
 	},

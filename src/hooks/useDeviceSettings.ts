@@ -98,6 +98,10 @@ export const FLASH_MODE_OP_LABELS = ['Off', 'Light sensor', 'Always on', 'Time o
 /**
  * Test mode bitmask flags for OP_PARAMETER.TEST_MODE_BITS.
  * These control diagnostic capture behaviour on the Himax firmware.
+ *
+ * Nothing uses it since the Save BMP option was retired on 21 September 2026; it stays
+ * until that is final (see useStartDeployment.ts), and the tag keeps knip quiet until then.
+ * @public
  */
 // eslint-disable-next-line no-bitwise
 export const TEST_BIT_SAVE_BMP = 1 << 1  // bit 1 = 2, alternates between JPG and BMP files
@@ -221,12 +225,6 @@ export interface DeviceSettings {
     aeCheckInterval?: number           // Index 24 - Minutes between periodic AE light checks, 0=off (default: 15)
     wbRedGain?: number                 // Index 27 - Software WB red gain, Q8.8 (256=1.0x, 0=off). RP3 only (default: 286)
     wbBlueGain?: number                // Index 28 - Software WB blue gain, Q8.8 (256=1.0x, 0=off). RP3 only (default: 326)
-}
-
-export interface UseDeviceSettingsOptions {
-    device: ExtendedPeripheral | null
-    onSettingsUpdated?: () => void
-    onError?: (error: Error) => void
 }
 
 export interface QuiesceOptions {

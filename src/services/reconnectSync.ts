@@ -12,8 +12,8 @@ export const RECONNECT_SETTLE_MS = 3000
 /**
  * Uploads the work queued offline when the connection returns.
  *
- * Nothing did until now: OfflineService, which had a listener for it, is never
- * initialised, so a deployment started and stopped offline sat in the outbox
+ * Nothing did before this: OfflineService, which had a listener for it, was never
+ * initialised (and was deleted as dead code in #393), so a deployment started and stopped offline sat in the outbox
  * until the next sign-in, pull to refresh or organisation switch (bench,
  * 29 September 2026, 4 operations pending after Wi-Fi came back).
  *

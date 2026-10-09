@@ -47,6 +47,7 @@ npm run type-check       # tsc --noEmit
 npm run lint             # ESLint
 npm run version:check    # the 5 files carrying the app version agree
 npm run docs:validate    # every path/link in documentation/ resolves
+npx --yes knip@6.39.0    # dead code: unused files, exports, dependencies (Testing Guide)
 npm run test:maestro:smoke   # the one E2E flow CI requires: install, launch, the login screen renders
 ```
 
@@ -58,7 +59,7 @@ secrets; what each proves is in the Testing Guide. Every check that can be requi
 so `dev` can sit behind a merge queue without touching the workflows. PR-Agent is the one
 that cannot: it triggers on open and on comments, so it stays advisory.
 The coverage floor is a ratchet at 20%: it only moves up, by hand.
-Expo Doctor gates dependency changes; CodeQL, Schema Mirror Drift's mirror check, Dead Code,
+Expo Doctor gates dependency changes; CodeQL, Schema Mirror Drift's mirror check,
 Dependency Audit, Op Index Drift and Self-Test Bit Drift are advisory, and iOS builds once a week. The Testing Guide's CI/CD table lists every workflow,
 what it proves and whether it blocks.
 

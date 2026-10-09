@@ -1,6 +1,7 @@
 /**
- * The push half of a sync (#287), the account a sync runs as (#267), and
- * projects that disappear from the server (#330).
+ * The push half of a sync (#287), the account a sync runs as (#267), projects
+ * that disappear from the server (#330), and deployments edited, deleted or
+ * moved on the website (#411).
  *
  * The database is an in-memory fake, so these assert on what each outbox
  * operation ends up as, and on what push_changes was actually sent.
@@ -9,6 +10,8 @@ import SupabaseSyncService from '../SupabaseSyncService'
 import SyncStateService, { SYNC_STATE_KEYS, PULL_WATERMARK_KEYS } from '../SyncStateService'
 import OutboxService from '../OutboxService'
 import ProjectService from '../ProjectService'
+import { DeploymentService, DEPLOYMENT_STATUS } from '../DeploymentService'
+import { GONE_FROM_SERVER } from '../goneFromServer'
 import { resetFakeDatabase, seedRows, rowsIn } from '../../../tests/setup/helpers/fakeDatabase'
 
 jest.mock('../../database', () => ({
@@ -68,8 +71,8 @@ const USER_A = 'user-a'
 const USER_B = 'user-b'
 
 // Rows the "server" has and shows this account, per table. projects_with_stats
-// answers from the projects rows, as the view does. user_roles answers with
-// whole rows, the other tables with ids.
+// answers from the projects rows, as the view does. user_roles and devices
+// answer with whole rows, the other tables with ids.
 let serverRows: Record<string, { id: string, deleted_at?: string | null, [column: string]: any }[]>
 // The watermark each pull asked from, per table
 let pulledSince: Record<string, string>
@@ -78,6 +81,10 @@ let readErrors: Record<string, any>
 let claimedCount: Record<string, number>
 // What an incremental pull of a table returns
 let pullRows: Record<string, any[]>
+// The `changes` pull_changes answers with, such as its deleted lists
+let pullChanges: Record<string, any>
+// The ids each read by id asked for, per table
+let readById: Record<string, string[][]>
 // Decides what push_changes answers for one call's `changes`
 let pushHandler: (changes: any) => { data?: any, error?: any }
 const pushCalls: any[] = []
@@ -93,6 +100,7 @@ const queue = (fields: {
 	payload?: Record<string, any>
 	userId?: string
 	status?: string
+	clock?: number
 }) => seedRows('sync_outbox', [{
 	id: fields.id,
 	operationId: `op-${fields.id}`,
@@ -103,6 +111,7 @@ const queue = (fields: {
 	status: fields.status ?? 'pending',
 	retryCount: 0,
 	userId: fields.userId,
+	lamportClock: fields.clock ?? 0,
 }])[0]
 
 const op = (id: string) => rowsIn('sync_outbox').find((r) => r.id === id)!
@@ -125,11 +134,13 @@ beforeEach(() => {
 	readErrors = {}
 	claimedCount = {}
 	pullRows = {}
+	pullChanges = {}
+	readById = {}
 	pushHandler = () => ({ data: { processed: 1, conflicts: [] }, error: null })
 
 	mockRpc.mockReset().mockImplementation(async (name: string, args: any) => {
 		if (name === 'pull_changes') {
-			return { data: { changes: {}, conflicts: [], timestamp: 1000 }, error: null }
+			return { data: { changes: pullChanges, timestamp: 1000 }, error: null }
 		}
 		if (name === 'push_changes') {
 			pushCalls.push(args.changes)
@@ -151,7 +162,7 @@ beforeEach(() => {
 			const source = table === 'projects_with_stats' ? 'projects' : table
 			const rows = (serverRows[source] ?? []).filter((row) => filters.every((f) => f(row)))
 			return {
-				data: rows.map((row) => (table === 'user_roles' ? { ...row } : { id: row.id })),
+				data: rows.map((row) => (table === 'user_roles' || table === 'devices' ? { ...row } : { id: row.id })),
 				error: null,
 				count: counted ? (claimedCount[table] ?? rows.length) : null,
 			}
@@ -163,6 +174,7 @@ beforeEach(() => {
 			},
 			in: (_column: string, ids: string[]) => {
 				filters.push((row) => ids.includes(row.id))
+				readById[table] = [...(readById[table] ?? []), ids]
 				return chain
 			},
 			is: (column: string, value: any) => {
@@ -792,5 +804,241 @@ describe('a sync asked for while one runs (8 October 2026)', () => {
 
 		expect(pulls()).toBe(1)
 		expect(op('dep1').status).toBe('synced')
+	})
+})
+
+describe('a deployment edited on the website (#411)', () => {
+	const seedOldCopy = () => seedRows('deployments', [{
+		id: 'dep-1',
+		projectId: 'project-1',
+		deviceId: 'device-1',
+		name: 'Ridge',
+		setupBy: USER_B,
+		deploymentStart: new Date('2026-10-01T00:00:00Z'),
+		deploymentEnd: null,
+		deploymentStatusId: DEPLOYMENT_STATUS.STARTED,
+		// The website has since moved the site; this phone has not pulled it
+		locationName: 'Old site',
+		latitude: -41.29,
+		longitude: 174.78,
+		cameraLocationImagePaths: [],
+		createdAt: Date.parse('2026-10-01T00:00:00Z'),
+		updatedAt: Date.parse('2026-10-01T00:00:00Z'),
+	}])
+
+	it('an end made on a phone holding the old location pushes no location', async () => {
+		seedOldCopy()
+		serverRows.projects = [{ id: 'project-1' }]
+		jest.spyOn(SupabaseSyncService, 'requestSync').mockImplementation(() => {})
+
+		await DeploymentService.endDeployment('dep-1', USER_B, 'Retrieved')
+		await service.uploadOutbox(USER_B)
+
+		const [sent] = pushCalls[0].deployments.updated
+		expect(sent).toEqual(expect.objectContaining({ id: 'dep-1', deployment_status_id: DEPLOYMENT_STATUS.ENDED }))
+		for (const column of ['location_name', 'latitude', 'longitude', 'project_id', 'setup_by']) {
+			expect(sent).not.toHaveProperty(column)
+		}
+	})
+
+	// The outbox does not merge: each change goes up as its own row, in the
+	// order made, and push_changes applies them in the order sent
+	it('sends two changes to one deployment oldest first, each with only its own columns', async () => {
+		serverRows.projects = [{ id: 'project-1' }]
+		seedRows('deployments', [{ id: 'dep-1', projectId: 'project-1' }])
+		queue({ id: 'photos', table: 'deployments', type: 'UPDATE', recordId: 'dep-1', userId: USER_B, clock: 2000,
+			payload: { camera_location_image_paths: ['project-1/dep-1/a.jpg'] } })
+		queue({ id: 'end', table: 'deployments', type: 'UPDATE', recordId: 'dep-1', userId: USER_B, clock: 1000,
+			payload: { deployment_status_id: DEPLOYMENT_STATUS.ENDED } })
+
+		await service.uploadOutbox(USER_B)
+
+		const sent = pushCalls[0].deployments.updated
+		expect(sent.map((row: any) => row.operation_id)).toEqual(['op-end', 'op-photos'])
+		expect(sent[0]).not.toHaveProperty('camera_location_image_paths')
+		expect(sent[1]).not.toHaveProperty('deployment_status_id')
+	})
+
+	it('still holds an update whose project the server no longer has, by the project on the phone', async () => {
+		seedRows('deployments', [{ id: 'dep-1', projectId: 'project-gone' }])
+		queue({ id: 'end', table: 'deployments', type: 'UPDATE', recordId: 'dep-1', userId: USER_B,
+			payload: { deployment_status_id: DEPLOYMENT_STATUS.ENDED } })
+
+		await expect(service.uploadOutbox(USER_B)).rejects.toThrow('deployments: 1 waiting')
+
+		expect(sentIds('deployments')).toEqual([])
+		expect(op('end').status).toBe('pending')
+	})
+})
+
+describe('deletions pull_changes lists (#411)', () => {
+	const sync = () => SupabaseSyncService.sync().catch(() => {})
+	const ids = (table: string) => rowsIn(table).map((r) => r.id).sort()
+	const deployment = (id: string) => rowsIn('deployments').find((d) => d.id === id)
+
+	beforeEach(() => {
+		state.set(SYNC_STATE_KEYS.LAST_SYNC_USER_ID, USER_B)
+		SupabaseSyncService.setStore({
+			getState: () => ({ network: { isOnline: true }, sync: { hasCompletedInitialSync: true } }),
+			dispatch: jest.fn(),
+		})
+		serverRows.projects = [{ id: 'project-1' }]
+		seedRows('projects', [{ id: 'project-1', name: 'Ridge survey' }])
+	})
+
+	it('removes a deployment deleted on the server or moved away, and a listed device nothing uses', async () => {
+		seedRows('deployments', [
+			{ id: 'dep-gone', projectId: 'project-1', deviceId: 'device-gone', cameraLocationImagePaths: [] },
+			{ id: 'dep-stays', projectId: 'project-1', deviceId: 'device-shared', cameraLocationImagePaths: [] },
+		])
+		seedRows('devices', [{ id: 'device-gone' }, { id: 'device-shared' }])
+		pullChanges = {
+			deployments: { created: [], updated: [], deleted: ['dep-gone', 'never-on-this-phone'] },
+			devices: { created: [], updated: [], deleted: ['device-gone', 'device-shared'] },
+		}
+
+		await sync()
+
+		expect(ids('deployments')).toEqual(['dep-stays'])
+		// Still the camera of a deployment on the phone
+		expect(ids('devices')).toEqual(['device-shared'])
+		expect(state.get(SYNC_STATE_KEYS.LAST_PULL_TIMESTAMP)).toBe('1000')
+	})
+
+	it('keeps a deployment with a change not yet uploaded, orphans the change and stops sending it', async () => {
+		seedRows('deployments', [{ id: 'dep-ended', name: 'Ridge 2', projectId: 'project-1', deviceId: 'device-1', cameraLocationImagePaths: [] }])
+		seedRows('devices', [{ id: 'device-1' }])
+		queue({ id: 'end', table: 'deployments', type: 'UPDATE', recordId: 'dep-ended', userId: USER_B, status: 'failed',
+			payload: { deployment_status_id: DEPLOYMENT_STATUS.ENDED } })
+		// The server has it no more, so the push this sync makes cannot land
+		pushHandler = () => ({ data: { processed: 0, conflicts: [{ id: 'dep-ended', reason: 'not_applied' }] }, error: null })
+		pullChanges = {
+			deployments: { deleted: ['dep-ended'] },
+			devices: { deleted: ['device-1'] },
+		}
+
+		await sync()
+
+		expect(ids('deployments')).toEqual(['dep-ended'])
+		expect(deployment('dep-ended')!.customSyncStatus).toBe(GONE_FROM_SERVER)
+		expect(ids('devices')).toEqual(['device-1'])
+		expect(op('end').status).toBe('orphaned')
+		expect(op('end').errorMessage).toContain('"Ridge 2" (dep-ended) was deleted on the server, or moved out')
+
+		pushCalls.length = 0
+		pullChanges = {}
+		await expect(SupabaseSyncService.sync()).resolves.toBeUndefined()
+		expect(pushCalls).toHaveLength(0)
+		expect(op('end').status).toBe('orphaned')
+	})
+
+	it('keeps a deployment whose site photo is still only on the phone', async () => {
+		seedRows('deployments', [{ id: 'dep-photo', projectId: 'project-1', deviceId: 'device-1',
+			cameraLocationImagePaths: ['file:///data/deployment-photos/1.jpg'] }])
+		pullChanges = { deployments: { deleted: ['dep-photo'] } }
+
+		await sync()
+
+		expect(deployment('dep-photo')!.customSyncStatus).toBe(GONE_FROM_SERVER)
+	})
+
+	it('orphans a change made later to a kept deployment, and the reconcile does not queue its work again', async () => {
+		seedRows('deployments', [{ id: 'dep-kept', projectId: 'project-1', deviceId: 'device-1', customSyncStatus: GONE_FROM_SERVER }])
+		queue({ id: 'earlier', table: 'deployments', type: 'UPDATE', recordId: 'dep-kept', userId: USER_B, status: 'orphaned' })
+		queue({ id: 'later', table: 'deployments', type: 'UPDATE', recordId: 'dep-kept', userId: USER_B,
+			payload: { deployment_status_id: DEPLOYMENT_STATUS.ENDED } })
+
+		await expect(SupabaseSyncService.sync()).resolves.toBeUndefined()
+
+		expect(sentIds('deployments')).toEqual([])
+		expect(op('later').status).toBe('orphaned')
+		// Its project is still on the server, which would put #330's orphans back
+		expect(op('earlier').status).toBe('orphaned')
+	})
+
+	it('leaves another account\'s held change to that account, and keeps the deployment for it', async () => {
+		seedRows('deployments', [{ id: 'dep-a', projectId: 'project-1', deviceId: 'device-1', cameraLocationImagePaths: [] }])
+		queue({ id: 'a-end', table: 'deployments', type: 'UPDATE', recordId: 'dep-a', userId: USER_A })
+		pullChanges = { deployments: { deleted: ['dep-a'] } }
+
+		await sync()
+
+		expect(ids('deployments')).toEqual(['dep-a'])
+		expect(op('a-end').status).toBe('pending')
+	})
+
+	it('takes a kept deployment back when the server sends it again, and queues its work again', async () => {
+		seedRows('deployments', [{ id: 'dep-back', projectId: 'project-1', deviceId: 'device-1',
+			deploymentStatusId: DEPLOYMENT_STATUS.ENDED, customSyncStatus: GONE_FROM_SERVER }])
+		queue({ id: 'end', table: 'deployments', type: 'UPDATE', recordId: 'dep-back', userId: USER_B, status: 'orphaned' })
+		// Moved back: the move bumps updated_at, so the deployment pull brings it
+		pullRows.deployments = [{ id: 'dep-back', project_id: 'project-1', device_id: 'device-1',
+			deployment_status_id: DEPLOYMENT_STATUS.STARTED, updated_at: '2026-10-08T00:00:00Z' }]
+
+		await service.syncDeployments()
+
+		expect(deployment('dep-back')!.customSyncStatus).toBeUndefined()
+		expect(op('end').status).toBe('pending')
+		// The end still to push is newer than the server's row
+		expect(deployment('dep-back')!.deploymentStatusId).toBe(DEPLOYMENT_STATUS.ENDED)
+	})
+
+	it('keeps the watermark when the deletions cannot be applied, so the next pull lists them again', async () => {
+		const apply = jest.spyOn(service, 'applyServerDeletions').mockRejectedValueOnce(new Error('database is locked'))
+		pullChanges = { deployments: { deleted: ['dep-1'] } }
+
+		await sync()
+
+		expect(apply).toHaveBeenCalled()
+		expect(state.has(SYNC_STATE_KEYS.LAST_PULL_TIMESTAMP)).toBe(false)
+		apply.mockRestore()
+	})
+})
+
+describe('a deployment whose device is not on the phone (#411)', () => {
+	beforeEach(() => {
+		state.set(SYNC_STATE_KEYS.LAST_SYNC_USER_ID, USER_B)
+		SupabaseSyncService.setStore({
+			getState: () => ({ network: { isOnline: true }, sync: { hasCompletedInitialSync: true } }),
+			dispatch: jest.fn(),
+		})
+		serverRows.projects = [{ id: 'project-1' }]
+		seedRows('projects', [{ id: 'project-1', name: 'Ridge survey' }])
+	})
+
+	const movedIn = { id: 'dep-moved', project_id: 'project-1', device_id: 'device-moved', name: 'From the valley',
+		deployment_start: '2026-09-20T00:00:00Z', created_at: '2026-09-20T00:00:00Z', updated_at: '2026-10-08T00:00:00Z' }
+	const itsDevice = { id: 'device-moved', bluetooth_id: 'D4:5E', name: 'WILD-MOVE', organisation_id: 'org-1',
+		created_at: '2026-09-01T00:00:00Z', updated_at: '2026-09-01T00:00:00Z' }
+
+	it('fetches the device by id after the deployment pull', async () => {
+		pullRows.deployments = [movedIn]
+		// The incremental device pull did not bring it
+		serverRows.devices = [itsDevice]
+
+		await SupabaseSyncService.sync()
+
+		expect(readById.devices).toEqual([['device-moved']])
+		expect(rowsIn('devices')).toEqual([expect.objectContaining({ id: 'device-moved', name: 'WILD-MOVE', bluetoothId: 'D4:5E' })])
+	})
+
+	it('asks for nothing when every deployment has its device', async () => {
+		pullRows.deployments = [movedIn]
+		pullRows.devices = [{ ...itsDevice, updated_at: '2026-10-08T00:00:00Z' }]
+
+		await SupabaseSyncService.sync()
+
+		expect(readById.devices).toBeUndefined()
+		expect(rowsIn('devices').map((d) => d.id)).toEqual(['device-moved'])
+	})
+
+	it('only logs a failed fetch, and the sync completes', async () => {
+		pullRows.deployments = [movedIn]
+		readErrors.devices = { message: 'Network request failed' }
+
+		await expect(SupabaseSyncService.sync()).resolves.toBeUndefined()
+
+		expect(rowsIn('deployments').map((d) => d.id)).toEqual(['dep-moved'])
+		expect(rowsIn('devices')).toEqual([])
 	})
 })

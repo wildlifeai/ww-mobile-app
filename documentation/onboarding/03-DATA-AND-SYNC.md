@@ -404,11 +404,40 @@ soft-deleted, with an exact count) and compares the phone with it:
 The push side uses the same lookup: a deployment whose project the server does not have waits
 instead of being refused, and the reconcile then orphans it.
 
+**Deployments and devices the server deletes or takes away (#411).** A deployment soft-deleted
+on the website or moved out of this account's projects (ww-backend #260), and a device this
+account can no longer read, never appear in an incremental REST pull either. `pull_changes`
+lists their ids in `changes.deployments.deleted` and `changes.devices.deleted`, and
+`applyServerDeletions` applies them before the pull watermark moves; if it fails, the watermark
+stays and the next sync lists them again. Projects are left to the reconcile above.
+
+- A listed deployment with nothing still to upload is removed.
+- One with work not yet uploaded, an outbox operation not on the server or a site photo only on
+  the phone, keeps its row and its photos, as in a gone project. This account's queued changes
+  to it become `orphaned`, with the reason in `error_message`, and the row is marked
+  `GONE_FROM_SERVER` (`services/goneFromServer.ts`): a change made to it later is orphaned at
+  the push, its photos are not uploaded, and the reconcile does not queue its work again because
+  its project is still there. Another account's held changes are left for that account.
+- If the server sends the deployment again, moved back or restored, the deployment pull clears
+  the mark and puts its orphaned changes back in the queue.
+- A listed device is removed unless a deployment still on the phone uses it, or a change to it
+  has not reached the server.
+
+**A deployment whose device is not on the phone (#411).** A deployment moved into one of this
+account's projects arrives through the deployment pull, and its camera may never have been on
+this phone. ww-backend #260 bumps the device's `updated_at` on a move, so the device pull
+normally brings it; after the deployment pull, `pullMissingDevices` fetches by id any device a
+deployment on the phone points at and the phone lacks. It leaves the device watermark alone.
+
 A project edit queues only the fields it changed (`ProjectService.updateProject`), and
 `push_changes` keeps any column the payload leaves out. Before #330 the edit sent the whole
 record, so a phone holding a stale copy put back the old value of every field it had not
-touched, over a newer change made on the website. Deployment updates still send the whole
-record.
+touched, over a newer change made on the website. Deployment updates do the same since #411
+(`prepareDeploymentUpdate`, used by `endDeployment` and the photo path write-back): ending a
+deployment on a phone holding an old copy used to put the old location back over a website
+correction. A `CREATE` still sends the whole record. The outbox never merges two changes to one
+row: each is its own operation, and the push sends them oldest first, so a later change to a
+column lands last.
 
 > [!WARNING]
 > **Both directions name their columns by hand, and both have dropped some.** `syncProjects`
@@ -427,7 +456,8 @@ There is no backoff and no retry limit. Every sync pushes every `pending` and `f
 operation of the signed-in account again, and `retry_count` only counts attempts. A change the server refuses keeps
 being retried, which is what lets it go through by itself once the server side is fixed, and
 it only holds back the deployments that depend on it. The exception is an `orphaned` operation,
-whose project the server no longer has for this account: it is kept but not retried (#330).
+whose project (#330) or deployment (#411) the server no longer has for this account: it is
+kept but not retried.
 
 ---
 

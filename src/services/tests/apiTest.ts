@@ -1,8 +1,6 @@
 import { getSupabaseClient } from "../supabase"
 
 import ReferenceDataService from "../ReferenceDataService"
-import SupabaseSyncService from "../SupabaseSyncService"
-import database from "../../database"
 import { log, logError } from '../../utils/logger'
 
 
@@ -110,28 +108,6 @@ export const testReferenceDataSync = async (): Promise<boolean> => {
 		return true
 	} catch (error) {
 		logError("Reference Data Sync test error:", error)
-		return false
-	}
-}
-
-export const testSupabaseSync = async (): Promise<boolean> => {
-	try {
-		log("🔄 Testing Supabase Sync (Projects, Members, Devices)...")
-		await SupabaseSyncService.sync()
-
-		// Verify we have some data locally
-		const projectsCount = await database.get('projects').query().fetchCount()
-		const membersCount = await database.get('project_members').query().fetchCount()
-		const devicesCount = await database.get('devices').query().fetchCount()
-
-		log(`   Projects: ${projectsCount}`)
-		log(`   Project Members: ${membersCount}`)
-		log(`   Devices: ${devicesCount}`)
-
-		log("✅ Supabase Sync test passed")
-		return true
-	} catch (error) {
-		logError("Supabase Sync test error:", error)
 		return false
 	}
 }

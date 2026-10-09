@@ -143,7 +143,15 @@ version for humans is
   and a full record from a stale phone overwrote newer website values (Sinbad's model and GPS,
   29 September). `ProjectService.updateProject` diffs the record before and after and queues
   only the changed columns; `push_changes` keeps any column the payload leaves out. Deployment
-  updates are still full records.
+  updates do the same since #411, through `prepareDeploymentUpdate`: ending a deployment or
+  swapping in a photo path used to put a stale phone's location back over a website edit. A
+  `CREATE` is still the whole record. The outbox never merges two changes to one row: each goes
+  up as its own row, oldest first.
+- **A deployment or device the server deletes or takes away leaves the phone (#411)**, from the
+  `deleted` lists of `pull_changes` (`applyServerDeletions`), unless it holds work not yet
+  uploaded: then it stays, marked `GONE_FROM_SERVER`, and nothing more is uploaded for it. A
+  deployment whose device is not on the phone fetches it by id (`pullMissingDevices`). The
+  rules are in [03-DATA-AND-SYNC.md](../../../documentation/onboarding/03-DATA-AND-SYNC.md#pull).
 - **`push_changes` returns `conflicts` as an array of `{id, reason: 'not_applied'}`**, not a
   count. For an `UPDATE` or `DELETE` it means the change did not land (row missing, or RLS
   said no) and the operation stays `failed`; for a `CREATE` it means the row already exists.

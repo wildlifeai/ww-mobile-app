@@ -54,11 +54,6 @@ jest.mock("../../../../src/services/supabase", () => ({
 	getCurrentEnvironment: jest.fn(() => null),
 }))
 
-// Mock the TestDeepLink component
-jest.mock("../../../../src/components/TestDeepLink", () => ({
-	TestDeepLink: () => null,
-}))
-
 // Mock the logo image
 // Logo image is automatically mocked by Jest moduleNameMapper
 

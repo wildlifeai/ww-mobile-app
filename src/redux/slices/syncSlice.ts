@@ -258,9 +258,6 @@ export const {
 // Selectors
 export const selectOverallSyncStatus = (state: SyncRootState) => state.sync.overall
 export const selectQueueStatus = (state: SyncRootState) => state.sync.queue
-export const selectLastSync = (state: SyncRootState) => state.sync.lastSync
-export const selectHasCompletedInitialSync = (state: SyncRootState) => state.sync.hasCompletedInitialSync
-export const selectSyncErrors = (state: SyncRootState) => state.sync.errors
 
 // Selector for specific entity sync status
 export const selectEntitySyncStatus = (
@@ -274,14 +271,6 @@ export const selectEntitySyncStatus = (
 			lastSync: null,
 		}
 	)
-}
-
-// Selector for all entities of a type
-export const selectEntitiesSyncStatus = (
-	state: SyncRootState,
-	entityType: keyof SyncState["entities"],
-): EntitySyncMap => {
-	return state.sync.entities[entityType]
 }
 
 export default syncSlice.reducer

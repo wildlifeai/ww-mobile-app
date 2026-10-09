@@ -4,7 +4,7 @@
  * wrote, rather than from a canned mock.
  *
  * It understands Q.where with eq, oneOf and gt, matched against the record's
- * camelCase property, Q.or and Q.and, and the write paths the services use:
+ * camelCase property, Q.or and Q.and, Q.sortBy, and the write paths the services use:
  * create, update, prepareCreate / prepareUpdate / prepareDestroyPermanently
  * with batch, and markAsDeleted. Nothing else. Extend it when a test needs more.
  *
@@ -58,15 +58,35 @@ const makeRecord = (table: string, fields: AnyRecord = {}): AnyRecord => {
 	record.update = async (fn: (r: AnyRecord) => void) => { fn(record) }
 	record.markAsDeleted = async () => remove(table, record)
 	record.destroyPermanently = async () => remove(table, record)
-	record.prepareUpdate = (fn: (r: AnyRecord) => void) => ({ __apply: () => fn(record) })
+	// Like WatermelonDB, prepareUpdate changes the record at once, stamping
+	// updatedAt when it has one, and the batch only saves it: code that reads
+	// the record between the two (a diff of before and after) sees the change
+	record.prepareUpdate = (fn: (r: AnyRecord) => void) => {
+		if ('updatedAt' in record) record.updatedAt = Date.now()
+		fn(record)
+		return { __apply: () => {} }
+	}
 	record.prepareMarkAsDeleted = () => ({ __apply: () => remove(table, record) })
 	record.prepareDestroyPermanently = () => ({ __apply: () => remove(table, record) })
 	return record
 }
 
+const sorted = (rows: AnyRecord[], clauses: any[]): AnyRecord[] => {
+	const sorts = clauses.filter((c) => c?.type === 'sortBy')
+	if (sorts.length === 0) return rows
+	return [...rows].sort((a, b) => {
+		for (const { sortColumn, sortOrder } of sorts) {
+			const [x, y] = [a[camel(sortColumn)], b[camel(sortColumn)]]
+			if (x === y) continue
+			return (x < y ? -1 : 1) * (sortOrder === 'desc' ? -1 : 1)
+		}
+		return 0
+	})
+}
+
 const collection = (table: string) => ({
 	query: (...clauses: any[]) => {
-		const run = () => rowsOf(table).filter((r) => clauses.every((c) => matches(r, c)))
+		const run = () => sorted(rowsOf(table).filter((r) => clauses.every((c) => matches(r, c))), clauses)
 		return {
 			fetch: async () => run(),
 			fetchCount: async () => run().length,

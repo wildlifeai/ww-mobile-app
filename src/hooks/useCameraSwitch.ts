@@ -9,8 +9,9 @@ import { log, logError, logWarn } from '../utils/logger'
 
 // The variant type, its labels and the parser live in `utils/cameraVariant.ts`
 // since #321, which needed them in a pure module a React hook cannot be imported
-// into. Re-exported here so every existing import site is unchanged.
-export { CAMERA_VARIANT_LABELS, parseVariant } from '../utils/cameraVariant'
+// into. The type and the labels are re-exported here for the screens that take
+// them with the hook; the parser is imported from `utils/cameraVariant.ts`.
+export { CAMERA_VARIANT_LABELS } from '../utils/cameraVariant'
 export type { CameraVariant } from '../utils/cameraVariant'
 
 interface UseCameraSwitchOptions {

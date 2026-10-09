@@ -44,26 +44,6 @@ export enum FileTxErrorCode {
   MALFORMED_FRAME   = 10, // Malformed frame (e.g. zero-length chunk)
 }
 
-// ─── Retry policy per error code ─────────────────────────────────────
-export type RetryPolicy = 'auto_once' | 'never' | 'operator' | 'manual_intervention'
-
-export const ERROR_RETRY_POLICY: Record<number, RetryPolicy> = {
-  [FileTxErrorCode.WRONG_STATE]:      'auto_once',
-  [FileTxErrorCode.MALFORMED]:        'never',
-  [FileTxErrorCode.BAD_FILENAME]:     'never',
-  [FileTxErrorCode.I2C_FAIL]:         'operator',
-  [FileTxErrorCode.HX_BAD_FILENAME]:  'never',
-  [FileTxErrorCode.FILE_OPEN_FAIL]:   'operator',
-  [FileTxErrorCode.SD_WRITE_FAIL]:    'operator',
-  [FileTxErrorCode.SEQUENCE_ERROR]:   'never',
-  [FileTxErrorCode.CRC_MISMATCH]:     'auto_once',
-  [FileTxErrorCode.MALFORMED_FRAME]:  'never',
-}
-
-export function getRetryPolicy(code: number): RetryPolicy {
-  return ERROR_RETRY_POLICY[code] ?? 'manual_intervention'
-}
-
 // ─── User-friendly error messages ────────────────────────────────────
 export const ERROR_MESSAGES: Record<number, string> = {
   [FileTxErrorCode.WRONG_STATE]:      'Device was not ready for this packet. Try again.',

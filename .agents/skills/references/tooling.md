@@ -78,7 +78,7 @@ shell boundary, and none of them reproduced in a Linux container.
 - **An advisory check is `continue-on-error` on the step, never on the job.** On the job, the
   check still shows as failed. On the step that runs the tool, a follow-up step reads
   `steps.<id>.outcome` and prints `::warning::` with the finding, so the run stays green and the
-  finding is still on the pull request (Dead Code, Schema Mirror Drift, the website's Lighthouse).
+  finding is still on the pull request (Schema Mirror Drift, the website's Lighthouse).
 - **A space and a hash inside a `run:` string is a YAML comment.** `echo "advisory, see #225"`
   ends at the hash and leaves the quote open, and the parser names the file, not the line. Write
   "issue 225".

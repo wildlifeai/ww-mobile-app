@@ -25,12 +25,6 @@ export interface OrganisationMembership {
     organisationId: string | null
 }
 
-export const NO_MEMBERSHIP: OrganisationMembership = {
-    organisations: [],
-    role: 'project_member',
-    organisationId: null,
-}
-
 /** A role row as both the cloud and the local table give it. */
 export interface RoleRow {
     role: string

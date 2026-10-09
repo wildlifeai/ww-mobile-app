@@ -38,9 +38,7 @@ jest.mock("../../../../src/services/supabase", () => {
 		onSupabaseClientChange: jest.fn(() => jest.fn()),
 		getCurrentEnvironment: jest.fn(() => ({ supabaseUrl: "mock", supabaseAnonKey: "mock" })),
 		resetSupabaseClient: jest.fn(),
-		checkSupabaseConnection: jest.fn(() => Promise.resolve(true)),
 		supabase: mockSupabaseClient,
-		supabaseConfig: { url: "mock", hasAnonKey: true, projectRef: "mock" },
 	}
 })
 

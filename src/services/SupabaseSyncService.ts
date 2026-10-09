@@ -17,12 +17,15 @@ import { logCloudFailure } from '../utils/networkErrors'
 import { DEFAULT_FLASH_LED, DEFAULT_FLASH_MODE } from '../utils/projectFlash'
 import { DEFAULT_PHOTO_INTERVAL_MS, DEFAULT_PHOTOS_PER_TRIGGER } from '../utils/projectBurst'
 import { DEFAULT_DETECTION_THRESHOLD_PCT } from '../utils/projectDetectionThreshold'
+import { GONE_FROM_SERVER, isGoneFromServer } from './goneFromServer'
 
 
 import { setGlobalSyncing, markInitialSyncComplete } from '../redux/slices/syncSlice'
 
 /** The tables a deployment points at */
 type ParentTable = 'projects' | 'devices'
+
+type DeviceRow = Database['public']['Tables']['devices']['Row']
 
 /** Why some of a table's changes did not reach the server */
 interface PushProblem {
@@ -51,6 +54,24 @@ const isHeldForAnotherAccount = (op: SyncOutbox, currentUserId: string): boolean
     if (!owner || owner === 'system' || owner === currentUserId) return false
     return !(op.tableName === 'devices' && op.operationType.toUpperCase() === 'CREATE')
 }
+
+/** A site photo still only on the phone, not yet in the bucket */
+const hasLocalPhotos = (deployment: Deployment): boolean => {
+    try {
+        const raw: any = deployment.cameraLocationImagePaths
+        const paths: string[] = typeof raw === 'string' ? JSON.parse(raw) : (raw || [])
+        return paths.some(path => typeof path === 'string' && path.startsWith('file://'))
+    } catch (e) {
+        return false
+    }
+}
+
+/** Keep, never retry, a change to a deployment the server no longer has for this account (#411) */
+const prepareOrphanOnGoneDeployment = (op: SyncOutbox, deployment: Deployment) => op.prepareUpdate(o => {
+    const label = deployment.name ? `"${deployment.name}" (${deployment.id})` : deployment.id
+    o.status = 'orphaned'
+    o.errorMessage = `orphaned: deployment ${label} was deleted on the server, or moved out of this account's projects`
+})
 
 const mergeOutcomes = (outcomes: PushOutcome[]): PushOutcome => {
     const problems = new Map<string, number>()
@@ -280,7 +301,7 @@ class SupabaseSyncService {
             // ================================================================
             // STEP 2: PULL REMOTE CHANGES
             // ================================================================
-            await this.pullRemoteChanges()
+            await this.pullRemoteChanges(user.id)
             await this.syncUserRoles(user.id)
             if (await this.syncProjects()) {
                 await this.reconcileProjects(user.id)
@@ -289,6 +310,7 @@ class SupabaseSyncService {
             }
             await this.syncDevices()
             await this.syncDeployments()
+            await this.pullMissingDevices()
 
             // Mark initial sync complete once the pull is in, whatever the push
             // did: routing decisions in the scanner only need the pulled data
@@ -403,7 +425,13 @@ class SupabaseSyncService {
         // the old stop-the-chain break, which stranded every table after the
         // failure for good. Syncs never overlap, so any found here are resumed.
         const queuedOps = await database.get<SyncOutbox>('sync_outbox')
-            .query(Q.where('status', Q.oneOf(['pending', 'failed', 'syncing'])))
+            .query(
+                Q.where('status', Q.oneOf(['pending', 'failed', 'syncing'])),
+                // Oldest first. Two queued updates to one row go up in one call, each
+                // carrying only its own columns (#411), and push_changes applies them
+                // in the order sent, so the later change to a column must come last.
+                Q.sortBy('lamport_clock', Q.asc),
+            )
             .fetch()
 
         // Another account's unsynced changes stay queued until it signs in on
@@ -778,6 +806,19 @@ class SupabaseSyncService {
             // project and device. Only the deployments whose parent is missing wait.
             const waitingProblems: PushProblem[] = []
             if (tableName === 'deployments') {
+                // A deployment the server no longer has for this account, kept here
+                // for its unsynced work (applyServerDeletions, #411): a change made to
+                // it since cannot land either, so it joins that work, orphaned
+                const onGone = await this.opsOnGoneDeployments(tableOps)
+                if (onGone.size > 0) {
+                    logWarn(`📦 ${onGone.size} deployments op(s) are for a deployment the server no longer has for this account, kept as orphaned`)
+                    await database.write(async () => {
+                        await database.batch(...Array.from(onGone, ([op, deployment]) => prepareOrphanOnGoneDeployment(op, deployment)))
+                    })
+                    tableOps = tableOps.filter(op => !onGone.has(op))
+                    if (tableOps.length === 0) continue
+                }
+
                 const waiting = await this.deploymentsWaitingOnParents(tableOps, devicesNotOnServer)
                 if (waiting.length > 0) {
                     logWarn(`⏳ Holding back ${waiting.length} deployments op(s): their project or device has not reached the server`)
@@ -836,21 +877,37 @@ class SupabaseSyncService {
      * sync: a project can also disappear from the server on its own, deleted on
      * the website or by a database reset, and a deployment pushed into it is
      * refused with 42501 on every sync (#330). Such a deployment waits here, and
-     * the project reconcile after the pull marks it orphaned. A device is only
-     * checked when its own change failed in this sync; a device the server has
-     * never seen is healed by the 23503 path below.
+     * the project reconcile after the pull marks it orphaned. An update names
+     * only the columns it changed (#411), so its project is the one the
+     * deployment has on the phone. A device is only checked when its own change
+     * failed in this sync; a device the server has never seen is healed by the
+     * 23503 path below.
      */
     private async deploymentsWaitingOnParents(
         deploymentOps: SyncOutbox[],
         devicesNotOnServer: Set<string>,
     ): Promise<SyncOutbox[]> {
-        const parentsOf = (op: SyncOutbox): { projectId?: string, deviceId?: string } => {
+        const named = (op: SyncOutbox): { projectId?: string, deviceId?: string } => {
             try {
                 const payload = JSON.parse(op.payload)
                 return { projectId: payload.project_id || undefined, deviceId: payload.device_id || undefined }
             } catch (e) {
                 return {}
             }
+        }
+        const unnamed = deploymentOps.filter(op => !named(op).projectId).map(op => op.recordId)
+        const localProject = new Map<string, string>()
+        if (unnamed.length > 0) {
+            const local = await database.get<Deployment>('deployments')
+                .query(Q.where('id', Q.oneOf(Array.from(new Set(unnamed)))))
+                .fetch()
+            for (const deployment of local) {
+                if (deployment.projectId) localProject.set(deployment.id, deployment.projectId)
+            }
+        }
+        const parentsOf = (op: SyncOutbox): { projectId?: string, deviceId?: string } => {
+            const { projectId, deviceId } = named(op)
+            return { projectId: projectId || localProject.get(op.recordId), deviceId }
         }
 
         const suspects: Record<ParentTable, Set<string>> = { projects: new Set(), devices: new Set() }
@@ -874,6 +931,25 @@ class SupabaseSyncService {
         }
         // Every operation on a blocked record waits, so they stay in order
         return deploymentOps.filter(op => blockedRecords.has(op.recordId))
+    }
+
+    /**
+     * The deployment operations on a deployment kept on the phone as gone from
+     * the server (applyServerDeletions), each with its deployment
+     */
+    private async opsOnGoneDeployments(deploymentOps: SyncOutbox[]): Promise<Map<SyncOutbox, Deployment>> {
+        const recordIds = Array.from(new Set(deploymentOps.map(op => op.recordId)))
+        const gone = new Map((await database.get<Deployment>('deployments')
+            .query(Q.where('id', Q.oneOf(recordIds)))
+            .fetch())
+            .filter(isGoneFromServer)
+            .map(deployment => [deployment.id, deployment]))
+        const onGone = new Map<SyncOutbox, Deployment>()
+        for (const op of deploymentOps) {
+            const deployment = gone.get(op.recordId)
+            if (deployment) onGone.set(op, deployment)
+        }
+        return onGone
     }
 
     /**
@@ -982,23 +1058,17 @@ class SupabaseSyncService {
                     return undefined
                 }
             }
-            const hasLocalPhotos = (deployment: Deployment): boolean => {
-                try {
-                    const raw: any = deployment.cameraLocationImagePaths
-                    const paths: string[] = typeof raw === 'string' ? JSON.parse(raw) : (raw || [])
-                    return paths.some(path => typeof path === 'string' && path.startsWith('file://'))
-                } catch (e) {
-                    return false
-                }
-            }
 
             const operations: any[] = []
 
             // A project can come back: a role granted again, or an earlier answer
             // that was short, as during a database reseed. Its orphaned changes
-            // go back in the queue.
+            // go back in the queue. Not those on a deployment the server itself no
+            // longer has (#411): its project being there does not bring it back.
+            const goneDeployments = new Set(deployments.filter(isGoneFromServer).map(d => d.id))
             const restored = unsyncedOps.filter(op => {
                 if (op.status !== 'orphaned') return false
+                if (op.tableName === 'deployments' && goneDeployments.has(op.recordId)) return false
                 const projectId = projectOf(op)
                 return !!projectId && serverIds.has(projectId)
             })
@@ -1084,8 +1154,13 @@ class SupabaseSyncService {
 
     /**
      * Pull remote changes from server
+     *
+     * The rows themselves come from the REST pulls that follow, which keep a
+     * record whose change is still in the outbox (#349). What only pull_changes
+     * can say is which rows have gone, so this applies its deletions (#411) and
+     * moves the watermark only once they are on the phone.
      */
-    private async pullRemoteChanges(): Promise<void> {
+    private async pullRemoteChanges(userId: string): Promise<void> {
         const lastPulledStr = await SyncStateService.get(SYNC_STATE_KEYS.LAST_PULL_TIMESTAMP)
         const lastPulledAt = lastPulledStr ? parseInt(lastPulledStr, 10) : 0
 
@@ -1101,136 +1176,14 @@ class SupabaseSyncService {
             throw error
         }
 
-        const { changes: rawChanges, conflicts, timestamp } = data as any
+        const { changes, timestamp } = data as any
 
-        // ================================================================
-        // CRITICAL: Filter out records with pending local changes
-        // ================================================================
-        // log('🔍 Filtering pending local changes from server updates...')
-
-        // Get all pending operations from outbox
-        const pendingOps = await database.get<SyncOutbox>('sync_outbox')
-            .query(Q.where('status', 'pending'))
-            .fetch()
-
-        // Build set of record IDs that have pending changes
-        const pendingByTable: Record<string, Set<string>> = {
-            projects: new Set(),
-            devices: new Set(),
-            deployments: new Set(),
-        }
-
-        for (const op of pendingOps) {
-            if (pendingByTable[op.tableName]) {
-                pendingByTable[op.tableName].add(op.recordId)
-            }
-        }
-
-        log(`📦 Found ${pendingOps.length} pending operations in outbox:`)
-        for (const [table, ids] of Object.entries(pendingByTable)) {
-            if (ids.size > 0) {
-                log(`   - ${table}: ${ids.size} pending`)
-            }
-        }
-
-        // Filter server changes to exclude pending records
-        const safeChanges = {
-            projects: {
-                created: (rawChanges.projects?.created || []).filter((p: any) => {
-                    const isPending = pendingByTable.projects.has(p.id)
-                    if (isPending) {
-                        log(`   ⚠️ Filtered project CREATED: ${p.id} (has pending changes)`)
-                    }
-                    return !isPending
-                }),
-                updated: (rawChanges.projects?.updated || []).filter((p: any) => {
-                    const isPending = pendingByTable.projects.has(p.id)
-                    if (isPending) {
-                        log(`   ⚠️ Filtered project UPDATED: ${p.id} (has pending changes)`)
-                    }
-                    return !isPending
-                }),
-                deleted: (rawChanges.projects?.deleted || []).filter((id: string) => {
-                    const isPending = pendingByTable.projects.has(id)
-                    if (isPending) {
-                        log(`   ⚠️ Filtered project DELETED: ${id} (has pending changes)`)
-                    }
-                    return !isPending
-                }),
-            },
-            deployments: {
-                created: (rawChanges.deployments?.created || []).filter((d: any) => {
-                    const isPending = pendingByTable.deployments.has(d.id)
-                    if (isPending) {
-                        log(`   ⚠️ Filtered deployment CREATED: ${d.id} (has pending changes)`)
-                    }
-                    return !isPending
-                }),
-                updated: (rawChanges.deployments?.updated || []).filter((d: any) => {
-                    const isPending = pendingByTable.deployments.has(d.id)
-                    if (isPending) {
-                        log(`   ⚠️ Filtered deployment UPDATED: ${d.id} (has pending changes)`)
-                    }
-                    return !isPending
-                }),
-                deleted: (rawChanges.deployments?.deleted || []).filter((id: string) => {
-                    const isPending = pendingByTable.deployments.has(id)
-                    if (isPending) {
-                        log(`   ⚠️ Filtered deployment DELETED: ${id} (has pending changes)`)
-                    }
-                    return !isPending
-                }),
-            },
-
-            devices: {
-                created: (rawChanges.devices?.created || []).filter((d: any) => {
-                    const isPending = pendingByTable.devices.has(d.id)
-                    if (isPending) {
-                        log(`   ⚠️ Filtered device CREATED: ${d.id} (has pending changes)`)
-                    }
-                    return !isPending
-                }),
-                updated: (rawChanges.devices?.updated || []).filter((d: any) => {
-                    const isPending = pendingByTable.devices.has(d.id)
-                    if (isPending) {
-                        log(`   ⚠️ Filtered device UPDATED: ${d.id} (has pending changes)`)
-                    }
-                    return !isPending
-                }),
-                deleted: (rawChanges.devices?.deleted || []).filter((id: string) => {
-                    const isPending = pendingByTable.devices.has(id)
-                    if (isPending) {
-                        log(`   ⚠️ Filtered device DELETED: ${id} (has pending changes)`)
-                    }
-                    return !isPending
-                }),
-            },
-        }
-
-        // Log filtering stats
-        const totalFiltered =
-            (rawChanges.projects?.created?.length || 0) - (safeChanges.projects.created.length) +
-            (rawChanges.projects?.updated?.length || 0) - (safeChanges.projects.updated.length) +
-            (rawChanges.projects?.deleted?.length || 0) - (safeChanges.projects.deleted.length) +
-            (rawChanges.deployments?.created?.length || 0) - (safeChanges.deployments.created.length) +
-            (rawChanges.deployments?.updated?.length || 0) - (safeChanges.deployments.updated.length) +
-            (rawChanges.deployments?.deleted?.length || 0) - (safeChanges.deployments.deleted.length) +
-
-            (rawChanges.devices?.created?.length || 0) - (safeChanges.devices.created.length) +
-            (rawChanges.devices?.updated?.length || 0) - (safeChanges.devices.updated.length) +
-            (rawChanges.devices?.deleted?.length || 0) - (safeChanges.devices.deleted.length)
-
-        if (totalFiltered > 0) {
-            log(`✅ Filtered ${totalFiltered} server changes with pending local modifications`)
-        } else {
-            log('✅ No pending changes, applying all server updates')
-        }
-
-        // Handle conflicts (if any)
-        if (conflicts && conflicts.length > 0) {
-            logWarn(`⚠️ ${conflicts.length} conflicts detected:`, conflicts)
-            // TODO: Store conflicts for user resolution
-            // For now, just log them
+        try {
+            await this.applyServerDeletions(changes, userId)
+        } catch (e) {
+            // The watermark stays where it was, so the next pull lists them again
+            logWarn('⚠️ Could not apply the deletions pull_changes listed, the next sync tries again:', e)
+            return
         }
 
         // Update last pull timestamp
@@ -1242,6 +1195,100 @@ class SupabaseSyncService {
         })
 
         // log(`✅ Pull complete - timestamp updated to ${timestamp}`)
+    }
+
+    /**
+     * Apply the deletions pull_changes lists for deployments and devices (#411)
+     *
+     * The REST pulls never see a row go: the server hides soft-deleted rows, and
+     * a deployment moved out of this account's projects (ww-backend #260), or a
+     * device it can no longer read, simply stops appearing. pull_changes lists
+     * their ids (sync_deleted_ids): rows soft-deleted since the last pull that
+     * this account could read, and rows it has lost access to.
+     *
+     * A listed deployment is removed, unless it holds work not yet uploaded: an
+     * outbox operation not on the server (any account's, orphaned included) or
+     * a site photo still only on the phone. Then, as for a project that is gone
+     * (#330), its row and photos stay, and this account's queued changes to it
+     * become 'orphaned', kept and never retried, with the reason in
+     * error_message. The row is marked GONE_FROM_SERVER so that nothing more is
+     * uploaded for it (see goneFromServer.ts). Another account's held changes
+     * are left for that account.
+     *
+     * A listed device is removed unless a deployment still on the phone points
+     * at it, or a change to it has not reached the server.
+     *
+     * Projects are left to reconcileProjects, which compares the phone with the
+     * full list of this account's projects.
+     */
+    private async applyServerDeletions(changes: any, userId: string): Promise<void> {
+        const listed = (table: 'deployments' | 'devices') => new Set<string>(
+            (Array.isArray(changes?.[table]?.deleted) ? changes[table].deleted : []).map(String)
+        )
+        const deploymentIds = listed('deployments')
+        const deviceIds = listed('devices')
+        if (deploymentIds.size === 0 && deviceIds.size === 0) return
+
+        const deployments = await database.get<Deployment>('deployments').query().fetch()
+        const unsyncedOps = await database.get<SyncOutbox>('sync_outbox')
+            .query(Q.where('status', Q.oneOf(['pending', 'failed', 'syncing', 'orphaned'])))
+            .fetch()
+        const opsOn = (table: string, recordId: string) =>
+            unsyncedOps.filter(op => op.tableName === table && op.recordId === recordId)
+
+        const operations: any[] = []
+        const removedDeployments = new Set<string>()
+        const keptDeployments: string[] = []
+        let orphaned = 0
+
+        for (const deployment of deployments.filter(d => deploymentIds.has(d.id))) {
+            const itsOps = opsOn('deployments', deployment.id)
+            if (itsOps.length === 0 && !hasLocalPhotos(deployment)) {
+                operations.push(deployment.prepareDestroyPermanently())
+                removedDeployments.add(deployment.id)
+                continue
+            }
+            const toOrphan = itsOps.filter(op => op.status !== 'orphaned' && !isHeldForAnotherAccount(op, userId))
+            toOrphan.forEach(op => operations.push(prepareOrphanOnGoneDeployment(op, deployment)))
+            if (!isGoneFromServer(deployment)) {
+                operations.push(deployment.prepareUpdate(rec => {
+                    rec.customSyncStatus = GONE_FROM_SERVER
+                }))
+            }
+            keptDeployments.push(deployment.id)
+            orphaned += toOrphan.length
+        }
+
+        // A device goes only when nothing left on the phone needs it
+        const stillUsed = new Set(deployments.filter(d => !removedDeployments.has(d.id)).map(d => d.deviceId))
+        const devices = deviceIds.size > 0
+            ? await database.get<Device>('devices').query(Q.where('id', Q.oneOf(Array.from(deviceIds)))).fetch()
+            : []
+        const keptDevices: string[] = []
+        for (const device of devices) {
+            if (stillUsed.has(device.id) || opsOn('devices', device.id).length > 0) {
+                keptDevices.push(device.id)
+                continue
+            }
+            operations.push(device.prepareDestroyPermanently())
+        }
+
+        if (operations.length > 0) {
+            await database.write(async () => {
+                await database.batch(...operations)
+            })
+        }
+
+        const removedDevices = devices.length - keptDevices.length
+        if (removedDeployments.size > 0 || removedDevices > 0) {
+            log(`🧹 Removed ${removedDeployments.size} deployment(s) and ${removedDevices} device(s) the server deleted or no longer shares with this account`)
+        }
+        if (keptDeployments.length > 0) {
+            logWarn(`📦 Kept ${keptDeployments.length} deployment(s) the server no longer has for this account, for work not yet uploaded (${keptDeployments.join(', ')}); ${orphaned} change(s) marked orphaned and no longer retried`)
+        }
+        if (keptDevices.length > 0) {
+            log(`📷 Kept ${keptDevices.length} device(s) the server listed as gone, still used on this phone (${keptDevices.join(', ')})`)
+        }
     }
 
     /**
@@ -1625,11 +1672,6 @@ class SupabaseSyncService {
         const unsynced = await this.unsyncedRecordIds('devices')
 
         await database.write(async () => {
-            const collection = database.get<Device>('devices')
-
-            // Explicitly type the row to match Supabase schema
-            type DeviceRow = Database['public']['Tables']['devices']['Row']
-
             for (const row of data as DeviceRow[]) {
                 if (!row) {
                     logError('[Sync] Found undefined row in devices data!')
@@ -1643,29 +1685,7 @@ class SupabaseSyncService {
                     continue
                 }
 
-                // Check if exists
-                try {
-                    const existing = await collection.find(row.id)
-                    await existing.update((rec) => {
-                        rec.bluetoothId = row.bluetooth_id
-                        rec.name = row.name
-                        rec.organisationId = row.organisation_id ?? ''
-                        rec.deviceEui = row.device_eui ?? undefined
-                        rec.updatedAt = new Date(row.updated_at ?? Date.now())
-                    })
-                } catch (e) {
-                    // Not found, create
-                    await collection.create((rec) => {
-                        rec._raw.id = row.id || '' // Use server ID
-                        rec.bluetoothId = row.bluetooth_id
-                        rec.name = row.name
-                        rec.organisationId = row.organisation_id ?? ''
-                        rec.deviceEui = row.device_eui ?? undefined;
-                        // Use _raw to bypass @readonly check
-                        (rec._raw as any).created_at = new Date(row.created_at ?? Date.now()).getTime()
-                        rec.updatedAt = new Date(row.updated_at ?? Date.now())
-                    })
-                }
+                await this.writeDeviceRow(row)
             }
             // Update timestamp
             const maxTimestamp = Math.max(...data.map((d: any) => new Date(d.updated_at).getTime()))
@@ -1673,6 +1693,72 @@ class SupabaseSyncService {
         })
 
         log('✅ Devices sync complete')
+    }
+
+    /** Write a server devices row to the phone, inside a write: update the record, or create it with the server's id */
+    private async writeDeviceRow(row: DeviceRow): Promise<void> {
+        const collection = database.get<Device>('devices')
+        try {
+            const existing = await collection.find(row.id)
+            await existing.update((rec) => {
+                rec.bluetoothId = row.bluetooth_id
+                rec.name = row.name
+                rec.organisationId = row.organisation_id ?? ''
+                rec.deviceEui = row.device_eui ?? undefined
+                rec.updatedAt = new Date(row.updated_at ?? Date.now())
+            })
+        } catch (e) {
+            // Not found, create
+            await collection.create((rec) => {
+                rec._raw.id = row.id || '' // Use server ID
+                rec.bluetoothId = row.bluetooth_id
+                rec.name = row.name
+                rec.organisationId = row.organisation_id ?? ''
+                rec.deviceEui = row.device_eui ?? undefined;
+                // Use _raw to bypass @readonly check
+                (rec._raw as any).created_at = new Date(row.created_at ?? Date.now()).getTime()
+                rec.updatedAt = new Date(row.updated_at ?? Date.now())
+            })
+        }
+    }
+
+    /**
+     * Fetch by id the device of any deployment on the phone that lacks it (#411)
+     *
+     * A deployment moved into one of this account's projects (ww-backend #260)
+     * arrives through the deployment pull, and its camera may never have been on
+     * this phone. The move bumps the device's updated_at, so the device pull
+     * normally brings it; this covers a pull that did not. It asks the server
+     * only when a device is missing, leaves the device watermark alone, and on
+     * a failure only logs, so the next sync asks again.
+     */
+    private async pullMissingDevices(): Promise<void> {
+        try {
+            const deployments = await database.get<Deployment>('deployments').query().fetch()
+            const wanted = Array.from(new Set(deployments.map(d => d.deviceId).filter((id): id is string => !!id)))
+            if (wanted.length === 0) return
+            const here = new Set((await database.get<Device>('devices')
+                .query(Q.where('id', Q.oneOf(wanted)))
+                .fetch())
+                .map(d => d.id))
+            const missing = wanted.filter(id => !here.has(id))
+            if (missing.length === 0) return
+
+            const { data, error } = await getSupabaseClient()
+                .from('devices')
+                .select('*')
+                .in('id', missing)
+            if (error) throw error
+            const rows = ((data ?? []) as DeviceRow[]).filter(row => !!row?.id)
+            if (rows.length > 0) {
+                await database.write(async () => {
+                    for (const row of rows) await this.writeDeviceRow(row)
+                })
+            }
+            log(`📷 ${missing.length} device(s) of deployments on this phone were missing, fetched ${rows.length} by id`)
+        } catch (error) {
+            logCloudFailure('❌ Could not fetch the devices missing for deployments on this phone:', error)
+        }
     }
 
 
@@ -1704,6 +1790,8 @@ class SupabaseSyncService {
 
         log(`📥 Received ${data.length} deployment updates`)
 
+        // Before reading the outbox: work put back in the queue counts as unsynced
+        await this.restoreReturnedDeployments(data.map((row: any) => row.id))
         const unsynced = await this.unsyncedRecordIds('deployments')
 
         await database.write(async () => {
@@ -1820,6 +1908,42 @@ class SupabaseSyncService {
         })
 
         log('✅ Deployments sync complete')
+    }
+
+    /**
+     * A deployment kept on the phone as gone from the server (#411) that the
+     * server sends again, moved back into one of this account's projects or
+     * restored, is no longer gone: the mark is cleared and its orphaned changes
+     * go back in the queue. The pull then keeps the local copy, as for any
+     * change still to push (#349), and the push sends those changes.
+     */
+    private async restoreReturnedDeployments(pulledIds: string[]): Promise<void> {
+        if (pulledIds.length === 0) return
+        const returned = (await database.get<Deployment>('deployments')
+            .query(Q.where('id', Q.oneOf(pulledIds)))
+            .fetch())
+            .filter(isGoneFromServer)
+        if (returned.length === 0) return
+
+        const orphanedOps = await database.get<SyncOutbox>('sync_outbox')
+            .query(
+                Q.where('table_name', 'deployments'),
+                Q.where('record_id', Q.oneOf(returned.map(d => d.id))),
+                Q.where('status', 'orphaned'),
+            )
+            .fetch()
+        await database.write(async () => {
+            await database.batch(
+                ...returned.map(deployment => deployment.prepareUpdate(rec => {
+                    rec.customSyncStatus = undefined
+                })),
+                ...orphanedOps.map(op => op.prepareUpdate(o => {
+                    o.status = 'pending'
+                    o.errorMessage = undefined
+                })),
+            )
+        })
+        log(`↩️ ${returned.length} deployment(s) the server had taken away are back, ${orphanedOps.length} orphaned change(s) queued again`)
     }
 
     private parseDateToTimestamp(dateInput: any): number {
