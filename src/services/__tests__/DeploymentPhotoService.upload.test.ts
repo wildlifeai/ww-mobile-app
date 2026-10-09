@@ -50,8 +50,10 @@ jest.mock('../../database', () => ({
     },
 }))
 
-jest.mock('../OutboxService', () => ({ __esModule: true, default: { recordOperation: jest.fn(() => ({ kind: 'outbox' })) } }))
-jest.mock('../DeploymentService', () => ({ mapModelToPayload: jest.fn(() => ({})) }))
+jest.mock('../DeploymentService', () => ({
+    prepareDeploymentUpdate: jest.fn((record: any, _userId: string, change: (r: any) => void) =>
+        [record.prepareUpdate(change), { kind: 'outbox' }]),
+}))
 jest.mock('../SupabaseSyncService', () => ({ __esModule: true, default: { debouncedSync: jest.fn() } }))
 jest.mock('../supabase', () => ({ getSupabaseClient: () => ({ storage: { from: () => ({ upload: mockUpload, list: mockList }) } }) }))
 jest.mock('../../utils/logger', () => ({ log: jest.fn(), logWarn: jest.fn(), logError: jest.fn() }))
