@@ -35,7 +35,7 @@ Code: [`ble/workflows/deviceCheck.ts`](../../src/ble/workflows/deviceCheck.ts) r
 | Colour camera and focus lens | `AI vcm 512`, 3 warm-up photos, then `AI vcm` + `AI capture 1 500` at 256 to 1023 and back, `AI dir`, `AI txfile` of the sharpest | See the lens rules below; the sharpest photo is under 3000 bytes | |
 | White flash | op13 = 1, op9 = 100, op34 = 2, a sleep, `AI vcm` at the sharpest position, 3 warm-up photos and one photo, all lit, `AI txfile` | The photo is under 3000 bytes; the operator says it is no brighter than the plain colour one | |
 | Battery and temperature | `battery`, `temp` | BLE chip outside -20 to 70 °C | Battery is shown, not judged |
-| Clocks | `setutc`, `getutc`, `AI setutc`, `AI getutc` | Either clock reads back more than 5 s off the time it was given. A lost `AI setutc` reply is not a failure: setting the RTC holds the AI processor's interrupts off for about a second, and on the bench the reply was lost while the clock did change | |
+| Clocks | `setutc`, `getutc`, `AI setutc`, `AI getutc` | The BLE clock reads back more than 5 s off the time it was given, or the AI processor's more than 5 minutes off, meaning it did not take the time. A lost `AI setutc` reply is not a failure: setting the RTC holds the AI processor's interrupts off for about a second, and on the bench the reply was lost while the clock did change | The AI processor's clock reads back more than 5 s but less than 5 minutes off: it stops while the camera sleeps (see below) |
 | SD card | `AI info` | No answer, or no card size | |
 | LEDs | `flashr`/`flashg`/`flashb 3 200`, then `flashb 1 65535` to leave the blue LED on as the connection light (65535 is the firmware's "on until told otherwise"), `AI flash 50 500`, then op12 written back (`AI flash` saves its length there) | The operator did not see the small LED's three colours, or the white LED | |
 | Light sensor | `AI light` (sent once more after a timeout: one sent as the processor fell asleep was lost, 7 October 2026), then the AE register block | No block within 40 s | |
@@ -61,9 +61,17 @@ self-test it reports as it boots is the reading the step judges. Each camera swi
 boot, and its self-test is judged the same way, which is where the colour image's camera is
 checked when the unit started on the black and white one.
 
-The restart rewinds the AI processor's clock to 2024 ([Seeed #152](https://github.com/wildlifeai/Seeed_Grove_Vision_AI_Module_V2/issues/152)), and the BLE
-processor does not put it right straight away ([Seeed #56](https://github.com/wildlifeai/Seeed_Grove_Vision_AI_Module_V2/issues/56)), so the clock step sets the AI
-processor's clock itself. Without that the unit would leave with photos stamped 2024.
+The restart sets the AI processor's clock to 2024, a known wrong date chosen on purpose ([Seeed #152](https://github.com/wildlifeai/Seeed_Grove_Vision_AI_Module_V2/issues/152)),
+and the BLE processor does not put it right straight away ([Seeed #56](https://github.com/wildlifeai/Seeed_Grove_Vision_AI_Module_V2/issues/56)), so the clock step sets
+the AI processor's clock itself. Without that the unit would leave with photos stamped 2024.
+
+The AI processor's clock also stops while the camera sleeps (Seeed #56), so it reads back a few
+seconds behind whenever the camera slept between the set and the read: 5.6 s on WILD-5WGJ and
+4.3 s on WILD-DJUU, 7 October 2026. That is the firmware's known limit, not the unit's fault, so
+the step warns rather than fails. The BLE processor corrects the AI processor's clock only when it
+is more than 5 minutes out, so photos can be stamped up to 5 minutes early until the firmware
+change is made: getting the BLE processor to give it the time sooner is deferred to
+[Seeed #251](https://github.com/wildlifeai/Seeed_Grove_Vision_AI_Module_V2/issues/251).
 
 ### The lens rules
 
@@ -131,9 +139,8 @@ if the unit should leave with an empty card.
 
 ## Open
 
-- On current firmware the AI processor's clock stops while it sleeps ([Seeed #56](https://github.com/wildlifeai/Seeed_Grove_Vision_AI_Module_V2/issues/56)), so the
-  clock step reads it back a few seconds behind and passes or fails by chance: 5.6 s on
-  WILD-5WGJ (fail) and 4.3 s on WILD-DJUU (pass), 7 October 2026.
+- The clock step's warning for the AI processor's clock goes once the firmware corrects it
+  sooner ([Seeed #251](https://github.com/wildlifeai/Seeed_Grove_Vision_AI_Module_V2/issues/251)); then a lag of more than 5 s can fail the unit again.
 - The motion step asks the operator to wave and tap only once the camera says `About to capture 10
   images`: with the detector armed through the setup sleep, a hand in front of the camera wakes
   it first (`Wake (MD)`, or `Wake (Motion)` from newer BLE firmware), and a burst sent into that wake went unanswered for 45 s on the bench

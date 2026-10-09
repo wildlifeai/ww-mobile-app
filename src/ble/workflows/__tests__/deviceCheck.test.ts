@@ -54,6 +54,8 @@ interface FakeOptions {
     burstAckOn?: number
     /** The AI processor's clock ignores setutc */
     aiClockStuck?: boolean
+    /** The AI processor's clock reads back this far off, as after a sleep (negative is behind) */
+    aiClockOffMs?: number
     /** `AI setutc` sets the clock but its reply never arrives */
     aiSetutcSilent?: boolean
     /** After the first `AI dir`, the firmware lists MANIFEST, as it does once CONFIG.TXT is saved */
@@ -134,7 +136,7 @@ const fakeDevice = (opts: FakeOptions = {}) => {
             if (opts.aiSetutcSilent) throw new Error('TIMEOUT')
             return reply(true)
         }
-        if (cmd === 'AI getutc') return reply(opts.aiClockStuck ? Date.UTC(2024, 0, 1) : Date.now())
+        if (cmd === 'AI getutc') return reply(opts.aiClockStuck ? Date.UTC(2024, 0, 1) : Date.now() + (opts.aiClockOffMs ?? 0))
         if (cmd === 'AI info') return reply({ total: 31166976, free: 31000000 })
         if (/^flash[rgb] /.test(cmd)) return reply(true)
         // As the firmware does, `AI flash` saves its length as op12.
@@ -367,6 +369,22 @@ describe('runDeviceCheck', () => {
         const stuck = fakeDevice({ aiClockStuck: true })
         const result = await run(stuck)
         expect(result.steps.clock?.status).toBe('fail')
+    })
+
+    it("warns, not fails, when the AI processor's clock lags after a sleep (Seeed #56, deferred to #251)", async () => {
+        const behind = await run(fakeDevice({ aiClockOffMs: -5600 }))
+        expect(behind.steps.clock?.status).toBe('warn')
+        expect(behind.steps.clock?.summary).toMatch(/5\.6 s behind/)
+
+        const ahead = await run(fakeDevice({ aiClockOffMs: 8000 }))
+        expect(ahead.steps.clock?.status).toBe('warn')
+        expect(ahead.steps.clock?.summary).toMatch(/8\.0 s ahead/)
+
+        const notSet = await run(fakeDevice({ aiClockOffMs: -400_000 }))
+        expect(notSet.steps.clock?.status).toBe('fail')
+
+        const close = await run(fakeDevice({ aiClockOffMs: -3000 }))
+        expect(close.steps.clock?.status).toBe('pass')
     })
 
     it("passes the clock when the AI processor's reply is lost but its clock reads back right", async () => {
