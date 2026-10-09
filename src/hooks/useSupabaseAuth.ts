@@ -132,5 +132,3 @@ export const useSupabaseAuth = () => {
 		updatePassword: handleUpdatePassword,
 	}
 }
-
-export default useSupabaseAuth

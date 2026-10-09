@@ -1,12 +1,6 @@
 import { ExtendedPeripheral } from "../redux/slices/devicesSlice"
 import { commandRegistry } from "./protocol/commandRegistry"
 
-export type ParseCommands = {
-	value?: string
-	command?: Command | null
-	error?: string
-}
-
 export enum CommandNames {
 	// Firmware commands (lowercase - match actual BLE commands)
 	id = "id",
@@ -108,121 +102,10 @@ export type CommandParam = {
 /** setop stores a uint16 on the Himax, so this is every value it can hold. */
 const OP_VALUE_PARAM: CommandParam = { label: 'Value', kind: 'int', min: 0, max: 65535 }
 
-export const getCommandByName = (name: CommandNames | string): Command | null => {
-	if (!name) return null
-
-	// Normalized lookup: Handle "AI info" or "AI setop" by looking for the last part
-	// and handle common prefixes
-	const parts = name.toString().toLowerCase().split(' ')
-	const candidates = [
-		name.toString(),
-		parts[parts.length - 1], // "info" from "AI info"
-		parts.join(''), // "aiinfo" 
-		parts.slice(1).join(''), // "info" from "AI info"
-	]
-
-	for (const candidate of candidates) {
-		// Exact match in Enum values
-		const enumValue = Object.values(CommandNames).find(v => v.toLowerCase() === candidate.toLowerCase())
-		if (enumValue && COMMANDS[enumValue as CommandNames]) {
-			return COMMANDS[enumValue as CommandNames]
-		}
-		// Exact match in Enum keys
-		if (candidate.toUpperCase() in CommandNames) {
-			return COMMANDS[CommandNames[candidate.toUpperCase() as keyof typeof CommandNames]]
-		}
-	}
-
-	// Secondary lookup: Try stripping trailing numeric arguments (e.g. "AI capture 1 1" -> "AI capture")
-	const stripped = name.toString().replace(/\b\d+\b/g, '').replace(/\s+/g, ' ').trim()
-	if (stripped && stripped !== name.toString()) {
-		return getCommandByName(stripped)
-	}
-
-	return null
-}
-
-export const constructCommandString = (
-	name: CommandNames | string,
-	options: CommandConstructOptions,
-) => {
-	const command = getCommandByName(name)
-
-	if (!command) {
-		return undefined
-	}
-
-	if (options.control === CommandControlTypes.WRITE && command.writeCommand) {
-		return command.writeCommand(options.value)
-	}
-
-	if (options.control === CommandControlTypes.READ && command.readCommand) {
-		return command.readCommand
-	}
-
-	return undefined
-}
-
-export enum CommandControlTypes {
-	READ = "read",
-	WRITE = "write",
-}
-
-export type CommandConstructOptions = {
-	control: CommandControlTypes
-	value?: string
-}
-
 export type WriteFunction = (
 	peripheral: ExtendedPeripheral,
 	data: string | undefined,
 ) => Promise<void>
-
-/**
- * Options for BLE command execution with response tracking
- */
-export interface BleCommandOptions {
-	/** Timeout in milliseconds (default: 3000) */
-	timeout?: number
-	/** Maximum number of retries (default: 1) */
-	maxRetries?: number
-	/** Expected response pattern to prioritize over regex matching (optional). Set to false to disable default regex. */
-	expectedPattern?: RegExp | false
-}
-
-/**
- * Represents a command waiting for a response
- */
-export interface PendingCommand {
-	/** Unique request ID */
-	id: string
-	/** Command name from CommandNames enum */
-	commandName: CommandNames | string
-	/** Actual command string sent to device */
-	commandString: string
-	/** Timestamp when command was sent */
-	sentAt: number
-	/** Timeout in milliseconds */
-	timeoutMs: number
-	/** Resolve promise with response */
-	resolve: (response: string) => void
-	/** Reject promise with error */
-	reject: (error: Error) => void
-	/** Number of times this command has been retried */
-	retryCount: number
-	/** Maximum retries allowed */
-	maxRetries: number
-	/** Expected response pattern (optional) */
-	expectedPattern?: RegExp | false
-	/** Timeout handle to clear when command completes */
-	timeoutHandle?: any 
-    /** Function to write to device (needed for retries) */
-    writeToDevice: WriteFunction
-    /** Peripheral to write to */
-    peripheral: ExtendedPeripheral
-    /** Whether the command echo has been received */
-    echoReceived?: boolean
-}
 
 export const COMMANDS: {
 	[key in CommandNames]: Command

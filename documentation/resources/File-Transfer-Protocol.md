@@ -171,7 +171,7 @@ Augment:    2 bytes of 0x00 appended after data
 | FILE_DATA | `writeWithoutResponse()` | Session aborts after 3 consecutive ACK timeouts |
 | FILE_END | `write()` (with BLE response) | BLE-level confirmation; no app retries |
 
-**Session-level retry:** on `ftx err 7` (SD write fail) the device closes the file, so the app restarts the whole session from `FILE_START` — up to `MAX_SESSION_RETRIES` (2) additional attempts. The per-error policies in the table below are the source of truth and live in [`fileTransferTypes.ts`](../../src/ble/protocol/fileTransfer/fileTransferTypes.ts) as `ERROR_RETRY_POLICY`.
+**Session-level retry:** on `ftx err 7` (SD write fail) the device closes the file, so the app restarts the whole session from `FILE_START`, up to `MAX_SESSION_RETRIES` (2) additional attempts. A write timeout is retried the same way. Any other `ftx err` ends the transfer; `isRecoverable` in [`runFileTransferPipeline.ts`](../../src/ble/protocol/fileTransfer/runFileTransferPipeline.ts) is the whole policy.
 
 ### Timeout Values
 

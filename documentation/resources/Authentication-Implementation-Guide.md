@@ -203,7 +203,7 @@ type AuthState = {
 
 ### Selectors
 
-`selectCurrentUser`, `selectUserPermissions`, `selectCurrentOrganisation`, `selectIsAuthenticated`, `selectIsWWAdmin`, `selectIsProjectAdmin`, `selectCanManageUsers`
+`selectCurrentUser`, `selectUserPermissions`, `selectCurrentOrganisation`, `selectIsAuthenticated`, `selectIsProjectAdmin`
 
 ---
 

@@ -296,8 +296,6 @@ The app has a custom component library in `src/components/ui/`. **Always check h
 | `WWTextInput` | Form input with validation |
 | `WWSelect` | Dropdown/picker |
 | `WWScreenView` | Screen container with safe areas |
-| `WWScrollView` | Scrollable container |
-| `WWLoader` | Loading indicators |
 | `WWProgressBar` | Progress visualisation |
 
 ---
@@ -372,21 +370,6 @@ Over-the-air firmware updates using Nordic Semiconductor's DFU protocol. Handles
 **Package:** `@react-native-community/netinfo` ^11.3.1
 
 Monitors network state to trigger sync when transitioning from offline → online.
-
-### Offline Types
-
-**Files:** `src/types/offline.ts` (Exported centrally via `src/types/index.ts`)
-
-Defines the offline operation queue types:
-
-```typescript
-export type OfflineOperationType =
-  | 'CREATE_PROJECT' | 'UPDATE_PROJECT' | 'DELETE_PROJECT'
-  | 'CREATE_DEPLOYMENT' | 'UPDATE_DEPLOYMENT' | 'DELETE_DEPLOYMENT'
-  | 'UPDATE_DEVICE_LORAWAN_STATUS'
-  | 'CREATE_ORGANISATION' | 'UPDATE_ORGANISATION'
-  | 'CREATE_USER' | 'UPDATE_USER' | 'DELETE_USER'
-```
 
 ---
 

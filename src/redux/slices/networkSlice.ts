@@ -9,12 +9,6 @@
  */
 
 import { createSlice, PayloadAction } from "@reduxjs/toolkit"
-// import { RootState } from "../index" // Circular dependency
-
-// Define local state type to avoid circular dependency
-interface NetworkRootState {
-	network: NetworkState
-}
 
 export interface NetworkState {
 	isOnline: boolean
@@ -91,19 +85,5 @@ export const {
 	setOfflineMode,
 	resetNetworkState,
 } = networkSlice.actions
-
-// Selectors
-export const selectIsOnline = (state: NetworkRootState) => state.network.isOnline
-export const selectConnectionType = (state: NetworkRootState) =>
-	state.network.connectionType
-export const selectIsInternetReachable = (state: NetworkRootState) =>
-	state.network.isInternetReachable
-export const selectLastOnline = (state: NetworkRootState) => state.network.lastOnline
-export const selectOfflineModeEnabled = (state: NetworkRootState) =>
-	state.network.offlineModeEnabled
-
-// Selector to check if we can sync (online and not in offline mode)
-export const selectCanSync = (state: NetworkRootState) =>
-	state.network.isOnline && !state.network.offlineModeEnabled
 
 export default networkSlice.reducer

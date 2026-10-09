@@ -208,28 +208,6 @@ export function isAiNackError(message: string): boolean {
   return /^AI NACK$/i.test(message.trim())
 }
 
-/**
- * Extract an Operational Parameter value from a Sleep status message
- * Sleep messages can contain 28+ space-separated stats values.
- * Ops 20-27 are at indices 20-27 in the stats payload.
- */
-export function extractOpParamFromSleep(message: string, opIndex: number): string | null {
-  const trimmed = message.trim()
-  if (!/^Sleep\s+/i.test(trimmed)) return null
-
-  // Extract the stats part (everything after "Sleep")
-  const statsPart = trimmed.replace(/^Sleep\s+/i, '')
-  const stats = statsPart.split(/\s+/)
-
-  // Ops 20-27 are directly mapped to indices 20-27 in the array
-  if (opIndex >= 20 && opIndex <= 27) {
-    const value = stats[opIndex]
-    return value || null
-  }
-
-  return null
-}
-
 export type MonitorCategory = 'motion' | 'timelapse' | 'capture' | 'nn_positive' | 'nn_negative' | 'sleep' | 'wake' | 'selftest_ok' | 'selftest_warn' | 'info'
 
 export interface MonitorEvent {

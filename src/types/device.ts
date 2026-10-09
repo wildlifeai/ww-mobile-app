@@ -21,15 +21,6 @@ export interface DeviceWithStatus {
 }
 
 /**
- * Status badge configuration
- */
-export interface StatusBadgeConfig {
-    label: string
-    color: string
-    icon?: string
-}
-
-/**
  * Device list item for UI display
  */
 export interface DeviceListItem {

@@ -1,4 +1,4 @@
-const { withAppDelegate, withInfoPlist } = require('@expo/config-plugins');
+const { withAppDelegate, withInfoPlist } = require('expo/config-plugins');
 
 const withGoogleMapsKey = (config, { iosApiKey }) => {
   if (!iosApiKey) {

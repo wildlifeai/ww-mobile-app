@@ -324,11 +324,7 @@ export const selectCurrentOrganisation = (state: {
 }) => state.authentication.currentOrganisation
 export const selectIsAuthenticated = (state: { authentication: AuthState }) =>
 	!!state.authentication.token
-export const selectIsWWAdmin = (state: { authentication: AuthState }) =>
-	state.authentication.user?.role === "ww_admin"
 export const selectIsProjectAdmin = (state: { authentication: AuthState }) =>
 	state.authentication.user?.role === "project_admin"
-export const selectCanManageUsers = (state: { authentication: AuthState }) =>
-	state.authentication.permissions.canManageUsers
 
 export default authSlice.reducer

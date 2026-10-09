@@ -3,8 +3,6 @@ import { View, StyleSheet } from 'react-native'
 import { ActivityIndicator, Text, Card } from 'react-native-paper'
 import { WWText } from '../../../components/ui/WWText'
 import { WWProgressBar } from '../../../components/ui/WWProgressBar'
-import { WWIcon } from '../../../components/ui/WWIcon'
-import Device from '../../../database/models/Device'
 
 export interface BaseHeaderProps {
     isInitializing: boolean
@@ -17,10 +15,6 @@ export interface BaseHeaderProps {
     }
     theme: any
     warningHintText?: string
-}
-
-export interface DeviceHeaderProps extends BaseHeaderProps {
-    device: Device
 }
 
 const InitializationErrorsView: React.FC<BaseHeaderProps> = ({ initErrors, theme, warningHintText = "You can still proceed with preparation, but address these issues before deployment." }) => {
@@ -54,45 +48,6 @@ const InitializationErrorsView: React.FC<BaseHeaderProps> = ({ initErrors, theme
     );
 }
 
-export const DeviceInitializationHeader: React.FC<DeviceHeaderProps> = (props) => {
-    return (
-        <>
-            <Card style={styles.card}>
-                <Card.Content>
-                    <View style={[styles.header, props.isInitializing && styles.headerInitializing]}>
-                        <View style={styles.headerTitleRow}>
-                            <View style={styles.headerTitleColumn}>
-                                <WWText variant="titleMedium" style={styles.headerLabel}><Text>Device ID</Text></WWText>
-                                <WWText variant="bodyMedium" style={styles.deviceName}>
-                                    {props.device.name}
-                                </WWText>
-                                <WWText variant="bodySmall" style={styles.deviceId}>
-                                    {props.device.bluetoothId}
-                                </WWText>
-                            </View>
-                            {props.isInitializing ? (
-                                <ActivityIndicator size="small" color={props.theme.colors.primary} />
-                            ) : (
-                                <WWIcon source="check-circle" color="#4CAF50" size={28} />
-                            )}
-                        </View>
-
-                        {props.isInitializing && (
-                            <View style={styles.initializationProgressContainer}>
-                                <WWProgressBar progress={props.initProgress} style={styles.initProgressBar} />
-                                <WWText variant="bodySmall" style={styles.initStepText}>
-                                    <Text>{props.initStep || 'Preparing device…'}</Text>
-                                </WWText>
-                            </View>
-                        )}
-                    </View>
-                </Card.Content>
-            </Card>
-            <InitializationErrorsView {...props} />
-        </>
-    )
-}
-
 export const StatusInitializationHeader: React.FC<BaseHeaderProps> = (props) => {
     return (
         <>
@@ -122,14 +77,6 @@ export const StatusInitializationHeader: React.FC<BaseHeaderProps> = (props) => 
     )
 }
 
-// Keeping original InitializationHeader to prevent immediate breaking in files we don't update
-export const InitializationHeader: React.FC<DeviceHeaderProps & { hideDeviceDetails?: boolean }> = (props) => {
-    if (props.hideDeviceDetails) {
-        return <StatusInitializationHeader {...props} />
-    }
-    return <DeviceInitializationHeader {...props} />
-}
-
 const styles = StyleSheet.create({
     card: {},
     header: {},
@@ -148,14 +95,6 @@ const styles = StyleSheet.create({
     },
     headerLabel: {
         marginBottom: 4,
-    },
-    deviceName: {
-        marginTop: 8,
-        fontWeight: '600',
-    },
-    deviceId: {
-        marginTop: 4,
-        opacity: 0.6,
     },
     initializationProgressContainer: {
         marginTop: 16,
