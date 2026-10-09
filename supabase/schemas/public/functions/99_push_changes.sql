@@ -434,7 +434,8 @@ BEGIN
             -- the whole record on every update (mapModelToPayload), so a phone that
             -- has not pulled since a move still carries the old project. Ignoring
             -- the key keeps the move, and keeps the rest of the edit: applying it
-            -- would make trg_deployments_lock_columns fail the whole push.
+            -- would make trg_deployments_lock_columns fail the whole push. The start
+            -- snapshot is insert-only as well, see below.
             UPDATE public.deployments
             SET
                 name = CASE WHEN _item ? 'name' THEN _item->>'name' ELSE name END,
@@ -470,19 +471,13 @@ BEGIN
                 location_data = CASE WHEN _item ? 'location' THEN (_item->>'location')::jsonb ELSE location_data END,
                 altitude = CASE WHEN _item ? 'altitude' THEN public.safe_to_double(NULLIF(_item->>'altitude', '')) ELSE altitude END,
                 accuracy = CASE WHEN _item ? 'accuracy' THEN public.safe_to_double(NULLIF(_item->>'accuracy', '')) ELSE accuracy END,
-                camera_model = CASE WHEN _item ? 'camera_model' THEN _item->>'camera_model' ELSE camera_model END,
-                lorawan_network = CASE WHEN _item ? 'lorawan_network' THEN _item->>'lorawan_network' ELSE lorawan_network END,
-                device_eui = CASE WHEN _item ? 'device_eui' THEN _item->>'device_eui' ELSE device_eui END,
-                lorawan_registration_completed = CASE WHEN _item ? 'lorawan_registration_completed' THEN COALESCE(NULLIF(_item->>'lorawan_registration_completed', '')::boolean, lorawan_registration_completed) ELSE lorawan_registration_completed END,
-                lorawan_last_verified_at = CASE WHEN _item ? 'lorawan_last_verified_at' THEN NULLIF(_item->>'lorawan_last_verified_at', '')::timestamptz ELSE lorawan_last_verified_at END,
-                ai_model_id = CASE WHEN _item ? 'ai_model_id' THEN NULLIF(_item->>'ai_model_id', '')::uuid ELSE ai_model_id END,
-                ble_firmware_id = CASE WHEN _item ? 'ble_firmware_id' THEN NULLIF(_item->>'ble_firmware_id', '')::uuid ELSE ble_firmware_id END,
-                himax_firmware_id = CASE WHEN _item ? 'himax_firmware_id' THEN NULLIF(_item->>'himax_firmware_id', '')::uuid ELSE himax_firmware_id END,
-                battery_level_at_start = CASE WHEN _item ? 'battery_level_at_start' THEN NULLIF(_item->>'battery_level_at_start', '')::int ELSE battery_level_at_start END,
-                sd_card_total_kb_at_start = CASE WHEN _item ? 'sd_card_total_kb_at_start' THEN NULLIF(_item->>'sd_card_total_kb_at_start', '')::int ELSE sd_card_total_kb_at_start END,
-                sd_card_available_kb_at_start = CASE WHEN _item ? 'sd_card_available_kb_at_start' THEN NULLIF(_item->>'sd_card_available_kb_at_start', '')::int ELSE sd_card_available_kb_at_start END,
-                lorawan_rssi_at_start = CASE WHEN _item ? 'lorawan_rssi_at_start' THEN NULLIF(_item->>'lorawan_rssi_at_start', '')::int ELSE lorawan_rssi_at_start END,
-                lorawan_snr_at_start = CASE WHEN _item ? 'lorawan_snr_at_start' THEN public.safe_to_double(NULLIF(_item->>'lorawan_snr_at_start', '')) ELSE lorawan_snr_at_start END,
+                -- The start snapshot (camera_model through lorawan_snr_at_start) is set
+                -- on insert only too (#274). The app's deployment pull drops it
+                -- (ww-mobile-app#426), so a phone ending a deployment it pulled sends
+                -- nulls, and lorawan_registration_completed as false. Nothing updates a
+                -- snapshot legitimately: the app writes it at creation and the website
+                -- edits deployments through PostgREST, not here.
+                --
                 -- Added in this change (#170): previously absent from both lists, so
                 -- app edits to these CamtrapDP fields were dropped without an error.
                 -- camera_tilt/detection_distance are double precision, so safe_to_double

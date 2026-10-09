@@ -8,7 +8,7 @@ AS $$
 $$;
 
 -- Ids of projects, deployments and devices the app should remove, since `since`.
--- Two reasons a row goes (#160, #330):
+-- Three reasons a row goes (#160, #330, #260):
 --
 --   1. It was soft-deleted, and the caller could read it. The SELECT policies hide
 --      soft-deleted rows, so pull_changes cannot find these itself.
@@ -16,11 +16,16 @@ $$;
 --      organisation changed since `since` (removed, deactivated, downgraded), and
 --      they can no longer read the row. The app never hears about this otherwise,
 --      because a row it may no longer read simply stops appearing.
+--   3. A deployment moved out of a project the caller had a role on
+--      (deployment_moves, written by move_deployment), and they can no longer read
+--      it. So does its device, when the caller can no longer read that either.
 --
 -- SECURITY DEFINER to see past the policies, and scoped with the very rules they use
 -- (can_read_project, has_project_role, can_read_device). A lost-access row is only
 -- reported when one of the caller's own role rows that could have granted it points
 -- at it, so joining an organisation does not report projects the caller never had.
+-- For a move that role row is on the source project, and it counts while live or if
+-- it changed since `since`: one that ended earlier was reported by reason 2 then.
 -- Ids only, never rows.
 -- What role timestamps cannot show (an expired role, a hard-deleted row, a database
 -- reset) pull_changes covers with visible_project_ids.
@@ -72,6 +77,22 @@ BEGIN
           )
           AND (d.deleted_at IS NULL
                AND public.has_project_role(v_uid, d.project_id, 'project_viewer')) IS NOT TRUE
+        ) OR (
+          EXISTS (
+            SELECT 1
+            FROM public.deployment_moves AS m
+            JOIN public.projects AS fp ON fp.id = m.from_project_id
+            JOIN public.user_roles AS ur ON ur.user_id = v_uid
+              AND ((ur.scope_type = 'project' AND ur.scope_id = m.from_project_id)
+                OR (ur.scope_type = 'organisation' AND ur.scope_id = fp.organisation_id
+                    AND ur.role = 'organisation_manager'))
+            WHERE m.deployment_id = d.id
+              AND m.moved_at > since
+              AND ((ur.is_active AND ur.deleted_at IS NULL)
+                   OR GREATEST(ur.updated_at, ur.deleted_at) > since)
+          )
+          AND (d.deleted_at IS NULL
+               AND public.has_project_role(v_uid, d.project_id, 'project_viewer')) IS NOT TRUE
         )
     ),
     'devices', (
@@ -89,6 +110,20 @@ BEGIN
                 OR (ur.scope_type = 'project' AND EXISTS (
                       SELECT 1 FROM public.deployments AS d
                       WHERE d.device_id = v.id AND d.project_id = ur.scope_id)))
+          )
+          AND (v.deleted_at IS NULL
+               AND public.can_read_device(v.id, v.organisation_id)) IS NOT TRUE
+        ) OR (
+          EXISTS (
+            SELECT 1
+            FROM public.deployment_moves AS m
+            JOIN public.deployments AS d ON d.id = m.deployment_id
+            JOIN public.user_roles AS ur ON ur.user_id = v_uid
+              AND ur.scope_type = 'project' AND ur.scope_id = m.from_project_id
+            WHERE d.device_id = v.id
+              AND m.moved_at > since
+              AND ((ur.is_active AND ur.deleted_at IS NULL)
+                   OR GREATEST(ur.updated_at, ur.deleted_at) > since)
           )
           AND (v.deleted_at IS NULL
                AND public.can_read_device(v.id, v.organisation_id)) IS NOT TRUE

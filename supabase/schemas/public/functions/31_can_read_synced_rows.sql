@@ -6,7 +6,8 @@
 --
 -- Like has_project_role: plpgsql (the functions load before the tables, and a SQL
 -- body is checked at creation), SECURITY DEFINER to read user_roles past RLS, and
--- VOLATILE because tests switch auth.uid() mid-transaction.
+-- VOLATILE because tests switch auth.uid() mid-transaction. A role past its
+-- expires_at grants nothing, as in has_project_role (#273).
 
 -- A project: ww_admin, a project-scope role on it, its creator (#181: needed during
 -- the INSERT that creates it), or a manager of its organisation (#162).
@@ -31,6 +32,7 @@ BEGIN
         AND ur.user_id = (SELECT auth.uid())
         AND ur.is_active = TRUE
         AND ur.deleted_at IS NULL
+        AND (ur.expires_at IS NULL OR ur.expires_at > now())
     )
     OR p_created_by = (SELECT auth.uid())
     OR public.has_organisation_role((SELECT auth.uid()), p_organisation_id, 'organisation_manager')
@@ -60,6 +62,7 @@ BEGIN
         AND ur.user_id = (SELECT auth.uid())
         AND ur.is_active = TRUE
         AND ur.deleted_at IS NULL
+        AND (ur.expires_at IS NULL OR ur.expires_at > now())
     )
     OR EXISTS (
       SELECT 1
@@ -69,6 +72,7 @@ BEGIN
         AND ur.user_id = (SELECT auth.uid())
         AND ur.is_active = TRUE
         AND ur.deleted_at IS NULL
+        AND (ur.expires_at IS NULL OR ur.expires_at > now())
     )
   ), false);
 END;
