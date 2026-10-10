@@ -21,6 +21,7 @@ create or replace function public.match_media_embeddings(
 returns table (media_id uuid, deployment_id uuid, cluster_id int, distance real)
 language plpgsql
 stable
+set search_path = ''
 as $$
 begin
   return query
@@ -28,17 +29,20 @@ begin
       me.media_id,
       me.deployment_id,
       me.cluster_id,
-      (case when me.embedding_model = p_model then me.embedding <=> query_embedding end)::real as distance
+      (case when me.embedding_model = p_model then me.embedding operator(extensions.<=>) query_embedding end)::real as distance
     from public.media_embeddings me
     where me.embedding is not null
       and me.embedding_model = p_model
       and (p_deployment_ids is null or me.deployment_id = any (p_deployment_ids))
       and (p_exclude_media_id is null or me.media_id <> p_exclude_media_id)
-    order by case when me.embedding_model = p_model then me.embedding <=> query_embedding end
+    order by case when me.embedding_model = p_model then me.embedding operator(extensions.<=>) query_embedding end
     limit match_count;
 end;
 $$;
 
--- No explicit GRANT: functions keep the default PUBLIC execute (default privileges
--- only revoke table/sequence access, not function EXECUTE), matching the other
--- functions here. service_role (the backend's caller) executes it via PUBLIC.
+-- search_path is pinned to '' like every other function here, so the pgvector operator
+-- is named in full, OPERATOR(extensions.<=>), rather than found through the caller's
+-- search_path (#313). SECURITY INVOKER: RLS on media_embeddings applies to the caller.
+-- ww-website's backend calls it with the service role (vector_store.py); anon has no use.
+revoke execute on function public.match_media_embeddings(extensions.vector, text, int, uuid[], uuid) from public, anon; -- noqa: LT01
+grant execute on function public.match_media_embeddings(extensions.vector, text, int, uuid[], uuid) to authenticated, service_role; -- noqa: LT01

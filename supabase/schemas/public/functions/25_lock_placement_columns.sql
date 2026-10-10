@@ -51,57 +51,9 @@ BEGIN
 END;
 $$;
 
--- deployments.device_id: a client may place a deployment only on a device of the
--- project's organisation (#304), the rule move_deployment already keeps. Without it a
--- member put a deployment on another organisation's camera, given its id (a Camtrap DP
--- cameraID), and then read the device through can_read_device's deployment branch.
---
--- device_fits_project compares the two organisations past RLS, because a project member
--- need not see an undeployed device of the organisation (an invitation grants a project
--- role only). It answers false to anyone who is not a member of the project, whatever
--- the device, so it tells nobody else which organisation a device is in.
-CREATE OR REPLACE FUNCTION public.device_fits_project(p_device_id uuid, p_project_id uuid)
-RETURNS boolean
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = ''
-AS $$
-BEGIN
-  IF NOT public.has_project_role((SELECT auth.uid()), p_project_id, 'project_member') THEN
-    RETURN false;
-  END IF;
-  RETURN EXISTS (
-    SELECT 1
-    FROM public.devices d
-    JOIN public.projects p ON p.organisation_id = d.organisation_id
-    WHERE d.id = p_device_id AND p.id = p_project_id
-  );
-END;
-$$;
-
-REVOKE EXECUTE ON FUNCTION public.device_fits_project(uuid, uuid) FROM public, anon;
-GRANT EXECUTE ON FUNCTION public.device_fits_project(uuid, uuid) TO authenticated;
-
--- Checked on INSERT and when device_id changes, never on other updates: push_changes
--- repeats device_id on every update, and a device moved to another organisation later
--- must not fail each edit to its old deployments, and with it the phone's whole push.
-CREATE OR REPLACE FUNCTION public.check_deployment_device()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY INVOKER
-SET search_path = ''
-AS $$
-BEGIN
-  IF current_user IN ('authenticated', 'anon')
-     AND (TG_OP = 'INSERT' OR NEW.device_id IS DISTINCT FROM OLD.device_id)
-     AND NOT public.device_fits_project(NEW.device_id, NEW.project_id) THEN
-    RAISE EXCEPTION 'Permission denied: a deployment''s device must belong to its project''s organisation'
-      USING ERRCODE = '42501';
-  END IF;
-  RETURN NEW;
-END;
-$$;
+-- deployments.device_id is not locked: any project member may deploy any camera, whatever
+-- its organisation (#320, which replaced #304's same-organisation rule). A camera has at
+-- most one open deployment (deployments_one_open_per_device, tables/28_deployments.sql).
 
 -- projects.organisation_id: refused for any client role except a ww_admin.
 CREATE OR REPLACE FUNCTION public.lock_project_organisation()
