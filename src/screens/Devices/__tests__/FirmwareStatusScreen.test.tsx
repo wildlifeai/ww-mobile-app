@@ -11,6 +11,8 @@ jest.mock("../../../redux", () => ({
 	useAppSelector: (select: any) => select({ devices: { "dev-1": { id: "dev-1", name: "WILD-DJZQ", connected: true } } }),
 }))
 
+// What a test changes in the AI processor's status, over the #437 default below
+const mockHimax: { current: Record<string, unknown> } = { current: {} }
 jest.mock("../hooks/useFirmwareStatus", () => ({
 	useFirmwareStatus: () => ({
 		isChecking: false,
@@ -22,6 +24,7 @@ jest.mock("../hooks/useFirmwareStatus", () => ({
 			himax: {
 				type: "himax", currentVersion: "WW500_C02 10:09:08 Oct  9 2026", latestVersion: "WW500_C02 10:56:08 Oct  9 2026",
 				latestFirmware: null, isOutdated: false, missingVariant: "RP3",
+				...mockHimax.current,
 			},
 		},
 	}),
@@ -52,5 +55,24 @@ describe("FirmwareStatusScreen with one camera's build in the catalogue", () => 
 		expect(screen.getByText("9 Oct build. The colour camera's new firmware is not available yet")).toBeTruthy()
 		expect(screen.queryByText(/Up to date: 9 Oct|update available/)).toBeNull()
 		expect(screen.queryByText("Update")).toBeNull()
+	})
+})
+
+/**
+ * #374: an AI update cut short between its two images read "Up to date: 9 Oct
+ * build", with nothing to finish it.
+ */
+describe("FirmwareStatusScreen with an AI update that stopped part way", () => {
+	afterEach(() => {
+		mockHimax.current = {}
+	})
+
+	it("says the update is not finished and offers to finish it", () => {
+		mockHimax.current = { isOutdated: true, missingVariant: null, unfinished: { endVariant: "HM0360", done: 1, total: 2 } }
+		render(<FirmwareStatusScreen />)
+
+		expect(screen.getByText("Update not finished: 1 of 2 images installed")).toBeTruthy()
+		expect(screen.getByText("Finish update")).toBeTruthy()
+		expect(screen.queryByText(/Up to date: 9 Oct/)).toBeNull()
 	})
 })

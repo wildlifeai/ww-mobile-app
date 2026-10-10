@@ -23,7 +23,10 @@ const FirmwareRow: React.FC<FirmwareRowProps> = ({ title, status, theme, onUpdat
         <View style={styles.rowHeader}>
             <WWText variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>{title}</WWText>
             {status.isOutdated ? (
-                <WWText variant="labelSmall" style={{ color: theme.colors.error, fontWeight: 'bold' }}>UPDATE AVAILABLE</WWText>
+                // An AI update that stopped part way counts as outdated (#374)
+                <WWText variant="labelSmall" style={{ color: theme.colors.error, fontWeight: 'bold' }}>
+                    {status.unfinished ? 'UPDATE NOT FINISHED' : 'UPDATE AVAILABLE'}
+                </WWText>
             ) : status.missingVariant ? (
                 // One camera's build in the catalogue: nothing to install yet, and not up to date either (#437)
                 <WWText variant="labelSmall" style={[styles.notReady, { color: theme.colors.onSurfaceVariant }]}>UPDATE NOT READY</WWText>

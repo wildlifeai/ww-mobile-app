@@ -5,6 +5,8 @@ import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import ReferenceDataService from '../../../services/ReferenceDataService'
 import Firmware from '../../../database/models/Firmware'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
+import { himaxUpdateRecord } from '../../../services/himaxUpdateRecord'
+import { classifyHimax, HimaxVariant, SlotsReply } from '../../../utils/himaxFirmwareState'
 import { logError, logWarn } from '../../../utils/logger'
 import { convertBleToSemanticVersion } from '../../../utils/versionUtils'
 
@@ -26,6 +28,11 @@ export interface FirmwareComponentStatus {
      * date: the update installs both images, so it waits for this one (#437)
      */
     missingVariant?: 'RP3' | 'HM0360' | null
+    /**
+     * Himax only: an update this phone ran stopped part way, so the camera may
+     * be on the other camera's image (#374). Counts as outdated.
+     */
+    unfinished?: { endVariant: HimaxVariant; done: number; total: number } | null
 }
 
 interface UseFirmwareStatusOptions {
@@ -43,36 +50,27 @@ export interface UseFirmwareStatusReturn {
 }
 
 /**
- * Dual-image aware outdated check, the same rule as the update screen's
- * `deviceUpToDate`. RP3 and HM0360 builds carry different version strings and
- * the device only runs one of them, so it is up to date when its version
- * matches EITHER variant's latest. Comparing against the single newest
- * 'himax' row flagged "outdated" whenever the newest upload happened to be
- * the other camera's build. An unknown current version is not outdated
- * (unknown is not actionable, so the card should not cry wolf).
- *
- * The update installs both images or neither, so a catalogue holding one
- * camera's build only has nothing to update to: a cloud dev deploy resets the
- * database and the builds come back one camera at a time, and elsewhere one
- * camera's upload can fail or be late. A device behind that build is then not
- * outdated, and `missingVariant` names the camera it waits for (#437).
+ * The AI processor's status: `classifyHimax` on what the camera said, weighed
+ * against this phone's record of an update it left unfinished, which is
+ * dropped once the camera shows it finished or never reached. `slots` is null
+ * on the silent path, which sends nothing (#268), and on firmware without it.
  */
-export const himaxUpdateState = (
+const himaxStatus = async (
+    deviceId: string,
     current: string | null,
-    latestRp3: Firmware | null,
-    latestHm0360: Firmware | null,
-    latestGeneric: Firmware | null,
-): { isOutdated: boolean; missingVariant: 'RP3' | 'HM0360' | null } => {
-    if (!current) return { isOutdated: false, missingVariant: null }
-    const cur = current.trim()
-    const variantVersions = [latestRp3?.version?.trim(), latestHm0360?.version?.trim()]
-        .filter((v): v is string => !!v)
-    if (variantVersions.length > 0) {
-        if (variantVersions.includes(cur)) return { isOutdated: false, missingVariant: null }
-        const missingVariant = !latestRp3 ? 'RP3' : !latestHm0360 ? 'HM0360' : null
-        return { isOutdated: !missingVariant, missingVariant }
+    slots: SlotsReply | null,
+    latest: { RP3: Firmware | null; HM0360: Firmware | null; any: Firmware | null },
+): Promise<Pick<FirmwareComponentStatus, 'isOutdated' | 'missingVariant' | 'unfinished'>> => {
+    const record = await himaxUpdateRecord.load(deviceId)
+    const result = classifyHimax({ current, slots, record, latest })
+    if (result.recordStatus === 'finished' || result.recordStatus === 'stale') await himaxUpdateRecord.clear(deviceId)
+    return {
+        isOutdated: result.state === 'outdated' || result.state === 'unfinished',
+        missingVariant: result.state === 'missing_variant' ? result.missingVariant : null,
+        unfinished: result.state === 'unfinished'
+            ? { endVariant: result.endVariant, done: result.done, total: result.total }
+            : null,
     }
-    return { isOutdated: !!latestGeneric?.version && cur !== latestGeneric.version.trim(), missingVariant: null }
 }
 
 export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersion }: UseFirmwareStatusOptions): UseFirmwareStatusReturn {
@@ -152,11 +150,23 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
                 logWarn('[FirmwareStatus] Failed to read Himax version:', e)
             }
 
+            // Which camera is running, to compare with that camera's build,
+            // and whether it runs from the slot that boots next (#374)
+            let slots: SlotsReply | null = null
+            try {
+                slots = await session.execute(() => commandRegistry.slots())
+            } catch (e) {
+                logWarn('[FirmwareStatus] Failed to read the AI slots (older firmware?):', e)
+            }
+
             if (!isMounted.current || timedOut) return
 
-            // 3. Compute Outdated Flags (himax: variant-aware, see himaxUpdateState)
+            // 3. Compute Outdated Flags (himax: per camera, and an unfinished update, see himaxStatus)
             const bleOutdated = !!latestBle?.version && currentBleVersion !== latestBle.version
-            const himaxState = himaxUpdateState(currentHimaxVersion, latestRp3, latestHm0360, latestHimax)
+            const himaxState = await himaxStatus(device.id, currentHimaxVersion, slots,
+                { RP3: latestRp3, HM0360: latestHm0360, any: latestHimax })
+
+            if (!isMounted.current || timedOut) return
 
             setStatuses({
                 ble: {
@@ -171,9 +181,8 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
                     currentVersion: currentHimaxVersion || 'Unknown',
                     latestVersion: latestHimax?.version || 'Unknown',
                     latestFirmware: latestHimax,
-                    isOutdated: himaxState.isOutdated,
                     variants: { RP3: latestRp3, HM0360: latestHm0360 },
-                    missingVariant: himaxState.missingVariant,
+                    ...himaxState,
                 },
             })
 
@@ -221,7 +230,9 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
                         const currentHimaxVersion = match ? `v${match[1]}` : rawHimaxVer
 
                         const bleOutdated = !!latestBle?.version && currentBleVersion !== latestBle.version
-                        const himaxState = himaxUpdateState(currentHimaxVersion, latestRp3, latestHm0360, latestHimax)
+                        // No `slots` here: this path sends nothing (#268)
+                        const himaxState = await himaxStatus(device.id, currentHimaxVersion, null,
+                            { RP3: latestRp3, HM0360: latestHm0360, any: latestHimax })
 
                         if (!isMounted.current) return
 
@@ -244,9 +255,8 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
                                 currentVersion: currentHimaxVersion || 'Unknown',
                                 latestVersion: latestHimax?.version || 'Unknown',
                                 latestFirmware: latestHimax,
-                                isOutdated: himaxState.isOutdated,
                                 variants: { RP3: latestRp3, HM0360: latestHm0360 },
-                                missingVariant: himaxState.missingVariant,
+                                ...himaxState,
                             },
                         })
                         setLastChecked(new Date())
@@ -264,7 +274,7 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
                 checkStatus()
             }
         }
-    }, [device?.connected, checkStatus, initialBleVersion, initialHimaxVersion])
+    }, [device?.connected, device?.id, checkStatus, initialBleVersion, initialHimaxVersion])
 
     return {
         isChecking,

@@ -124,6 +124,8 @@ export const StartMonitoringDetailsStep = () => {
         firmwareStatus.statuses.ble.isOutdated || 
         firmwareStatus.statuses.himax.isOutdated
     )
+    // An AI update this phone ran stopped part way, so the camera may be on the other camera's image (#374)
+    const isAiUpdateUnfinished = !!firmwareStatus.statuses.himax.unfinished
 
     const headerLeft = useCallback(() => (
         <IconButton
@@ -260,11 +262,13 @@ export const StartMonitoringDetailsStep = () => {
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                             <WWIcon source="alert-circle-outline" size={24} color="#E65100" />
                             <Text variant="titleSmall" style={{ color: '#E65100', marginLeft: 8, flex: 1 }}>
-                                Firmware Update Available
+                                {isAiUpdateUnfinished ? 'AI firmware update not finished' : 'Firmware Update Available'}
                             </Text>
                         </View>
                         <Text variant="bodySmall" style={{ color: '#E65100', marginBottom: 8 }}>
-                            One or more firmware components are outdated. We recommend updating them via the Engineer Console for optimal performance, but you may proceed with monitoring.
+                            {isAiUpdateUnfinished
+                                ? 'The last AI firmware update stopped part way, so the camera may be on the wrong image. Finish it before you start monitoring.'
+                                : 'One or more firmware components are outdated. We recommend updating them via the Engineer Console for optimal performance, but you may proceed with monitoring.'}
                         </Text>
                         <Button
                             mode="contained"

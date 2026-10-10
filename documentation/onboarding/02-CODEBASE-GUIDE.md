@@ -35,7 +35,7 @@ src/
 ├── database/               # WatermelonDB schema and models
 ├── types/                  # TypeScript type definitions
 ├── hooks/                  # Custom React hooks (BLE, sync, auth)
-├── utils/                  # Utility functions (incl. cameraVariant.ts, firmwareWords.ts, flashCameraMatch.ts, networkErrors.ts)
+├── utils/                  # Utility functions (incl. cameraVariant.ts, firmwareWords.ts, himaxFirmwareState.ts, flashCameraMatch.ts, networkErrors.ts)
 ├── providers/              # React context providers
 ├── ble/                    # BLE protocol engine (protocol/, session/, command registry)
 ├── features/               # Feature-specific modules (maps)
@@ -174,6 +174,7 @@ services/
 ├── AiModelService.ts          # AI model metadata, the model file cache
 ├── ReferenceDataService.ts    # Downloaded reference data (capture methods, etc.)
 ├── FirmwareService.ts         # Firmware blob management, the firmware file cache
+├── himaxUpdateRecord.ts       # This phone's record of an AI pair update, to finish one that stopped (#374)
 ├── OfflinePrefetchService.ts  # Fills both caches after a sync, for the field (#333)
 ├── DfuService.ts              # Firmware updates (Nordic DFU)
 ├── DeploymentPhotoService.ts  # Deployment photo capture + upload

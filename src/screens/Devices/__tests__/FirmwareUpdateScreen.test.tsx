@@ -136,4 +136,49 @@ describe("FirmwareUpdateScreen", () => {
 			expect(screen.getByText("Update both cameras")).toBeDisabled()
 		})
 	})
+
+	// #374: the camera ran the colour image at its latest build, the night
+	// slot kept an older one, and this screen said "Up to date."
+	describe("after an update that stopped between its images", () => {
+		const FINISH = "The last update stopped after image 1 of 2. Finishing installs the night-IR image, "
+			+ "the 30 Sep build, and puts the camera back on the night-IR camera."
+
+		beforeEach(() => {
+			mockHook.current = {
+				previousVersion: "WW500_C02 20:26:50 Sep 30 2026",
+				runningVariant: "RP3",
+				cameraSlots: { activeSlot: 0, running: "RP3 (day/colour)", slotA: "RP3 (day/colour)", slotB: "HM0360 (night/IR)", autoSwitch: false },
+				updateRecord: {
+					startedAt: "2026-10-09T10:49:00.000Z", endVariant: "HM0360", startActiveSlot: 1,
+					startVersion: "WW500_C02 04:18:11 Sep 23 2026",
+					images: [
+						{ variant: "RP3", version: "WW500_C02 20:26:50 Sep 30 2026", filename: "R6930K26.IMG" },
+						{ variant: "HM0360", version: "WW500_C02 20:26:50 Sep 30 2026", filename: "H6930K26.IMG" },
+					],
+					sent: 1, flashed: 1,
+				},
+			}
+		})
+
+		it("tells an operator what finishing does, and finishes it", () => {
+			mockParams.current = { deviceId: "dev-1", target: "himax" }
+			render(<FirmwareUpdateScreen />)
+
+			expect(screen.getByText(FINISH)).toBeTruthy()
+			expect(screen.queryByText(/Up to date/)).toBeNull()
+			fireEvent.press(screen.getByText("Finish update"))
+			expect(mockStartUpdate).toHaveBeenCalledWith({ himaxSource: "download" })
+		})
+
+		it("says the same in the Engineer Console's view", () => {
+			mockParams.current = { deviceId: "dev-1", target: "himax", engineer: true }
+			render(<FirmwareUpdateScreen />)
+
+			expect(screen.getByText(FINISH)).toBeTruthy()
+			expect(screen.getByText("Finish update")).toBeTruthy()
+			expect(screen.queryByText(/up to date/)).toBeNull()
+			// The general description would say two passes ending on the camera in use
+			expect(screen.queryByText(/finishes on the camera it is using now/)).toBeNull()
+		})
+	})
 })

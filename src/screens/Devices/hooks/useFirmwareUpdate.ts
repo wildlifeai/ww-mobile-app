@@ -16,6 +16,11 @@ import { verifyConfigDefaults } from '../../../ble/workflows/configVerification'
 import { ExtendedPeripheral, setDfuStatus } from '../../../redux/slices/devicesSlice'
 import { useAppDispatch } from '../../../redux'
 import { useBle } from '../../../hooks/useBle'
+import { himaxUpdateRecord } from '../../../services/himaxUpdateRecord'
+import { CameraVariant, parseVariant } from '../../../utils/cameraVariant'
+import {
+    classifyHimax, HimaxUpdateRecord, HimaxVariant, isRunningFromSelectedSlot, planPair, SlotsReply,
+} from '../../../utils/himaxFirmwareState'
 import { log, logError, logWarn } from '../../../utils/logger'
 import { convertBleToSemanticVersion } from '../../../utils/versionUtils'
 
@@ -28,6 +33,22 @@ export type FirmwareTarget = 'ble' | 'himax'
 // Tag for expo-keep-awake so this hook's activation cannot clobber the
 // file-transfer pipeline's own per-transfer tags
 const KEEP_AWAKE_TAG = 'firmware-update'
+
+// The restart after `AI reset` and `AI dpd`: its Sleep, then the boot's Wake.
+// `AI dpd` brings the sleep forward; firmware without it sleeps on op8.
+const RESTART_SLEEP_WAIT_MS = 20000
+const RESTART_WAKE_WAIT_MS = 15000
+
+// The update stops rather than write to a camera still on its previous image (#374)
+const NOT_RESTARTED = 'The camera did not restart into its new image. Nothing more was written.'
+
+/** What `AI ver` and `AI slots` said; null for a reply that did not come */
+interface CameraReading {
+    version: string | null
+    slots: SlotsReply | null
+}
+
+const otherCamera = (variant: HimaxVariant): HimaxVariant => (variant === 'RP3' ? 'HM0360' : 'RP3')
 
 export type UpdatePhase =
     | 'idle'
@@ -325,6 +346,10 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
     // Which camera variant the device is running right now (from 'slots'), and
     // dual-image pass progress ({total, done}) for the pair-update UI.
     const [runningVariant, setRunningVariant] = useState<'RP3' | 'HM0360' | null>(null)
+    // The whole `slots` reply, and this phone's record of an update it left
+    // unfinished on the device, for the screen to say what finishing does (#374)
+    const [cameraSlots, setCameraSlots] = useState<SlotsReply | null>(null)
+    const [updateRecord, setUpdateRecord] = useState<HimaxUpdateRecord | null>(null)
     const [pairProgress, setPairProgress] = useState<{ total: number; done: number } | null>(null)
     // True while waiting for the device to come back between the two pair
     // passes - drives an honest status label instead of "pre-flight checks".
@@ -396,6 +421,8 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         let cancelled = false
 
         const run = async () => {
+            let currentVersion: string | null = null
+            let slotsReply: SlotsReply | null = null
             // Only perform BLE command queries if it's NOT a DFU device
             if (!isDfuMode) {
                 const session = device ? createBleSession(device) : null
@@ -414,6 +441,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                     const ver = target === 'ble'
                         ? await session.execute(() => commandRegistry.version())
                         : await session.execute(() => commandRegistry.aiver())
+                    currentVersion = ver
                     if (!cancelled) setPreviousVersion(ver)
                     log(`[FW Update] Current ${target} version: ${ver}`)
                 } catch (e) {
@@ -435,9 +463,13 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                         // Which camera image is running now - orients the user and
                         // lets the pair update report what it will finish on.
                         const slots = await session.execute(() => commandRegistry.slots())
+                        slotsReply = slots
                         const running = /RP3/i.test(slots.running) ? 'RP3'
                             : /HM0360/i.test(slots.running) ? 'HM0360' : null
-                        if (!cancelled) setRunningVariant(running)
+                        if (!cancelled) {
+                            setRunningVariant(running)
+                            setCameraSlots(slots)
+                        }
                         log(`[FW Update] Running camera variant: ${running ?? 'unknown'}`)
                     } catch (e) {
                         // Older firmware without 'slots' - non-fatal
@@ -457,11 +489,30 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
             }
 
             if (target === 'himax') {
+                let activeFws: Firmware[] = []
                 try {
-                    const activeFws = await ReferenceDataService.getActiveFirmwares('himax')
+                    activeFws = await ReferenceDataService.getActiveFirmwares('himax')
                     if (!cancelled) setAvailableDbFirmwares(activeFws)
                 } catch (e) {
                     logWarn('[FW Update] Could not load active firmware records:', e)
+                }
+
+                // An update this phone left unfinished on the camera. One the
+                // camera shows finished, or never reached, is dropped here.
+                if (device && !isDfuMode) {
+                    let record = await himaxUpdateRecord.load(device.id)
+                    if (record && slotsReply) {
+                        const latest = {
+                            RP3: activeFws.find(fw => fw.cameraVariant === 'RP3') ?? null,
+                            HM0360: activeFws.find(fw => fw.cameraVariant === 'HM0360') ?? null,
+                        }
+                        const { recordStatus } = classifyHimax({ current: currentVersion, slots: slotsReply, record, latest })
+                        if (recordStatus === 'finished' || recordStatus === 'stale') {
+                            await himaxUpdateRecord.clear(device.id)
+                            record = null
+                        }
+                    }
+                    if (!cancelled) setUpdateRecord(record)
                 }
             }
 
@@ -671,15 +722,93 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
     // ── Himax flow ─────────────────────────────────────────────────
 
     /**
+     * `AI ver` and `AI slots`. A `slots` that fails reads as null, as on
+     * firmware without the command, unless `strict`, when it throws.
+     */
+    const readCamera = useCallback(async (strict = false): Promise<CameraReading> => {
+        const session = createBleSession(device!)
+        let version: string | null = null
+        try {
+            version = await session.execute(() => commandRegistry.aiver())
+        } catch (e) {
+            logWarn('[FW Update] AI ver query failed:', e)
+        }
+        let slots: SlotsReply | null = null
+        try {
+            slots = await session.execute(() => commandRegistry.slots())
+        } catch (e) {
+            if (strict) throw e
+            logWarn('[FW Update] slots query failed (older firmware?):', e)
+        }
+        return { version, slots }
+    }, [device])
+
+    /**
+     * Restart the AI processor into the slot its selector names and wait for
+     * it, sending nothing meanwhile, since every command restarts the timer to
+     * the sleep the restart waits for. `AI reset` restarts it at its next
+     * sleep, a cold boot that labels the slot, and `AI dpd` brings that sleep
+     * forward, as the Device Check does. Firmware without `dpd` sleeps on op8.
+     */
+    const restartCamera = useCallback(async (passLabel: string) => {
+        const session = createBleSession(device!)
+        try {
+            await session.execute(() => commandRegistry.aireset())
+        } catch (e) {
+            logWarn('[FW Update] AI reset command error/timeout (may be expected):', e)
+        }
+        try {
+            await session.execute(() => commandRegistry.aidpd())
+        } catch (e) {
+            logWarn('[FW Update] AI dpd failed, waiting for the sleep timer:', e)
+        }
+        appendLog(`${passLabel}Waiting for AI processor to reboot...`)
+        const restarted = (await session.waitForSleep(RESTART_SLEEP_WAIT_MS)) && (await session.waitForWake(RESTART_WAKE_WAIT_MS))
+        if (!restarted) logWarn('[FW Update] No restart seen after AI reset and AI dpd')
+    }, [device, appendLog])
+
+    /**
+     * The check before each `AI firmware` (#374). `firmware` writes the slot
+     * opposite the selector and moves the selector to it, so until the camera
+     * restarts, a second write lands on the slot it is running from. The
+     * camera must run the image in its selected slot and, after an image of
+     * this update, that image's camera. If not, it is restarted once, and if
+     * still not, the update stops. Resolves 'installed' when the camera
+     * already runs `image`, a retried pass whose write landed, so that image
+     * is not written over the other camera's slot as well.
+     */
+    const checkBeforeWrite = useCallback(async (
+        image: { variant: CameraVariant; version: string } | null,
+        expectRunning: CameraVariant | null,
+        passLabel: string,
+    ): Promise<'ready' | 'installed'> => {
+        const judge = ({ version, slots }: CameraReading): 'ready' | 'installed' | null => {
+            if (!slots || !isRunningFromSelectedSlot(slots)) return null
+            const running = parseVariant(slots.running)
+            if (image && running === image.variant && !!version && version.trim() === image.version.trim()) return 'installed'
+            return !expectRunning || running === expectRunning ? 'ready' : null
+        }
+        const before = judge(await readCamera(true))
+        if (before) return before
+        appendLog(`${passLabel}The camera is not running its new image yet. Restarting it before anything is written...`)
+        await restartCamera(passLabel)
+        const after = judge(await readCamera(true))
+        if (after) return after
+        throw new Error(NOT_RESTARTED)
+    }, [readCamera, restartCamera, appendLog])
+
+    /**
      * Flash a single Himax firmware image (one A/B slot) and wait for the
      * device to reset into it. The caller decides which image(s) and in
-     * which order - see runHimaxUpdate.
+     * which order - see runHimaxUpdate. `record` saves the update's progress
+     * just before the flash command and after its OK.
      */
     const flashHimaxImage = useCallback(async (
         source: HimaxFirmwareSource,
         fwToFlash: Firmware | null,
         filenameToFlash: string,
         passLabel: string,
+        record?: { beforeFlash: () => Promise<void>; afterFlash: () => Promise<void> },
     ) => {
         if (!device?.connected) throw new Error('Device disconnected.')
 
@@ -837,6 +966,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         // line we receive is the final "Firmware update OK/FAILED", minutes
         // later. Start the elapsed clock and advance to 'flashing' after a
         // short grace so the UI never sits frozen on "waking up".
+        await record?.beforeFlash()
         flashStartRef.current = Date.now()
         setFlashElapsedSec(0)
         const flashPhaseTimer = setTimeout(() => advancePhase('flashing'), 8000)
@@ -846,6 +976,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
             clearTimeout(flashPhaseTimer)
             flashStartRef.current = null
         }
+        await record?.afterFlash()
 
         if (unmountedRef.current) return
 
@@ -855,26 +986,22 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         await session.waitForSleep(5000)
         if (unmountedRef.current) return
 
-        // Send AI reset to boot the newly-written slot and reload parameters
+        // `firmware` moves the boot selector and schedules nothing, so the
+        // camera would start the new image at its next boot of any kind. The
+        // reset makes that now, and a cold boot that labels the slot. A fixed
+        // wait and `AI ver` polls used to follow, and the polls, restarting
+        // the inactivity timer, could hold the restart off (#374).
         advancePhase('rebooting')
         appendLog(`${passLabel}Sending AI reset to boot the new image...`)
-        try {
-            const resetSession = createBleSession(device)
-            await resetSession.execute(() => commandRegistry.aireset())
-        } catch (e) {
-            logWarn('[FW Update] AI reset command error/timeout (may be expected):', e)
-        }
-
-        appendLog(`${passLabel}Waiting for AI processor to reboot...`)
-        await new Promise(r => setTimeout(r, 4000))
-    }, [device, advancePhase, appendLog])
+        await restartCamera(passLabel)
+    }, [device, advancePhase, appendLog, restartCamera])
 
     /**
      * Poll the AI processor with a light command until it responds, or the
-     * timeout elapses. Used between the two pair passes: the AI reset that
-     * boots the freshly-written slot drops the BLE session ("Session Reset"
-     * from bleTransport.clearAll), so a fixed delay is not enough - the next
-     * flash command must wait until the device actually answers again.
+     * timeout elapses. Used before a pass is retried after a transient error:
+     * a dropped session ("Session Reset" from bleTransport.clearAll) needs the
+     * device answering again before the next command. Not between passes,
+     * where the polls restart the inactivity timer the restart waits for.
      */
     const waitForAiReady = useCallback(async (timeoutMs: number) => {
         const deadline = Date.now() + timeoutMs
@@ -906,6 +1033,11 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
      * the INACTIVE slot and switches to it, so a full update is two passes -
      * ordered so the device finishes on the camera variant it started with.
      *
+     * An update this phone left unfinished is finished instead (#374): it
+     * ends on the camera that update started on, and writes only what is
+     * left, see `planPair`. Its progress is saved before each write, see
+     * `services/himaxUpdateRecord.ts`.
+     *
      * Falls back to the single-image flow when variant-labelled records are
      * not available (legacy firmware database) or when an explicit SD-card
      * filename is given.
@@ -913,28 +1045,35 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
     const runHimaxUpdate = useCallback(async (source: HimaxFirmwareSource = 'sdcard', selectedFirmware?: Firmware | string) => {
         if (!device?.connected) throw new Error('Device disconnected.')
 
-        const verifyAndComplete = async () => {
+        // `endVariant`, when known, is the camera the update must leave
+        // running: it is restarted once more if not, and the update fails if
+        // it still is not. Once it is, the saved record is done with.
+        const verifyAndComplete = async (endVariant: HimaxVariant | null) => {
             if (unmountedRef.current) return
             advancePhase('verifying')
             appendLog('Checking new AI firmware version...')
-            try {
-                const verSession = createBleSession(device)
-                const ver = await verSession.execute(() => commandRegistry.aiver())
-                if (!unmountedRef.current) setNewVersion(ver)
-                appendLog(`New version: ${ver}`)
-            } catch (e) {
-                logWarn('[FW Update] Post-update version query failed:', e)
+            const onEndCamera = ({ slots }: CameraReading) =>
+                !!slots && parseVariant(slots.running) === endVariant && isRunningFromSelectedSlot(slots)
+            let reading = await readCamera()
+            if (endVariant && reading.slots && !onEndCamera(reading)) {
+                appendLog(`The camera is not running the ${endVariant} image yet. Restarting it...`)
+                await restartCamera('')
+                reading = await readCamera()
+                if (!onEndCamera(reading)) throw new Error(NOT_RESTARTED)
             }
-            try {
-                // Re-read which camera image the device finished on, so the
-                // success banner can say "now running ..." with confidence.
-                const slotSession = createBleSession(device)
-                const slots = await slotSession.execute(() => commandRegistry.slots())
-                const running = /RP3/i.test(slots.running) ? 'RP3'
-                    : /HM0360/i.test(slots.running) ? 'HM0360' : null
-                if (!unmountedRef.current && running) setRunningVariant(running)
-            } catch (e) {
-                logWarn('[FW Update] Post-update slots query failed:', e)
+            if (reading.version) {
+                if (!unmountedRef.current) setNewVersion(reading.version)
+                appendLog(`New version: ${reading.version}`)
+            }
+            if (reading.slots) {
+                // Which camera image the device finished on, so the success
+                // banner can say "now running ..." with confidence.
+                const running = parseVariant(reading.slots.running)
+                if (!unmountedRef.current && running !== 'unknown') setRunningVariant(running)
+                if (endVariant && onEndCamera(reading)) {
+                    await himaxUpdateRecord.clear(device.id)
+                    log(`[FW Update] Update finished on the ${endVariant} camera; pending update cleared`)
+                }
             }
             try {
                 // Empty-SD handshake: the firmware regenerates CONFIG.TXT from its
@@ -958,13 +1097,16 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
             advancePhase('complete')
         }
 
+        advancePhase('preflight')
+
         // Explicit SD-card filename: single-pass legacy behaviour (the variant
         // cannot be known from a bare filename)
         if (typeof selectedFirmware === 'string') {
             if (!unmountedRef.current) setPairProgress({ total: 1, done: 0 })
+            if ((await readCamera()).slots) await checkBeforeWrite(null, null, '')
             await flashHimaxImage(source, null, selectedFirmware, '')
             if (!unmountedRef.current) setPairProgress({ total: 1, done: 1 })
-            await verifyAndComplete()
+            await verifyAndComplete(null)
             return
         }
 
@@ -990,45 +1132,109 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
             }
         }
 
-        if (pair.length === 1) {
-            appendLog('Only one camera variant available - single-image update')
-        } else {
-            // Each flash switches the device to the newly-written slot, so flash
-            // the OTHER variant first and the device's CURRENT variant last -
-            // the device then finishes on the (updated) camera it started with.
-            try {
-                const slotSession = createBleSession(device)
-                const slots = await slotSession.execute(() => commandRegistry.slots())
-                const running = /RP3/i.test(slots.running) ? 'RP3'
-                    : /HM0360/i.test(slots.running) ? 'HM0360' : null
-                appendLog(`Device is running the ${running ?? 'unknown'} camera image`)
-                if (running && pair[0].cameraVariant === running) {
-                    pair = [pair[1], pair[0]]
-                }
-            } catch (e) {
-                // Older firmware without the slots command - order doesn't matter
-                // for correctness, only for which camera ends up active
-                logWarn('[FW Update] slots query failed (older firmware?) - using default order:', e)
+        const byVariant = {
+            RP3: pair.find(fw => fw.cameraVariant === 'RP3') ?? null,
+            HM0360: pair.find(fw => fw.cameraVariant === 'HM0360') ?? null,
+        }
+        const isPair = pair.length === 2 && !!byVariant.RP3 && !!byVariant.HM0360
+
+        // Older firmware has no `slots`: the order then decides nothing about
+        // correctness, only which camera ends up active, and nothing is
+        // checked before a write or saved for a finish
+        let reading = await readCamera()
+        const slotsSupported = !!reading.slots
+
+        // An update this phone left unfinished. One the camera shows finished,
+        // or never reached, is dropped; a pending one is finished, below.
+        let record = isPair && reading.slots ? await himaxUpdateRecord.load(device.id) : null
+        const settleRecord = async () => {
+            if (!record || !reading.slots) return null
+            const { recordStatus } = classifyHimax({ current: reading.version, slots: reading.slots, record, latest: byVariant })
+            if (recordStatus === 'finished' || recordStatus === 'stale') {
+                await himaxUpdateRecord.clear(device.id)
+                record = null
+            }
+            return recordStatus
+        }
+        const finishingTo = (await settleRecord()) === 'pending' ? record?.endVariant ?? null : null
+
+        if (reading.slots && (finishingTo || !isRunningFromSelectedSlot(reading.slots))) {
+            // A camera an update left part way may still run its previous
+            // image while the selector names the new one. Restart it into the
+            // selected slot before working out what is left to write.
+            appendLog(finishingTo
+                ? 'Finishing the last update. Restarting the camera first...'
+                : 'The camera is not running from its selected slot. Restarting it first...')
+            await restartCamera('')
+            reading = await readCamera()
+            if (!reading.slots || !isRunningFromSelectedSlot(reading.slots)) throw new Error(NOT_RESTARTED)
+            if (finishingTo && (await settleRecord()) === 'finished') {
+                // The restart was all it lacked
+                if (!unmountedRef.current) setPairProgress({ total: 2, done: 2 })
+                await verifyAndComplete(finishingTo)
+                return
             }
         }
 
-        if (!unmountedRef.current) setPairProgress({ total: pair.length, done: 0 })
+        // The camera the update ends on: the one an unfinished update started
+        // on, else the one running now. Each flash switches the device to the
+        // newly-written slot, so the OTHER camera's image goes first and this
+        // one's last, and an image the camera already runs is not written again.
+        const running = reading.slots ? parseVariant(reading.slots.running) : 'unknown'
+        const endVariant: HimaxVariant | null = isPair
+            ? record?.endVariant ?? (running !== 'unknown' ? running : null)
+            : null
+        let plan = pair
+        if (pair.length === 1) {
+            appendLog('Only one camera variant available - single-image update')
+        } else {
+            appendLog(`Device is running the ${running} camera image`)
+            if (endVariant) plan = planPair(endVariant, reading.slots, reading.version, byVariant)
+        }
+        const total = pair.length
+        const skipped = total - plan.length
+
+        // What the record saves before each write; none without `slots`, since
+        // it could not say which camera to end on
+        const recordBase = endVariant && reading.slots ? {
+            startedAt: record?.startedAt ?? new Date().toISOString(),
+            endVariant,
+            startActiveSlot: record ? record.startActiveSlot : reading.slots.activeSlot,
+            startVersion: record ? record.startVersion : reading.version,
+            images: [byVariant[otherCamera(endVariant)]!, byVariant[endVariant]!].map(fw => ({
+                variant: fw.cameraVariant as HimaxVariant,
+                version: fw.version,
+                filename: firmware83Filename(fw.version, fw.buildDate, fw.cameraVariant),
+            })),
+        } : null
+
+        if (!unmountedRef.current) setPairProgress({ total, done: skipped })
 
         // Errors from a transient link drop (the AI reset between passes tears
         // the BLE session down) - retried once after re-establishing contact.
         const TRANSIENT_ERROR = /Session Reset|DEVICE_DISCONNECTED|time.?out/i
 
-        for (let i = 0; i < pair.length; i++) {
-            const fw = pair[i]
-            const passLabel = pair.length === 2
-                ? `[${i + 1}/2 ${fw.cameraVariant ?? 'unknown'}] `
+        for (let i = 0; i < plan.length; i++) {
+            const fw = plan[i]
+            // This image's place in the pair: a finish starts at image 2
+            const n = skipped + i
+            const passLabel = total === 2
+                ? `[${n + 1}/2 ${fw.cameraVariant ?? 'unknown'}] `
                 : ''
             const filename = firmware83Filename(fw.version, fw.buildDate, fw.cameraVariant)
+            const saveRecord = (sent: number, flashed: number) =>
+                recordBase ? himaxUpdateRecord.save(device.id, { ...recordBase, sent, flashed }) : Promise.resolve()
+            // The camera the write must find running: the image this update
+            // wrote before it, or for a finish, the other camera's image the
+            // last update left it on
+            const expectRunning: CameraVariant | null = i > 0
+                ? parseVariant(plan[i - 1].cameraVariant ?? undefined)
+                : (skipped > 0 && endVariant ? otherCamera(endVariant) : null)
 
             // Update the completed-pass count BEFORE the boundary wait/phase
             // rewind, so the overall progress bar never runs backwards at the
             // pass boundary (it jumps from ~41% to 51%, not down to ~10%).
-            if (!unmountedRef.current) setPairProgress({ total: pair.length, done: i })
+            if (!unmountedRef.current) setPairProgress({ total, done: n })
 
             if (i > 0) {
                 // The phase machine is forward-only within a pass; rewind it for
@@ -1036,19 +1242,32 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                 phaseRef.current = 'preflight'
                 if (!unmountedRef.current) setPhase('preflight')
                 appendLog(`Starting second image (${fw.cameraVariant ?? 'unknown'})...`)
-                // The previous pass ended in an AI reset; wait until the device
-                // answers again rather than racing the reboot.
-                if (!unmountedRef.current) setInterPassWait(true)
-                try {
-                    await waitForAiReady(25000)
-                } finally {
-                    if (!unmountedRef.current) setInterPassWait(false)
+            }
+
+            const runPass = async () => {
+                if (slotsSupported) {
+                    if (!unmountedRef.current) setInterPassWait(n > 0)
+                    let check: 'ready' | 'installed'
+                    try {
+                        check = await checkBeforeWrite(
+                            { variant: parseVariant(fw.cameraVariant ?? undefined), version: fw.version }, expectRunning, passLabel)
+                    } finally {
+                        if (!unmountedRef.current) setInterPassWait(false)
+                    }
+                    if (check === 'installed') {
+                        appendLog(`${passLabel}The camera already runs this image.`)
+                        await saveRecord(n + 1, n + 1)
+                        return
+                    }
                 }
-                if (unmountedRef.current) return
+                await flashHimaxImage(source, fw, filename, passLabel, {
+                    beforeFlash: () => saveRecord(n + 1, n),
+                    afterFlash: () => saveRecord(n + 1, n + 1),
+                })
             }
 
             try {
-                await flashHimaxImage(source, fw, filename, passLabel)
+                await runPass()
             } catch (e: any) {
                 if (!TRANSIENT_ERROR.test(String(e?.message ?? e))) throw e
                 appendLog(`${passLabel}Link dropped during flash - reconnecting and retrying once...`)
@@ -1061,15 +1280,15 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                 if (unmountedRef.current) return
                 phaseRef.current = 'preflight'
                 if (!unmountedRef.current) setPhase('preflight')
-                await flashHimaxImage(source, fw, filename, passLabel)
+                await runPass()
             }
             if (unmountedRef.current) return
         }
 
-        if (!unmountedRef.current) setPairProgress({ total: pair.length, done: pair.length })
+        if (!unmountedRef.current) setPairProgress({ total, done: total })
 
-        await verifyAndComplete()
-    }, [device, latestFirmware, advancePhase, appendLog, flashHimaxImage, waitForAiReady])
+        await verifyAndComplete(endVariant)
+    }, [device, latestFirmware, advancePhase, appendLog, flashHimaxImage, waitForAiReady, readCamera, restartCamera, checkBeforeWrite])
 
     // ── Public start ───────────────────────────────────────────────
 
@@ -1204,6 +1423,8 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         sdCardFiles,
         availableDbFirmwares,
         runningVariant,
+        cameraSlots,
+        updateRecord,
         pairProgress,
 
         // Actions
