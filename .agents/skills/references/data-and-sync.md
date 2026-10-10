@@ -114,13 +114,17 @@ version for humans is
   whose file is gone is still looked up in the bucket before it is dropped (#347). Each sync
   retries them, and the pre-download runs, after the pull and before the push error is thrown
   (#449): thrown first, one refused change stopped both on every sync.
-- **A deployment must carry its device with it.** The push order, `projects`, `devices`,
-  `deployments`, is a foreign-key order, and `DeploymentService.createDeployment` queues an
-  idempotent device CREATE alongside the deployment, since the server's devices insert is
-  `ON CONFLICT DO NOTHING`, so the device row always reaches the server first. Without it the
-  first push fails `23503` and only a self-healing retry recovers it a cycle later, which the
-  operator sees as a sync error (#294). A bare "touch" to trigger reactivity is not a sync
-  operation.
+- **A camera has one id, the server's (#451).** `devices.bluetooth_id` is unique on the server
+  and the devices insert is `ON CONFLICT (id)` only, so a second local id for one camera fails
+  `23505`. The scanner asks the server before it registers a camera the phone lacks
+  (`DeviceService.adoptFromServer`), and the push settles a `23505` on `bluetooth_id`
+  (`settleTakenBluetoothId`) and a `42501` on a device the server already shows
+  (`settleDeviceAlreadyOnServer`); the cases are in
+  [03-DATA-AND-SYNC.md](../../../documentation/onboarding/03-DATA-AND-SYNC.md#a-camera-the-server-already-has).
+  Do not queue a device `CREATE` with a deployment again: the one `createDeployment` queued
+  from 5 September 2026 was refused `42501` for any camera of another organisation, and showed
+  in Settings as a refused "New camera" once per deployment. A device whose `CREATE` is truly
+  missing is healed by the `23503` path a sync later (#294).
 - **A refused table must not stop the others (#287).** `uploadOutbox` pushes each table in
   that order but never breaks the chain: a refused multi-record call is retried record by
   record, and only a deployment whose parent the server does not have waits. Every
@@ -138,9 +142,10 @@ version for humans is
   same call carried that record's `CREATE`: the reply names rows, so the entry may be the
   CREATE's, and the change goes again alone. Everything else stays `failed` and is retried
   every sync: no code (network, gateway), any other code (`23503`, a timeout, `PGRST303`), and
-  `42501` with HTTP 401, which is PostgREST's answer to a call with no signed-in user. Where
-  the code asks "is there work not yet uploaded" (the project reconcile, server deletions, the
-  creator's role), `refused` counts, so nothing is destroyed; it holds no pull back. Settings
+  `42501` with HTTP 401, which is PostgREST's answer to a call with no signed-in user. A device
+  `CREATE` refused `23505` follows the camera rule above. Where the code asks "is there work
+  not yet uploaded" (the project reconcile, server deletions, the creator's role), `refused`
+  counts, so nothing is destroyed; it holds no pull back. Settings
   shows the count under Data Synchronization (`RefusedChangesItem`, from
   `OutboxService.observeRefusedOperations`), with each reason on a tap. Nothing re-queues a
   refused operation, except that a later project or deployment deletion may turn it

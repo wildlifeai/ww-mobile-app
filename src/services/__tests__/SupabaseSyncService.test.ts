@@ -2,7 +2,8 @@
  * The push half of a sync (#287), the account a sync runs as (#267), projects
  * that disappear from the server (#330), deployments edited, deleted or moved
  * on the website (#411), the start snapshot a pulled deployment carries
- * (#426), and changes the server refuses for good (#449).
+ * (#426), changes the server refuses for good (#449), and a camera the server
+ * has under another id (#451).
  *
  * The database is an in-memory fake, so these assert on what each outbox
  * operation ends up as, and on what push_changes was actually sent.
@@ -255,20 +256,46 @@ describe('push (#287)', () => {
 		expect(error.message).toContain('deployments: 1 saved, 1 waiting for their project or device to reach the server')
 	})
 
-	it('pushes a deployment whose refused device is already on the server', async () => {
+	// Postgres checks the INSERT policy before ON CONFLICT, so a camera's CREATE
+	// re-sent by someone outside its organisation is refused although the row
+	// is there; deployment starts queued one each until #451
+	it('marks a device CREATE refused 42501 synced when the server already shows the device', async () => {
 		queue({ id: 'd1', table: 'devices', type: 'CREATE', recordId: 'device-1', userId: USER_B })
+		queue({ id: 'd1-copy', table: 'devices', type: 'CREATE', recordId: 'device-1', userId: USER_B, status: 'failed' })
 		queue({ id: 'dep1', table: 'deployments', type: 'CREATE', recordId: 'dep-1', userId: USER_B,
 			payload: { project_id: 'project-1', device_id: 'device-1' } })
 		serverRows.devices = [{ id: 'device-1' }]
 		serverRows.projects = [{ id: 'project-1' }]
 		pushHandler = (changes) => changes.devices.created.length > 0
-			? { data: null, error: { code: '42501', message: 'refused' } }
+			? { data: null, error: { code: '42501', message: 'refused' }, status: 403 }
 			: { data: { processed: 1, conflicts: [] }, error: null }
 
-		await expect(service.uploadOutbox(USER_B)).rejects.toThrow('devices: 1 refused by the server')
+		await expect(service.uploadOutbox(USER_B)).resolves.toBeUndefined()
 
-		expect(op('d1').status).toBe('refused')
+		expect(op('d1').status).toBe('synced')
+		expect(op('d1').errorMessage).toContain('already on the server')
+		expect(op('d1-copy').status).toBe('synced')
 		expect(op('dep1').status).toBe('synced')
+
+		pushCalls.length = 0
+		await service.uploadOutbox(USER_B)
+		expect(pushCalls).toHaveLength(0)
+	})
+
+	it('asks again next sync when it cannot ask the server about a device refused 42501', async () => {
+		queue({ id: 'd1', table: 'devices', type: 'CREATE', recordId: 'device-1', userId: USER_B })
+		serverRows.devices = [{ id: 'device-1' }]
+		pushHandler = (changes) => changes.devices.created.length > 0
+			? { data: null, error: { code: '42501', message: 'refused' }, status: 403 }
+			: { data: { processed: 1, conflicts: [] }, error: null }
+		readErrors.devices = { message: 'TypeError: Network request failed' }
+
+		await expect(service.uploadOutbox(USER_B)).rejects.toThrow('devices: 1 refused by the server (42501 refused)')
+		expect(op('d1').status).toBe('failed')
+
+		delete readErrors.devices
+		await expect(service.uploadOutbox(USER_B)).resolves.toBeUndefined()
+		expect(op('d1').status).toBe('synced')
 	})
 
 	// ww-backend #266: an end or edit by a creator since made a viewer
@@ -1267,5 +1294,148 @@ describe('a deployment pulled onto another phone (#426)', () => {
 
 		expect(rowsIn('deployments')).toEqual([expect.objectContaining({
 			id: 'dep-1', deploymentStatusId: DEPLOYMENT_STATUS.ENDED, ...snapshot })])
+	})
+})
+
+describe('a camera the server has under another id (#451)', () => {
+	const LOCAL = 'device-local'
+	const SERVER = 'device-server'
+	// devices.bluetooth_id is unique, as a column constraint and an index, and
+	// push_changes inserts a device ON CONFLICT (id) only
+	const bluetoothIdTaken = {
+		code: '23505',
+		message: 'duplicate key value violates unique constraint "devices_bluetooth_id_key"',
+		details: 'Key (bluetooth_id)=(D4:5E) already exists.',
+		hint: null,
+	}
+	const serverDevice = { id: SERVER, bluetooth_id: 'D4:5E', name: 'WILD-MOVE', organisation_id: 'org-other',
+		device_eui: null, created_at: '2026-09-01T00:00:00Z', updated_at: '2026-09-01T00:00:00Z' }
+
+	beforeEach(() => {
+		serverRows.projects = [{ id: 'project-1' }]
+		// The phone's own registration of a camera the server already has
+		seedRows('devices', [{ id: LOCAL, bluetoothId: 'D4:5E', name: 'WILD-MOVE', organisationId: 'org-1' }])
+		seedRows('deployments', [{ id: 'dep-1', projectId: 'project-1', deviceId: LOCAL }])
+		queue({ id: 'd1', table: 'devices', type: 'CREATE', recordId: LOCAL, userId: USER_B,
+			payload: { bluetooth_id: 'D4:5E', name: 'WILD-MOVE', organisation_id: 'org-1' } })
+		queue({ id: 'dep1', table: 'deployments', type: 'CREATE', recordId: 'dep-1', userId: USER_B,
+			payload: { project_id: 'project-1', device_id: LOCAL } })
+		pushHandler = (changes) => {
+			if (changes.devices.created.some((row: any) => row.id === LOCAL)) {
+				return { data: null, error: bluetoothIdTaken, status: 409 }
+			}
+			if (changes.deployments.created.some((row: any) => row.device_id === LOCAL)) {
+				return { data: null, status: 409, error: {
+					code: '23503', message: 'insert or update on table "deployments" violates foreign key constraint "deployments_device_id_fkey"' } }
+			}
+			return { data: { processed: 1, conflicts: [] }, error: null, status: 200 }
+		}
+	})
+
+	const sentDeviceIds = () => pushCalls.flatMap((changes) => changes.deployments.created.map((row: any) => row.device_id))
+
+	it("takes the server's row when this account may read it, and sends the deployments with its id in the same push", async () => {
+		serverRows.devices = [serverDevice]
+		// Changes queued earlier keep their status: a refused deployment was refused for its own reason
+		queue({ id: 'dep2', table: 'deployments', type: 'CREATE', recordId: 'dep-2', userId: USER_B, status: 'refused',
+			payload: { project_id: 'project-1', device_id: LOCAL } })
+		queue({ id: 'other', table: 'deployments', type: 'CREATE', recordId: 'dep-3', userId: USER_B, status: 'refused',
+			payload: { project_id: 'project-1', device_id: 'device-else' } })
+
+		await expect(service.uploadOutbox(USER_B)).resolves.toBeUndefined()
+
+		expect(op('d1').status).toBe('synced')
+		expect(op('d1').errorMessage).toContain(`replaced: the server already has this camera as ${SERVER}`)
+		expect(rowsIn('devices')).toEqual([expect.objectContaining({ id: SERVER, bluetoothId: 'D4:5E', organisationId: 'org-other' })])
+		expect(rowsIn('deployments')).toEqual([expect.objectContaining({ id: 'dep-1', deviceId: SERVER })])
+		expect(JSON.parse(op('dep2').payload).device_id).toBe(SERVER)
+		expect(op('dep2').status).toBe('refused')
+		expect(JSON.parse(op('other').payload).device_id).toBe('device-else')
+
+		expect(sentIds('devices')).toEqual([[LOCAL]])
+		expect(sentDeviceIds()).toEqual([SERVER])
+		expect(op('dep1').status).toBe('synced')
+		// Nothing about the camera is sent again
+		pushCalls.length = 0
+		await service.uploadOutbox(USER_B)
+		expect(pushCalls).toHaveLength(0)
+	})
+
+	it('settles it on the record-by-record retry when other cameras went up with it', async () => {
+		serverRows.devices = [serverDevice]
+		seedRows('devices', [{ id: 'device-new', bluetoothId: 'AA:01', name: 'WILD-NEW', organisationId: 'org-1' }])
+		queue({ id: 'd2', table: 'devices', type: 'CREATE', recordId: 'device-new', userId: USER_B,
+			payload: { bluetooth_id: 'AA:01', name: 'WILD-NEW', organisation_id: 'org-1' } })
+
+		await expect(service.uploadOutbox(USER_B)).resolves.toBeUndefined()
+
+		expect(sentIds('devices')).toEqual([[LOCAL, 'device-new'], [LOCAL], ['device-new']])
+		expect(op('d1').status).toBe('synced')
+		expect(op('d2').status).toBe('synced')
+		expect(rowsIn('devices').map((d) => d.id).sort()).toEqual(['device-new', SERVER])
+	})
+
+	it("refuses it for good when this account cannot read the server's row, and never sends it again", async () => {
+		serverRows.devices = []
+
+		await expect(service.uploadOutbox(USER_B)).rejects.toThrow(
+			'devices: 1 refused by the server (23505 This camera is registered on the server to an organisation this account cannot see)')
+
+		expect(op('d1').status).toBe('refused')
+		expect(op('d1').errorMessage).toBe('23505 This camera is registered on the server to an organisation this account cannot see')
+		expect(rowsIn('devices').map((d) => d.id)).toEqual([LOCAL])
+		// Its device never reached the server, so the deployment waits
+		expect(op('dep1').status).toBe('pending')
+
+		pushCalls.length = 0
+		await expect(service.uploadOutbox(USER_B)).rejects.toThrow('Push incomplete')
+		expect(sentIds('devices')).toEqual([])
+		// The 23503 self-heal does not queue a copy of the refused CREATE
+		expect(rowsIn('sync_outbox').filter((o) => o.tableName === 'devices')).toHaveLength(1)
+	})
+
+	it('asks again next sync when the lookup fails', async () => {
+		readErrors.devices = { message: 'TypeError: Network request failed' }
+
+		await expect(service.uploadOutbox(USER_B)).rejects.toThrow('devices: 1 refused by the server (23505')
+		expect(op('d1').status).toBe('failed')
+
+		delete readErrors.devices
+		serverRows.devices = [serverDevice]
+		await expect(service.uploadOutbox(USER_B)).resolves.toBeUndefined()
+		expect(op('d1').status).toBe('synced')
+		expect(sentDeviceIds()).toEqual([SERVER])
+	})
+
+	it('leaves a 23505 on any other key to the retry', async () => {
+		pushHandler = () => ({ data: null, status: 409, error: {
+			code: '23505', message: 'duplicate key value violates unique constraint "devices_pkey"', details: `Key (id)=(${LOCAL}) already exists.` } })
+
+		await expect(service.uploadOutbox(USER_B)).rejects.toThrow('Push incomplete')
+
+		expect(op('d1').status).toBe('failed')
+		expect(rowsIn('devices').map((d) => d.id)).toEqual([LOCAL])
+	})
+})
+
+describe('a deployment start (#451)', () => {
+	it('queues no device CREATE, so a camera already on the server is never sent again', async () => {
+		jest.spyOn(SupabaseSyncService, 'requestSync').mockImplementation(() => {})
+		serverRows.projects = [{ id: 'project-1' }]
+		serverRows.devices = [{ id: 'device-1' }]
+		seedRows('projects', [{ id: 'project-1', name: 'Ridge survey' }])
+		const [device] = seedRows('devices', [{ id: 'device-1', bluetoothId: 'D4:5E', name: 'WILD-LENT', organisationId: 'org-other', updatedAt: 1 }])
+
+		const deployment = await DeploymentService.createDeployment({
+			name: 'Ridge 1', projectId: 'project-1', deviceId: 'device-1', setupBy: USER_B, locationName: 'Ridge',
+		})
+
+		expect(rowsIn('sync_outbox').map((o) => `${o.tableName} ${o.operationType}`)).toEqual(['deployments CREATE'])
+		// Still touched, for the screens that observe it
+		expect(device.updatedAt).toBeGreaterThan(1)
+
+		await service.uploadOutbox(USER_B)
+		expect(sentIds('devices')).toEqual([])
+		expect(sentIds('deployments')).toEqual([[deployment.id]])
 	})
 })
