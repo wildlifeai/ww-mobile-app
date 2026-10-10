@@ -1,8 +1,10 @@
 name: EAS Build & Submit
 
 on:
+  # A release is a v* tag: production for both platforms, submitted to the
+  # stores. Pushes to main build nothing, so merging a release and tagging it
+  # costs two EAS builds, not four; a preview build is a dispatch.
   push:
-    branches: [main]
     tags: ['v*']
   workflow_dispatch:
     inputs:
@@ -54,14 +56,11 @@ jobs:
             else
               echo "submit=false" >> $GITHUB_OUTPUT
             fi
-          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+          else
+            # A v* tag, the only push this workflow runs on
             echo "profile=production" >> $GITHUB_OUTPUT
             echo "platform=all" >> $GITHUB_OUTPUT
             echo "submit=true" >> $GITHUB_OUTPUT
-          else
-            echo "profile=preview" >> $GITHUB_OUTPUT
-            echo "platform=all" >> $GITHUB_OUTPUT
-            echo "submit=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Validate dependencies
@@ -99,10 +98,9 @@ jobs:
           # silently failed until Aug 2026 and releases were made by hand.
           #
           # --id rather than --latest deliberately: this workflow has no
-          # concurrency guard, and pushing a release fires both the `main` push
-          # (preview) and the `v*` tag (production). With --latest an overlapping
-          # preview build could be submitted to the stores — a cloud-dev
-          # configured binary shipped to users.
+          # concurrency guard, so a preview build dispatched while a tag runs
+          # could be the latest. With --latest it would be submitted to the
+          # stores, a cloud-dev configured binary shipped to users.
           for id in ${{ steps.build.outputs.ids }}; do
             echo "Submitting build $id"
             eas submit --profile production --id "$id" --non-interactive
