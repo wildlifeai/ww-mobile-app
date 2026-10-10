@@ -31,7 +31,7 @@ jobs:
         # the CLI must understand, and @main + version:latest drift independently
         # (broke 2026-06-11: @main passed --scope, which stable 0.5.1 rejects).
         # Bump both together (Dependabot proposes the action tag).
-        uses: millionco/react-doctor@v2.2.9
+        uses: millionco/react-doctor@v2.3.1
         with:
           directory: '.'
           node-version: '24'
