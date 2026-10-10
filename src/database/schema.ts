@@ -12,7 +12,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 406,
+    version: 407,
     tables: [
         tableSchema({
             name: 'account_deletion_requests',
@@ -137,6 +137,27 @@ export default appSchema({
             columns: [
                 { name: 'job_data', type: 'string' },
                 { name: 'status', type: 'string' },
+                // System & Sync Fields
+                { name: 'created_at', type: 'number' },
+                { name: 'updated_at', type: 'number' },
+                { name: 'deleted_at', type: 'number' },
+                { name: '_version', type: 'number' },
+                { name: '_custom_sync_status', type: 'string', isOptional: true },
+                { name: 'modified_by', type: 'string' },
+            ],
+        }),
+        tableSchema({
+            name: 'api_keys',
+            columns: [
+                { name: 'created_by', type: 'string', isOptional: true, isIndexed: true },
+                { name: 'expires_at', type: 'string', isOptional: true },
+                { name: 'key_hash', type: 'string' },
+                { name: 'key_prefix', type: 'string' },
+                { name: 'last_used_at', type: 'string', isOptional: true },
+                { name: 'name', type: 'string' },
+                { name: 'organisation_id', type: 'string', isIndexed: true },
+                { name: 'revoked_at', type: 'string', isOptional: true },
+                { name: 'scopes', type: 'string' },
                 // System & Sync Fields
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
