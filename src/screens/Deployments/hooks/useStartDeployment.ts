@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Alert } from 'react-native'
 import { useAppSelector } from '../../../redux'
 import { Q } from '@nozbe/watermelondb'
@@ -7,6 +7,7 @@ import { useFocusEffect } from '@react-navigation/native'
 import { DeploymentService } from '../../../services/DeploymentService'
 import { DeploymentPhotoService } from '../../../services/DeploymentPhotoService'
 import ProjectService from '../../../services/ProjectService'
+import { projectsToDeployInto, startRefusal, START_REFUSED_TITLE } from '../../../services/deploymentAccess'
 import ReferenceDataService from '../../../services/ReferenceDataService'
 import Device from '../../../database/models/Device'
 import Deployment from '../../../database/models/Deployment'
@@ -105,7 +106,18 @@ export const useStartDeployment = ({
 
     const [submitting, setSubmitting] = useState(false)
     const [project, setProject] = useState<any>(null)
-    const [availableProjects, setAvailableProjects] = useState<ProjectWithDetails[]>([])
+    const [deployableProjects, setDeployableProjects] = useState<ProjectWithDetails[]>([])
+    // The picker offers the projects this account may deploy into (#450). The
+    // one the scanner chose stays in it when it is not one of them, so the
+    // field still names it while the screen says why it cannot be used.
+    const availableProjects = useMemo<ProjectWithDetails[]>(() => (
+        project && !deployableProjects.some(p => p.id === project.id)
+            ? [project, ...deployableProjects]
+            : deployableProjects
+    ), [project, deployableProjects])
+    // Why this account may not start a deployment in the chosen project, or
+    // null: shown under the picker, and again on the press
+    const [startRefusalReason, setStartRefusalReason] = useState<string | null>(null)
     const [captureMethodName, setCaptureMethodName] = useState<string>('')
     const [sensitivityLabel, setSensitivityLabel] = useState<string>('')
     
@@ -193,7 +205,7 @@ export const useStartDeployment = ({
                 
                 if (user?.id && currentOrganisation?.id) {
                     const projs = await ProjectService.getProjectsForUserInOrganisation(user.id, currentOrganisation.id)
-                    setAvailableProjects(withoutArchived(projs))
+                    setDeployableProjects(await projectsToDeployInto(user.id, withoutArchived(projs)))
                 }
 
                 if (proj && proj.capture_method_id) {
@@ -228,6 +240,19 @@ export const useStartDeployment = ({
             getLocation()
         }, [initialProjectId, deviceId, loadProjectAndDevice, getLocation])
     )
+
+    // From the phone's roles, so offline too (#450)
+    useEffect(() => {
+        let isMounted = true
+        if (!project?.id) {
+            setStartRefusalReason(null)
+            return
+        }
+        startRefusal(user?.id, project.id)
+            .then(reason => { if (isMounted) setStartRefusalReason(reason) })
+            .catch(err => logWarn('[DeploymentDetails] Role check failed:', err))
+        return () => { isMounted = false }
+    }, [project?.id, user?.id])
 
     // Location Name logic based on GPS and Project Deployments
     useEffect(() => {
@@ -447,11 +472,25 @@ export const useStartDeployment = ({
             return
         }
 
-        progress.reset('Starting deployment...')
         setSubmitting(true)
         isStartDeploymentInProgress.current = true
 
-        // 0. A camera has one open deployment at a time, and the server refuses
+        // 0. Whether this account may deploy into the project at all. The
+        // server refuses a viewer's deployment (ww-backend 52_deployments.sql),
+        // so a viewer is stopped here, before the server is asked or anything
+        // is written to the camera (#450). Asked again at the press, from the
+        // phone's roles: a sync may have changed them since the screen opened.
+        const refusal = await startRefusal(user.id, project.id)
+        if (refusal) {
+            setStartRefusalReason(refusal)
+            setSubmitting(false)
+            isStartDeploymentInProgress.current = false
+            Alert.alert(START_REFUSED_TITLE, refusal)
+            return
+        }
+        progress.reset('Starting deployment...')
+
+        // 0b. A camera has one open deployment at a time, and the server refuses
         // a second (ww-backend #324). The scanner sent one open on this phone to
         // End Deployment; this asks the server about one the phone does not
         // hold (#448), before anything is written to the camera. Offline, or
@@ -936,7 +975,7 @@ export const useStartDeployment = ({
     const [deploymentStartTime, setDeploymentStartTime] = useState<Date | null>(null)
 
     return {
-        formState, submitting, project, availableProjects, captureMethodName, sensitivityLabel,
+        formState, submitting, project, availableProjects, startRefusalReason, captureMethodName, sensitivityLabel,
         device, bleDevice, isInitializing, initProgress, initStep, initErrors, setInitErrors, aiProcessorFailed,
         finishProgress: progress.finishProgress, finishStep: progress.finishStep,
         finishLogs: progress.finishLogs, isFinishing: progress.isFinishing,

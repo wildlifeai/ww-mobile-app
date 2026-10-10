@@ -171,6 +171,8 @@ services/
 ├── DeviceService.ts           # Device record management
 ├── serverDevices.ts           # A camera's server row: read by Bluetooth id, written to the phone (#451)
 ├── UserRoleService.ts         # User role management
+├── roleAccess.ts              # What the roles let a user see, and do with a deployment
+├── deploymentAccess.ts        # May this account start or end a deployment, from the phone's roles (#450)
 ├── InvitationService.ts       # Member invitations
 ├── AiModelService.ts          # AI model metadata, the model file cache
 ├── ReferenceDataService.ts    # Downloaded reference data (capture methods, etc.)

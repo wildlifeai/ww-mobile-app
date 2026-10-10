@@ -57,7 +57,7 @@ export const DevDeploymentTestScreen = () => {
 
     const {
         bleDevice, device,
-        project, availableProjects, handleProjectChange,
+        project, availableProjects, startRefusalReason, projectSettingsNote, handleProjectChange,
         notes, setNotes,
         locationName, setLocationName,
         cameraHeight, setCameraHeight,
@@ -222,6 +222,19 @@ export const DevDeploymentTestScreen = () => {
                             onChange={handleProjectChange}
                             disabled={submitting}
                         />
+                        {/* Why Start is off for this project: a viewer, or no
+                            role in it (#450) */}
+                        {startRefusalReason && (
+                            <Text variant="bodySmall" style={[styles.hint, styles.hintAlert, { color: colors.error }]}>
+                                {startRefusalReason}
+                            </Text>
+                        )}
+                        {/* A member may deploy but not change the project (#466) */}
+                        {projectSettingsNote && (
+                            <Text variant="bodySmall" style={styles.hint}>
+                                {projectSettingsNote}
+                            </Text>
+                        )}
 
                         <View style={styles.spacer} />
 
@@ -601,11 +614,11 @@ export const DevDeploymentTestScreen = () => {
                         mode="contained"
                         onPress={handleStartDeployment}
                         loading={submitting}
-                        disabled={!isConnected || submitting || !project || sdCardMissing || !!activeDeployment}
-                        style={[styles.startButton, { backgroundColor: isConnected && project && !sdCardMissing && !activeDeployment ? '#4CAF50' : undefined }]}
+                        disabled={!isConnected || submitting || !project || sdCardMissing || !!activeDeployment || !!startRefusalReason}
+                        style={[styles.startButton, { backgroundColor: isConnected && project && !sdCardMissing && !activeDeployment && !startRefusalReason ? '#4CAF50' : undefined }]}
                     >
                         <Text style={{ color: 'white' }}>
-                            {activeDeployment ? 'Already deployed' : sdCardMissing ? 'No SD card' : 'Start Dev Deployment'}
+                            {activeDeployment ? 'Already deployed' : sdCardMissing ? 'No SD card' : startRefusalReason ? 'Cannot deploy in this project' : 'Start Dev Deployment'}
                         </Text>
                     </WWButton>
                 </View>

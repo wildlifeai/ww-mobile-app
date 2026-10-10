@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { Alert } from 'react-native'
 import { DeploymentService } from '../services/DeploymentService'
+import { endRefusal, END_REFUSED_TITLE } from '../services/deploymentAccess'
 import { createBleSession } from '../ble/session/createBleSession'
 import { createEndDeploymentSession, EndDeploymentSession } from '../ble/session/endDeploymentSession'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
@@ -191,6 +192,15 @@ export function useMonitoringActions({
     const handleStopMonitoring = useCallback(async (notes: string) => {
         if (!deploymentIdRef.current) {
             Alert.alert('Error', 'No active deployment found.')
+            return
+        }
+        // The deployment this screen just started, so its creator, normally a
+        // member still. A sync since may have made them a viewer, and the
+        // server would then refuse the end (#450): ask before the camera.
+        const running = await DeploymentService.getDeploymentById(deploymentIdRef.current)
+        const refusal = running ? await endRefusal(userId, running) : null
+        if (refusal) {
+            Alert.alert(END_REFUSED_TITLE, refusal)
             return
         }
 

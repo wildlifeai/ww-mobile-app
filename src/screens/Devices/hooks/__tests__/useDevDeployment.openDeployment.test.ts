@@ -3,6 +3,7 @@ import { Alert } from 'react-native'
 
 import { useDevDeployment } from '../useDevDeployment'
 import { DeploymentService } from '../../../../services/DeploymentService'
+import { resetFakeDatabase, seedRows } from '../../../../../tests/setup/helpers/fakeDatabase'
 
 /**
  * #448 in the Dev Deployment Test: an open deployment on this phone still
@@ -26,6 +27,10 @@ const mockSelfTest = { bits: 0, issues: [], isChecking: false, refresh: jest.fn(
 jest.mock('../../../../redux', () => ({ useAppSelector: (select: (state: any) => any) => select(mockState) }))
 jest.mock('../../../../redux/slices/authSlice', () => ({
 	selectCurrentOrganisation: (state: any) => state.authentication.currentOrganisation,
+}))
+jest.mock('../../../../database', () => ({
+	__esModule: true,
+	default: require('../../../../../tests/setup/helpers/fakeDatabase').fakeDatabase,
 }))
 jest.mock('@react-navigation/native', () => ({
 	useFocusEffect: (effect: () => void) => require('react').useEffect(() => { effect() }, [effect]),
@@ -99,6 +104,9 @@ const start = async (result: { current: ReturnType<typeof useDevDeployment> }) =
 
 beforeEach(() => {
 	jest.spyOn(Alert, 'alert').mockImplementation(() => {})
+	// A member may start one (#450, useDevDeployment.roles.test.ts)
+	resetFakeDatabase()
+	seedRows('user_roles', [{ userId: 'user-1', role: 'project_member', scopeType: 'project', scopeId: 'project-1', isActive: true }])
 	localActive.mockResolvedValue(undefined)
 	createDeployment.mockResolvedValue({ id: 'dep-new-0001', deploymentStart: new Date() })
 })

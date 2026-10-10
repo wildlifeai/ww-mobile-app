@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { Alert } from 'react-native'
 import { DeploymentService } from '../../../services/DeploymentService'
+import { endRefusal, END_REFUSED_TITLE } from '../../../services/deploymentAccess'
 import { log, logError, logWarn } from '../../../utils/logger'
 
 import { createEndDeploymentSession, EndDeploymentSession } from '../../../ble/session/endDeploymentSession'
@@ -34,6 +35,19 @@ export const useEndDeployment = ({
     const progress = useDeploymentProgress()
     const navigationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+    // Why this account may not end the deployment, naming who can, or null
+    // (#450). From the phone's roles, so offline too; the screen shows it
+    // before Stop opens the notes, and the press asks again.
+    const [endRefusalReason, setEndRefusalReason] = useState<string | null>(null)
+    useEffect(() => {
+        let isMounted = true
+        if (!deployment?.projectId) return
+        endRefusal(user?.id, { projectId: deployment.projectId, setupBy: deployment.setupBy })
+            .then(reason => { if (isMounted) setEndRefusalReason(reason) })
+            .catch(err => logWarn('[EndDeployment] Role check failed:', err))
+        return () => { isMounted = false }
+    }, [deployment?.projectId, deployment?.setupBy, user?.id])
+
     // Clean up navigation timer on unmount
     useEffect(() => {
         return () => {
@@ -44,6 +58,18 @@ export const useEndDeployment = ({
     }, [])
 
     const handleEndDeployment = useCallback(async () => {
+        // Only its creator while a member, or a project admin, may end a
+        // deployment, and the server refuses anyone else (ww-backend
+        // 52_deployments.sql): the phone would show it ended while the server
+        // and the website show it running. So anyone else is told who can,
+        // before the camera is touched and before Force End is offered (#450).
+        const refusal = await endRefusal(user?.id, { projectId: deployment.projectId, setupBy: deployment.setupBy })
+        if (refusal) {
+            setEndRefusalReason(refusal)
+            Alert.alert(END_REFUSED_TITLE, refusal)
+            return
+        }
+
         // Sanity Check: Ensure BLE is still connected (unless it's a forced cleanup)
         if (!storeDevice || !storeDevice.connected) {
             Alert.alert(
@@ -197,7 +223,7 @@ export const useEndDeployment = ({
         } finally {
             setIsEnding(false)
         }
-    }, [storeDevice, user, deployment.id, retrievalNotes, quiesceDevice, progress, isNavigatingAway, navigation])
+    }, [storeDevice, user, deployment.id, deployment.projectId, deployment.setupBy, retrievalNotes, quiesceDevice, progress, isNavigatingAway, navigation])
 
     const handleFinishDismiss = useCallback(() => {
         progress.setIsFinishing(false)
@@ -217,6 +243,7 @@ export const useEndDeployment = ({
         finishLogs: progress.finishLogs,
         isFinishing: progress.isFinishing,
         isEndDeploymentSuccess: progress.isSuccess,
+        endRefusalReason,
         handleEndDeployment,
         handleFinishDismiss
     }

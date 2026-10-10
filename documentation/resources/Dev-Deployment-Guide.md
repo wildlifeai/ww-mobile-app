@@ -14,7 +14,7 @@ The Dev Deployment flow is a **developer-facing** alternative to the standard St
 - Validate device health (battery, SD card, self-test) before committing to a full deployment
 
 > [!IMPORTANT]
-> Dev Deployment changes to project settings (capture method, sensitivity, flash, model, and so on) **persist to the database**. This is by design: it allows developers to iterate on project configuration without leaving the deployment screen. The camera choice, the LED brightness and the motion-detection light are the settings with no project home; they reach the device and nothing else.
+> Dev Deployment changes to project settings (capture method, sensitivity, flash, model, and so on) **persist to the database** when a project admin runs the test. This is by design: it allows developers to iterate on project configuration without leaving the deployment screen. For anyone else they apply to the test only: the server lets only a project admin change a project ([the rule](../onboarding/03-DATA-AND-SYNC.md#key-tables)), so the screen says so under the project picker, the camera is configured from the screen as usual, and the project keeps its own settings (#466). The camera choice, the LED brightness and the motion-detection light are the settings with no project home; they reach the device and nothing else.
 
 ## Access
 
@@ -79,7 +79,7 @@ Both flows share these pipeline functions from `deploymentPipeline.ts`:
 | 0 | Camera switch, when the chosen camera is not the one running. `useCameraSwitch.switchTo`: `AI switchslot`, wait for the Sleep, wait for the Wake, confirm with `AI slots`. First, so everything after it is asked of the image that will run the deployment. A switch that does not come back on the chosen camera **aborts the start**. So does a camera that boots and finds no sensor: `AI slots` reports the image's label, not whether its sensor answered, so after the switch the post-boot self-test is read, and bit 8 (main camera not responding) switches back to the previous camera and aborts. Found on WILD-SIFK, whose IMX708 stayed silent for the first four minutes after a switch (22 September 2026) |
 | 1 | AI Model Sync, with the model chosen on screen. It runs after step 0, so a start stopped here for a model the phone lacks has already switched the camera. The screen says under the model picker whether the model is on the phone |
 | 2 | Time Sync |
-| 3 | Persist project settings to DB |
+| 3 | Persist project settings to DB, for a project admin only (#466) |
 | 4 | Reset OPs |
 | 5 | Create DB Record |
 | 6 | Configure Device (capture method, deployment ID, GPS, the flash as the project's four columns, and the project's detection threshold as op16) |
@@ -100,7 +100,7 @@ Both flows share these pipeline functions from `deploymentPipeline.ts`:
 The `DevDeploymentTestScreen` is a single scrollable page (no accordion). A `DeviceHealthBanner` sits under the connection banner, fed by the self-test the device broadcasts after every wake. The cards:
 
 ### 1. Project Settings
-- **Project selector**: dropdown to pick the working project
+- **Project selector**: dropdown to pick the working project, offering only the projects this account may deploy into, as on [Start Monitoring](../onboarding/05-DEVICE-FLOWS.md#user-form) (#450). It opens on the first of them; with none, on the first project the account can see, with the reason under the field
 - **Capture Method**: the project form's dropdown, from the `capture_methods` reference data
 - **Motion Sensitivity**: dropdown (shown for Activity or Mixed)
 - **Time-lapse Interval**: numeric input (shown for Timelapse or Mixed)
@@ -113,7 +113,7 @@ The `DevDeploymentTestScreen` is a single scrollable page (no accordion). A `Dev
 
 ### Already deployed
 
-A device carries one deployment at a time. The scanner routes a deployed device to its summary instead of Start Monitoring, but this screen is reached through the Engineer Console, which does no such thing. So the screen asks the local database for an active deployment on the device (`DeploymentService.getActiveDeploymentForDeviceId`) on every focus, and while one exists it shows a red "Already deployed" card with the site and start time, an **End deployment** button, and Start reads "Already deployed". Start asks again at the moment of the press, in case another phone deployed the device meanwhile, and then asks the server about an open deployment this phone does not hold, before the camera switch, the same check and messages as [Start Monitoring](../onboarding/05-DEVICE-FLOWS.md#start-deployment-sequence) (#448). End deployment runs the same sequence as Stop Monitoring (`endDeploymentSequence` in `useMonitoringActions.ts`: read the ops, clear the deployment id and the GPS, end the record, quiesce) but keeps the BLE link and stays on the screen, so the next Start can follow at once; it needs the device connected. Ending it anywhere else clears the block on the next focus (22 September 2026).
+A device carries one deployment at a time. The scanner routes a deployed device to its summary instead of Start Monitoring, but this screen is reached through the Engineer Console, which does no such thing. So the screen asks the local database for an active deployment on the device (`DeploymentService.getActiveDeploymentForDeviceId`) on every focus, and while one exists it shows a red "Already deployed" card with the site and start time, an **End deployment** button, and Start reads "Already deployed". Start asks again at the moment of the press, in case another phone deployed the device meanwhile, and then asks the server about an open deployment this phone does not hold, before the camera switch, the same check and messages as [Start Monitoring](../onboarding/05-DEVICE-FLOWS.md#start-deployment-sequence) (#448). End deployment runs the same sequence as Stop Monitoring (`endDeploymentSequence` in `useMonitoringActions.ts`: read the ops, clear the deployment id and the GPS, end the record, quiesce) but keeps the BLE link and stays on the screen, so the next Start can follow at once; it needs the device connected. Ending it anywhere else clears the block on the next focus (22 September 2026). Before it touches the device, End deployment asks the phone's roles whether this account may end that deployment, as [Stop Monitoring](../onboarding/05-DEVICE-FLOWS.md#who-may-end-it) does, and otherwise says who can (#450).
 
 ### 3. Camera
 - **Colour / Black & White**: one per firmware slot, seeded from an `AI slots` read on connect. The switch happens at Start, not on selection; the note under the control says which camera is running and whether Start will switch.
@@ -141,7 +141,7 @@ The flash goes to the device as the project's four columns, through the same `co
 - **SD Card Status**: manual check button (total/free KB)
 
 ### 8. Footer
-- **"Start Dev Deployment"** button: green when connected and a project is selected, disabled otherwise, and disabled with the label "No SD card" while the self-test reports none
+- **"Start Dev Deployment"** button: green when connected and a project is selected, disabled otherwise, disabled with the label "No SD card" while the self-test reports none, and with "Cannot deploy in this project" when the account may not deploy into the selected one (#450). A press asks the roles again, before the server check and the camera switch
 
 ---
 

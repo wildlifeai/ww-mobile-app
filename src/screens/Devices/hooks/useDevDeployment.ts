@@ -17,6 +17,10 @@ import { useFocusEffect } from '@react-navigation/native'
 import { useAppSelector } from '../../../redux'
 import { DeploymentService } from '../../../services/DeploymentService'
 import ProjectService from '../../../services/ProjectService'
+import {
+    projectsToDeployInto, startRefusal, endRefusal, START_REFUSED_TITLE, END_REFUSED_TITLE,
+    maySaveProjectSettings, SETTINGS_FOR_THIS_TEST_ONLY,
+} from '../../../services/deploymentAccess'
 import ReferenceDataService from '../../../services/ReferenceDataService'
 import Device from '../../../database/models/Device'
 import Deployment from '../../../database/models/Deployment'
@@ -175,7 +179,18 @@ export const useDevDeployment = ({
 
     // Project state
     const [project, setProject] = useState<ProjectWithDetails | null>(null)
-    const [availableProjects, setAvailableProjects] = useState<ProjectWithDetails[]>([])
+    const [deployableProjects, setDeployableProjects] = useState<ProjectWithDetails[]>([])
+    // The projects this account may deploy into, as on Start Monitoring
+    // (#450), plus the selected one when it is not one of them
+    const availableProjects = useMemo<ProjectWithDetails[]>(() => (
+        project && !deployableProjects.some(p => p.id === project.id)
+            ? [project, ...deployableProjects]
+            : deployableProjects
+    ), [project, deployableProjects])
+    // Why this account may not start a deployment in the selected project, or null
+    const [startRefusalReason, setStartRefusalReason] = useState<string | null>(null)
+    // Whether this account may save the settings to the project (#466), null until known
+    const [savesToProject, setSavesToProject] = useState<boolean | null>(null)
     const [captureMethodOverride, setCaptureMethodOverride] = useState<number | null>(null)
     // As typed. Empty, or anything that is not a positive number, is no
     // override, and the project's own interval applies.
@@ -281,6 +296,13 @@ export const useDevDeployment = ({
     const handleEndActiveDeployment = useCallback(async () => {
         const running = activeDeployment ?? await refreshActiveDeployment()
         if (!running) return
+        // Only its creator while a member, or a project admin, may end it
+        // (#450), so anyone else is told who can before the device is touched
+        const refusal = await endRefusal(user?.id, running)
+        if (refusal) {
+            Alert.alert(END_REFUSED_TITLE, refusal)
+            return
+        }
         if (!bleDevice?.connected) {
             Alert.alert('Device Disconnected', 'Connect to the device first, so the deployment can be cleared from it as well as from the record.')
             return
@@ -343,10 +365,14 @@ export const useDevDeployment = ({
                 const projects = withoutArchived(await ProjectService.getProjectsForUserInOrganisation(
                     user.id, currentOrganisation.id
                 ))
-                setAvailableProjects(projects)
-                if (projects.length > 0 && !project) {
-                    setProject(projects[0])
-                    seedFromProject(projects[0])
+                // The first project this account may deploy into, or with
+                // none, the first it can see, which the screen says it cannot use
+                const deployable = await projectsToDeployInto(user.id, projects)
+                setDeployableProjects(deployable)
+                const first = deployable[0] ?? projects[0]
+                if (first && !project) {
+                    setProject(first)
+                    seedFromProject(first)
                 }
             } catch (e) {
                 logError('[DevDeploy] Failed to load projects:', e)
@@ -354,6 +380,23 @@ export const useDevDeployment = ({
         }
         loadProjects()
     }, [user?.id, currentOrganisation?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    // From the phone's roles, so offline too (#450)
+    useEffect(() => {
+        let isMounted = true
+        if (!project?.id) {
+            setStartRefusalReason(null)
+            setSavesToProject(null)
+            return
+        }
+        startRefusal(user?.id, project.id)
+            .then(reason => { if (isMounted) setStartRefusalReason(reason) })
+            .catch(e => logWarn('[DevDeploy] Role check failed:', e))
+        maySaveProjectSettings(user?.id, project.id)
+            .then(may => { if (isMounted) setSavesToProject(may) })
+            .catch(e => logWarn('[DevDeploy] Role check failed:', e))
+        return () => { isMounted = false }
+    }, [project?.id, user?.id])
 
     // --- Load reference data (capture methods, sensitivities, AI models) ---
     useEffect(() => {
@@ -458,8 +501,16 @@ export const useDevDeployment = ({
     }, [availableProjects, seedFromProject])
 
     // --- Persist project settings to DB ---
-    const persistProjectSettings = useCallback(async () => {
-        if (!project) return
+    // Only a project admin may change the project (#466). For anyone else the
+    // server refuses the update, so the settings stay this test's: the camera
+    // is configured from the screen either way. False when not saved for that
+    // reason, asked at the press so a role changed since the screen opened counts.
+    const persistProjectSettings = useCallback(async (): Promise<boolean> => {
+        if (!project) return true
+        if (!(await maySaveProjectSettings(user?.id, project.id))) {
+            log('[DevDeploy] Project settings not saved: only a project admin may change them')
+            return false
+        }
         const updates: any = {}
         if (captureMethodOverride !== null && captureMethodOverride !== project.capture_method_id) {
             updates.capture_method_id = captureMethodOverride
@@ -500,8 +551,9 @@ export const useDevDeployment = ({
                 logWarn('[DevDeploy] Failed to persist project settings:', e)
             }
         }
+        return true
     }, [
-        project, captureMethodOverride, timelapseIntervalOverride, motionSensitivityOverride,
+        project, user?.id, captureMethodOverride, timelapseIntervalOverride, motionSensitivityOverride,
         aiModelIdOverride, lorawanOverride, recordGpsOverride,
         flashMode, flashLed, flashWindowStart, flashWindowMinutes,
     ])
@@ -522,6 +574,15 @@ export const useDevDeployment = ({
         }
         if (sdCardMissing) {
             Alert.alert('No SD Card', `The device reports no SD card. Every image and setting a deployment writes goes to the card, so it cannot start without one. ${SD_CARD_POWER_CYCLE_HINT}`)
+            return
+        }
+        // A viewer's deployment is refused by the server, so it stops here,
+        // before anything touches the device (#450). The button is off for
+        // one already; this is the answer at the moment of the press.
+        const refusal = await startRefusal(user.id, project.id)
+        if (refusal) {
+            setStartRefusalReason(refusal)
+            Alert.alert(START_REFUSED_TITLE, refusal)
             return
         }
         // Asked again at the moment of the press, not read from the state the
@@ -623,16 +684,19 @@ export const useDevDeployment = ({
             // AI model sync must run BEFORE time sync, see useStartDeployment
             // for the rationale. The model is the one chosen on screen, not
             // the project's stored one: the override is what this deployment
-            // is for, and it is persisted to the project two steps below.
+            // is for, and for a project admin it is persisted to the project two
+            // steps below (#466).
             await pipeline.syncAiModel(bleDevice, bleSession, aiModelIdOverride, cb, true, currentOps)
             await pipeline.syncTime(bleSession, cb)
 
-            // 4. Persist project settings (dev-specific)
+            // 4. Persist project settings (dev-specific), a project admin only (#466)
             progress.addLog('Saving project settings...')
             progress.setFinishStep('Saving settings...')
             progress.setFinishProgress(0.25)
-            await persistProjectSettings()
-            progress.addLog('Project settings saved')
+            const saved = await persistProjectSettings()
+            progress.addLog(saved
+                ? 'Project settings saved'
+                : 'Settings used for this test only: only a project admin can change the project\'s')
 
             // 4b. Reset OPs to factory defaults before applying dev config (shared pipeline).
             // The only reset this deployment gets (connecting is read-only, #268).
@@ -798,6 +862,9 @@ export const useDevDeployment = ({
         // Project
         project,
         availableProjects,
+        startRefusalReason,
+        // Shown when this account may deploy but not change the project (#466)
+        projectSettingsNote: !startRefusalReason && savesToProject === false ? SETTINGS_FOR_THIS_TEST_ONLY : null,
         handleProjectChange,
         // Form
         notes, setNotes,
