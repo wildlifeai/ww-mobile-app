@@ -1,11 +1,12 @@
 import React, { useState, useCallback } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, TextInput } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, TextInput, Alert } from 'react-native'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useExtendedTheme } from '../../../theme'
 import { useDeploymentMonitor } from '../hooks/useDeploymentMonitor'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { LiveActivityLog } from './LiveActivityLog'
+import { END_REFUSED_TITLE } from '../../../services/deploymentAccess'
 
 interface Props {
   device: ExtendedPeripheral | null
@@ -14,6 +15,8 @@ interface Props {
   onContinueMonitoring: () => void
   onStopMonitoring: (notes: string) => void
   isStoppingMonitoring?: boolean
+  /** Why this account may not end the deployment (#450): Stop says so instead of asking for notes */
+  stopBlockedReason?: string | null
 }
 
 const formatTime = (ms: number) => {
@@ -36,6 +39,7 @@ export const DeploymentMonitorView: React.FC<Props> = ({
   onContinueMonitoring,
   onStopMonitoring,
   isStoppingMonitoring,
+  stopBlockedReason,
 }) => {
   const { colors } = useExtendedTheme()
   const { bottom } = useSafeAreaInsets()
@@ -50,8 +54,12 @@ export const DeploymentMonitorView: React.FC<Props> = ({
   const showTimelapse = captureMethodId === 2 || captureMethodId === 3
 
   const handleStopPress = useCallback(() => {
+    if (stopBlockedReason) {
+      Alert.alert(END_REFUSED_TITLE, stopBlockedReason)
+      return
+    }
     setIsEnteringNotes(true)
-  }, [])
+  }, [stopBlockedReason])
 
   const handleStopCancel = useCallback(() => {
     setIsEnteringNotes(false)

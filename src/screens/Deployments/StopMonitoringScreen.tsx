@@ -78,6 +78,7 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
         finishLogs,
         isFinishing,
         isEndDeploymentSuccess,
+        endRefusalReason,
         handleEndDeployment,
         handleFinishDismiss
     } = useEndDeployment({
@@ -243,7 +244,8 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
                         />
                     )}<View style={styles.disconnectedBanner}>
                         <Text variant="bodyLarge" style={{ textAlign: 'center', marginBottom: 12 }}>
-                            Device is not connected. You can force end the deployment in the database, but the device will need to be manually reset later.
+                            {/* Force End is a change to the record too (#450) */}
+                            {endRefusalReason ?? 'Device is not connected. You can force end the deployment in the database, but the device will need to be manually reset later.'}
                         </Text>
                     </View>
 
@@ -285,6 +287,7 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
                 onContinueMonitoring={handleContinueMonitoring}
                 onStopMonitoring={handleStopMonitoring}
                 isStoppingMonitoring={isEnding}
+                stopBlockedReason={endRefusalReason}
             />
             <FinishProgressDialog
                 visible={isFinishing}

@@ -97,6 +97,23 @@ rules, in `services/roleAccess.ts` (#351): `ww_admin` is system scope and sees e
 own project only. Sync already sends only what the account may read; the local rule keeps
 another account's unsynced rows out of view on a shared phone.
 
+What a user may do with a deployment follows the backend too, in the same file (#450), from
+ww-backend's `yyy_policies/52_deployments.sql` and `has_project_role`:
+
+| | `project_admin` | `project_member` | `project_viewer` | `organisation_manager` only | `ww_admin` |
+|---|:-:|:-:|:-:|:-:|:-:|
+| Start one in the project | yes | yes | no | no | yes |
+| End or change one | any | only one they started | no | no | any |
+
+A role past its `expires_at` counts for nothing. Start Monitoring, Stop Monitoring and the Dev
+Deployment Test ask before anything is written to the camera, through `deploymentAccess.ts`,
+which reads only this account's rows (the member cache keeps other people's in the same table)
+and words the refusal: why, and who can. It answers from the phone, so offline as well. With
+no roles on the phone at all the answer is no, since the server would refuse the change
+anyway: a start would leave the camera recording under a deployment id the server never gets,
+and an end would show the deployment ended on the phone while it runs on the server. Row
+level security is still the enforcement; the check is there so the operator is told first.
+
 A project created on the phone also gets a local `project_admin` row for its creator, written
 by `ProjectService.createProject` in the same batch as the project. It mirrors ww-backend's
 `on_project_created` trigger, so the creator is the project's admin offline as well. It is

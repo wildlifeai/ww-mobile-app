@@ -44,7 +44,7 @@ export const StartMonitoringDetailsStep = () => {
 
     // Destructure everything from hook first
     const {
-        formState, submitting, project, availableProjects, sensitivityLabel,
+        formState, submitting, project, availableProjects, startRefusalReason, sensitivityLabel,
         device, bleDevice, isInitializing, initProgress, initStep, initErrors, setInitErrors, aiProcessorFailed,
         finishProgress, finishStep, finishLogs, isFinishing, isStartSuccess,
         handleImageCaptured,
@@ -299,6 +299,14 @@ export const StartMonitoringDetailsStep = () => {
                                 onChange={handleProjectChange}
                                 disabled={submitting || isInitializing}
                             />
+                            {/* Why this account may not deploy into the chosen
+                                project: a viewer, or no role in it (#450).
+                                Start says it again on the press. */}
+                            {startRefusalReason && (
+                                <Text variant="labelSmall" style={[styles.startRefusal, { color: theme.colors.error }]}>
+                                    {startRefusalReason}
+                                </Text>
+                            )}
                         </View>
 
                         {/* Feature icons row */}
@@ -497,6 +505,9 @@ const styles = StyleSheet.create({
     modelOnPhone: {
         marginTop: 8,
         textAlign: 'center',
+    },
+    startRefusal: {
+        marginTop: 8,
     },
     projectSelectContainer: {
         marginBottom: 16,

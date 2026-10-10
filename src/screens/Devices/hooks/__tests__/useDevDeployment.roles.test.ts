@@ -3,20 +3,21 @@ import { Alert } from 'react-native'
 
 import { useDevDeployment } from '../useDevDeployment'
 import { DeploymentService } from '../../../../services/DeploymentService'
+import { endDeploymentSequence } from '../../../../hooks/useMonitoringActions'
 import { resetFakeDatabase, seedRows } from '../../../../../tests/setup/helpers/fakeDatabase'
 
 /**
- * #448 in the Dev Deployment Test: an open deployment on this phone still
- * blocks Start as before, without asking the server; then the server is asked
- * about one the phone does not hold, before the camera switch or anything else
- * touches the device.
+ * #450 in the Dev Deployment Test: Start and the "Already deployed" card's End
+ * deployment ask the phone's roles first, as Start Monitoring and Stop
+ * Monitoring do, before anything touches the device.
  */
 
 const mockState = {
 	devices: { 'ble-1': { id: 'ble-1', name: 'WILD-TEST', connected: true } },
 	authentication: { user: { id: 'user-1' }, currentOrganisation: { id: 'org-1' } },
 }
-const mockProject = { id: 'project-1', name: 'Sinbad Gully', capture_method_id: 1, model_id: null, lorawan_required: false, record_gps_in_images: false }
+const project = (id: string, name: string) => ({ id, name, capture_method_id: 1, model_id: null, lorawan_required: false, record_gps_in_images: false })
+const mockProjects = [project('project-1', 'Sinbad Gully'), project('project-2', 'Orokonui')]
 const mockExecute = jest.fn(async (command: any): Promise<any> => (command === 'getops' ? Array(37).fill('0') : 80))
 const mockSession = { execute: mockExecute }
 const mockGetLocation = jest.fn()
@@ -42,7 +43,7 @@ jest.mock('../../../../services/DeploymentService', () => ({
 }))
 jest.mock('../../../../services/ProjectService', () => ({
 	__esModule: true,
-	default: { getProjectsForUserInOrganisation: jest.fn(async () => [mockProject]), updateProject: jest.fn() },
+	default: { getProjectsForUserInOrganisation: jest.fn(async () => mockProjects), updateProject: jest.fn() },
 }))
 jest.mock('../../../../services/ReferenceDataService', () => ({
 	__esModule: true,
@@ -81,6 +82,10 @@ jest.mock('../../../../utils/logger', () => ({ log: jest.fn(), logWarn: jest.fn(
 const localActive = DeploymentService.getActiveDeploymentForDeviceId as jest.Mock
 const checkServer = DeploymentService.checkServerForOpenDeployment as jest.Mock
 const createDeployment = DeploymentService.createDeployment as jest.Mock
+const endSequence = endDeploymentSequence as jest.Mock
+
+const role = (name: string, scopeType: string, scopeId: string | null) => ({ userId: 'user-1', role: name, scopeType, scopeId, isActive: true })
+const running = (setupBy: string) => ({ id: 'dep-running', projectId: 'project-1', setupBy, locationName: 'Ridge' })
 
 /** Let the screen's loads and the checks on connect settle */
 const settle = async () => {
@@ -90,65 +95,102 @@ const settle = async () => {
 const mount = async () => {
 	const hook = renderHook(() => useDevDeployment({ deviceId: 'ble-1', bleDeviceId: 'ble-1', navigation: {} }))
 	await settle()
-	expect(hook.result.current.project?.id).toBe('project-1')
-	expect(hook.result.current.cameraChoice).toBe('RP3')
-	// The battery and SD card reads on connect are not part of the start
 	mockExecute.mockClear()
 	mockCamera.switchTo.mockClear()
 	return hook
 }
 
-const start = async (result: { current: ReturnType<typeof useDevDeployment> }) => {
-	await act(async () => { await result.current.handleStartDeployment() })
-}
-
 beforeEach(() => {
 	jest.spyOn(Alert, 'alert').mockImplementation(() => {})
-	// A member may start one (#450, useDevDeployment.roles.test.ts)
 	resetFakeDatabase()
-	seedRows('user_roles', [{ userId: 'user-1', role: 'project_member', scopeType: 'project', scopeId: 'project-1', isActive: true }])
+	seedRows('projects', mockProjects.map(p => ({ id: p.id, name: p.name })))
+	seedRows('users', [{ id: 'user-tui', firstname: 'Tui Smith', surname: '' }])
 	localActive.mockResolvedValue(undefined)
+	checkServer.mockResolvedValue({ kind: 'none' })
 	createDeployment.mockResolvedValue({ id: 'dep-new-0001', deploymentStart: new Date() })
+	endSequence.mockResolvedValue({ cameraAnswered: true })
 })
 
-describe('Dev Deployment and an open deployment on the server (#448)', () => {
-	it('stops before the camera switch or any command when the server has one', async () => {
-		const message = 'This camera is still deployed in "Other", started by Tui Smith on 3/10/2026.'
-		checkServer.mockResolvedValue({ kind: 'open', message })
+describe('Dev Deployment Start and the project role (#450)', () => {
+	it('opens on the first project it may deploy into, and offers only those', async () => {
+		seedRows('user_roles', [role('project_viewer', 'project', 'project-1'), role('project_member', 'project', 'project-2')])
 		const { result } = await mount()
 
-		await start(result)
+		expect(result.current.project?.id).toBe('project-2')
+		expect(result.current.availableProjects.map(p => p.id)).toEqual(['project-2'])
+		expect(result.current.startRefusalReason).toBeNull()
+	})
 
-		expect(checkServer).toHaveBeenCalledWith('device-1', 'user-1')
-		expect(Alert.alert).toHaveBeenCalledWith('Already Deployed', message)
+	it('with none, opens on the first project it can see, says why, and a press stops before the device', async () => {
+		seedRows('user_roles', [role('project_viewer', 'project', 'project-1'), role('project_viewer', 'project', 'project-2')])
+		const { result } = await mount()
+		const message = 'You are a viewer in "Sinbad Gully", and viewers cannot start monitoring. Ask a project admin to make you a member.'
+
+		expect(result.current.project?.id).toBe('project-1')
+		expect(result.current.startRefusalReason).toBe(message)
+		await act(async () => { await result.current.handleStartDeployment() })
+
+		expect(Alert.alert).toHaveBeenCalledWith('Cannot Start Monitoring', message)
+		expect(checkServer).not.toHaveBeenCalled()
 		expect(mockCamera.switchTo).not.toHaveBeenCalled()
 		expect(mockExecute).not.toHaveBeenCalled()
 		expect(createDeployment).not.toHaveBeenCalled()
-		expect(result.current.submitting).toBe(false)
 	})
 
-	it('carries on with a warning when the server could not be asked', async () => {
-		const message = 'Could not ask the server whether this camera is still deployed elsewhere. If it is, the server will refuse this deployment.'
-		checkServer.mockResolvedValue({ kind: 'unchecked', message })
+	it('lets a member start', async () => {
+		seedRows('user_roles', [role('project_member', 'project', 'project-1')])
 		const { result } = await mount()
 
-		await start(result)
+		await act(async () => { await result.current.handleStartDeployment() })
 
-		expect(result.current.finishLogs).toContain(`⚠️ ${message}`)
-		expect(checkServer.mock.invocationCallOrder[0]).toBeLessThan(mockCamera.switchTo.mock.invocationCallOrder[0])
-		expect(mockExecute).toHaveBeenCalledWith('getops')
-		expect(createDeployment).toHaveBeenCalled()
+		expect(Alert.alert).not.toHaveBeenCalled()
+		expect(createDeployment).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'project-1' }))
+	})
+})
+
+describe('Dev Deployment End deployment and the project role (#450)', () => {
+	const end = async (setupBy: string) => {
+		localActive.mockResolvedValue(running(setupBy))
+		const { result } = await mount()
+		await act(async () => { await result.current.handleEndActiveDeployment() })
+		return result
+	}
+
+	it('stops a viewer before the device is touched, naming who can end it', async () => {
+		seedRows('user_roles', [role('project_viewer', 'project', 'project-1')])
+
+		await end('user-tui')
+
+		expect(Alert.alert).toHaveBeenCalledWith(
+			'Cannot End This Deployment',
+			'You are a viewer in "Sinbad Gully", and viewers cannot end deployments. Only Tui Smith, who started it, or a project admin can end it.',
+		)
+		expect(endSequence).not.toHaveBeenCalled()
 	})
 
-	it('still blocks on the open deployment this phone holds, without asking the server', async () => {
-		localActive.mockResolvedValue({ id: 'dep-local', locationName: 'Ridge' })
-		const { result } = await mount()
+	it("stops a member ending someone else's, as the server does", async () => {
+		seedRows('user_roles', [role('project_member', 'project', 'project-1')])
 
-		await start(result)
+		await end('user-tui')
 
-		expect(Alert.alert).toHaveBeenCalledWith('Already Deployed', expect.stringContaining('already deployed at Ridge'))
-		expect(checkServer).not.toHaveBeenCalled()
-		expect(mockCamera.switchTo).not.toHaveBeenCalled()
-		expect(createDeployment).not.toHaveBeenCalled()
+		expect(Alert.alert).toHaveBeenCalledWith('Cannot End This Deployment', expect.stringMatching(/^Members can end only the deployments they started/))
+		expect(endSequence).not.toHaveBeenCalled()
+	})
+
+	it('lets the creator end their own while a member', async () => {
+		seedRows('user_roles', [role('project_member', 'project', 'project-1')])
+
+		await end('user-1')
+
+		expect(Alert.alert).not.toHaveBeenCalled()
+		expect(endSequence).toHaveBeenCalledWith(expect.objectContaining({ deploymentId: 'dep-running', userId: 'user-1' }))
+	})
+
+	it("lets a project admin end anyone's", async () => {
+		seedRows('user_roles', [role('project_admin', 'project', 'project-1')])
+
+		await end('user-tui')
+
+		expect(endSequence).toHaveBeenCalled()
 	})
 })

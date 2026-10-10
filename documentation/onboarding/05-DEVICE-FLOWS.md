@@ -85,7 +85,7 @@ flowchart TD
     H -- Yes --> I["Show warning banner (optional update)"]
     I --> G
     H -- No --> J{"Tap 'Start Monitoring'"}
-    J --> K["Pipeline: Server check → Time Sync → AI Model → Snapshot → DB Record → Reset OPs → Configure"]
+    J --> K["Pipeline: Role check → Server check → Time Sync → AI Model → Snapshot → DB Record → Reset OPs → Configure"]
     K --> L["Live Monitor (DeploymentMonitorView)"]
     L --> M["User taps 'Disconnect'"]
     M --> N["Navigate to Home"]
@@ -134,7 +134,7 @@ through a subtitle under the title: the standing descriptions were removed on 22
 
 | Element | Notes |
 |---------|-------|
-| Project Selector (`WWSelect`) | Dropdown to pick or switch the attached project. Dynamically recalculates capture method, sensitivity, and feature icons. |
+| Project Selector (`WWSelect`) | Dropdown to pick or switch the attached project. Dynamically recalculates capture method, sensitivity, and feature icons. It offers only the projects this account [may deploy into](./03-DATA-AND-SYNC.md#key-tables) (#450). When the scanner opened the screen on a project it may not deploy into, that project stays selected with the reason under the field, and Start says it again. |
 | Feature Icons Row | Visual indicators: 🔄 Activity Detection, ⏱ Timelapse, 📡 LoRaWAN, 🛰 GPS in images, 🧠 AI Model |
 | Model readiness line | Only when the project has a model: "Model ready on this phone", or "Model not downloaded: connect to download". Offline, a start with a model the phone lacks stops unless the camera already carries it (#333). Refreshes when the pre-download lands the files. |
 
@@ -183,7 +183,9 @@ Project settings (capture method, sensitivity, timelapse interval, GPS image tag
 
 When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeployment.ts` executes a multi-step pipeline. Steps 1–2 and 5–6 are shared with the [Dev Deployment](../resources/Dev-Deployment-Guide.md) flow via `deploymentPipeline.ts`.
 
-**Before step 1 it asks the server about the camera** (`DeploymentService.checkServerForOpenDeployment`, #448). The server allows one open deployment per camera ([the contract](../../.agents/skills/references/cross-repo-contracts.md)), and the scanner only knows the phone's own. An open deployment on the server that this phone does not hold, or holds and has not ended, **stops the start** with "Already Deployed", naming its project, who started it when the server will say, and when; nothing has been written to the camera. The check sees only what this account may read (deployments in its projects, in an organisation it manages, or everywhere for a `ww_admin`): **an open deployment in any other project is invisible to it**, and only the refused push shows it. Offline, on a failed read or after 10 s without an answer, it says so in the progress log and carries on.
+**First it asks the phone's roles** whether this account may deploy into the project (`startRefusal` in `deploymentAccess.ts`, #450, [the rule](./03-DATA-AND-SYNC.md#key-tables)). A viewer, an organisation manager with no role in the project, or a phone with no roles synced yet **stops the start** with "Cannot Start Monitoring" and the reason, before the server is asked or anything is written to the camera. It needs no connection.
+
+**Then, before step 1, it asks the server about the camera** (`DeploymentService.checkServerForOpenDeployment`, #448). The server allows one open deployment per camera ([the contract](../../.agents/skills/references/cross-repo-contracts.md)), and the scanner only knows the phone's own. An open deployment on the server that this phone does not hold, or holds and has not ended, **stops the start** with "Already Deployed", naming its project, who started it when the server will say, and when; nothing has been written to the camera. The check sees only what this account may read (deployments in its projects, in an organisation it manages, or everywhere for a `ww_admin`): **an open deployment in any other project is invisible to it**, and only the refused push shows it. Offline, on a failed read or after 10 s without an answer, it says so in the progress log and carries on.
 
 | Step | Action | Detail |
 |------|--------|--------|
@@ -375,6 +377,17 @@ flowchart TD
     P --> O
 ```
 
+### Who may end it
+
+Before the sequence, and before Force End is offered, the phone's roles are asked whether this
+account may end the deployment (`endRefusal` in `deploymentAccess.ts`, #450,
+[the rule](./03-DATA-AND-SYNC.md#key-tables)). A viewer, or a member ending someone else's,
+gets "Cannot End This Deployment" naming who can, and the camera is not touched. The monitor view says it when Stop Monitoring is pressed,
+before the notes, and the disconnected view shows it in place of the Force End text. The
+scanner still routes such a user here (it checks only that the project is on the phone), and
+"Disconnect & Continue Monitoring" still works. Stop Monitoring on the live monitor after a
+start, and the Dev Deployment Test's End deployment, ask the same.
+
 ### End Deployment Sequence
 
 A single [bulk fetch](./04-ENGINEER-CONSOLE.md#op-bulk-fetch-optimization-ai-getop--1) is performed before Step 1, and the cached result is shared with both Step 1 and Step 4.
@@ -430,6 +443,8 @@ If the device is not connected, the user can "Force End (Database Only)":
 | "This project's AI model ... is not on this phone" | The model did not come down with the reference data: phone offline, or the model is not `validated` or `deployed` | Get the phone online and start again, which syncs first. If it persists, check the model's status on the website. |
 | "This camera's BLE firmware is ..., and sending files to it needs ... or later" | The model has to be sent to the card and the camera's BLE firmware predates the relay FIFO the transfer needs ([the floor](../resources/File-Transfer-Protocol.md#the-ble-firmware-floor)) | Update the BLE firmware, then start again. Nothing was written to the camera. |
 | "This project's AI model "..." could not be downloaded" | The model is not on the camera or its card, and the phone could not download its files. Offline, it was assigned after the phone's last sync or the pre-download had not finished; online, the download itself failed | Check the connection, wait for the sync (the Start Monitoring screen then says "Model ready on this phone"), and start again. Nothing was written to the camera. |
+| "Cannot Start Monitoring": "You are a viewer in ..." or "You are not a member of ..." | This account may not deploy into the project: a viewer, or an organisation manager with no role in it (#450). The server would refuse the deployment | A project admin makes you a member, or pick a project you are a member of. Nothing was written to the camera. |
+| "Cannot Start Monitoring": "Your roles have not reached this phone yet ..." | No role of this account is on the phone, so it cannot tell | Connect so the app syncs, then start again. |
 | "Already Deployed": "This camera is still deployed in ..." | The server has an open deployment on this camera that this phone does not hold: another user's, or one started on another phone and not pulled yet (#448) | Whoever runs that deployment ends it. If it is yours, sync, then reconnect: the scanner sends the camera to End Deployment. Nothing was written to the camera. |
 
 ### End Deployment
@@ -439,6 +454,7 @@ If the device is not connected, the user can "Force End (Database Only)":
 | "No Active Deployment" | Device not deployed or already ended | Verify correct device; check deployment list |
 | "Failed to Clear Deployment ID" | BLE write failure after 3 retries | Use "Force End"; manually reset via [Engineer Console](./04-ENGINEER-CONSOLE.md) |
 | "Connection Lost" before end | Device out of range or battery dead | Use "Force End (Database Only)" |
+| "Cannot End This Deployment" | This account [may not end it](./03-DATA-AND-SYNC.md#key-tables) (#450): a viewer, a member ending someone else's, or its creator made a viewer since. The server would refuse the end | The person named, or a project admin, ends it. The camera was not touched. |
 | "Camera not answering" | The Himax did not answer the probe, usually asleep in its motion loop; the record is ended but the camera keeps capturing | Wake the camera with its button, reconnect, and clear it from the [Engineer Console](./04-ENGINEER-CONSOLE.md) |
 
 ---
