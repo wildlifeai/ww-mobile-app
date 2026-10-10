@@ -12,7 +12,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 406,
+    version: 408,
     tables: [
         tableSchema({
             name: 'account_deletion_requests',
@@ -137,6 +137,27 @@ export default appSchema({
             columns: [
                 { name: 'job_data', type: 'string' },
                 { name: 'status', type: 'string' },
+                // System & Sync Fields
+                { name: 'created_at', type: 'number' },
+                { name: 'updated_at', type: 'number' },
+                { name: 'deleted_at', type: 'number' },
+                { name: '_version', type: 'number' },
+                { name: '_custom_sync_status', type: 'string', isOptional: true },
+                { name: 'modified_by', type: 'string' },
+            ],
+        }),
+        tableSchema({
+            name: 'api_keys',
+            columns: [
+                { name: 'created_by', type: 'string', isOptional: true, isIndexed: true },
+                { name: 'expires_at', type: 'string', isOptional: true },
+                { name: 'key_hash', type: 'string' },
+                { name: 'key_prefix', type: 'string' },
+                { name: 'last_used_at', type: 'string', isOptional: true },
+                { name: 'name', type: 'string' },
+                { name: 'organisation_id', type: 'string', isIndexed: true },
+                { name: 'revoked_at', type: 'string', isOptional: true },
+                { name: 'scopes', type: 'string' },
                 // System & Sync Fields
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
@@ -325,7 +346,7 @@ export default appSchema({
                 { name: 'location_description', type: 'string', isOptional: true },
                 { name: 'location_name', type: 'string' },
                 { name: 'longitude', type: 'number', isOptional: true },
-                { name: 'lorawan_last_verified_at', type: 'string', isOptional: true },
+                { name: 'lorawan_last_verified_at', type: 'number', isOptional: true },
                 { name: 'lorawan_network', type: 'string', isOptional: true },
                 { name: 'lorawan_registration_completed', type: 'boolean' },
                 { name: 'lorawan_rssi_at_start', type: 'number', isOptional: true },
@@ -338,9 +359,6 @@ export default appSchema({
                 { name: 'start_deployment_comments', type: 'string', isOptional: true },
                 { name: 'timelapse_interval_seconds', type: 'number', isOptional: true },
                 { name: 'timezone', type: 'string', isOptional: true },
-                { name: 'deployment_comments', type: 'string', isOptional: true },
-                { name: 'camera_location_description', type: 'string', isOptional: true },
-                { name: 'camera_location_image_path', type: 'string', isOptional: true },
                 // System & Sync Fields
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
@@ -971,8 +989,8 @@ export default appSchema({
         tableSchema({
             name: 'user_roles',
             columns: [
-                { name: 'expires_at', type: 'string', isOptional: true },
-                { name: 'granted_at', type: 'string' },
+                { name: 'expires_at', type: 'number', isOptional: true },
+                { name: 'granted_at', type: 'number' },
                 { name: 'granted_by', type: 'string', isOptional: true },
                 { name: 'is_active', type: 'boolean' },
                 { name: 'role', type: 'string' },

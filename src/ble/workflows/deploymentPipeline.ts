@@ -21,6 +21,7 @@ import { log, logWarn } from '../../utils/logger'
 import { describeProjectFlash, ProjectFlashColumns } from '../../utils/projectFlash'
 import { describeProjectBurst, ProjectBurstColumns } from '../../utils/projectBurst'
 import { describeDetectionThreshold, ProjectDetectionThresholdColumns } from '../../utils/projectDetectionThreshold'
+import { describeModelFile, isTfliteModel } from '../../utils/tfliteModel'
 
 interface ProgressCallbacks {
     addLog: (msg: string) => void
@@ -155,11 +156,29 @@ export async function measureLight(
 }
 
 /**
- * The project's model is on neither the camera nor the card, and its files
- * could not be downloaded. The one model failure that stops a deployment
- * rather than warning, see step 5 of `syncAiModel` (#333).
+ * A model failure that stops the deployment rather than warning. Each is
+ * thrown where `syncAiModel` decides to stop, and passed through the catch at
+ * its end that turns any other model failure into a warning: files the phone
+ * cannot get (#333), a file that is not a TFLite model, and a `loadmodel` the
+ * camera never answers (#428).
  */
-class ModelFilesUnavailableError extends Error {}
+class ModelStopError extends Error {}
+
+/**
+ * Stops the deployment when the phone's copy of the model is not a TFLite
+ * model, before any of it reaches the camera. The Himax copies the file to
+ * flash before it looks inside, and one it cannot parse halts it (Seeed #241).
+ * A new download cannot help: the file in storage is the one that is wrong.
+ */
+function refuseUnlessTflite(model: AiModel, bytes: Uint8Array, addLog: (msg: string) => void): void {
+    if (isTfliteModel(bytes)) return
+    const what = describeModelFile(bytes)
+    addLog(`AI model "${model.name}" is not a TFLite model (the file ${what}), stopping`)
+    throw new ModelStopError(
+        `This project's AI model "${model.name}" is not a TFLite model (the file ${what}), so the camera cannot load it. ` +
+        'Nothing was written to the camera. The model\'s file needs replacing before this project can be deployed.'
+    )
+}
 
 /**
  * Finds the project's model on the phone, with the firmware IDs it loads
@@ -299,7 +318,10 @@ export async function syncAiModel(
             // real bytes, so it downloads them, and a phone in the field may
             // have no connectivity: if the download or the `crc` command fails
             // we keep the old name-only behaviour rather than blocking a
-            // deployment over a check we could not run.
+            // deployment over a check we could not run. The one exception is
+            // a phone copy that is not a model: the card's file either matches
+            // it or would be replaced by it, and loading either halts the
+            // camera (#428).
             if (hasTfl || hasLabels) {
                 try {
                     const localFiles = await AiModelService.ensureFilesDownloaded(targetModel)
@@ -312,6 +334,7 @@ export async function syncAiModel(
                         if (!file.present || !file.uri) continue
                         const bytes = await AiModelService.readModelAsBytes(file.uri)
                         if (!bytes) continue
+                        if (file.filename === tflFilename) refuseUnlessTflite(targetModel, bytes, addLog)
                         const want = crc16ccitt(bytes)
                         const onCard = await session.execute(() => commandRegistry.crc(file.filename))
                         const wantHex = `0x${want.toString(16).toUpperCase().padStart(4, '0')}`
@@ -327,6 +350,7 @@ export async function syncAiModel(
                         }
                     }
                 } catch (verifyError) {
+                    if (verifyError instanceof ModelStopError) throw verifyError
                     logWarn('Could not verify the model files already on the card:', verifyError)
                     addLog('Could not check the files on the card; using the ones that are there')
                 }
@@ -354,7 +378,7 @@ export async function syncAiModel(
                     const reason = downloadError instanceof Error ? downloadError.message : String(downloadError)
                     logWarn('[Deployment] Model files could not be obtained:', downloadError)
                     addLog(`AI model "${targetModel.name}" is not on the camera or this phone, and could not be downloaded (${reason}), stopping`)
-                    throw new ModelFilesUnavailableError(
+                    throw new ModelStopError(
                         `This project's AI model "${targetModel.name}" could not be downloaded, ` +
                         'and it is not on the camera or this phone. Check the phone\'s connection and start again.'
                     )
@@ -362,12 +386,13 @@ export async function syncAiModel(
 
                 // Transfer TFL if missing
                 if (!hasTfl) {
-                    addLog(`Transferring ${tflFilename}...`)
-                    setStep('Transferring model...')
                     const modelBytes = await AiModelService.readModelAsBytes(localFiles.modelUri)
                     if (!modelBytes) {
                         throw new Error(`Failed to read model bytes from ${localFiles.modelUri}`)
                     }
+                    refuseUnlessTflite(targetModel, modelBytes, addLog)
+                    addLog(`Transferring ${tflFilename}...`)
+                    setStep('Transferring model...')
                     // Live feedback: a model is minutes of BLE transfer, and the
                     // old mapping moved the overall bar 4% total - invisible.
                     // The step line carries percentage + KB (throttled to whole
@@ -415,13 +440,32 @@ export async function syncAiModel(
             addLog('Loading model...')
             setStep('Loading model...')
             setProgress(0.19)
-            await session.execute(() => commandRegistry.loadmodel(numericId, numericVer))
+            try {
+                await session.execute(() => commandRegistry.loadmodel(numericId, numericVer))
+            } catch (loadError) {
+                // A refusal is a reply from a camera that is still running, and
+                // stays the warning below. Silence is not: a file the Himax
+                // cannot parse halts it (Seeed #241), and from then on it
+                // answers commands but never captures or sleeps until it is
+                // restarted. Starting the deployment anyway left a camera that
+                // recorded nothing while the app said it was (#428).
+                if (loadError instanceof Error && loadError.message === 'TIMEOUT') {
+                    addLog(`The camera did not answer loadmodel for "${targetModel.name}", stopping`)
+                    throw new ModelStopError(
+                        `The camera did not confirm it loaded this project's AI model "${targetModel.name}", and may have stopped working. ` +
+                        'Power cycle the camera (unplug it or remove the battery), reconnect and start again.'
+                    )
+                }
+                throw loadError
+            }
             addLog('AI model loaded successfully')
 
         } catch (e) {
-            // Files the phone cannot get stop the deployment. A transfer or a
-            // `loadmodel` that fails stays a warning: the camera still records.
-            if (e instanceof ModelFilesUnavailableError) throw e
+            // Files the phone cannot get, a file that is not a model and a
+            // `loadmodel` the camera never answers stop the deployment. A
+            // transfer that fails, or a `loadmodel` the camera refuses, stays a
+            // warning: the camera still records.
+            if (e instanceof ModelStopError) throw e
             // A transfer refused over the BLE firmware stops it too, for the
             // same reasons as the files: the refusal comes before anything is
             // written to the camera or the deployment is created, a second

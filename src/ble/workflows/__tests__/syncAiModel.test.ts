@@ -245,6 +245,101 @@ describe('syncAiModel when the model files cannot be downloaded', () => {
 })
 
 /**
+ * A file that is not a TFLite model halts the Himax at `loadmodel` (Seeed
+ * #241). On the bench on 8 October 2026 the dev backend's model was a ZIP
+ * archive: the app sent it as 7V1.TFL, `loadmodel` went unanswered twice, the
+ * timeout was the warning, and the deployment started on a camera that never
+ * captured or slept again (#428). The phone's copy is now checked before any
+ * of it is sent, and a `loadmodel` the camera never answers stops the start.
+ */
+describe('syncAiModel with a model the camera cannot load', () => {
+    const MODEL_ID = 'd0000000-0000-4000-8000-0000000000a1'
+    const model = new Uint8Array([0x28, 0, 0, 0, 0x54, 0x46, 0x4c, 0x33, 1, 2, 3])
+    const zip = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x14, 0, 0, 0, 1, 2, 3])
+    const labels = new Uint8Array([0x72, 0x61, 0x74])
+    const ops = Array.from({ length: 37 }, () => '0')
+    const notAModel = 'This project\'s AI model "Rat Detection" is not a TFLite model (the file is a ZIP archive), so the camera cannot load it. ' +
+        'Nothing was written to the camera. The model\'s file needs replacing before this project can be deployed.'
+
+    /** A device whose card holds `files` and whose `loadmodel` gets `load`, recording every line sent. */
+    const device = (files: string[], load: () => Promise<unknown> = async () => true) => {
+        const sent: string[] = []
+        const session = {
+            execute: jest.fn(async (build: any) => {
+                const line: string = build().build()
+                sent.push(line)
+                if (line === 'AI dir') return files
+                if (line.startsWith('AI loadmodel')) return load()
+                return true
+            }),
+        }
+        return { session, sent }
+    }
+    const callbacks = () => ({ addLog: jest.fn(), setStep: jest.fn(), setProgress: jest.fn() })
+    const phoneHas = (bytes: Uint8Array) => {
+        ;(AiModelService.readModelAsBytes as jest.Mock).mockImplementation(async (uri: string) => (uri === 'file://m' ? bytes : labels))
+    }
+
+    beforeEach(() => {
+        jest.resetAllMocks()
+        ;(AiModelService.getModelById as jest.Mock).mockResolvedValue({ name: 'Rat Detection', labelsPath: 'x/7V1.txt' })
+        ;(ReferenceDataService.getFirmwareIds as jest.Mock).mockResolvedValue({ firmwareModelId: 7, versionNumber: 1 })
+        ;(AiModelService.getModelFileExtensions as jest.Mock).mockReturnValue({ modelExt: 'tfl', labelsExt: 'txt' })
+        ;(AiModelService.isDownloaded as jest.Mock).mockResolvedValue(true)
+        ;(AiModelService.ensureFilesDownloaded as jest.Mock).mockResolvedValue({ modelUri: 'file://m', labelsUri: 'file://l' })
+        phoneHas(model)
+    })
+
+    it('stops before sending anything when the phone\'s copy is a ZIP archive', async () => {
+        phoneHas(zip)
+        const { session, sent } = device([])
+        const cb = callbacks()
+
+        await expect(syncAiModel({} as any, session as any, MODEL_ID, cb, true, ops)).rejects.toThrow(notAModel)
+
+        // Only the read that found the card empty went out
+        expect(sent).toEqual(['AI dir'])
+        expect(runFileTransferPipeline).not.toHaveBeenCalled()
+        expect(cb.addLog).toHaveBeenCalledWith('AI model "Rat Detection" is not a TFLite model (the file is a ZIP archive), stopping')
+        expect(cb.addLog).not.toHaveBeenCalledWith(expect.stringMatching(/update FAILED/))
+    })
+
+    it('stops without loading when the card already holds the same ZIP, as the bench camera did after the first try', async () => {
+        phoneHas(zip)
+        const { session, sent } = device(['7V1.TFL 11', '7V1.TXT 3'])
+
+        await expect(syncAiModel({} as any, session as any, MODEL_ID, callbacks(), true, ops)).rejects.toThrow(notAModel)
+
+        expect(sent).toEqual(['AI dir'])
+        expect(runFileTransferPipeline).not.toHaveBeenCalled()
+    })
+
+    it('stops when loadmodel goes unanswered, instead of starting a deployment on a camera that may have halted', async () => {
+        const { session, sent } = device([], async () => { throw new Error('TIMEOUT') })
+        const cb = callbacks()
+
+        await expect(syncAiModel({} as any, session as any, MODEL_ID, cb, true, ops)).rejects.toThrow(
+            'The camera did not confirm it loaded this project\'s AI model "Rat Detection", and may have stopped working. ' +
+            'Power cycle the camera (unplug it or remove the battery), reconnect and start again.'
+        )
+
+        expect(sent).toContain('AI loadmodel 7 1')
+        expect(cb.addLog).toHaveBeenCalledWith('The camera did not answer loadmodel for "Rat Detection", stopping')
+        expect(cb.addLog).not.toHaveBeenCalledWith('AI model loaded successfully')
+        expect(cb.addLog).not.toHaveBeenCalledWith(expect.stringMatching(/update FAILED/))
+    })
+
+    it('keeps a loadmodel the camera refuses a warning, since a camera that replies is still running', async () => {
+        const { session } = device([], async () => { throw new Error('loadmodel failed: Error loading model') })
+        const cb = callbacks()
+
+        await syncAiModel({} as any, session as any, MODEL_ID, cb, true, ops)
+
+        expect(cb.addLog).toHaveBeenCalledWith(expect.stringMatching(/AI model update FAILED/))
+    })
+})
+
+/**
  * BLE firmware below 0.30.47 cannot take the windowed transfer, and the
  * pipeline refuses it before FILE_START (#289). In a deployment that refusal
  * stops the start like files the phone cannot get: nothing has been written

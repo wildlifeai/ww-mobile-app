@@ -75,6 +75,7 @@ export const FirmwareUpdateScreen = () => {
         downloadState,
         downloadProgress,
         fileTransferProgress,
+        passImage,
         phase,
         batteryLevel,
         isBatteryLow,
@@ -215,6 +216,12 @@ export const FirmwareUpdateScreen = () => {
     // still the SD card - no download, no BLE transfer, ~2 min total.
     const pairInDb = !!(latestByVariant?.rp3 && latestByVariant?.hm)
     const pairSource: HimaxFirmwareSource | null = pairOnSd ? 'sdcard' : (pairInDb ? 'download' : null)
+    // One camera's build in the catalogue: the pair cannot start, a sync cannot
+    // fetch a build that was never uploaded, and the SD card source needs both
+    // rows too, so the screen names the missing camera instead (#437)
+    const missingVariant: 'RP3' | 'HM0360' | null = latestByVariant && !pairInDb
+        ? (latestByVariant.rp3 ? 'HM0360' : 'RP3')
+        : null
 
     const filteredOptions = firmwareOptions
 
@@ -290,6 +297,7 @@ export const FirmwareUpdateScreen = () => {
                     upToDate={upToDate}
                     isPreflightDone={isPreflightDone}
                     canStart={target === 'himax' ? !!pairSource : !!latestFirmware}
+                    missingVariant={missingVariant}
                     batteryLevel={batteryLevel}
                     isBatteryLow={isBatteryLow && !isDfuMode}
                     externalPowerConfirmed={externalPowerConfirmed}
@@ -461,7 +469,13 @@ export const FirmwareUpdateScreen = () => {
                                     : 'Flashes the colour and night-IR camera images in two passes.'}
                             {' '}The device finishes on the camera it is using now.
                         </WWText>
-                        {!pairSource && isPreflightDone && (
+                        {missingVariant && (
+                            <WWText variant="bodySmall" style={[styles.marginBottom8, { color: colors.error }]}>
+                                No {VARIANT_META[missingVariant].emoji} {VARIANT_META[missingVariant].label} build in the firmware
+                                catalogue, and both cameras update together. Open this screen again once it is uploaded.
+                            </WWText>
+                        )}
+                        {!pairSource && !missingVariant && isPreflightDone && (
                             <WWText variant="bodySmall" style={[styles.marginBottom8, { color: colors.error }]}>
                                 No firmware images available — sync the app to fetch the catalogue, or prepare the
                                 SD card from the website, reinsert it and power cycle the camera, since a card put
@@ -569,7 +583,7 @@ export const FirmwareUpdateScreen = () => {
                         <View style={styles.marginTop12}>
                             <FileTransferProgressCard
                                 title="Downloading Firmware"
-                                filename={selectedOption?.dbRecord?.locationPath || latestFirmware?.locationPath}
+                                filename={passImage?.locationPath || latestFirmware?.locationPath}
                                 isIndeterminate={downloadProgress?.progress === null}
                                 progress={downloadProgress?.progress || 0}
                                 speedBytesPerSec={downloadProgress?.speedBytesPerSec}
@@ -590,12 +604,13 @@ export const FirmwareUpdateScreen = () => {
                         second image of a dual-camera update, where the phase machine
                         is already beyond 'transferring' for good. The hook clears
                         the state when a transfer finishes, so presence == in flight
-                        (or failed, which the card renders). */}
+                        (or failed, which the card renders). The file is the
+                        pass's own, not the build picked under Advanced (#436). */}
                     {fileTransferProgress ? (
                         <View style={styles.marginTop12}>
                             <FileTransferProgressCard
                                 title="Transferring to Device"
-                                filename={selectedOption?.filename || 'OUTPUT.IMG'}
+                                filename={passImage?.filename}
                                 isIndeterminate={false}
                                 progress={fileTransferProgress.percentage / 100}
                                 speedBytesPerSec={fileTransferProgress.elapsedMs > 0 ? (fileTransferProgress.bytesSent / fileTransferProgress.elapsedMs) * 1000 : 0} 

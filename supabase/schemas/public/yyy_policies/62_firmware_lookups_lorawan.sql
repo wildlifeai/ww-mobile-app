@@ -107,49 +107,10 @@ CREATE POLICY "ww_admin_all_lorawan_parsed_messages"
     )
   );
 
--- project_access: Can view messages for deployments in their projects
-CREATE POLICY "project_access_view_lorawan_messages"
-  ON lorawan_messages FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1
-      FROM deployments AS d
-      INNER JOIN user_roles AS ur ON (
-        (ur.scope_type = 'project' AND d.project_id = ur.scope_id)
-        OR (ur.scope_type = 'organisation' AND ur.scope_id = (
-          SELECT projects.organisation_id
-          FROM projects
-          WHERE projects.id = d.project_id
-        ))
-      )
-      WHERE d.id = lorawan_messages.deployment_id
-        AND ur.user_id = (SELECT auth.uid())
-        AND ur.is_active = true
-        AND ur.deleted_at IS null
-    )
-  );
-
-CREATE POLICY "project_access_view_lorawan_parsed_messages"
-  ON lorawan_parsed_messages FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1
-      FROM lorawan_messages AS lm
-      INNER JOIN deployments AS d ON lm.deployment_id = d.id
-      INNER JOIN user_roles AS ur ON (
-        (ur.scope_type = 'project' AND d.project_id = ur.scope_id)
-        OR (ur.scope_type = 'organisation' AND ur.scope_id = (
-          SELECT projects.organisation_id
-          FROM projects
-          WHERE projects.id = d.project_id
-        ))
-      )
-      WHERE lm.id = lorawan_parsed_messages.lorawan_message_id
-        AND ur.user_id = (SELECT auth.uid())
-        AND ur.is_active = true
-        AND ur.deleted_at IS null
-    )
-  );
+-- The deployment's project reads a message: lorawan_messages_select_policy and
+-- lorawan_parsed_messages_select_policy (64_, 65_). The project_access_view_* policies
+-- that were here went with #323: their organisation branch read deployments under the
+-- caller's RLS, so it served only roles that already see the deployment.
 
 COMMENT ON TABLE firmware IS 'Firmware versions for device components (BLE, Himax, config). Managed by ww_admin only.';
 COMMENT ON TABLE lorawan_messages IS 'Raw LoRaWAN messages from devices. Project members can view messages for their deployments.';

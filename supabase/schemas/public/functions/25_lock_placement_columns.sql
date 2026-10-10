@@ -51,6 +51,10 @@ BEGIN
 END;
 $$;
 
+-- deployments.device_id is not locked: any project member may deploy any camera, whatever
+-- its organisation (#320, which replaced #304's same-organisation rule). A camera has at
+-- most one open deployment (deployments_one_open_per_device, tables/28_deployments.sql).
+
 -- projects.organisation_id: refused for any client role except a ww_admin.
 CREATE OR REPLACE FUNCTION public.lock_project_organisation()
 RETURNS trigger

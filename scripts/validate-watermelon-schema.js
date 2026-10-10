@@ -46,19 +46,17 @@ const LOCAL_ONLY_COLUMNS = {
     capture_methods: { server_id: 'the integer Supabase id, since a WatermelonDB id is a string (ReferenceDataService)' },
     sampling_designs: { server_id: 'the integer Supabase id, since a WatermelonDB id is a string (ReferenceDataService)' },
     project_invitations: { remote_id: 'the Supabase invitation id; the local row has its own id (InvitationService)' },
-    deployments: {
-        deployment_comments: 'legacy, split upstream into start_ and end_deployment_comments; nothing reads or writes it',
-        camera_location_description: 'legacy, upstream it is location_description; nothing reads or writes it',
-        camera_location_image_path: 'legacy, upstream it is camera_location_image_paths; nothing reads or writes it',
-    },
 };
 
 // Timestamps the model reads with @date, which stores epoch milliseconds (a
 // number), where Supabase types an ISO string. The pulls convert with new Date().
-// Each must be a number here and a string in Supabase, or it is an error.
+// Each must be a number here and a string in Supabase, or it is an error: on a
+// string column @date keeps nothing (#425). The generator's timestampFields
+// makes them numbers.
 const TIMESTAMP_COLUMNS = {
-    deployments: ['deployment_start', 'deployment_end'],
+    deployments: ['deployment_start', 'deployment_end', 'lorawan_last_verified_at'],
     project_invitations: ['expires_at', 'responded_at'],
+    user_roles: ['granted_at', 'expires_at'],
 };
 
 // Colors for terminal output

@@ -1,4 +1,4 @@
-import { friendlyVersion, transferLine, updateResult, updateStep, updateSummary } from '../firmwareWords'
+import { friendlyVersion, missingFirmware, transferLine, updateResult, updateStep, updateSummary } from '../firmwareWords'
 
 // #344: the operator sees builds and releases in words, never raw build strings
 describe('friendlyVersion', () => {
@@ -36,6 +36,14 @@ describe('updateSummary', () => {
 	it('leaves out a current version it could not read', () => {
 		expect(updateSummary('Unknown', '0.30.52')).toBe('Update to 0.30.52.')
 		expect(updateSummary(null, null)).toBe('Update to the latest firmware.')
+	})
+})
+
+// #437: with one camera's build in the catalogue the update names the camera it waits for
+describe('missingFirmware', () => {
+	it('names the camera the way the update screen names its image', () => {
+		expect(missingFirmware('RP3')).toBe("The colour camera's new firmware is not available yet")
+		expect(missingFirmware('HM0360')).toBe("The night-IR camera's new firmware is not available yet")
 	})
 })
 

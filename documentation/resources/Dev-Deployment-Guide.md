@@ -54,7 +54,7 @@ Both flows share these pipeline functions from `deploymentPipeline.ts`:
 
 | Step | Function | Purpose |
 |------|----------|---------|
-| AI Model Sync | `pipeline.syncAiModel()` | Checks SD card for existing model files; only downloads and transfers missing files. Always loads via `erasemodel` → `loadmodel` if OPs mismatch. Stops the start when the model is on neither the camera nor the card and the phone cannot get its files (#333), and when the transfer is refused over [BLE firmware below the floor](File-Transfer-Protocol.md#the-ble-firmware-floor) (#289). Runs first to stay within firmware's 1000ms IMAGE task window. |
+| AI Model Sync | `pipeline.syncAiModel()` | Checks SD card for existing model files; only downloads and transfers missing files. Loads with `loadmodel` if OPs mismatch, never `erasemodel` first. Stops the start when the model is on neither the camera nor the card and the phone cannot get its files (#333), when the transfer is refused over [BLE firmware below the floor](File-Transfer-Protocol.md#the-ble-firmware-floor) (#289), when the phone's copy is not a TFLite model, and when the camera never answers `loadmodel` (#428). Runs first to stay within firmware's 1000ms IMAGE task window. |
 | Time Sync | `pipeline.syncTime()` | `setutc`, syncs the device clock (BLE module, not AI processor) |
 | Reset OPs | `pipeline.resetOps()` | Diff-writes `FACTORY_DEFAULTS`, keeps the model and the identity, returns the resulting table |
 | Configure Device | `pipeline.configureDevice()` | Sets capture method OPs, deployment ID, GPS, the capture flash and the project's detection threshold (op16) |

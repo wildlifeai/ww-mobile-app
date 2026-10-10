@@ -107,8 +107,13 @@ class AiModelService {
             const actualSize = fileInfo.size || 0
             const sizeDiff = Math.abs(actualSize - expectedSize)
 
+            // Only the size is checked. A model file of the right size can still
+            // be the wrong file, and on the bench on 8 October 2026 a ZIP archive
+            // was logged here as "verified" (#428). `syncAiModel` checks the
+            // bytes before any are sent; a new download would bring the same
+            // file, so the cache is not the place to refuse it.
             if (expectedSize === 0 || sizeDiff <= FILE_SIZE_TOLERANCE_BYTES) {
-                log(`✅ File already downloaded and verified: ${localUri}`)
+                log(`✅ File already downloaded (${actualSize} bytes${expectedSize ? ', the size expected' : ''}): ${localUri}`)
                 return localUri
             }
 

@@ -38,6 +38,14 @@ export const updateSummary = (current?: string | null, latest?: string | null, u
     return 'Update to the latest firmware.'
 }
 
+/**
+ * Why there is no AI update while the catalogue holds one camera's build only:
+ * the update installs both images, so it waits for the other (#437). Named the
+ * way the update screen names the two images, colour and night-IR.
+ */
+export const missingFirmware = (variant: 'RP3' | 'HM0360'): string =>
+    `The ${variant === 'RP3' ? 'colour' : 'night-IR'} camera's new firmware is not available yet`
+
 /** One status line while an update runs. */
 export const updateStep = (
     target: FirmwareTarget,
