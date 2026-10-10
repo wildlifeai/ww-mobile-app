@@ -54,6 +54,14 @@ const personName = async (userId: string): Promise<string | null> => {
 	}
 }
 
+/** Whether this account may end or change the deployment, without the wording */
+export async function mayChangeDeployment(
+	userId: string | null | undefined,
+	deployment: { projectId: string; setupBy?: string | null },
+): Promise<boolean> {
+	return !!userId && mayUpdateDeployment(await ownRoles(userId), deployment, userId)
+}
+
 /** The projects of the list this account may start a deployment in */
 export async function projectsToDeployInto<T extends { id: string }>(userId: string, projects: T[]): Promise<T[]> {
 	const roles = await ownRoles(userId)

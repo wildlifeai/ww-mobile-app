@@ -114,6 +114,9 @@ version for humans is
   whose file is gone is still looked up in the bucket before it is dropped (#347). Each sync
   retries them, and the pre-download runs, after the pull and before the push error is thrown
   (#449): thrown first, one refused change stopped both on every sync.
+  Only an account that may change the deployment uploads its photos (`mayChangeDeployment`,
+  #467): storage lets any member upload, but the path swap is a deployment UPDATE, and refused
+  it left the photo in the bucket with nothing pointing at it and the local file gone.
 - **A camera has one id, the server's (#451).** `devices.bluetooth_id` is unique on the server
   and the devices insert is `ON CONFLICT (id)` only, so a second local id for one camera fails
   `23505`. The scanner asks the server before it registers a camera the phone lacks
