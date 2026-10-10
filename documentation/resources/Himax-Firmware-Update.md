@@ -254,7 +254,7 @@ So the phone that runs a pair update keeps a record of it, per device, under `hi
 | Anything else | "Update not finished: 1 of 2 images installed", in the error colour, with Finish update | Kept |
 | No record | Up to date when `AI ver` is the latest build of the camera it runs; when `slots` fails, the latest build of either camera | |
 
-Firmware Status, the update screen and Start Monitoring read it, and Start Monitoring's banner says "AI firmware update not finished". The check Start Monitoring runs on connect sends nothing (#268), so it reads the record against the `AI ver` it already has: unfinished unless the camera runs the end camera's new build.
+Firmware Status, the update screen and Start Monitoring read it, and Start Monitoring's banner says "AI firmware update not finished". Firmware Status and the check Start Monitoring runs on connect make this judgement through one function, `himaxStatus` (#464): the connect check used to compare `AI ver` with the newest build of either camera, and warned of newer AI firmware whenever the other camera's build was newer. The check Start Monitoring runs on connect sends nothing (#268), so it reads the record against the `AI ver` it already has: unfinished unless the camera runs the end camera's new build.
 
 **Finishing** is the Update button, and "Try again" after a failed pass is the same: the update reads the record and finishes it. It restarts the camera first, so it runs the slot its selector names, then writes the end camera's image alone when the camera runs the other camera's latest build from its selected slot (one transfer, one `AI firmware`), and both images otherwise, as when a newer pair is out. It ends on the record's end camera. Before #374 "Try again" ran the whole pair ordered by the camera then running, which was image 1's, so it ended on the wrong camera.
 
@@ -455,6 +455,7 @@ The parser ([`useFirmwareUpdate.ts`](../../src/screens/Devices/hooks/useFirmware
 | `src/screens/Devices/hooks/useFirmwareUpdate.ts` | **Primary flow:** UART phase listener, progress parsing, reset/sleep sequence |
 | `src/services/himaxUpdateRecord.ts` | This phone's record of a pair update, for finishing one that stopped |
 | `src/utils/himaxFirmwareState.ts` | Up to date, outdated or unfinished, and what finishing writes |
+| `src/services/himaxStatus.ts` | That judgement for one camera, shared by Firmware Status and the check Start Monitoring runs on connect (#464) |
 | `src/utils/versionUtils.ts` | Which AI build is the latest: `newestAiBuildFirst` |
 | `src/screens/Devices/FirmwareUpdateScreen.tsx` | Update progress UI (presentational) |
 | `src/screens/Devices/FirmwareStatusScreen.tsx` | Version display + update trigger |

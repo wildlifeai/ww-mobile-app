@@ -57,7 +57,7 @@ export const DevDeploymentTestScreen = () => {
 
     const {
         bleDevice, device,
-        project, availableProjects, startRefusalReason, handleProjectChange,
+        project, availableProjects, startRefusalReason, projectSettingsNote, handleProjectChange,
         notes, setNotes,
         locationName, setLocationName,
         cameraHeight, setCameraHeight,
@@ -227,6 +227,12 @@ export const DevDeploymentTestScreen = () => {
                         {startRefusalReason && (
                             <Text variant="bodySmall" style={[styles.hint, styles.hintAlert, { color: colors.error }]}>
                                 {startRefusalReason}
+                            </Text>
+                        )}
+                        {/* A member may deploy but not change the project (#466) */}
+                        {projectSettingsNote && (
+                            <Text variant="bodySmall" style={styles.hint}>
+                                {projectSettingsNote}
                             </Text>
                         )}
 

@@ -17,10 +17,13 @@ import database from '../database'
 import UserRole from '../database/models/UserRole'
 import Project from '../database/models/Project'
 import User from '../database/models/User'
-import { mayCreateDeployment, mayUpdateDeployment, projectRoleIn } from './roleAccess'
+import { mayCreateDeployment, mayUpdateDeployment, mayUpdateProject, projectRoleIn } from './roleAccess'
 
 export const START_REFUSED_TITLE = 'Cannot Start Monitoring'
 export const END_REFUSED_TITLE = 'Cannot End This Deployment'
+
+/** On the Dev Deployment Test, for an account that may deploy but not change the project (#466) */
+export const SETTINGS_FOR_THIS_TEST_ONLY = 'These settings apply to this test only. Only a project admin can change the project\'s settings.'
 
 const ROLES_NOT_ON_PHONE = 'Your roles have not reached this phone yet, so it cannot tell whether you may'
 const SYNC_THEN_RETRY = 'Connect so the app can sync, then try again.'
@@ -60,6 +63,11 @@ export async function mayChangeDeployment(
 	deployment: { projectId: string; setupBy?: string | null },
 ): Promise<boolean> {
 	return !!userId && mayUpdateDeployment(await ownRoles(userId), deployment, userId)
+}
+
+/** Whether this account may save settings to the project, which only a project admin may change (#466) */
+export async function maySaveProjectSettings(userId: string | null | undefined, projectId: string): Promise<boolean> {
+	return mayUpdateProject(await ownRoles(userId), projectId)
 }
 
 /** The projects of the list this account may start a deployment in */

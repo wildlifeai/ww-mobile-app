@@ -178,6 +178,7 @@ services/
 ├── ReferenceDataService.ts    # Downloaded reference data (capture methods, etc.)
 ├── FirmwareService.ts         # Firmware blob management, the firmware file cache
 ├── himaxUpdateRecord.ts       # This phone's record of an AI pair update, to finish one that stopped (#374)
+├── himaxStatus.ts             # Whether a camera's AI firmware is current, for Firmware Status and the connect check (#464)
 ├── OfflinePrefetchService.ts  # Fills both caches after a sync, for the field (#333)
 ├── DfuService.ts              # Firmware updates (Nordic DFU)
 ├── DeploymentPhotoService.ts  # Deployment photo capture + upload

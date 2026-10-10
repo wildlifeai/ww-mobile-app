@@ -1,5 +1,5 @@
 import {
-	managedOrganisationIds, mayCreateDeployment, mayUpdateDeployment, projectRoleIds, projectRoleIn,
+	managedOrganisationIds, mayCreateDeployment, mayUpdateDeployment, mayUpdateProject, projectRoleIds, projectRoleIn,
 	seesEverything, seesOrganisation,
 } from '../roleAccess'
 
@@ -100,5 +100,18 @@ describe('roleAccess, deployments', () => {
 	it('does not let an organisation manager end one', () => {
 		expect(mayUpdateDeployment([role('organisation_manager', 'organisation', 'org-1')], theirs, 'me', NOW)).toBe(false)
 		expect(mayUpdateDeployment([role('organisation_manager', 'organisation', 'org-1')], mine, 'me', NOW)).toBe(false)
+	})
+})
+
+// ww-backend yyy_policies/50_projects.sql, the projects UPDATE policy (#466)
+describe('roleAccess, project settings', () => {
+	it('lets a project admin or a ww_admin change the project, and no one else', () => {
+		expect(mayUpdateProject([role('project_admin', 'project', 'p-1')], 'p-1')).toBe(true)
+		expect(mayUpdateProject([role('ww_admin', 'system')], 'p-1')).toBe(true)
+		expect(mayUpdateProject([role('project_member', 'project', 'p-1')], 'p-1')).toBe(false)
+		expect(mayUpdateProject([role('project_viewer', 'project', 'p-1')], 'p-1')).toBe(false)
+		expect(mayUpdateProject([role('organisation_manager', 'organisation', 'org-1')], 'p-1')).toBe(false)
+		expect(mayUpdateProject([role('project_admin', 'project', 'p-2')], 'p-1')).toBe(false)
+		expect(mayUpdateProject([], 'p-1')).toBe(false)
 	})
 })

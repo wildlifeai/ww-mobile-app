@@ -5,6 +5,7 @@ import { createBleSession } from '../ble/session/createBleSession'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
 import { selfTestCache } from '../ble/protocol/selfTestCache'
 import ReferenceDataService from '../services/ReferenceDataService'
+import { himaxStatus, himaxVersionOf, latestHimaxBuilds } from '../services/himaxStatus'
 import { log, logWarn } from '../utils/logger'
 import { convertBleToSemanticVersion } from '../utils/versionUtils'
 import { InitPayload } from '../navigation/types'
@@ -176,9 +177,16 @@ export const useDevicePreDeploymentChecks = () => {
                 const aiVersion = await session.execute(commandRegistry.aiver)
                 payload.himaxFirmwareVersion = aiVersion
                 log(`[Pre-Deployment] Himax firmware: ${aiVersion}`)
-                const latestHimax = await ReferenceDataService.getLatestFirmware('himax')
-                if (latestHimax && aiVersion && !aiVersion.includes(latestHimax.version)) {
-                    newErrors.deviceHealth.push(`Newer AI firmware available: ${latestHimax.version}`)
+                // Firmware Status's judgement (#464): the camera against the
+                // latest build of the camera it runs, not the newest of either.
+                // No `slots` here, this check sends nothing more (#268), so
+                // either camera's latest counts as current. An unfinished
+                // update has its own card on Start Monitoring.
+                if (aiVersion) {
+                    const status = await himaxStatus(device.id, himaxVersionOf(aiVersion), null, await latestHimaxBuilds())
+                    if (status.isOutdated && !status.unfinished) {
+                        newErrors.deviceHealth.push('Newer AI firmware available')
+                    }
                 }
             } catch (e) {
                 logWarn('[Pre-Deployment] Himax firmware check failed:', e)
