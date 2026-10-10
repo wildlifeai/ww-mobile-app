@@ -206,13 +206,11 @@ file is the list of things that look like an app bug and are not, and the revers
   drops the echo unless an image stream is open, ww-hardware #36, so thirty timeouts in a row
   is the firmware, not the phone or the link. The 500 KB upload on the same screen is the
   working link measurement: 5.2 KB/s on 4 September 2026.
-- **Image transfer runs at about 1.1 KB/s and the app is not the reason.** `AI txfile` on its
-  own measures the same as inside the capture flow. The nRF hex-dumps every 241-byte packet to
-  its 115200 baud console and flushes the log before each BLE send, so the transfer runs at the
-  speed of the debug UART. A 12 KB image is 10 s; do not spend app time on it. Filed as
-  ww-hardware #34 with the proof: the nRF already gates that logging off for uploads, and the
-  same 241-byte packets went five times faster that way on the same device. The app's 1.1 KB/s
-  countdown model stands until the gate covers downloads.
+- **An image transfer at about 1.1 KB/s is the camera's BLE firmware, not the app.** Before
+  BLE 0.30.55 the nRF hex-dumped every 241-byte packet to its 115200 baud console and flushed
+  the log before each BLE send, so a 12 KB image took 10 s whatever the link (ww-hardware #34).
+  Since then the connection interval sets the rate, five to nine times that; the figures are in
+  [Capture-Picture.md](../../../documentation/resources/Capture-Picture.md).
 - **The transfer window only works on nRF firmware 0.30.47 and later, and the app refuses
   anything older.** On pre-FIFO firmware (0.23.x on ww-hardware `main`) the surplus packets are
   dropped with a log-only warning, an in-flight-ack race resets the AI state machine to SLEEP,

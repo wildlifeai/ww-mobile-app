@@ -238,7 +238,7 @@ export const useCapturePreview = ({
 
         try {
             setIsCapturing(true)
-            setCaptureStage('Initializing…')
+            setCaptureStage('Initialising…')
             setCapturedImageUri(null)
             setCaptureProgress(0)
             downloadRequested.current = false
@@ -282,7 +282,7 @@ export const useCapturePreview = ({
             if (screenLeft('the capture')) return
 
             // ── Phase 2: CAPTURE ────────────────────────────────────────
-            setCaptureStage(`Capturing ${captureCount} image(s)…`)
+            setCaptureStage(`Capturing ${captureCount} ${captureCount === 1 ? 'image' : 'images'}…`)
             // Asked before the capture, so 15 ms is in place when txfile goes,
             // and again on the camera's reply to txfile (connectionPriority.ts)
             fastIntervalFor.current = device.id

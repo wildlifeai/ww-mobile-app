@@ -63,7 +63,6 @@ export const useCapturePicture = ({ device }: UseCapturePictureOptions) => {
     const [aeData, setAeData] = useState<AEData | null>(null)
     const [capturedImages, setCapturedImages] = useState<CapturedImageInfo[]>([])
     const [isApplying, setIsApplying] = useState(false)
-    const [applyStage, setApplyStage] = useState<string>('')
 
     // Refs for closures
     const currentParamsRef = useRef(cameraParams)
@@ -222,7 +221,6 @@ export const useCapturePicture = ({ device }: UseCapturePictureOptions) => {
     const applyAndCapture = useCallback(async () => {
         if (!device) return
         setIsApplying(true)
-        setApplyStage('Reading current parameters...')
         captureSteps.begin()
         try {
             const session = createBleSession(device);
@@ -235,7 +233,6 @@ export const useCapturePicture = ({ device }: UseCapturePictureOptions) => {
                 return
             }
 
-            setApplyStage('Applying flash settings...')
             let changed = false
             if (currentOps[OP_PARAMETER.LED_BRIGHTNESS] !== String(cameraParams.ledBrightness)) {
                 await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.LED_BRIGHTNESS, value: cameraParams.ledBrightness }))
@@ -270,7 +267,6 @@ export const useCapturePicture = ({ device }: UseCapturePictureOptions) => {
             // flash LED and brightness when it wakes, so a capture that skipped
             // this would use the previous settings. Returns at once when the
             // device is already asleep, which after a hold of 3 s it usually is.
-            setApplyStage('Waiting for device to sleep...')
             await session.waitForSleep(5000)
             if (!mountedRef.current) {
                 log('[CapturePicture] Screen left; not sending the capture')
@@ -278,7 +274,6 @@ export const useCapturePicture = ({ device }: UseCapturePictureOptions) => {
             }
 
             // Trigger the capture via the shared capture path (AI capture 1 500).
-            setApplyStage('')
             await capturePreview.startCapture(1, 500)
 
         } catch (e: any) {
@@ -286,7 +281,6 @@ export const useCapturePicture = ({ device }: UseCapturePictureOptions) => {
             captureSteps.markFailed(e?.message || 'Could not apply the settings')
         } finally {
             setIsApplying(false)
-            setApplyStage('')
         }
     }, [device, cameraParams, capturePreview, captureSteps])
 
@@ -295,7 +289,6 @@ export const useCapturePicture = ({ device }: UseCapturePictureOptions) => {
         updateCameraParam,
         applyAndCapture,
         isApplying,
-        applyStage,
         aeData,
         capturedImages,
         capturePreview,
