@@ -88,6 +88,22 @@ const mergeOutcomes = (outcomes: PushOutcome[]): PushOutcome => {
     }
 }
 
+/**
+ * Refusals the server gives again however often the change is sent (#449):
+ * row-level security or a trigger saying no (42501), and a second open
+ * deployment on one camera (23P01, ww-backend #324). Any other code, a timeout
+ * or a broken constraint the next sync may mend, is retried as before.
+ */
+const REFUSED_FOR_GOOD = new Set(['42501', '23P01'])
+
+/**
+ * Whether a push_changes error is a refusal for good. PostgREST answers 42501
+ * with HTTP 401 when the call went out with no signed-in user (the anonymous
+ * role may not call push_changes at all), which a later sync signed in can mend.
+ */
+const isRefusedForGood = (error: { code?: string }, httpStatus?: number): boolean =>
+    !!error.code && REFUSED_FOR_GOOD.has(error.code) && httpStatus !== 401
+
 /** One table's line in the push report, e.g. "devices: 1 refused by the server (42501 ...)" */
 const describeOutcome = (tableName: string, outcome: PushOutcome): string => {
     const parts = outcome.saved > 0 ? [`${outcome.saved} saved`] : []
@@ -180,6 +196,29 @@ class SupabaseSyncService {
      */
     requestSync() {
         this.sync().catch(() => {})
+    }
+
+    /**
+     * Start what a sync hands on once the pull is in, and do not wait for it:
+     * the site photos still only on the phone, and the models and firmware a
+     * field visit needs (#333). Lazy requires: DeploymentPhotoService depends
+     * on this service, and Jest here rejects a dynamic import(), so the photo
+     * trigger, written that way, never ran under test.
+     */
+    private startPhotoUploadAndPrefetch(userId: string) {
+        try {
+            const { DeploymentPhotoService } = require('./DeploymentPhotoService')
+            DeploymentPhotoService.uploadAllPending(userId).catch((e: unknown) =>
+                logWarn('⚠️ [SupabaseSyncService] Pending photo upload failed:', e)
+            )
+        } catch (e) {
+            logWarn('⚠️ [SupabaseSyncService] Could not start photo upload:', e)
+        }
+        try {
+            require('./OfflinePrefetchService').default.request('sync')
+        } catch (e) {
+            logWarn('⚠️ [SupabaseSyncService] Could not start the offline pre-download:', e)
+        }
     }
 
     /** Run the sync asked for while the last one ran */
@@ -326,6 +365,11 @@ class SupabaseSyncService {
                 }
             }
 
+            // Before the push error, as the pull is (#449): thrown first, one
+            // change the server would not take stopped every deployment's site
+            // photos and the field-visit downloads, on every sync
+            this.startPhotoUploadAndPrefetch(user.id)
+
             if (pushError) throw pushError
 
             // ================================================================
@@ -346,20 +390,6 @@ class SupabaseSyncService {
 
                 // log(`✅ Sync completed successfully in ${syncDuration}ms (total syncs: ${syncCount})`)
             })
-
-            // Retry any deployment photos still waiting to reach storage
-            // (lazy import: DeploymentPhotoService depends on this service)
-            try {
-                const { DeploymentPhotoService } = await import('./DeploymentPhotoService')
-                DeploymentPhotoService.uploadAllPending(user.id).catch((e: unknown) =>
-                    logWarn('⚠️ [SupabaseSyncService] Pending photo upload failed:', e)
-                )
-            } catch (e) {
-                logWarn('⚠️ [SupabaseSyncService] Could not start photo upload:', e)
-            }
-
-            // Put the models and firmware a field visit needs on the phone (#333)
-            require('./OfflinePrefetchService').default.request('sync')
         } catch (error) {
             logCloudFailure('❌ Sync failed:', error)
 
@@ -424,6 +454,7 @@ class SupabaseSyncService {
         // 'syncing' is only left behind by a sync that was cut short: a crash, or
         // the old stop-the-chain break, which stranded every table after the
         // failure for good. Syncs never overlap, so any found here are resumed.
+        // 'refused' (#449) and 'orphaned' (#330, #411) are kept, never sent.
         const queuedOps = await database.get<SyncOutbox>('sync_outbox')
             .query(
                 Q.where('status', Q.oneOf(['pending', 'failed', 'syncing'])),
@@ -629,7 +660,7 @@ class SupabaseSyncService {
             const recordIds = new Set(tableOps.map(op => op.recordId))
 
             try {
-                const { data, error } = await (client as any).rpc('push_changes', { changes })
+                const { data, error, status: httpStatus } = await (client as any).rpc('push_changes', { changes })
 
                 // IMPORTANT DEBUG: Log processed count to detect silent failures
                 // log(`✅ Server processed ${data?.processed ?? '?'} operations for ${tableName}`)
@@ -637,16 +668,24 @@ class SupabaseSyncService {
                 if (error) {
                     logCloudFailure(`❌ Push failed for ${tableName}:`, error)
 
-                    // Mark these specific ops as failed
+                    // A call carrying one record is the record-by-record retry, or a
+                    // table with one record to send, so a refusal for good there is
+                    // that record's own: it is kept as 'refused' and never sent
+                    // again (#449). Several records go back as 'failed', and are
+                    // retried one at a time right after.
+                    const refusedForGood = recordIds.size === 1 && isRefusedForGood(error, httpStatus)
                     await database.write(async () => {
                         for (const op of tableOps) {
                             await op.update(o => {
-                                o.status = 'failed'
-                                o.errorMessage = error.message
+                                o.status = refusedForGood ? 'refused' : 'failed'
+                                o.errorMessage = refusedForGood ? `${error.code} ${error.message}` : error.message
                                 o.retryCount = op.retryCount + 1
                             })
                         }
                     })
+                    if (refusedForGood) {
+                        logWarn(`🚫 The server refused ${tableName} ${Array.from(recordIds)[0]} for good (${error.code}), it will not be sent again`)
+                    }
 
                     // SPECIAL HANDLING: Self-healing for Foreign Key errors (23503)
                     if (error.code === '23503') {
@@ -669,11 +708,13 @@ class SupabaseSyncService {
                                 try {
                                     const localDevice = await devicesCollection.find(deviceId)
                                     if (localDevice) {
+                                        // Not one the server refused for good either: a copy
+                                        // would only be refused again, one more each cycle
                                         const existingOps = await database.get<SyncOutbox>('sync_outbox').query(
                                             Q.where('table_name', 'devices'),
                                             Q.where('record_id', deviceId),
                                             Q.where('operation_type', 'CREATE'),
-                                            Q.where('status', Q.oneOf(['pending', 'failed']))
+                                            Q.where('status', Q.oneOf(['pending', 'failed', 'refused']))
                                         ).fetch()
 
                                         if (existingOps.length === 0) {
@@ -730,7 +771,9 @@ class SupabaseSyncService {
                 // has (ON CONFLICT DO NOTHING), so it counts as saved. For an
                 // UPDATE or DELETE the change did not land: the row is missing,
                 // or row-level security would not let this account change it.
-                // Marking those synced lost them silently, so they stay queued.
+                // Marking those synced lost them silently (#287), and retrying
+                // them got the same answer on every sync, so they are kept as
+                // 'refused' and not sent again (#449).
                 const notAppliedIds = new Set<string>(
                     (Array.isArray(data?.conflicts) ? data.conflicts : []).map((c: any) => String(c?.id))
                 )
@@ -740,12 +783,19 @@ class SupabaseSyncService {
                 if (notAppliedOps.length > 0) {
                     logWarn(`⚠️ Server did not apply ${notAppliedOps.length} ${tableName} change(s):`, data.conflicts)
                 }
+                // The reply names rows, not operations. Sent with its record's
+                // CREATE, the entry may be the CREATE's, a row the server already
+                // had (a reply lost after the commit), so that change goes again
+                // on its own next sync, where the answer can only be its own.
+                const createdHere = new Set(tableOps
+                    .filter(op => op.operationType.toUpperCase() === 'CREATE')
+                    .map(op => op.recordId))
 
                 await database.write(async () => {
                     for (const op of tableOps) {
                         if (notAppliedOps.includes(op)) {
                             await op.update(o => {
-                                o.status = 'failed'
+                                o.status = createdHere.has(op.recordId) ? 'failed' : 'refused'
                                 o.errorMessage = 'not_applied: the row is missing on the server, or this account may not change it'
                                 o.retryCount = op.retryCount + 1
                             })
@@ -1020,10 +1070,11 @@ class SupabaseSyncService {
                 .query(Q.where('scope_type', 'project'))
                 .fetch()
             const unsyncedOps = await database.get<SyncOutbox>('sync_outbox')
-                .query(Q.where('status', Q.oneOf(['pending', 'failed', 'syncing', 'orphaned'])))
+                .query(Q.where('status', Q.oneOf(['pending', 'failed', 'syncing', 'refused', 'orphaned'])))
                 .fetch()
 
-            // A project whose CREATE has not reached the server is new, not gone
+            // A project whose CREATE has not reached the server is new, not gone.
+            // One whose CREATE the server refused (#449) stays on the phone too.
             const createsQueued = new Set(unsyncedOps
                 .filter(op => op.tableName === 'projects'
                     && op.operationType.toUpperCase() === 'CREATE'
@@ -1207,13 +1258,14 @@ class SupabaseSyncService {
      * this account could read, and rows it has lost access to.
      *
      * A listed deployment is removed, unless it holds work not yet uploaded: an
-     * outbox operation not on the server (any account's, orphaned included) or
-     * a site photo still only on the phone. Then, as for a project that is gone
-     * (#330), its row and photos stay, and this account's queued changes to it
-     * become 'orphaned', kept and never retried, with the reason in
-     * error_message. The row is marked GONE_FROM_SERVER so that nothing more is
-     * uploaded for it (see goneFromServer.ts). Another account's held changes
-     * are left for that account.
+     * outbox operation not on the server (any account's, refused and orphaned
+     * included) or a site photo still only on the phone. Then, as for a project
+     * that is gone (#330), its row and photos stay, and this account's changes
+     * to it, a refused one too (#449), become 'orphaned', kept and never
+     * retried, with the reason in error_message. The row is marked
+     * GONE_FROM_SERVER so that nothing more is uploaded for it (see
+     * goneFromServer.ts). Another account's held changes are left for that
+     * account.
      *
      * A listed device is removed unless a deployment still on the phone points
      * at it, or a change to it has not reached the server.
@@ -1231,7 +1283,7 @@ class SupabaseSyncService {
 
         const deployments = await database.get<Deployment>('deployments').query().fetch()
         const unsyncedOps = await database.get<SyncOutbox>('sync_outbox')
-            .query(Q.where('status', Q.oneOf(['pending', 'failed', 'syncing', 'orphaned'])))
+            .query(Q.where('status', Q.oneOf(['pending', 'failed', 'syncing', 'refused', 'orphaned'])))
             .fetch()
         const opsOn = (table: string, recordId: string) =>
             unsyncedOps.filter(op => op.tableName === table && op.recordId === recordId)
@@ -1395,11 +1447,12 @@ class SupabaseSyncService {
             if (unmatched.length > 0 && live.length === 0) {
                 logWarn(`⚠️ The server lists no roles for this account, kept the ${unmatched.length} on this phone`)
             } else if (unmatched.length > 0) {
-                // The creator's role in a project still to be created on the server
+                // The creator's role in a project still to be created on the server,
+                // or refused there and kept on the phone (reconcileProjects, #449)
                 const createsQueued = new Set((await database.get<SyncOutbox>('sync_outbox')
                     .query(
                         Q.where('table_name', 'projects'),
-                        Q.where('status', Q.oneOf(['pending', 'failed', 'syncing'])),
+                        Q.where('status', Q.oneOf(['pending', 'failed', 'syncing', 'refused'])),
                     )
                     .fetch())
                     .filter(op => op.operationType.toUpperCase() === 'CREATE')
@@ -1479,8 +1532,10 @@ class SupabaseSyncService {
      * them: the row is older than the change, and on 1 October 2026 applying it
      * put a deployment's local photo path back over the uploaded one, which made
      * the next upload drop the photo (#347). The record comes back in a later
-     * pull once the change is pushed. An outbox that cannot be read leaves the
-     * pull as it was, applying every row.
+     * pull once the change is pushed. A change the server refused (#449) or that
+     * is orphaned never will be, so it holds nothing back: the server's row is
+     * the one that stands. An outbox that cannot be read leaves the pull as it
+     * was, applying every row.
      */
     private async unsyncedRecordIds(table: 'projects' | 'devices' | 'deployments'): Promise<Set<string>> {
         try {

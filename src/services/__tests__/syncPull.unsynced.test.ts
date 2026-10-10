@@ -69,21 +69,24 @@ describe('incremental pulls keep a record with a change waiting in the outbox', 
 		expect(byId['dep-synced'].name).toBe('New name')
 	})
 
-	it('keeps it too while the change is failed or being sent, not once it is synced', async () => {
+	// A refused change (#449) is never pushed, so the server's row is the one that stands
+	it('keeps it too while the change is failed or being sent, not once it is synced or refused', async () => {
 		seedRows('deployments', [
 			{ id: 'dep-failed', name: 'Local' },
 			{ id: 'dep-sending', name: 'Local' },
 			{ id: 'dep-done', name: 'Local' },
+			{ id: 'dep-refused', name: 'Local' },
 		])
 		waiting('deployments', 'dep-failed', 'failed')
 		waiting('deployments', 'dep-sending', 'syncing')
 		waiting('deployments', 'dep-done', 'synced')
-		serverRows = ['dep-failed', 'dep-sending', 'dep-done'].map((id) => ({ ...deploymentRow(id, []), name: 'Server' }))
+		waiting('deployments', 'dep-refused', 'refused')
+		serverRows = ['dep-failed', 'dep-sending', 'dep-done', 'dep-refused'].map((id) => ({ ...deploymentRow(id, []), name: 'Server' }))
 
 		await (SupabaseSyncService as any).syncDeployments()
 
 		const names = Object.fromEntries(rowsIn('deployments').map((d) => [d.id, d.name]))
-		expect(names).toEqual({ 'dep-failed': 'Local', 'dep-sending': 'Local', 'dep-done': 'Server' })
+		expect(names).toEqual({ 'dep-failed': 'Local', 'dep-sending': 'Local', 'dep-done': 'Server', 'dep-refused': 'Server' })
 	})
 
 	it('applies the same rule to projects and devices', async () => {

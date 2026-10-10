@@ -1,8 +1,8 @@
 /**
  * The push half of a sync (#287), the account a sync runs as (#267), projects
  * that disappear from the server (#330), deployments edited, deleted or moved
- * on the website (#411), and the start snapshot a pulled deployment carries
- * (#426).
+ * on the website (#411), the start snapshot a pulled deployment carries
+ * (#426), and changes the server refuses for good (#449).
  *
  * The database is an in-memory fake, so these assert on what each outbox
  * operation ends up as, and on what push_changes was actually sent.
@@ -41,6 +41,7 @@ jest.mock('../SyncStateService', () => {
 jest.mock('../DeploymentPhotoService', () => ({
 	DeploymentPhotoService: { uploadAllPending: jest.fn(() => Promise.resolve()) },
 }))
+jest.mock('../OfflinePrefetchService', () => ({ __esModule: true, default: { request: jest.fn() } }))
 
 const mockRpc = jest.fn()
 const mockFrom = jest.fn()
@@ -86,8 +87,9 @@ let pullRows: Record<string, any[]>
 let pullChanges: Record<string, any>
 // The ids each read by id asked for, per table
 let readById: Record<string, string[][]>
-// Decides what push_changes answers for one call's `changes`
-let pushHandler: (changes: any) => { data?: any, error?: any }
+// Decides what push_changes answers for one call's `changes`, with the HTTP
+// status postgrest-js reports beside them when it matters
+let pushHandler: (changes: any) => { data?: any, error?: any, status?: number }
 const pushCalls: any[] = []
 
 const state = (SyncStateService as any).state as Map<string, string>
@@ -230,8 +232,9 @@ describe('push (#287)', () => {
 
 		expect(op('p1').status).toBe('synced')
 		expect(op('d-old').status).toBe('synced')
-		expect(op('d-new').status).toBe('failed')
-		expect(op('d-new').errorMessage).toContain('row-level security')
+		// Refused on its own in the record-by-record retry, so for good (#449)
+		expect(op('d-new').status).toBe('refused')
+		expect(op('d-new').errorMessage).toContain('42501 new row violates row-level security')
 		expect(op('dep2').status).toBe('synced')
 		// Its device never reached the server, so it waits rather than failing a foreign key
 		expect(op('dep1').status).toBe('pending')
@@ -264,24 +267,48 @@ describe('push (#287)', () => {
 
 		await expect(service.uploadOutbox(USER_B)).rejects.toThrow('devices: 1 refused by the server')
 
-		expect(op('d1').status).toBe('failed')
+		expect(op('d1').status).toBe('refused')
 		expect(op('dep1').status).toBe('synced')
 	})
 
-	it('keeps an update the server did not apply queued instead of marking it synced', async () => {
+	// ww-backend #266: an end or edit by a creator since made a viewer
+	it('keeps an update or delete the server did not apply as refused, never synced and never sent again', async () => {
 		queue({ id: 'u1', table: 'projects', type: 'UPDATE', recordId: 'project-1', userId: USER_B })
 		queue({ id: 'c1', table: 'projects', type: 'CREATE', recordId: 'project-2', userId: USER_B })
+		queue({ id: 'x1', table: 'projects', type: 'DELETE', recordId: 'project-3', userId: USER_B })
 		pushHandler = () => ({
-			data: { processed: 0, conflicts: [{ id: 'project-1', reason: 'not_applied' }, { id: 'project-2', reason: 'not_applied' }] },
+			data: { processed: 0, conflicts: ['project-1', 'project-2', 'project-3'].map((id) => ({ id, reason: 'not_applied' })) },
 			error: null,
 		})
 
-		await expect(service.uploadOutbox(USER_B)).rejects.toThrow('projects: 1 saved, 1 not applied by the server')
+		await expect(service.uploadOutbox(USER_B)).rejects.toThrow('projects: 1 saved, 2 not applied by the server')
 
-		expect(op('u1').status).toBe('failed')
+		expect(op('u1').status).toBe('refused')
 		expect(op('u1').errorMessage).toContain('not_applied')
+		expect(op('x1').status).toBe('refused')
 		// A CREATE the server skipped is a row it already has
 		expect(op('c1').status).toBe('synced')
+
+		pushCalls.length = 0
+		await expect(service.uploadOutbox(USER_B)).resolves.toBeUndefined()
+		expect(pushCalls).toHaveLength(0)
+	})
+
+	// The reply names rows, not operations: here the entry is the CREATE's, a
+	// row already there because an earlier reply was lost after the commit
+	it('sends an update again on its own when it went up with its record\'s CREATE', async () => {
+		queue({ id: 'c1', table: 'projects', type: 'CREATE', recordId: 'project-1', userId: USER_B, clock: 1 })
+		queue({ id: 'u1', table: 'projects', type: 'UPDATE', recordId: 'project-1', userId: USER_B, clock: 2 })
+		pushHandler = () => ({ data: { processed: 1, conflicts: [{ id: 'project-1', reason: 'not_applied' }] }, error: null })
+
+		await expect(service.uploadOutbox(USER_B)).rejects.toThrow('not applied by the server')
+		expect(op('c1').status).toBe('synced')
+		expect(op('u1').status).toBe('failed')
+
+		pushHandler = () => ({ data: { processed: 1, conflicts: [] }, error: null })
+		await service.uploadOutbox(USER_B)
+		expect(sentIds('projects')).toEqual([['project-1', 'project-1'], ['project-1']])
+		expect(op('u1').status).toBe('synced')
 	})
 
 	it('marks a batch that could not be sent as failed, not left syncing', async () => {
@@ -380,10 +407,132 @@ describe('sync after a refused push (#287)', () => {
 
 		await expect(SupabaseSyncService.sync()).rejects.toThrow('devices: 1 refused by the server')
 
+		expect(op('d1').status).toBe('refused')
 		expect(mockFrom).toHaveBeenCalledWith('user_roles')
 		expect(pulledSince.deployments).toBeDefined()
 		expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: 'sync/markInitialSyncComplete' }))
 		expect(state.get(SYNC_STATE_KEYS.LAST_SYNC_ERROR)).toContain('devices: 1 refused by the server')
+	})
+})
+
+describe('changes the server refuses for good (#449)', () => {
+	const DEVICE = '84004dec-d50b-429b-81c1-9bcce300b467'
+	// The camera already has an open deployment on the server (ww-backend #324).
+	// The constraint is checked at commit, so the error is the whole call's.
+	const secondOpenDeployment = {
+		code: '23P01',
+		message: 'conflicting key value violates exclusion constraint "deployments_one_open_per_device"',
+		details: `Key (device_id)=(${DEVICE}) conflicts with existing key (device_id)=(${DEVICE}).`,
+		hint: null,
+	}
+	const rlsRefusal = {
+		code: '42501',
+		message: 'new row violates row-level security policy for table "deployments"',
+		details: null,
+		hint: null,
+	}
+	const queueDeployment = (id: string, deviceId: string) => queue({ id, table: 'deployments', type: 'CREATE',
+		recordId: `dep-${id}`, userId: USER_B, payload: { project_id: 'project-1', device_id: deviceId } })
+	/** A server that refuses any call carrying this deployment, and takes the rest */
+	const refusing = (refusedId: string, error: any, status: number) => (changes: any) =>
+		changes.deployments.created.some((row: any) => row.id === refusedId)
+			? { data: null, error, status }
+			: { data: { processed: changes.deployments.created.length, conflicts: [] }, error: null, status: 200 }
+
+	beforeEach(() => {
+		serverRows.projects = [{ id: 'project-1' }]
+		serverRows.devices = [{ id: DEVICE }, { id: 'device-2' }]
+	})
+
+	it('marks a 23P01 on the record-by-record retry refused, lands the rest, and never sends it again', async () => {
+		queueDeployment('a', DEVICE)
+		queueDeployment('b', 'device-2')
+		pushHandler = refusing('dep-a', secondOpenDeployment, 409)
+
+		await expect(service.uploadOutbox(USER_B)).rejects.toThrow('deployments: 1 saved, 1 refused by the server (23P01')
+
+		expect(sentIds('deployments')).toEqual([['dep-a', 'dep-b'], ['dep-a'], ['dep-b']])
+		expect(op('a').status).toBe('refused')
+		expect(op('a').errorMessage).toBe('23P01 conflicting key value violates exclusion constraint "deployments_one_open_per_device"')
+		expect(op('b').status).toBe('synced')
+
+		pushCalls.length = 0
+		queueDeployment('c', 'device-2')
+		await service.uploadOutbox(USER_B)
+		expect(sentIds('deployments')).toEqual([['dep-c']])
+		expect(op('a').status).toBe('refused')
+	})
+
+	it('marks a 42501 refused when it is the only record sent, in one call', async () => {
+		queueDeployment('a', DEVICE)
+		pushHandler = refusing('dep-a', rlsRefusal, 403)
+
+		await expect(service.uploadOutbox(USER_B)).rejects.toThrow('deployments: 1 refused by the server (42501')
+
+		expect(sentIds('deployments')).toEqual([['dep-a']])
+		expect(op('a').status).toBe('refused')
+		expect(op('a').errorMessage).toContain('42501 new row violates row-level security policy')
+		expect((await OutboxService.getStatistics()).refused).toBe(1)
+
+		pushCalls.length = 0
+		await expect(service.uploadOutbox(USER_B)).resolves.toBeUndefined()
+		expect(pushCalls).toHaveLength(0)
+	})
+
+	// As postgrest-js returns each: a failed fetch comes back as an error with
+	// an empty code and status 0, not as a throw
+	it.each([
+		['the request never got there', { message: 'TypeError: Network request failed', details: '', hint: '', code: '' }, 0],
+		['a gateway error', { message: '<html><body>502 Bad Gateway</body></html>' }, 502],
+		['a statement timeout', { code: '57014', message: 'canceling statement due to statement timeout', details: null, hint: null }, 500],
+		['an expired token', { code: 'PGRST303', message: 'JWT expired', details: null, hint: null }, 401],
+		['a call made with no signed-in user', { code: '42501', message: 'permission denied for function push_changes', details: null, hint: null }, 401],
+	])('keeps retrying when it is %s', async (_case, error, status) => {
+		queueDeployment('a', DEVICE)
+		queueDeployment('b', 'device-2')
+		pushHandler = () => ({ data: null, error, status })
+
+		await expect(service.uploadOutbox(USER_B)).rejects.toThrow('Push incomplete')
+		expect(op('a').status).toBe('failed')
+		expect(op('b').status).toBe('failed')
+
+		pushHandler = () => ({ data: { processed: 2, conflicts: [] }, error: null, status: 200 })
+		await service.uploadOutbox(USER_B)
+		expect(op('a').status).toBe('synced')
+		expect(op('b').status).toBe('synced')
+	})
+
+	it('still uploads site photos and asks for the field downloads when the push fails', async () => {
+		const { DeploymentPhotoService } = require('../DeploymentPhotoService')
+		const OfflinePrefetchService = require('../OfflinePrefetchService').default
+		state.set(SYNC_STATE_KEYS.LAST_SYNC_USER_ID, USER_B)
+		SupabaseSyncService.setStore({
+			getState: () => ({ network: { isOnline: true }, sync: { hasCompletedInitialSync: true } }),
+			dispatch: jest.fn(),
+		})
+		queueDeployment('a', DEVICE)
+		pushHandler = () => ({ data: null, error: { message: 'TypeError: Network request failed', details: '', hint: '', code: '' }, status: 0 })
+
+		await expect(SupabaseSyncService.sync()).rejects.toThrow('deployments: 1 not sent')
+
+		expect(DeploymentPhotoService.uploadAllPending).toHaveBeenCalledWith(USER_B)
+		expect(OfflinePrefetchService.request).toHaveBeenCalledWith('sync')
+		expect(state.get(SYNC_STATE_KEYS.LAST_SYNC_ERROR)).toContain('deployments: 1 not sent')
+	})
+
+	it('keeps a project whose CREATE the server refused, and its creator\'s role', async () => {
+		seedRows('projects', [{ id: 'project-1', name: 'On the server' }, { id: 'project-refused', name: 'Not my organisation' }])
+		seedRows('user_roles', [{ id: 'creator', userId: USER_B, role: 'project_admin', scopeType: 'project', scopeId: 'project-refused', isActive: true }])
+		queue({ id: 'create', table: 'projects', type: 'CREATE', recordId: 'project-refused', userId: USER_B, status: 'refused' })
+		serverRows.user_roles = [{ id: 'member', user_id: USER_B, role: 'organisation_member', scope_type: 'organisation',
+			scope_id: 'org-1', is_active: true, updated_at: '2026-10-01T00:00:00Z' }]
+
+		await service.reconcileProjects(USER_B)
+		await service.syncUserRoles(USER_B)
+
+		expect(rowsIn('projects').map((p) => p.id)).toContain('project-refused')
+		expect(rowsIn('user_roles').map((r) => r.id).sort()).toEqual(['creator', 'member'])
+		expect(op('create').status).toBe('refused')
 	})
 })
 

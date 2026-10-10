@@ -102,15 +102,18 @@ version for humans is
   in the cache, before anything is written. Ask "is it here" with
   `AiModelService.isDownloaded` or `FirmwareService.isFirmwareDownloaded`, the same checks the
   downloads make, and hold `FirmwareService.holdCache()` for the whole of anything that reads
-  an image, or the pre-download may remove it as an older version. The two triggers, at the
-  end of `SupabaseSyncService.sync` and `ReferenceDataService.syncReferenceData`, are lazy
-  `require`s: Jest here rejects a dynamic `import()` (no VM modules flag), so a trigger written
-  that way type-checks and never runs under test.
+  an image, or the pre-download may remove it as an older version. The two triggers, in
+  `SupabaseSyncService.sync` once the pull is in and at the end of
+  `ReferenceDataService.syncReferenceData`, are lazy `require`s: Jest here rejects a dynamic
+  `import()` (no VM modules flag), so a trigger written that way type-checks and never runs
+  under test. The site photo upload's did exactly that until #449.
 - **A site photo is uploaded, then its local file goes.** `DeploymentPhotoService` swaps each
   local path on the deployment for its bucket path after the upload, and runs one pass per
   deployment at a time, merged against the record at write time. A pull no longer puts the
   older row back over a record whose change is still in the outbox (#349), and a local path
-  whose file is gone is still looked up in the bucket before it is dropped (#347).
+  whose file is gone is still looked up in the bucket before it is dropped (#347). Each sync
+  retries them, and the pre-download runs, after the pull and before the push error is thrown
+  (#449): thrown first, one refused change stopped both on every sync.
 - **A deployment must carry its device with it.** The push order, `projects`, `devices`,
   `deployments`, is a foreign-key order, and `DeploymentService.createDeployment` queues an
   idempotent device CREATE alongside the deployment, since the server's devices insert is
@@ -126,11 +129,27 @@ version for humans is
   table in `syncing`, which nothing re-read, so those changes were stranded for good; `syncing`
   at the start of a push now means "cut short" and is resumed. A push error no longer skips the
   pull.
+- **A change the server refuses for good is kept, never sent again (#449).** ww-backend keeps
+  failing the whole call on a refused insert (#319, not planned), so the classification
+  happens where a call carries one record: the record-by-record retry, or a table with one
+  record to send. There, `42501` (RLS or a trigger) and `23P01` (a second open deployment on
+  one camera, ww-backend #324) mark that record's operations `refused`, with the SQLSTATE and
+  message in `error_message`. So does `not_applied` on an `UPDATE` or `DELETE`, unless the
+  same call carried that record's `CREATE`: the reply names rows, so the entry may be the
+  CREATE's, and the change goes again alone. Everything else stays `failed` and is retried
+  every sync: no code (network, gateway), any other code (`23503`, a timeout, `PGRST303`), and
+  `42501` with HTTP 401, which is PostgREST's answer to a call with no signed-in user. Where
+  the code asks "is there work not yet uploaded" (the project reconcile, server deletions, the
+  creator's role), `refused` counts, so nothing is destroyed; it holds no pull back. Settings
+  shows the count under Data Synchronization (`RefusedChangesItem`, from
+  `OutboxService.observeRefusedOperations`), with each reason on a tap. Nothing re-queues a
+  refused operation, except that a later project or deployment deletion may turn it
+  `orphaned`.
 - **Incremental pulls never see a row disappear (#330).** A project deleted on the website,
   wiped by a Dev reset or taken away by removing the account from it never appears in
   `updated_at > watermark`, so `reconcileProjects`, run after a `syncProjects` that completed,
   compares the phone with the full list of project ids the server gives this account. A
-  project missing there, with no `CREATE` queued or in flight, loses its row, its synced
+  project missing there, with no `CREATE` queued, in flight or refused, loses its row, its synced
   deployments and its roles. Anything not uploaded stays: a deployment with an unsynced change
   or a local photo keeps its row, and this account's queued operations become `orphaned`,
   never retried, with the project named in `error_message` (`OutboxService.getOrphanedOperations`,
@@ -154,7 +173,8 @@ version for humans is
   rules are in [03-DATA-AND-SYNC.md](../../../documentation/onboarding/03-DATA-AND-SYNC.md#pull).
 - **`push_changes` returns `conflicts` as an array of `{id, reason: 'not_applied'}`**, not a
   count. For an `UPDATE` or `DELETE` it means the change did not land (row missing, or RLS
-  said no) and the operation stays `failed`; for a `CREATE` it means the row already exists.
+  said no) and the operation is `refused` (#449); for a `CREATE` it means the row already
+  exists, and it is marked `synced`. Never change that last part.
   Until #287 the app read `data.conflicts > 0` and `conflict_details`, neither of which exists,
   and marked refused updates `synced`.
 - **One phone, several accounts (#267).** Pull watermarks are one set per phone, owned by
