@@ -20,6 +20,12 @@ export interface FirmwareComponentStatus {
     isOutdated: boolean
     /** Himax only: latest active firmware per camera variant (dual-image devices) */
     variants?: { RP3: Firmware | null; HM0360: Firmware | null }
+    /**
+     * Himax only: the camera whose build the catalogue lacks, set when the
+     * device is behind the one build there is. Neither outdated nor up to
+     * date: the update installs both images, so it waits for this one (#437)
+     */
+    missingVariant?: 'RP3' | 'HM0360' | null
 }
 
 interface UseFirmwareStatusOptions {
@@ -37,26 +43,36 @@ export interface UseFirmwareStatusReturn {
 }
 
 /**
- * Dual-image aware outdated check — the same rule as the update screen's
+ * Dual-image aware outdated check, the same rule as the update screen's
  * `deviceUpToDate`. RP3 and HM0360 builds carry different version strings and
  * the device only runs one of them, so it is up to date when its version
  * matches EITHER variant's latest. Comparing against the single newest
  * 'himax' row flagged "outdated" whenever the newest upload happened to be
  * the other camera's build. An unknown current version is not outdated
- * (unknown is not actionable — the card should not cry wolf).
+ * (unknown is not actionable, so the card should not cry wolf).
+ *
+ * The update installs both images or neither, so a catalogue holding one
+ * camera's build only has nothing to update to: a cloud dev deploy resets the
+ * database and the builds come back one camera at a time, and elsewhere one
+ * camera's upload can fail or be late. A device behind that build is then not
+ * outdated, and `missingVariant` names the camera it waits for (#437).
  */
-const isHimaxOutdated = (
+export const himaxUpdateState = (
     current: string | null,
     latestRp3: Firmware | null,
     latestHm0360: Firmware | null,
     latestGeneric: Firmware | null,
-): boolean => {
-    if (!current) return false
+): { isOutdated: boolean; missingVariant: 'RP3' | 'HM0360' | null } => {
+    if (!current) return { isOutdated: false, missingVariant: null }
     const cur = current.trim()
     const variantVersions = [latestRp3?.version?.trim(), latestHm0360?.version?.trim()]
         .filter((v): v is string => !!v)
-    if (variantVersions.length > 0) return !variantVersions.includes(cur)
-    return !!latestGeneric?.version && cur !== latestGeneric.version.trim()
+    if (variantVersions.length > 0) {
+        if (variantVersions.includes(cur)) return { isOutdated: false, missingVariant: null }
+        const missingVariant = !latestRp3 ? 'RP3' : !latestHm0360 ? 'HM0360' : null
+        return { isOutdated: !missingVariant, missingVariant }
+    }
+    return { isOutdated: !!latestGeneric?.version && cur !== latestGeneric.version.trim(), missingVariant: null }
 }
 
 export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersion }: UseFirmwareStatusOptions): UseFirmwareStatusReturn {
@@ -138,9 +154,9 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
 
             if (!isMounted.current || timedOut) return
 
-            // 3. Compute Outdated Flags (himax: variant-aware, see isHimaxOutdated)
+            // 3. Compute Outdated Flags (himax: variant-aware, see himaxUpdateState)
             const bleOutdated = !!latestBle?.version && currentBleVersion !== latestBle.version
-            const himaxOutdated = isHimaxOutdated(currentHimaxVersion, latestRp3, latestHm0360, latestHimax)
+            const himaxState = himaxUpdateState(currentHimaxVersion, latestRp3, latestHm0360, latestHimax)
 
             setStatuses({
                 ble: {
@@ -155,8 +171,9 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
                     currentVersion: currentHimaxVersion || 'Unknown',
                     latestVersion: latestHimax?.version || 'Unknown',
                     latestFirmware: latestHimax,
-                    isOutdated: himaxOutdated,
+                    isOutdated: himaxState.isOutdated,
                     variants: { RP3: latestRp3, HM0360: latestHm0360 },
+                    missingVariant: himaxState.missingVariant,
                 },
             })
 
@@ -204,7 +221,7 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
                         const currentHimaxVersion = match ? `v${match[1]}` : rawHimaxVer
 
                         const bleOutdated = !!latestBle?.version && currentBleVersion !== latestBle.version
-                        const himaxOutdated = isHimaxOutdated(currentHimaxVersion, latestRp3, latestHm0360, latestHimax)
+                        const himaxState = himaxUpdateState(currentHimaxVersion, latestRp3, latestHm0360, latestHimax)
 
                         if (!isMounted.current) return
 
@@ -227,8 +244,9 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
                                 currentVersion: currentHimaxVersion || 'Unknown',
                                 latestVersion: latestHimax?.version || 'Unknown',
                                 latestFirmware: latestHimax,
-                                isOutdated: himaxOutdated,
+                                isOutdated: himaxState.isOutdated,
                                 variants: { RP3: latestRp3, HM0360: latestHm0360 },
+                                missingVariant: himaxState.missingVariant,
                             },
                         })
                         setLastChecked(new Date())

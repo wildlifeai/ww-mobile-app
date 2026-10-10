@@ -14,7 +14,7 @@ The WW500 device contains two processors with independent firmware:
 This document covers the **HX6538 firmware update** — flashing a firmware image (`<filename>.IMG` derived dynamically in 8.3 format or defaulting to `OUTPUT.IMG`) from the device's SD card to the Himax processor's XIP flash.
 
 > [!IMPORTANT]
-> **The normal update flashes two images, not one.** The two A/B slots hold the two **camera-variant** builds (RP3 and HM0360), and the device must end up running the variant matching its physical camera. The app orchestrates both passes automatically — see [Dual-Image Update](#dual-image-update-camera-variant-pair). A single-image update happens only when just one variant is available, or when an explicit SD filename is given.
+> **The normal update flashes two images, not one.** The two A/B slots hold the two **camera-variant** builds (RP3 and HM0360), and the device must end up running the variant matching its physical camera. The app orchestrates both passes automatically, see [Dual-Image Update](#dual-image-update-camera-variant-pair). A single-image update happens only from the engineer view's Advanced picker, for an explicit SD filename or a build whose other camera has no build in the catalogue. The one-tap update needs both, see [One camera's build only](#one-cameras-build-only).
 >
 > Budget **~8–9 minutes** for a full pair from the cloud (transfer dominates), or 20–60 seconds per image when it is already staged on the SD card.
 
@@ -88,7 +88,7 @@ Mobile App                     nRF52840                         HX6538
 
 Accessible from Engineer Console → Flows → "Update Himax Firmware", which opens the engineer view: the build picker, the SD-card or cloud source and the transfer cards. Start Monitoring's banner and Firmware Status open the operator's view (#344), which says only this:
 
-- **Before:** from which build to which ("Update from the 23 Sep build to the 30 Sep build"), and one Update button. It installs both camera images, from the SD card when they are there, otherwise from the cloud.
+- **Before:** from which build to which ("Update from the 23 Sep build to the 30 Sep build"), and one Update button. It installs both camera images, from the SD card when they are there, otherwise from the cloud. With one camera's build in the catalogue the button stays off and a line names the camera whose firmware is missing, see [One camera's build only](#one-cameras-build-only).
 - **While it runs:** one bar for the whole pair and one line, "Sending image 1 of 2 to the camera", "Installing image 2 of 2", "Restarting the camera", with the update's last six log steps under them (file names and CRCs included), so a wait of minutes shows what is happening. While an image goes to the camera, a smaller bar and a line under the log give what is across, the speed and the time left ("212 of 476 KB, 7.9 KB/s, about 38 s left"). The steps stay on screen after a failure.
 - **After:** one line, "Updated to the 30 Sep build".
 
@@ -162,6 +162,16 @@ Slot A and Slot B each hold one **camera-variant** build. `xip_update_firmware_f
 3. If only one is available → single-image update (logged as such).
 4. An explicit SD-card filename (a bare string) always takes the legacy single-pass path — the variant cannot be inferred from a filename.
 
+Steps 3 and 4 are reachable only from the engineer view's Advanced picker; the screen starts the one-tap update only with a build of each camera.
+
+### One camera's build only
+
+The pair update needs an active catalogue row for each camera. With one, it cannot start: the update screen names the camera whose build is missing and keeps the button off, and Firmware Status names the same camera, with no Update outside the Engineer Console, counting the AI processor as neither outdated nor up to date (`himaxUpdateState` in `useFirmwareStatus.ts`, #437). A sync cannot fetch a build that was never uploaded; the update screen syncs the catalogue each time it opens, so open it again once the build is there.
+
+On cloud dev this follows every ww-backend dev deploy for some seconds: the deploy resets the database, and the Seeed upload job puts the builds back one camera at a time. Elsewhere it follows a failed or late upload of one camera's build.
+
+A camera already on the one build there is still reads up to date. That is the either-camera rule, which also passes an update cut short between its two images (#374).
+
 ### Ordering rule
 
 ```
@@ -179,7 +189,7 @@ The app queries `AI slots` to learn the running variant, then flashes **the othe
 |-------|-------|--------|
 | Download | `downloading` | Cloud source only. Skipped when flashing from the SD card. `FirmwareService.ensureFirmwareDownloaded` uses the copy in the phone's cache (`documentDirectory/firmware/`) when it is there at the release's size, which needs no connection. The offline pre-download keeps the latest image of each variant there after every sync, and the pre-flight card says "On this phone: Downloaded" when both are (#333). |
 | Check the card | `sending` | SD-card source only. `AI crc <file>` reads the CRC16-CCITT and size of the file already on the card, and the app compares them with the release's `firmware.crc_checksum` and `file_size_bytes` before anything touches flash. See below. |
-| Transfer | `transferring` | `runFileTransferPipeline` stages the `.IMG` into `/MANIFEST/`. The pipeline's whole-file CRC16 is reused as the `AI firmware` CRC argument. It sends one `ver` first and refuses on [BLE firmware below the floor](File-Transfer-Protocol.md#the-ble-firmware-floor), so an old nRF needs its BLE update before the Himax one. |
+| Transfer | `transferring` | `runFileTransferPipeline` stages the `.IMG` into `/MANIFEST/`. The engineer view's download and transfer cards name this pass's image, the hook's `passImage`, not the build picked under Advanced (#436). The pipeline's whole-file CRC16 is reused as the `AI firmware` CRC argument. It sends one `ver` first and refuses on [BLE firmware below the floor](File-Transfer-Protocol.md#the-ble-firmware-floor), so an old nRF needs its BLE update before the Himax one. |
 | Flash | `sending` → `flashing` | `AI firmware <file> <0xCRC>`. The phase advances to `flashing` on an 8-second timer because the HX goes silent during erase/write. |
 | Reboot | `rebooting` | `AI reset` |
 | Boundary | — | Between passes: `waitForAiReady(25000)` — waits for the device to answer again rather than racing the reboot. |
@@ -381,6 +391,8 @@ The parser ([`useFirmwareUpdate.ts`](../../src/screens/Devices/hooks/useFirmware
 - [ ] Inter-pass `waitForAiReady` completes without a manual reconnect
 - [ ] A link drop during a pass retries once and then succeeds
 - [ ] Single-variant fallback logs "Only one camera variant available"
+- [ ] The transfer card names the file in that pass's `Target firmware filename` log line, for both images
+- [ ] With one camera's build in the catalogue, the update screen names the missing camera and Firmware Status offers no update
 
 ### Post-Update
 - [ ] App shows success → sends `AI reset`

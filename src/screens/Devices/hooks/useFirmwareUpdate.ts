@@ -264,6 +264,12 @@ export interface StartUpdateOptions {
     selectedFirmware?: Firmware | string
 }
 
+/** The image one pass of a Himax update sends: its 8.3 name on the SD card, and its cloud path when it is a release */
+interface PassImage {
+    filename: string
+    locationPath: string | null
+}
+
 interface UseFirmwareUpdateOptions {
     target: FirmwareTarget
     device: ExtendedPeripheral | undefined
@@ -282,6 +288,10 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
     const flashStartRef = useRef<number | null>(null)
     const [flashElapsedSec, setFlashElapsedSec] = useState(0)
     const [fileTransferProgress, setFileTransferProgress] = useState<FileTransferProgress | null>(null)
+    // The image the running pass sends, for the screen's download and transfer
+    // cards. A pair update sends each camera's image in turn, so the build
+    // picked under Advanced is not it (#436)
+    const [passImage, setPassImage] = useState<PassImage | null>(null)
     const [isUpdating, setIsUpdating] = useState(false)
     const [errorMsg, setErrorMsg] = useState<string | null>(null)
     const [progressLogs, setProgressLogs] = useState<string[]>([])
@@ -672,6 +682,8 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         passLabel: string,
     ) => {
         if (!device?.connected) throw new Error('Device disconnected.')
+
+        if (!unmountedRef.current) setPassImage({ filename: filenameToFlash, locationPath: fwToFlash?.locationPath || null })
 
         const session = createBleSession(device)
 
@@ -1068,6 +1080,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         setProgressLogs([])
         setDfuProgress(0)
         setFileTransferProgress(null)
+        setPassImage(null)
         setDownloadProgress(null)
         setDownloadState('idle')
         setPairProgress(null)
@@ -1178,6 +1191,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         downloadState,
         downloadProgress,
         fileTransferProgress,
+        passImage,
 
         // Pre-flight
         batteryLevel,

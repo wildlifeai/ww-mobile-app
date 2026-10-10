@@ -261,7 +261,7 @@ trying to do rather than by the mechanism underneath.
 |------|-------------|
 | `UPDATE_BLE_FIRMWARE` | Nordic nRF52 OTA update (ZIP) via the DFU screen. |
 | `UPDATE_HIMAX_FIRMWARE` | Himax AI processor update (`AI firmware <file> <0xCRC>` + `AI reset`). Normally flashes **both** camera-variant images, see [Himax-Firmware-Update.md](../resources/Himax-Firmware-Update.md#dual-image-update-camera-variant-pair). |
-| `FIRMWARE_STATUS` | One line per chip, up to date or update available, with Update. Also reached from Start Monitoring, so the screen is production code, not only a bench tool. |
+| `FIRMWARE_STATUS` | One line per chip, up to date or update available, with Update. With one camera's AI build in the catalogue, the AI line names the camera whose firmware is missing instead ([why](../resources/Himax-Firmware-Update.md#one-cameras-build-only)). Also reached from Start Monitoring, so the screen is production code, not only a bench tool. |
 | `MODEL_VALIDATION` | Full AI model lifecycle: validate metadata → download → transfer to SD → `erasemodel` → `loadmodel`. Grouped here rather than under file transfer because the transfer is how it works, not what it is for. |
 
 From the console, all three open the **engineer view** of the update screen (`engineer: true`): the build picker, the SD-card or cloud source and the transfer cards. Start Monitoring opens the operator's view, one version line, one button, one bar and one status line with the update's last steps under them, and one result line (#344).

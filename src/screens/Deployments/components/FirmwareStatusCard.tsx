@@ -24,6 +24,9 @@ const FirmwareRow: React.FC<FirmwareRowProps> = ({ title, status, theme, onUpdat
             <WWText variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>{title}</WWText>
             {status.isOutdated ? (
                 <WWText variant="labelSmall" style={{ color: theme.colors.error, fontWeight: 'bold' }}>UPDATE AVAILABLE</WWText>
+            ) : status.missingVariant ? (
+                // One camera's build in the catalogue: nothing to install yet, and not up to date either (#437)
+                <WWText variant="labelSmall" style={[styles.notReady, { color: theme.colors.onSurfaceVariant }]}>UPDATE NOT READY</WWText>
             ) : (
                 <WWText variant="labelSmall" style={{ color: '#4CAF50', fontWeight: 'bold' }}>UP TO DATE</WWText>
             )}
@@ -117,6 +120,9 @@ const styles = StyleSheet.create({
     updateButton: {
         marginTop: 8,
         alignSelf: 'flex-start',
-    }
+    },
+    notReady: {
+        fontWeight: 'bold',
+    },
 })
 
