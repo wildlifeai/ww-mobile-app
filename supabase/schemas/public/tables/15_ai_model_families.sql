@@ -12,7 +12,7 @@ CREATE TABLE ai_model_families (
 
   -- Ownership
   organisation_id uuid NOT NULL REFERENCES organisations (id),
-  created_by uuid REFERENCES auth.users (id),
+  created_by uuid REFERENCES auth.users (id) ON DELETE SET NULL,
 
   -- Metadata
   name text NOT NULL,
