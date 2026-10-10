@@ -446,9 +446,13 @@ column lands last.
 > not an error: the pull leaves the local record at its model default, and the push writes the
 > row without that value and still reports success. `lorawan_required`, `record_gps_in_images`
 > and `is_archived` were missing from both for months (#285, ww-backend #170), so a project set
-> to record GPS on the website deployed with GPS zeroed and nothing said why. When you add a
-> column, add it to both lists in the same change, and check the round trip rather than the
-> save dialog.
+> to record GPS on the website deployed with GPS zeroed and nothing said why. `syncDeployments`
+> is the same: it never read back the start snapshot (`camera_model` through
+> `lorawan_snr_at_start`) the push sends, so a deployment pulled onto a second phone had none
+> (#426). When you add a column, add it to both lists in the same change, and check the round
+> trip rather than the save dialog. The app's half is guarded: `syncProjects.columns.test.ts`
+> and `syncDeployments.columns.test.ts` read the pull's source and fail when a local column, or
+> one the deployment push sends, has no line in both branches.
 
 ### Retry Logic
 

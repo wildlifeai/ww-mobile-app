@@ -1,7 +1,8 @@
 /**
  * The push half of a sync (#287), the account a sync runs as (#267), projects
- * that disappear from the server (#330), and deployments edited, deleted or
- * moved on the website (#411).
+ * that disappear from the server (#330), deployments edited, deleted or moved
+ * on the website (#411), and the start snapshot a pulled deployment carries
+ * (#426).
  *
  * The database is an in-memory fake, so these assert on what each outbox
  * operation ends up as, and on what push_changes was actually sent.
@@ -10,7 +11,7 @@ import SupabaseSyncService from '../SupabaseSyncService'
 import SyncStateService, { SYNC_STATE_KEYS, PULL_WATERMARK_KEYS } from '../SyncStateService'
 import OutboxService from '../OutboxService'
 import ProjectService from '../ProjectService'
-import { DeploymentService, DEPLOYMENT_STATUS } from '../DeploymentService'
+import { DeploymentService, DEPLOYMENT_STATUS, mapModelToPayload } from '../DeploymentService'
 import { GONE_FROM_SERVER } from '../goneFromServer'
 import { resetFakeDatabase, seedRows, rowsIn } from '../../../tests/setup/helpers/fakeDatabase'
 
@@ -1040,5 +1041,82 @@ describe('a deployment whose device is not on the phone (#411)', () => {
 
 		expect(rowsIn('deployments').map((d) => d.id)).toEqual(['dep-moved'])
 		expect(rowsIn('devices')).toEqual([])
+	})
+})
+
+describe('a deployment pulled onto another phone (#426)', () => {
+	// The camera as the phone that started the deployment recorded it
+	const snapshot = {
+		cameraModel: 'WW500',
+		lorawanNetwork: 'TTN',
+		deviceEui: '70B3D57ED0065A2B',
+		lorawanRegistrationCompleted: true,
+		lorawanLastVerifiedAt: new Date('2026-10-01T02:55:00Z'),
+		aiModelId: 'model-1',
+		bleFirmwareId: 'ble-firmware-1',
+		himaxFirmwareId: 'himax-firmware-1',
+		batteryLevelAtStart: 87,
+		sdCardTotalKbAtStart: 31166976,
+		sdCardAvailableKbAtStart: 30932992,
+		lorawanRssiAtStart: -97,
+		lorawanSnrAtStart: 7.5,
+	}
+
+	// The server's row is the starting phone's CREATE: push_changes stores the
+	// snapshot as sent and never updates it
+	const serverRow = () => mapModelToPayload({
+		id: 'dep-1',
+		projectId: 'project-1',
+		deviceId: 'device-1',
+		name: 'Ridge',
+		setupBy: USER_A,
+		deploymentStart: new Date('2026-10-01T03:00:00Z'),
+		deploymentStatusId: DEPLOYMENT_STATUS.STARTED,
+		locationName: 'Ridge top',
+		cameraLocationImagePaths: [],
+		createdAt: Date.parse('2026-10-01T03:00:00Z'),
+		updatedAt: Date.parse('2026-10-01T03:00:00Z'),
+		...snapshot,
+	} as any)
+
+	it('arrives on a phone that never had it with the snapshot the starting phone sent', async () => {
+		pullRows.deployments = [serverRow()]
+
+		await service.syncDeployments()
+
+		expect(rowsIn('deployments')).toEqual([expect.objectContaining({ id: 'dep-1', ...snapshot })])
+	})
+
+	it('fills in the empty snapshot an earlier pull left on this phone', async () => {
+		seedRows('deployments', [{ id: 'dep-1', projectId: 'project-1', deviceId: 'device-1', name: 'Ridge',
+			lorawanRegistrationCompleted: false, lorawanLastVerifiedAt: null }])
+		pullRows.deployments = [serverRow()]
+
+		await service.syncDeployments()
+
+		expect(rowsIn('deployments')).toEqual([expect.objectContaining({ id: 'dep-1', ...snapshot })])
+	})
+
+	// What a phone on 0.0.69 left on a server that still let an update set the
+	// snapshot, when it ended a deployment it had pulled with none
+	const lostOnServer = () => ({
+		...serverRow(),
+		camera_model: null, lorawan_network: null, device_eui: null,
+		lorawan_registration_completed: false, lorawan_last_verified_at: null,
+		ai_model_id: null, ble_firmware_id: null, himax_firmware_id: null,
+		battery_level_at_start: null, sd_card_total_kb_at_start: null, sd_card_available_kb_at_start: null,
+		lorawan_rssi_at_start: null, lorawan_snr_at_start: null,
+		deployment_status_id: DEPLOYMENT_STATUS.ENDED,
+	})
+
+	it('keeps the snapshot this phone holds when the server row has lost it, and applies the rest', async () => {
+		seedRows('deployments', [{ id: 'dep-1', projectId: 'project-1', deviceId: 'device-1', name: 'Ridge',
+			deploymentStatusId: DEPLOYMENT_STATUS.STARTED, ...snapshot }])
+		pullRows.deployments = [lostOnServer()]
+
+		await service.syncDeployments()
+
+		expect(rowsIn('deployments')).toEqual([expect.objectContaining({
+			id: 'dep-1', deploymentStatusId: DEPLOYMENT_STATUS.ENDED, ...snapshot })])
 	})
 })
