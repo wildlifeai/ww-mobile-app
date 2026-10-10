@@ -1829,6 +1829,26 @@ class SupabaseSyncService {
                         rec.activityDetectionSensitivityId = row.activity_detection_sensitivity_id ?? undefined
                         rec.timelapseIntervalSeconds = row.timelapse_interval_seconds ?? undefined
 
+                        // The camera as it was at the start. Pulled since #426: a
+                        // deployment this phone did not start arrived with none.
+                        // It never changes after the start, so a value the server
+                        // lacks keeps the phone's. A server that still let an update
+                        // set it took nulls, and false for the registration, from
+                        // phones that ended a deployment they had pulled empty.
+                        rec.cameraModel = row.camera_model ?? rec.cameraModel
+                        rec.lorawanNetwork = row.lorawan_network ?? rec.lorawanNetwork
+                        rec.deviceEui = row.device_eui ?? rec.deviceEui
+                        rec.lorawanRegistrationCompleted = row.lorawan_registration_completed || rec.lorawanRegistrationCompleted
+                        rec.lorawanLastVerifiedAt = row.lorawan_last_verified_at ? new Date(row.lorawan_last_verified_at) : rec.lorawanLastVerifiedAt
+                        rec.aiModelId = row.ai_model_id ?? rec.aiModelId
+                        rec.bleFirmwareId = row.ble_firmware_id ?? rec.bleFirmwareId
+                        rec.himaxFirmwareId = row.himax_firmware_id ?? rec.himaxFirmwareId
+                        rec.batteryLevelAtStart = row.battery_level_at_start ?? rec.batteryLevelAtStart
+                        rec.sdCardTotalKbAtStart = row.sd_card_total_kb_at_start ?? rec.sdCardTotalKbAtStart
+                        rec.sdCardAvailableKbAtStart = row.sd_card_available_kb_at_start ?? rec.sdCardAvailableKbAtStart
+                        rec.lorawanRssiAtStart = row.lorawan_rssi_at_start ?? rec.lorawanRssiAtStart
+                        rec.lorawanSnrAtStart = row.lorawan_snr_at_start ?? rec.lorawanSnrAtStart
+
                         rec.name = row.name ?? ''
                         rec.setupBy = row.setup_by || ''
                         rec.endedBy = row.ended_by ?? undefined
@@ -1870,6 +1890,21 @@ class SupabaseSyncService {
                         rec.captureMethodId = row.capture_method_id ?? undefined
                         rec.activityDetectionSensitivityId = row.activity_detection_sensitivity_id ?? undefined
                         rec.timelapseIntervalSeconds = row.timelapse_interval_seconds ?? undefined
+
+                        // The camera as it was at the start (#426)
+                        rec.cameraModel = row.camera_model ?? undefined
+                        rec.lorawanNetwork = row.lorawan_network ?? undefined
+                        rec.deviceEui = row.device_eui ?? undefined
+                        rec.lorawanRegistrationCompleted = row.lorawan_registration_completed ?? false
+                        rec.lorawanLastVerifiedAt = row.lorawan_last_verified_at ? new Date(row.lorawan_last_verified_at) : null
+                        rec.aiModelId = row.ai_model_id ?? undefined
+                        rec.bleFirmwareId = row.ble_firmware_id ?? undefined
+                        rec.himaxFirmwareId = row.himax_firmware_id ?? undefined
+                        rec.batteryLevelAtStart = row.battery_level_at_start ?? undefined
+                        rec.sdCardTotalKbAtStart = row.sd_card_total_kb_at_start ?? undefined
+                        rec.sdCardAvailableKbAtStart = row.sd_card_available_kb_at_start ?? undefined
+                        rec.lorawanRssiAtStart = row.lorawan_rssi_at_start ?? undefined
+                        rec.lorawanSnrAtStart = row.lorawan_snr_at_start ?? undefined
 
                         rec.name = row.name ?? ''
                         rec.setupBy = row.setup_by || ''
