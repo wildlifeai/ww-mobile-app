@@ -173,6 +173,8 @@ Slot A and Slot B each hold one **camera-variant** build. `xip_update_firmware_f
 
 Steps 3 and 4 are reachable only from the engineer view's Advanced picker; the screen starts the one-tap update only with a build of each camera.
 
+**The latest build is the newest by date.** An AI version reads `WW500_C02 10:56:08 Oct  9 2026`, time of day first, so the release-number sort BLE builds use ordered AI builds by time of day (#457). Every AI lookup in `ReferenceDataService` orders by [`newestAiBuildFirst`](../../src/utils/versionUtils.ts): the day from `build_date`, else from the version, the time of day from the version, and a build with no readable date after every dated one.
+
 ### One camera's build only
 
 The pair update needs an active catalogue row for each camera. With one, it cannot start: the update screen names the camera whose build is missing and keeps the button off, and Firmware Status names the same camera, with no Update outside the Engineer Console, counting the AI processor as neither outdated nor up to date (`classifyHimax` in `utils/himaxFirmwareState.ts`, #437). A sync cannot fetch a build that was never uploaded; the update screen syncs the catalogue each time it opens, so open it again once the build is there.
@@ -453,6 +455,7 @@ The parser ([`useFirmwareUpdate.ts`](../../src/screens/Devices/hooks/useFirmware
 | `src/screens/Devices/hooks/useFirmwareUpdate.ts` | **Primary flow:** UART phase listener, progress parsing, reset/sleep sequence |
 | `src/services/himaxUpdateRecord.ts` | This phone's record of a pair update, for finishing one that stopped |
 | `src/utils/himaxFirmwareState.ts` | Up to date, outdated or unfinished, and what finishing writes |
+| `src/utils/versionUtils.ts` | Which AI build is the latest: `newestAiBuildFirst` |
 | `src/screens/Devices/FirmwareUpdateScreen.tsx` | Update progress UI (presentational) |
 | `src/screens/Devices/FirmwareStatusScreen.tsx` | Version display + update trigger |
 | `src/ble/protocol/commandRegistry.ts` | `aifirmware` command definition + `FIRMWARE_ERROR_CODES` |

@@ -10,7 +10,11 @@ import { getSupabaseClient } from './supabase'
 import { isKnownOffline } from './connectivityWatch'
 import { log, logError } from '../utils/logger'
 import { logCloudFailure } from '../utils/networkErrors'
+import { newestAiBuildFirst, newestReleaseFirst } from '../utils/versionUtils'
 
+/** Newest first: an AI build by when it was built (#457), any other by release number */
+const newestFirst = (type: string) => (a: Firmware, b: Firmware): number =>
+    type === 'himax' ? newestAiBuildFirst(a, b) : newestReleaseFirst(a?.version, b?.version)
 
 /**
  * ReferenceDataService
@@ -551,7 +555,7 @@ class ReferenceDataService {
     }
 
     /**
-     * Get all active firmwares for a specific type sorted by version descending
+     * Get all active firmwares for a specific type, newest first (`newestFirst`)
      */
     async getActiveFirmwares(type: 'ble' | 'himax' | 'config'): Promise<Firmware[]> {
         const firmwares = await database.get<Firmware>('firmware')
@@ -561,16 +565,12 @@ class ReferenceDataService {
             )
             .fetch()
 
-        return firmwares.sort((a, b) => {
-            const versionA = a?.version || '0.0.0'
-            const versionB = b?.version || '0.0.0'
-            return versionB.localeCompare(versionA, undefined, { numeric: true, sensitivity: 'base' })
-        })
+        return firmwares.sort(newestFirst(type))
     }
 
     /**
-     * Get the latest active Himax firmware for a specific camera variant
-     * ('RP3' colour or 'HM0360' night/IR). Returns null when no record for
+     * Get the latest active Himax firmware, by build date, for a specific camera
+     * variant ('RP3' colour or 'HM0360' night/IR). Returns null when no record for
      * that variant exists (e.g. legacy databases without variant labels).
      */
     async getLatestHimaxByVariant(variant: 'RP3' | 'HM0360'): Promise<Firmware | null> {
@@ -582,11 +582,7 @@ class ReferenceDataService {
             )
             .fetch()
 
-        const sorted = firmwares.sort((a, b) => {
-            const versionA = a?.version || '0.0.0'
-            const versionB = b?.version || '0.0.0'
-            return versionB.localeCompare(versionA, undefined, { numeric: true, sensitivity: 'base' })
-        })
+        const sorted = firmwares.sort(newestAiBuildFirst)
 
         return sorted.length > 0 ? sorted[0] : null
     }
@@ -602,12 +598,8 @@ class ReferenceDataService {
             )
             .fetch()
 
-        // Sort by version descending using numeric comparison (handles v0.10.0 > v0.2.0)
-        const sorted = firmwares.sort((a, b) => {
-            const versionA = a?.version || '0.0.0'
-            const versionB = b?.version || '0.0.0'
-            return versionB.localeCompare(versionA, undefined, { numeric: true, sensitivity: 'base' })
-        })
+        // An AI build by date, the others by release number (v0.10.0 > v0.2.0)
+        const sorted = firmwares.sort(newestFirst(type))
 
         // log(`[RefData] getLatestFirmware(${type}) found:`, sorted.length, sorted[0]?._raw)
         return sorted.length > 0 ? sorted[0] : null
