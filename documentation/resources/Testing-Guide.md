@@ -176,8 +176,9 @@ that changed only an npm script rebuilt (run 36929311218). Caches are scoped per
 Two jobs run the flows on an API 33 x86_64 emulator with the Pixel 6 profile (the default AVD
 is 320x640 at 160 dpi, where the drawer's version footer sat over its sign-out button, #379),
 through `scripts/ci-maestro.sh`. That script also turns Bluetooth on, which the app insists on
-before the login screen, and runs the offline scenario through `scripts/maestro-offline.sh`
-after the other flows:
+before the login screen, disables the Pixel Launcher, whose "isn't responding" dialog covered the
+app in 4 of 24 smoke runs on busy runners (9 and 10 October 2026), and runs the offline scenario
+through `scripts/maestro-offline.sh` after the other flows:
 
 - `E2E Smoke`, **required**. One flow, [`smoke/app-startup.yaml`](../../tests/maestro/smoke/app-startup.yaml):
   install, launch, and the login screen's `email-input` and `login-button` render within 90 s.
