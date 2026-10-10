@@ -216,6 +216,12 @@ export const FirmwareUpdateScreen = () => {
     // still the SD card - no download, no BLE transfer, ~2 min total.
     const pairInDb = !!(latestByVariant?.rp3 && latestByVariant?.hm)
     const pairSource: HimaxFirmwareSource | null = pairOnSd ? 'sdcard' : (pairInDb ? 'download' : null)
+    // One camera's build in the catalogue: the pair cannot start, a sync cannot
+    // fetch a build that was never uploaded, and the SD card source needs both
+    // rows too, so the screen names the missing camera instead (#437)
+    const missingVariant: 'RP3' | 'HM0360' | null = latestByVariant && !pairInDb
+        ? (latestByVariant.rp3 ? 'HM0360' : 'RP3')
+        : null
 
     const filteredOptions = firmwareOptions
 
@@ -291,6 +297,7 @@ export const FirmwareUpdateScreen = () => {
                     upToDate={upToDate}
                     isPreflightDone={isPreflightDone}
                     canStart={target === 'himax' ? !!pairSource : !!latestFirmware}
+                    missingVariant={missingVariant}
                     batteryLevel={batteryLevel}
                     isBatteryLow={isBatteryLow && !isDfuMode}
                     externalPowerConfirmed={externalPowerConfirmed}
@@ -462,7 +469,13 @@ export const FirmwareUpdateScreen = () => {
                                     : 'Flashes the colour and night-IR camera images in two passes.'}
                             {' '}The device finishes on the camera it is using now.
                         </WWText>
-                        {!pairSource && isPreflightDone && (
+                        {missingVariant && (
+                            <WWText variant="bodySmall" style={[styles.marginBottom8, { color: colors.error }]}>
+                                No {VARIANT_META[missingVariant].emoji} {VARIANT_META[missingVariant].label} build in the firmware
+                                catalogue, and both cameras update together. Open this screen again once it is uploaded.
+                            </WWText>
+                        )}
+                        {!pairSource && !missingVariant && isPreflightDone && (
                             <WWText variant="bodySmall" style={[styles.marginBottom8, { color: colors.error }]}>
                                 No firmware images available — sync the app to fetch the catalogue, or prepare the
                                 SD card from the website, reinsert it and power cycle the camera, since a card put

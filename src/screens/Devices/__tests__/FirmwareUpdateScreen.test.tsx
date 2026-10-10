@@ -53,7 +53,8 @@ jest.mock("react-native-paper", () => {
 	const nothing = () => null
 	return {
 		Text: text,
-		Button: ({ children, onPress, disabled }: any) => React.createElement(RN.Text, { onPress: disabled ? undefined : onPress }, children),
+		Button: ({ children, onPress, disabled }: any) =>
+			React.createElement(RN.Text, { onPress: disabled ? undefined : onPress, accessibilityState: { disabled: !!disabled } }, children),
 		ActivityIndicator: nothing,
 		ProgressBar: nothing,
 		IconButton: nothing,
@@ -110,4 +111,29 @@ describe("FirmwareUpdateScreen", () => {
 		expect(screen.queryByText(/R6930K26/)).toBeNull()
 	})
 
+	// #437: with one camera's build in the catalogue the pair cannot start, and
+	// the screen said "No firmware images available" and suggested a sync
+	describe("with only the night-IR build in the catalogue", () => {
+		beforeEach(() => {
+			mockHook.current = { availableDbFirmwares: [build("fw-hm", "HM0360")] }
+		})
+
+		it("names the missing camera to an operator and does not start", () => {
+			mockParams.current = { deviceId: "dev-1", target: "himax" }
+			render(<FirmwareUpdateScreen />)
+
+			expect(screen.getByText("The colour camera's new firmware is not available yet. Try again later.")).toBeTruthy()
+			expect(screen.queryByText(/Connect to the internet/)).toBeNull()
+			expect(screen.getByText("Update")).toBeDisabled()
+		})
+
+		it("names the missing build in the Engineer Console's view, without suggesting a sync", () => {
+			mockParams.current = { deviceId: "dev-1", target: "himax", engineer: true }
+			render(<FirmwareUpdateScreen />)
+
+			expect(screen.getByText(/^No 🎨 Colour \(RP3\) build in the firmware catalogue, and both cameras update together\./)).toBeTruthy()
+			expect(screen.queryByText(/No firmware images available|sync the app/)).toBeNull()
+			expect(screen.getByText("Update both cameras")).toBeDisabled()
+		})
+	})
 })

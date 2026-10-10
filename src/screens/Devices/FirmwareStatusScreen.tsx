@@ -8,7 +8,7 @@ import { useExtendedTheme } from '../../theme'
 import { useAppSelector } from '../../redux'
 import { WWText } from '../../components/ui/WWText'
 import { useFirmwareStatus, FirmwareComponentStatus } from './hooks/useFirmwareStatus'
-import { friendlyVersion } from '../../utils/firmwareWords'
+import { friendlyVersion, missingFirmware } from '../../utils/firmwareWords'
 
 interface FirmwareComponentCardProps {
     title: string
@@ -22,13 +22,20 @@ interface FirmwareComponentCardProps {
     onUpdate: () => void
 }
 
-/** "Up to date: 30 Sep build", or "23 Sep build, update available" (#344) */
+/**
+ * "Up to date: 30 Sep build", or "23 Sep build, update available" (#344), or,
+ * with one camera's build in the catalogue, "23 Sep build. The colour camera's
+ * new firmware is not available yet" rather than either (#437)
+ */
 const statusLine = (status: FirmwareComponentStatus): string => {
     const current = status.currentVersion && status.currentVersion !== 'Unknown'
         ? friendlyVersion(status.currentVersion)
         : null
     if (!status.currentVersion) return 'Checking…'
     if (status.isOutdated) return current ? `${current}, update available` : 'Update available'
+    if (status.missingVariant) {
+        return current ? `${current}. ${missingFirmware(status.missingVariant)}` : missingFirmware(status.missingVariant)
+    }
     return current ? `Up to date: ${current}` : 'Version unknown'
 }
 
