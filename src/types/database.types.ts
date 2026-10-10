@@ -4385,10 +4385,6 @@ export type Database = {
         Args: { p_org_id: string; p_user_id: string }
         Returns: boolean
       }
-      device_fits_project: {
-        Args: { p_device_id: string; p_project_id: string }
-        Returns: boolean
-      }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
         | {
