@@ -635,10 +635,9 @@ export async function runFileTransferPipeline(
               // Measured on Android: re-requesting HIGH mid-transfer forces a
               // connection-parameter renegotiation that desyncs the nRF<->HX I2C
               // handshake and hangs the transfer ~24s in (DEVICE_SILENT). Without it
-              // the transfer completes reliably; Android holds the fast interval for
-              // ~24s (great for typical previews/small models) then decays it, so
-              // large files finish slower but still succeed. Holding the fast interval
-              // longer is an OS-level limitation, not fixable from here.
+              // the transfer completes reliably. Since BLE 0.30.52 the camera holds the
+              // fast interval for the whole upload itself: 30 ms, 5.3 KB/s throughout
+              // (File-Transfer-Protocol.md, Measured Performance).
 
               // Fill the window: keep <= windowSize packets unacknowledged.
               // Writes are awaited one at a time. react-native-ble-manager serialises

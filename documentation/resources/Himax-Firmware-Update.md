@@ -350,15 +350,15 @@ The parser ([`useFirmwareUpdate.ts`](../../src/screens/Devices/hooks/useFirmware
 | Typical write time | 15–40 seconds |
 | Typical verify time | 5–10 seconds |
 | **Flash only** (image already on SD) | 20–60 seconds per image |
-| **BLE transfer** of one image | ~4 minutes (~472 KB at the measured profile) |
-| **Full pair from cloud** | ~8–9 minutes |
+| **BLE transfer** of one image | ~1.5 minutes (~472 KB at 5.3 KB/s) |
+| **Full pair from cloud** | ~4–5 minutes (worked out, not timed) |
 | `flashing` phase timer | 8 seconds after `sending` (HX goes silent during flash) |
 | Inter-pass wait | `waitForAiReady(25000)` |
 | `AI reset` timeout | 8 seconds, no retries |
 | Max image size | 1 MB (flash slot size) |
 
 > [!NOTE]
-> Transfer dominates a cloud update. See [File-Transfer-Protocol.md](File-Transfer-Protocol.md#measured-performance) — throughput is ~8 KB/s for the first ~24 s, then ~1.3 KB/s once Android decays the connection interval. Build ETAs from that two-phase profile, not a flat rate.
+> Transfer dominates a cloud update. See [File-Transfer-Protocol.md](File-Transfer-Protocol.md#measured-performance): since BLE 0.30.52 the camera holds the fast interval for the whole upload, about 5.3 KB/s throughout.
 
 ---
 
