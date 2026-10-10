@@ -31,7 +31,7 @@ CREATE TABLE media_assets (
   )
 );
 
-COMMENT ON TABLE media_assets IS 'Website/AI-derived storage metadata and CDN renditions for a media row. Kept separate from the mobile-synced media table so AI columns never bloat offline sync.';
+COMMENT ON TABLE media_assets IS 'Website/AI-derived storage metadata and CDN renditions for a media row, one row per media, kept apart from media itself.';
 COMMENT ON COLUMN media_assets.storage_provider IS 'Where the rendition lives: supabase_storage (default), google_drive, or azure_blob.';
 COMMENT ON COLUMN media_assets.storage_key IS 'Provider-specific key: Google Drive file ID or storage object path.';
 COMMENT ON COLUMN media_assets.thumbnail_url IS '~300px JPEG served from the public Supabase Storage CDN; primary source for the image grid.';

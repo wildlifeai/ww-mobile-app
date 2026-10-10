@@ -53,7 +53,10 @@ CREATE POLICY "projects_select_policy"
     AND can_read_project(projects.id, projects.organisation_id, projects.created_by)
   );
 
--- INSERT: Authenticated users can create projects (MVP2: Users can become project admins)
+-- INSERT: a member or manager of the project's organisation, or a ww_admin, creates a
+-- project and becomes its project_admin (handle_new_project). Every user is in General,
+-- so anyone may create one there. Until #304 only created_by was checked, so any user
+-- could create a project in any organisation, whose id ai_models shows to anon.
 CREATE POLICY "projects_insert_policy"
   ON projects
   FOR INSERT
@@ -61,6 +64,7 @@ CREATE POLICY "projects_insert_policy"
   WITH CHECK (
     (SELECT auth.uid()) IS NOT NULL
     AND created_by = (SELECT auth.uid())
+    AND has_organisation_role((SELECT auth.uid()), projects.organisation_id, 'organisation_member')
   );
 
 -- UPDATE: Project admins can update (MVP2: No Org Managers)
