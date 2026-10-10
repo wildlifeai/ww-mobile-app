@@ -57,6 +57,14 @@ const personName = async (userId: string): Promise<string | null> => {
 	}
 }
 
+/** Whether this account may end or change the deployment, without the wording */
+export async function mayChangeDeployment(
+	userId: string | null | undefined,
+	deployment: { projectId: string; setupBy?: string | null },
+): Promise<boolean> {
+	return !!userId && mayUpdateDeployment(await ownRoles(userId), deployment, userId)
+}
+
 /** Whether this account may save settings to the project, which only a project admin may change (#466) */
 export async function maySaveProjectSettings(userId: string | null | undefined, projectId: string): Promise<boolean> {
 	return mayUpdateProject(await ownRoles(userId), projectId)

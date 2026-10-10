@@ -308,6 +308,11 @@ so one refused change cannot stop the phone seeing anything new from the cloud, 
 deployment's site photos and the files a field visit needs. The error still lands in
 `LAST_SYNC_ERROR`.
 
+A deployment's site photos are uploaded only by an account that may change the deployment
+([the rule](#key-tables), #467): after the upload the app swaps the local path for the bucket
+path on the record, and the server refuses that update from anyone else. The photos stay on
+the phone for an account that may, such as their creator signing in again.
+
 ### Push (Outbox Upload)
 
 ```typescript

@@ -29,6 +29,8 @@ jest.mock('../supabase', () => ({
 		storage: { from: () => ({ upload: jest.fn(async () => ({ error: null })), list: jest.fn() }) },
 	}),
 }))
+// The uploader may change the deployment; the role rule is tested in deploymentAccess.test.ts (#467)
+jest.mock('../deploymentAccess', () => ({ mayChangeDeployment: jest.fn(async () => true) }))
 jest.mock('../SupabaseSyncService', () => ({
 	__esModule: true,
 	default: { requestSync: jest.fn(), debouncedSync: jest.fn() },

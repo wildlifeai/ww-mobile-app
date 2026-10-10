@@ -4,7 +4,7 @@
  * why not and who can. The rules are roleAccess.ts's, from ww-backend's
  * deployments policies.
  */
-import { endRefusal, projectsToDeployInto, startRefusal } from '../deploymentAccess'
+import { endRefusal, mayChangeDeployment, projectsToDeployInto, startRefusal } from '../deploymentAccess'
 import { getSupabaseClient } from '../supabase'
 import { resetFakeDatabase, seedRows } from '../../../tests/setup/helpers/fakeDatabase'
 
@@ -155,5 +155,23 @@ describe('endRefusal', () => {
 		expect(await endRefusal(ME, mine)).toBeNull()
 		expect(await endRefusal(ME, tuis)).not.toBeNull()
 		expect(getSupabaseClient).not.toHaveBeenCalled()
+	})
+})
+
+// #467: the photo upload asks this before it touches storage
+describe('mayChangeDeployment', () => {
+	it('answers as endRefusal does, without the wording', async () => {
+		seedRows('user_roles', [role('project_member', 'project', 'p-1'), role('project_admin', 'project', 'p-2')])
+
+		expect(await mayChangeDeployment(ME, mine)).toBe(true)
+		expect(await mayChangeDeployment(ME, tuis)).toBe(false)
+		expect(await mayChangeDeployment(ME, { projectId: 'p-2', setupBy: TUI })).toBe(true)
+		expect(await mayChangeDeployment(null, mine)).toBe(false)
+	})
+
+	it('says no to a viewer, and with no roles on the phone', async () => {
+		expect(await mayChangeDeployment(ME, mine)).toBe(false)
+		seedRows('user_roles', [role('project_viewer', 'project', 'p-1')])
+		expect(await mayChangeDeployment(ME, mine)).toBe(false)
 	})
 })

@@ -1,4 +1,5 @@
 import { DeploymentPhotoService } from '../DeploymentPhotoService'
+import { mayChangeDeployment } from '../deploymentAccess'
 
 /**
  * #347: Start Monitoring starts a photo upload for the new deployment and the
@@ -54,6 +55,8 @@ jest.mock('../DeploymentService', () => ({
     prepareDeploymentUpdate: jest.fn((record: any, _userId: string, change: (r: any) => void) =>
         [record.prepareUpdate(change), { kind: 'outbox' }]),
 }))
+// The uploader may change the deployment; the role rule is tested in deploymentAccess.test.ts (#467)
+jest.mock('../deploymentAccess', () => ({ mayChangeDeployment: jest.fn(async () => true) }))
 jest.mock('../SupabaseSyncService', () => ({ __esModule: true, default: { debouncedSync: jest.fn() } }))
 jest.mock('../supabase', () => ({ getSupabaseClient: () => ({ storage: { from: () => ({ upload: mockUpload, list: mockList }) } }) }))
 jest.mock('../../utils/logger', () => ({ log: jest.fn(), logWarn: jest.fn(), logError: jest.fn() }))
@@ -127,6 +130,22 @@ describe('DeploymentPhotoService.uploadPendingPhotos', () => {
 
         await DeploymentPhotoService.uploadPendingPhotos('dep-1', 'user-1')
 
+        expect(mockRecord.cameraLocationImagePaths).toEqual([LOCAL])
+    })
+
+    // #467: storage would take the upload, the path update would be refused,
+    // and the photo would sit in the bucket with no record pointing at it
+    it('uploads nothing for an account that may not change the deployment, and keeps the file', async () => {
+        ;(mayChangeDeployment as jest.Mock).mockResolvedValueOnce(false)
+        mockFiles.add(LOCAL)
+        mockRecord.cameraLocationImagePaths = [LOCAL]
+
+        await DeploymentPhotoService.uploadPendingPhotos('dep-1', 'user-other')
+
+        expect(mayChangeDeployment).toHaveBeenCalledWith('user-other', expect.objectContaining({ id: 'dep-1', projectId: 'proj-1' }))
+        expect(mockUpload).not.toHaveBeenCalled()
+        expect(mockList).not.toHaveBeenCalled()
+        expect(mockFiles.has(LOCAL)).toBe(true)
         expect(mockRecord.cameraLocationImagePaths).toEqual([LOCAL])
     })
 })

@@ -3,6 +3,7 @@ import database from '../database'
 import Deployment from '../database/models/Deployment'
 import Project from '../database/models/Project'
 import { prepareDeploymentUpdate } from './DeploymentService'
+import { mayChangeDeployment } from './deploymentAccess'
 import { isGoneFromServer } from './goneFromServer'
 import SupabaseSyncService from './SupabaseSyncService'
 import { getSupabaseClient } from './supabase'
@@ -68,6 +69,18 @@ async function uploadPass(deploymentId: string, userId: string): Promise<void> {
 
     const paths = readPaths(deployment.cameraLocationImagePaths)
     if (!paths.some(isLocalPath)) return
+
+    // Only an account whose path update the server will take uploads (#467).
+    // Storage lets any member upload, but the record may be changed only by
+    // its creator while a member, a project admin or a ww_admin: anyone else's
+    // upload would land, delete the local file, and then have the path update
+    // refused, leaving the photo in storage with no record pointing at it.
+    // The photos stay on the phone for an account that may, such as their
+    // creator signing in again on this phone.
+    if (!(await mayChangeDeployment(userId, deployment))) {
+        log(`[DeploymentPhotoService] Not uploading the photos of ${deploymentId}: this account may not change the deployment`)
+        return
+    }
 
     const supabase = getSupabaseClient()
     const uploaded = new Map<string, string>() // local path -> storage path
