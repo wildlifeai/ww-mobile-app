@@ -16,10 +16,15 @@
  * The reassembler is shared: only one transfer may run at a time, which the
  * transport already guarantees (it holds every other command while a stream
  * runs).
+ *
+ * On Android it asks for high connection priority for the length of the
+ * download, before `txfile` and again once the camera has answered it, after
+ * the camera's own interval request (`connectionPriority.ts`).
  */
 import { imageReassemblerEmitter } from '../emitters'
 import { bleEventBus, BleEvent } from '../protocol/eventBus'
 import { commandRegistry } from '../protocol/commandRegistry'
+import { requestFastInterval, releaseFastInterval } from '../protocol/connectionPriority'
 import { log } from '../../utils/logger'
 
 const STALL_TIMEOUT_MS = 30000
@@ -48,6 +53,7 @@ export const downloadPhoto = (session: PhotoSession, deviceId: string, fileName:
             imageReassemblerEmitter.off('onImageProgress', onProgress)
             imageReassemblerEmitter.off('onImageError', onError)
             bleEventBus.removeListener('textLine', onLine)
+            releaseFastInterval(deviceId)
             if (error) reject(error)
             else resolve({ uri: uri!, bytes })
         }
@@ -64,7 +70,10 @@ export const downloadPhoto = (session: PhotoSession, deviceId: string, fileName:
         const onLine = (event: BleEvent & { type: 'TEXT_LINE' }) => {
             if (event.deviceId !== deviceId) return
             const size = /^(\d+) bytes in (\S+)/.exec(event.line.trim())
-            if (size && size[2].toUpperCase() === fileName.toUpperCase()) bytes = parseInt(size[1], 10)
+            if (size && size[2].toUpperCase() === fileName.toUpperCase()) {
+                bytes = parseInt(size[1], 10)
+                requestFastInterval(deviceId)
+            }
             if (!event.line.includes('Finished sending')) return
             if (grace) clearTimeout(grace)
             grace = setTimeout(() => imageReassemblerEmitter.emit('force_finalize'), FINISH_GRACE_MS)
@@ -76,5 +85,7 @@ export const downloadPhoto = (session: PhotoSession, deviceId: string, fileName:
         bleEventBus.on('textLine', onLine)
         armStall()
 
-        session.execute(() => commandRegistry.txfile(fileName)).catch((e) => finish(e instanceof Error ? e : new Error(String(e))))
+        requestFastInterval(deviceId)
+            .then(() => session.execute(() => commandRegistry.txfile(fileName)))
+            .catch((e) => finish(e instanceof Error ? e : new Error(String(e))))
     })
