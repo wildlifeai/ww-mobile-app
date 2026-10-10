@@ -17,8 +17,6 @@ import schema from '../../database/schema'
 describe('SupabaseSyncService.syncDeployments column coverage', () => {
     /** Kept by the sync machinery itself, not copied field by field. */
     const BOOKKEEPING = new Set(['created_at', 'updated_at', 'deleted_at', '_version', '_custom_sync_status'])
-    /** Legacy columns on the phone only: the server has none of them and nothing sends them. */
-    const LOCAL_ONLY = new Set(['deployment_comments', 'camera_location_description', 'camera_location_image_path'])
     /**
      * Server columns the phone keeps no field for: the CamtrapDP details the
      * website edits (ww-backend #170), and location_data. A field added for
@@ -54,7 +52,7 @@ describe('SupabaseSyncService.syncDeployments column coverage', () => {
     const modelSource = fs.readFileSync(path.join(__dirname, '..', '..', 'database', 'models', 'Deployment.ts'), 'utf8')
 
     const columns = Array.from(new Set([...Object.keys(schema.tables.deployments.columns), ...pushed]))
-        .filter(name => name !== 'id' && !BOOKKEEPING.has(name) && !LOCAL_ONLY.has(name) && !NO_FIELD.has(name))
+        .filter(name => name !== 'id' && !BOOKKEEPING.has(name) && !NO_FIELD.has(name))
 
     it('finds the function, its two branches, the push and the table', () => {
         expect(start).toBeGreaterThan(-1)

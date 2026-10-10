@@ -133,7 +133,7 @@ tableSchema({
     { name: 'record_id', type: 'string' },
     { name: 'operation_type', type: 'string' },  // CREATE, UPDATE, DELETE
     { name: 'payload', type: 'string' },          // JSON
-    { name: 'status', type: 'string', isIndexed: true },  // pending, syncing, synced, failed, orphaned
+    { name: 'status', type: 'string', isIndexed: true },  // pending, syncing, synced, failed, refused, orphaned
     { name: 'retry_count', type: 'number' },
     { name: 'error_message', type: 'string', isOptional: true },
     { name: 'created_at', type: 'number' },
@@ -194,7 +194,7 @@ USING (
 1. **Local write** (offline): User creates project → ✅ Always succeeds locally
 2. **Sync attempt**: App sends to Supabase with JWT token
 3. **RLS enforcement**: PostgreSQL checks if user has access
-4. **Result**: ✅ Allowed → synced | ❌ Denied → stays local, error logged
+4. **Result**: ✅ Allowed → synced | ❌ Denied → stays local, kept as `refused` with the reason ([Retry Logic](#retry-logic))
 
 ### Offline Security Example
 
@@ -210,7 +210,7 @@ await database.write(async () => {
 
 // Step 2: Sync to server (RLS ENFORCES)
 // ❌ RLS blocks: "new row violates row-level security policy"
-// Error logged to sync_outbox, data never reaches server
+// The operation is kept as refused, never sent again; Settings shows it
 ```
 
 ### Security Best Practices
@@ -284,8 +284,11 @@ flag a killed run left behind runs once `resetSyncState` clears the flag at star
 request does nothing, and the reconnect sync uploads the change.
 
 A push that does not complete no longer skips the pull (#287). The pulls run, the initial sync
-is marked complete, and only then is the push error thrown, so one refused change cannot stop
-the phone seeing anything new from the cloud.
+is marked complete, the pending site photos are uploaded and the [offline
+pre-download](#files-for-the-field) is asked for (#449), and only then is the push error thrown,
+so one refused change cannot stop the phone seeing anything new from the cloud, nor stop every
+deployment's site photos and the files a field visit needs. The error still lands in
+`LAST_SYNC_ERROR`.
 
 ### Push (Outbox Upload)
 
@@ -319,8 +322,16 @@ but a refused table no longer stops the ones after it:
 - `push_changes` reports each row it did not write as `{id, reason: 'not_applied'}` in
   `conflicts`. For a `CREATE` that means the server already has the row, so it counts as saved.
   For an `UPDATE` or `DELETE` the change did not land (the row is missing, or row-level security
-  would not let this account change it), so the operation stays `failed` and queued rather than
-  being marked `synced`.
+  would not let this account change it), so the operation is `refused` rather than marked
+  `synced`. The one exception is a change sent in the same call as its record's `CREATE`: the
+  reply names rows, not operations, so the entry may be the `CREATE`'s, and the change stays
+  `failed` and goes again on its own.
+- A call carrying one record, the record-by-record retry or a table with only one record to
+  send, that the server refuses with `42501` (row-level security or a trigger) or `23P01` (the
+  camera already has an open deployment on the server, ww-backend #324) leaves that record's
+  operations `refused`, with the code and the server's message in `error_message` (#449).
+  `42501` with HTTP 401 is the exception: PostgREST answers that way to a call made with no
+  signed-in user, which the next sync may get through, so it stays `failed`.
 - Operations found in `syncing` at the start of a push were stranded by a sync that was cut
   short, and are pushed again.
 - The error names each table and why, for example `Push incomplete. projects: 1 saved; devices:
@@ -379,7 +390,8 @@ deployment pulls skip any row whose record has an outbox operation not yet on th
 (pending, failed or being sent), and log `Kept the local deployment ...`. The server's row is
 older than that change; applying it once put a deployment's local photo path back over the
 uploaded one, and the next upload dropped the photo (#347). The record is pulled again after the
-push.
+push. A `refused` or `orphaned` change is never pushed, so it holds nothing back, and the
+server's row is the one that stands.
 
 **A project that disappears from the server (#330).** An incremental pull never sees a row that
 no longer exists, so a project deleted on the website, wiped by a Dev database reset, or taken
@@ -388,8 +400,9 @@ made on it was refused on each sync. After a project pull that completed, `recon
 reads the full list of project ids the server gives this account (`projects_with_stats`, not
 soft-deleted, with an exact count) and compares the phone with it:
 
-- A project missing from that list, with no `CREATE` queued or in flight, is gone. Its row,
-  its synced deployments and every role scoped to it are removed.
+- A project missing from that list, with no `CREATE` queued, in flight or refused, is gone. Its
+  row, its synced deployments and every role scoped to it are removed. A project whose `CREATE`
+  the server refused stays on the phone, with its creator's role.
 - Nothing not yet uploaded is destroyed. A deployment with an unsynced change, or a photo still
   only on the phone, keeps its row. This account's queued operations for the project become
   `orphaned`: never retried, and `error_message` names the project. `OutboxService` exposes them
@@ -457,11 +470,30 @@ column lands last.
 ### Retry Logic
 
 There is no backoff and no retry limit. Every sync pushes every `pending` and `failed`
-operation of the signed-in account again, and `retry_count` only counts attempts. A change the server refuses keeps
-being retried, which is what lets it go through by itself once the server side is fixed, and
-it only holds back the deployments that depend on it. The exception is an `orphaned` operation,
-whose project (#330) or deployment (#411) the server no longer has for this account: it is
-kept but not retried.
+operation of the signed-in account again, and `retry_count` only counts attempts. A change that
+did not get through for any other reason keeps being retried, which is what lets it go through
+by itself once the network or the server side is fixed, and it only holds back the deployments
+that depend on it. Two kinds of operation are kept but never sent again:
+
+- `orphaned`: the server no longer has its project (#330) or its deployment (#411) for this
+  account. It goes back to `pending` if they come back.
+- `refused` (#449): the server said no in a way it will repeat however often the change is
+  sent, as in the push section above. The codes are:
+
+  | In `error_message` | Means |
+  |---|---|
+  | `23P01 ... deployments_one_open_per_device` | The camera already has an open deployment on the server (ww-backend #324) |
+  | `42501 ...` | Row-level security or a trigger would not let this account write it: no role in the project or organisation, or a viewer |
+  | `not_applied: ...` | An update or delete that matched no row: the row is gone, or this account may no longer change it (a creator made a viewer, ww-backend #266) |
+
+  A refused change stays on the phone with its record. Nothing sends it again: once the cause
+  is fixed on the server, the change has to be made again. If the server later deletes its
+  project or deployment, it turns `orphaned` with the rest of the work there.
+
+Settings, under **Data Synchronization**, shows a line such as `2 changes the server refused`
+while there are any (`RefusedChangesItem`, fed by `OutboxService.observeRefusedOperations`), and
+a tap lists each change with the reason above. `OutboxService.getStatistics()` counts them as
+`refused`.
 
 ---
 
