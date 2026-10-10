@@ -16,10 +16,14 @@
  * The reassembler is shared: only one transfer may run at a time, which the
  * transport already guarantees (it holds every other command while a stream
  * runs).
+ *
+ * On Android it asks for high connection priority for the length of the
+ * download (`connectionPriority.ts`).
  */
 import { imageReassemblerEmitter } from '../emitters'
 import { bleEventBus, BleEvent } from '../protocol/eventBus'
 import { commandRegistry } from '../protocol/commandRegistry'
+import { requestFastInterval, releaseFastInterval } from '../protocol/connectionPriority'
 import { log } from '../../utils/logger'
 
 const STALL_TIMEOUT_MS = 30000
@@ -48,6 +52,7 @@ export const downloadPhoto = (session: PhotoSession, deviceId: string, fileName:
             imageReassemblerEmitter.off('onImageProgress', onProgress)
             imageReassemblerEmitter.off('onImageError', onError)
             bleEventBus.removeListener('textLine', onLine)
+            releaseFastInterval(deviceId)
             if (error) reject(error)
             else resolve({ uri: uri!, bytes })
         }
@@ -76,5 +81,7 @@ export const downloadPhoto = (session: PhotoSession, deviceId: string, fileName:
         bleEventBus.on('textLine', onLine)
         armStall()
 
-        session.execute(() => commandRegistry.txfile(fileName)).catch((e) => finish(e instanceof Error ? e : new Error(String(e))))
+        requestFastInterval(deviceId)
+            .then(() => session.execute(() => commandRegistry.txfile(fileName)))
+            .catch((e) => finish(e instanceof Error ? e : new Error(String(e))))
     })
