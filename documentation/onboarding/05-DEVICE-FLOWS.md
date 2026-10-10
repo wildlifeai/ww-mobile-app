@@ -140,7 +140,7 @@ camera before naming the site.
 
 | Element | Notes |
 |---------|-------|
-| Camera View Image | Live preview via `CameraViewSection` |
+| Camera View Image | One test photo via `CameraViewSection`, to aim the camera |
 | Site Name | Dropdown of nearby past deployment locations (auto-selected closest), or free-text input for new sites. Used as both `name` and `locationName` for the deployment record. |
 | Camera Height (cm) | Numeric input for height from ground |
 | Motion Detection Test | Collapsible 16×16 grid via `DeploymentMotionDetectionSection` (Activity Detection projects only) |

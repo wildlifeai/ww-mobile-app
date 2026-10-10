@@ -8,8 +8,8 @@
  * bench (6 October 2026, WILD-5WGJ, printed batteries in front of the lens) the
  * file size peaked at the same position as a Laplacian sharpness score
  * computed from the downloaded photos, correlation 0.92 across the sweep. Using
- * the size means none of the sweep's photos has to cross Bluetooth, which runs
- * at about 1.1 KB/s.
+ * the size means none of the sweep's photos has to cross Bluetooth: at 2 to 4 s
+ * a photo (bench, 10 October 2026) all 13 would add most of a minute.
  *
  * The rules come from `_Tools/lens_test.py` in the firmware repo, which scores
  * the same sweep from the console stream, plus a window around the reference
