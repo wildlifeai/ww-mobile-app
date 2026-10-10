@@ -163,12 +163,15 @@ this APK, so the three other native builds and their packaging were pure cost. T
 is where a full four-ABI build ran out of Gradle heap twice (run 36956363192), which is also
 why `org.gradle.jvmargs` carries a 4 GB heap now. The `staging` profile keeps every ABI.
 
-The APK is cached by profile, Expo fingerprint and a hash of `package-lock.json`, `app.config.ts`,
-`eas.json` and `patches/`, so a run that changes only flows, scripts, docs or the workflow
-restores it instead of building for 25 to 30 minutes. The fingerprint covers `package.json`
-whole: a commit that changed only an npm script rebuilt (run 36929311218). Caches are scoped
-per ref: the first dispatch on a branch builds, later ones should not. Check the "Restore
-cached APK" step rather than assuming.
+The APK is cached by profile, Expo fingerprint, a hash of `package-lock.json`, `app.config.ts`,
+`eas.json` and `patches/`, and a hash of what the JavaScript bundle is built from: `src/` without
+its tests, `assets/`, `index.js` and the Babel, Metro and TypeScript configs. A run that changes
+only flows, scripts, tests, docs or the workflow restores it instead of building for 25 to 30
+minutes; any app code change rebuilds. Until 10 October 2026 the key had no bundle hash, so a push
+that changed only `src/` reran the flows on the PR's first build (run 37981018306 logged schema
+version 405 on a commit that declares 406). The fingerprint covers `package.json` whole: a commit
+that changed only an npm script rebuilt (run 36929311218). Caches are scoped per ref. Check the
+"Restore cached APK" step rather than assuming.
 
 Two jobs run the flows on an API 33 x86_64 emulator with the Pixel 6 profile (the default AVD
 is 320x640 at 160 dpi, where the drawer's version footer sat over its sign-out button, #379),

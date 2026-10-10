@@ -57,7 +57,7 @@ jobs:
           # it). This file is included so a change to the build logic is
           # exercised by the workflow it changes.
           # `tests/maestro/` is in the list so a flow change runs the flows: the
-          # APK cache below makes that cheap when nothing native moved. So are
+          # APK cache below makes that cheap when the app itself did not move. So are
           # the scripts the E2E jobs run, so a Maestro bump runs the flows too.
           if echo "$CHANGED" | grep -qE '^(src/|android/|patches/|package\.json|package-lock\.json|app\.config\.ts|app\.json|eas\.json|babel\.config\.js|metro\.config\.js|tsconfig\.json|tests/maestro/|scripts/(install-maestro|ci-maestro|ci-maestro-output|maestro-offline)\.sh|\.github/workflows/native-build-validation\.yml)'; then
             echo "native=true" >> "$GITHUB_OUTPUT"
@@ -130,7 +130,11 @@ jobs:
             echo "supabase_anon_key=${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY_DEV }}" >> $GITHUB_OUTPUT
           fi
 
-      # Cache the Expo prebuild output (android/ directory)
+      # The APK is cached, keyed on everything that goes into it: the native
+      # fingerprint, the dependencies, and the files the JavaScript bundle is
+      # built from, tests left out. Both profiles carry their bundle, so without
+      # the last hash a push that changed only `src/` reran the flows on an old
+      # build. Testing Guide, "What CI runs, and why".
       - name: Generate prebuild fingerprint
         if: needs.changes.outputs.native == 'true'
         id: fingerprint
@@ -144,7 +148,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ./app-debug.apk
-          key: android-apk-${{ steps.config.outputs.profile }}-${{ steps.fingerprint.outputs.hash }}-${{ hashFiles('package-lock.json', 'app.config.ts', 'eas.json', 'patches/**') }}
+          key: android-apk-${{ steps.config.outputs.profile }}-${{ steps.fingerprint.outputs.hash }}-${{ hashFiles('package-lock.json', 'app.config.ts', 'eas.json', 'patches/**') }}-${{ hashFiles('src/**', '!src/**/__tests__/**', '!src/**/*.test.*', 'assets/**', 'index.js', 'babel.config.js', 'metro.config.js', 'tsconfig.json') }}
 
       - name: Build Android APK (EAS Local)
         if: needs.changes.outputs.native == 'true' && steps.cache-apk.outputs.cache-hit != 'true'
