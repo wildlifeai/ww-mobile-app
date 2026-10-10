@@ -1,25 +1,25 @@
 -- *** LoRaWAN Parsed Messages RLS Policies ***
 --
 -- Access control for parsed LoRaWAN messages (structured data from raw messages)
--- - Users can only see parsed messages from devices in their organisation
+-- - The raw message's deployment's project and ww_admin read a parsed message
 -- - System processes (via service role) can insert/update messages
 -- - Only system admins can delete messages
 --
 
--- SELECT: Users can see parsed messages from their organisation's devices
+-- SELECT: the same rule as lorawan_messages (#323), through the raw message's deployment.
 CREATE POLICY "lorawan_parsed_messages_select_policy"
   ON lorawan_parsed_messages
   FOR SELECT
   TO authenticated
   USING (
-    -- WW Admins can see all parsed messages
     has_system_role((SELECT auth.uid()), 'ww_admin')
-    -- Users can see parsed messages from devices in their organisation
     OR EXISTS (
-      SELECT 1 FROM devices AS d
-      WHERE d.id = lorawan_parsed_messages.device_id
-        AND d.deleted_at IS NULL
-        AND has_organisation_role((SELECT auth.uid()), d.organisation_id, 'organisation_member')
+      SELECT 1
+      FROM lorawan_messages AS lm
+      INNER JOIN deployments AS dep ON lm.deployment_id = dep.id
+      WHERE lm.id = lorawan_parsed_messages.lorawan_message_id
+        AND dep.deleted_at IS NULL
+        AND has_project_role((SELECT auth.uid()), dep.project_id, 'project_viewer')
     )
   );
 
@@ -56,7 +56,7 @@ CREATE POLICY "lorawan_parsed_messages_delete_policy"
   );
 
 COMMENT ON POLICY "lorawan_parsed_messages_select_policy" ON lorawan_parsed_messages
-IS 'Users can view parsed LoRaWAN messages from their organisation''s devices';
+IS 'The deployment''s project members and ww_admins can view a parsed LoRaWAN message (#323)';
 
 COMMENT ON POLICY "lorawan_parsed_messages_insert_policy" ON lorawan_parsed_messages
 IS 'Only ww_admins can insert messages (backend parser uses service role which bypasses RLS)';

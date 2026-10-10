@@ -76,6 +76,13 @@ ALTER TABLE deployments ADD CONSTRAINT deployments_latitude_check CHECK (latitud
 ALTER TABLE deployments ADD CONSTRAINT deployments_longitude_check CHECK (longitude >= -180 AND longitude <= 180);
 ALTER TABLE deployments ADD CONSTRAINT deployments_end_check CHECK (deployment_end IS null OR deployment_end >= deployment_start);
 ALTER TABLE deployments ADD CONSTRAINT deployments_battery_level_start_check CHECK (battery_level_at_start IS null OR (battery_level_at_start >= 0 AND battery_level_at_start <= 100));
+-- A camera is in one place, so it has at most one open deployment (#320), and
+-- lorawan-ingest gives its uplinks to that one (#323). Checked at commit, so one
+-- push_changes call may create a camera's next deployment before the update that ends
+-- its last. A violation is 23P01.
+ALTER TABLE deployments ADD CONSTRAINT deployments_one_open_per_device
+EXCLUDE USING btree (device_id WITH =) WHERE (deployment_end IS null AND deleted_at IS null)
+DEFERRABLE INITIALLY DEFERRED;
 
 COMMENT ON TABLE deployments IS 'Stores camera deployments for wildlife monitoring projects. Snapshots device configuration at deployment time.';
 COMMENT ON COLUMN deployments.setup_by IS 'User who set up the deployment.';
