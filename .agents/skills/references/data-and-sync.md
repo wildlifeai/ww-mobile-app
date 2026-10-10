@@ -193,7 +193,7 @@ a number, and any version below about 402 in an older document means nothing.
 ## The schema is generated, not written
 
 `src/database/schema.ts` comes from `npm run schema:generate`, and schema changes originate in
-`wildlife-watcher-backend`. `src/types/database.types.ts` comes from `types:cloud-dev`. Neither
+`wildlifeai/ww-backend`. `src/types/database.types.ts` comes from `types:cloud-dev`. Neither
 is hand-edited.
 
 **A model `@date` needs a `number` column.** `@date` writes epoch milliseconds, and WatermelonDB

@@ -25,7 +25,7 @@ CREATE UNIQUE INDEX firmware_type_version_unique_idx
 COMMENT ON TABLE firmware IS 'Wildlife Watcher camera firmware versions managed by Wildlife.ai';
 COMMENT ON COLUMN firmware.name IS 'Firmware name';
 COMMENT ON COLUMN firmware.version IS 'Firmware version string';
-COMMENT ON COLUMN firmware.type IS 'Type of firmware: ble, himax, or config';
+COMMENT ON COLUMN firmware.type IS 'Type of firmware: ble or himax';
 COMMENT ON COLUMN firmware.location_path IS 'Location path in Supabase Storage';
 COMMENT ON COLUMN firmware.file_size_bytes IS 'Size of the firmware file in bytes';
 COMMENT ON COLUMN firmware.release_notes IS 'Release notes for this version';
