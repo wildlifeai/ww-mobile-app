@@ -5,8 +5,8 @@ import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import ReferenceDataService from '../../../services/ReferenceDataService'
 import Firmware from '../../../database/models/Firmware'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
-import { himaxUpdateRecord } from '../../../services/himaxUpdateRecord'
-import { classifyHimax, HimaxVariant, SlotsReply } from '../../../utils/himaxFirmwareState'
+import { himaxStatus, himaxVersionOf } from '../../../services/himaxStatus'
+import { HimaxVariant, SlotsReply } from '../../../utils/himaxFirmwareState'
 import { logError, logWarn } from '../../../utils/logger'
 import { convertBleToSemanticVersion } from '../../../utils/versionUtils'
 
@@ -47,30 +47,6 @@ export interface UseFirmwareStatusReturn {
     statuses: Record<'ble' | 'himax', FirmwareComponentStatus>
     checkStatus: () => Promise<void>
     errorMsg: string | null
-}
-
-/**
- * The AI processor's status: `classifyHimax` on what the camera said, weighed
- * against this phone's record of an update it left unfinished, which is
- * dropped once the camera shows it finished or never reached. `slots` is null
- * on the silent path, which sends nothing (#268), and on firmware without it.
- */
-const himaxStatus = async (
-    deviceId: string,
-    current: string | null,
-    slots: SlotsReply | null,
-    latest: { RP3: Firmware | null; HM0360: Firmware | null; any: Firmware | null },
-): Promise<Pick<FirmwareComponentStatus, 'isOutdated' | 'missingVariant' | 'unfinished'>> => {
-    const record = await himaxUpdateRecord.load(deviceId)
-    const result = classifyHimax({ current, slots, record, latest })
-    if (result.recordStatus === 'finished' || result.recordStatus === 'stale') await himaxUpdateRecord.clear(deviceId)
-    return {
-        isOutdated: result.state === 'outdated' || result.state === 'unfinished',
-        missingVariant: result.state === 'missing_variant' ? result.missingVariant : null,
-        unfinished: result.state === 'unfinished'
-            ? { endVariant: result.endVariant, done: result.done, total: result.total }
-            : null,
-    }
 }
 
 export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersion }: UseFirmwareStatusOptions): UseFirmwareStatusReturn {
@@ -142,10 +118,7 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
                 // so no separate wake is needed; `aiver` already allows for the
                 // DPD wake in its timeout.
                 const rawHimaxVer = await session.execute(() => commandRegistry.aiver()) as string
-                // Himax sometimes returns things like "AI ver: 1.0.0" or "Firmware version: V1.2.0"
-                // Extracting just the version string cleanly.
-                const match = rawHimaxVer.match(/(?:V|v)?(\d+\.\d+\.\d+)/)
-                currentHimaxVersion = match ? `v${match[1]}` : rawHimaxVer
+                currentHimaxVersion = himaxVersionOf(rawHimaxVer)
             } catch (e) {
                 logWarn('[FirmwareStatus] Failed to read Himax version:', e)
             }
@@ -225,9 +198,7 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
                         const latestHm0360 = await ReferenceDataService.getLatestHimaxByVariant('HM0360')
 
                         const currentBleVersion = convertBleToSemanticVersion(initialBleVersion)
-                        const rawHimaxVer = initialHimaxVersion
-                        const match = rawHimaxVer.match(/(?:V|v)?(\d+\.\d+\.\d+)/)
-                        const currentHimaxVersion = match ? `v${match[1]}` : rawHimaxVer
+                        const currentHimaxVersion = himaxVersionOf(initialHimaxVersion)
 
                         const bleOutdated = !!latestBle?.version && currentBleVersion !== latestBle.version
                         // No `slots` here: this path sends nothing (#268)
