@@ -59,7 +59,7 @@ eas submit --profile production --platform all
 
 ### Automated (GitHub Actions)
 
-The `eas-build.yml` workflow handles this:
+The `eas-build.yml` workflow handles this, and it is the only workflow a `v*` tag starts (#373):
 
 - **Push to `main`** → builds `preview` profile (both platforms)
 - **Git tag `v*`** → builds `production` profile → submits to stores

@@ -382,7 +382,7 @@ it") has the local commands for the gates.
 | Dead Code | every PR, merge queue, Mondays | knip: files nothing imports, exports and types nothing uses, dependencies nothing imports, imports of packages `package.json` does not list. What `knip.json` tells it is below | advisory: a finding shows red (#393), but `knip` is not required |
 | Dependency Audit | PRs touching `package.json` or the lockfile; Mondays | `npm audit --omit=dev --audit-level=high`, read from the lockfile with no install. Dependabot (`.github/dependabot.yml`) opens the bump PRs: one grouped PR a week for everything outside the Expo SDK set, which moves together through `npx expo install` | advisory on PRs; the Monday run fails, so an advisory published against an unchanged lockfile is still seen |
 | iOS Weekly Build | Mondays, by hand | `eas build --local --profile e2e --platform ios` on `macos-latest`, no signing because the profile sets `ios.simulator: true`; the `app-ios-simulator` artifact stays two weeks. Weekly because macOS runners bill at ten times the Linux rate and a cold build is 25 to 40 minutes (#394) | a red scheduled run |
-| EAS Build & Submit, Semantic Release & Publish | pushes, by hand | the release pipeline: the Expo-EAS Guide and the publishing guide | not a check |
+| EAS Build & Submit | pushes to `main`, `v*` tags, by hand | the release pipeline, and the only workflow a `v*` tag starts (#373): the Expo-EAS Guide and the publishing guide | not a check |
 
 ### What Expo Doctor is told to skip, and why
 
