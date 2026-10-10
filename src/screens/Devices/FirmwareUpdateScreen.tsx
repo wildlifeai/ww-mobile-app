@@ -75,6 +75,7 @@ export const FirmwareUpdateScreen = () => {
         downloadState,
         downloadProgress,
         fileTransferProgress,
+        passImage,
         phase,
         batteryLevel,
         isBatteryLow,
@@ -569,7 +570,7 @@ export const FirmwareUpdateScreen = () => {
                         <View style={styles.marginTop12}>
                             <FileTransferProgressCard
                                 title="Downloading Firmware"
-                                filename={selectedOption?.dbRecord?.locationPath || latestFirmware?.locationPath}
+                                filename={passImage?.locationPath || latestFirmware?.locationPath}
                                 isIndeterminate={downloadProgress?.progress === null}
                                 progress={downloadProgress?.progress || 0}
                                 speedBytesPerSec={downloadProgress?.speedBytesPerSec}
@@ -590,12 +591,13 @@ export const FirmwareUpdateScreen = () => {
                         second image of a dual-camera update, where the phase machine
                         is already beyond 'transferring' for good. The hook clears
                         the state when a transfer finishes, so presence == in flight
-                        (or failed, which the card renders). */}
+                        (or failed, which the card renders). The file is the
+                        pass's own, not the build picked under Advanced (#436). */}
                     {fileTransferProgress ? (
                         <View style={styles.marginTop12}>
                             <FileTransferProgressCard
                                 title="Transferring to Device"
-                                filename={selectedOption?.filename || 'OUTPUT.IMG'}
+                                filename={passImage?.filename}
                                 isIndeterminate={false}
                                 progress={fileTransferProgress.percentage / 100}
                                 speedBytesPerSec={fileTransferProgress.elapsedMs > 0 ? (fileTransferProgress.bytesSent / fileTransferProgress.elapsedMs) * 1000 : 0} 

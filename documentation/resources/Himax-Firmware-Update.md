@@ -179,7 +179,7 @@ The app queries `AI slots` to learn the running variant, then flashes **the othe
 |-------|-------|--------|
 | Download | `downloading` | Cloud source only. Skipped when flashing from the SD card. `FirmwareService.ensureFirmwareDownloaded` uses the copy in the phone's cache (`documentDirectory/firmware/`) when it is there at the release's size, which needs no connection. The offline pre-download keeps the latest image of each variant there after every sync, and the pre-flight card says "On this phone: Downloaded" when both are (#333). |
 | Check the card | `sending` | SD-card source only. `AI crc <file>` reads the CRC16-CCITT and size of the file already on the card, and the app compares them with the release's `firmware.crc_checksum` and `file_size_bytes` before anything touches flash. See below. |
-| Transfer | `transferring` | `runFileTransferPipeline` stages the `.IMG` into `/MANIFEST/`. The pipeline's whole-file CRC16 is reused as the `AI firmware` CRC argument. It sends one `ver` first and refuses on [BLE firmware below the floor](File-Transfer-Protocol.md#the-ble-firmware-floor), so an old nRF needs its BLE update before the Himax one. |
+| Transfer | `transferring` | `runFileTransferPipeline` stages the `.IMG` into `/MANIFEST/`. The engineer view's download and transfer cards name this pass's image, the hook's `passImage`, not the build picked under Advanced (#436). The pipeline's whole-file CRC16 is reused as the `AI firmware` CRC argument. It sends one `ver` first and refuses on [BLE firmware below the floor](File-Transfer-Protocol.md#the-ble-firmware-floor), so an old nRF needs its BLE update before the Himax one. |
 | Flash | `sending` → `flashing` | `AI firmware <file> <0xCRC>`. The phase advances to `flashing` on an 8-second timer because the HX goes silent during erase/write. |
 | Reboot | `rebooting` | `AI reset` |
 | Boundary | — | Between passes: `waitForAiReady(25000)` — waits for the device to answer again rather than racing the reboot. |
@@ -381,6 +381,7 @@ The parser ([`useFirmwareUpdate.ts`](../../src/screens/Devices/hooks/useFirmware
 - [ ] Inter-pass `waitForAiReady` completes without a manual reconnect
 - [ ] A link drop during a pass retries once and then succeeds
 - [ ] Single-variant fallback logs "Only one camera variant available"
+- [ ] The transfer card names the file in that pass's `Target firmware filename` log line, for both images
 
 ### Post-Update
 - [ ] App shows success → sends `AI reset`
