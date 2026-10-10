@@ -91,3 +91,11 @@ export const mayUpdateDeployment = (
 	if (isWwAdmin(live(roles, now)) || projectRoleIn(roles, deployment.projectId, now) === 'project_admin') return true
 	return !!deployment.setupBy && deployment.setupBy === userId && mayCreateDeployment(roles, deployment.projectId, now)
 }
+
+/**
+ * May change the project's own settings, a `projects` UPDATE: `project_admin`
+ * in the project, or a `ww_admin` (`yyy_policies/50_projects.sql`). A member
+ * may deploy with other settings but not save them to the project (#466).
+ */
+export const mayUpdateProject = (roles: RoleRow[], projectId: string, now = Date.now()): boolean =>
+	isWwAdmin(live(roles, now)) || projectRoleIn(roles, projectId, now) === 'project_admin'

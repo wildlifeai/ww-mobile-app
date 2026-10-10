@@ -3,6 +3,8 @@ import { Alert } from 'react-native'
 
 import { useDevDeployment } from '../useDevDeployment'
 import { DeploymentService } from '../../../../services/DeploymentService'
+import ProjectService from '../../../../services/ProjectService'
+import { configureDevice } from '../../../../ble/workflows/deploymentPipeline'
 import { endDeploymentSequence } from '../../../../hooks/useMonitoringActions'
 import { resetFakeDatabase, seedRows } from '../../../../../tests/setup/helpers/fakeDatabase'
 
@@ -192,5 +194,46 @@ describe('Dev Deployment End deployment and the project role (#450)', () => {
 		await end('user-tui')
 
 		expect(endSequence).toHaveBeenCalled()
+	})
+})
+
+describe('Dev Deployment project settings and the project role (#466)', () => {
+	const startWithAnotherCaptureMethod = async () => {
+		const { result } = await mount()
+		act(() => { result.current.setCaptureMethodOverride(2) })
+		await settle()
+		await act(async () => { await result.current.handleStartDeployment() })
+		return result
+	}
+	const configuredWith = () => (configureDevice as jest.Mock).mock.calls[0]?.[2]
+
+	it("uses a member's settings for the test only: the camera gets them, the project keeps its own", async () => {
+		seedRows('user_roles', [role('project_member', 'project', 'project-1')])
+
+		const result = await startWithAnotherCaptureMethod()
+
+		expect(result.current.projectSettingsNote).toBe("These settings apply to this test only. Only a project admin can change the project's settings.")
+		expect(ProjectService.updateProject).not.toHaveBeenCalled()
+		expect(configuredWith()).toEqual(expect.objectContaining({ captureMethodId: 2 }))
+		expect(createDeployment).toHaveBeenCalledWith(expect.objectContaining({ captureMethodId: 2 }))
+	})
+
+	it("saves a project admin's settings to the project", async () => {
+		seedRows('user_roles', [role('project_admin', 'project', 'project-1')])
+
+		const result = await startWithAnotherCaptureMethod()
+
+		expect(result.current.projectSettingsNote).toBeNull()
+		expect(ProjectService.updateProject).toHaveBeenCalledWith('project-1', expect.objectContaining({ capture_method_id: 2 }))
+		expect(configuredWith()).toEqual(expect.objectContaining({ captureMethodId: 2 }))
+	})
+
+	it('says nothing about settings to a viewer, whose start is refused anyway', async () => {
+		seedRows('user_roles', [role('project_viewer', 'project', 'project-1'), role('project_viewer', 'project', 'project-2')])
+
+		const { result } = await mount()
+
+		expect(result.current.startRefusalReason).not.toBeNull()
+		expect(result.current.projectSettingsNote).toBeNull()
 	})
 })

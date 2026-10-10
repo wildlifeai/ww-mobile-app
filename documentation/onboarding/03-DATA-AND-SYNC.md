@@ -104,6 +104,7 @@ ww-backend's `yyy_policies/52_deployments.sql` and `has_project_role`:
 |---|:-:|:-:|:-:|:-:|:-:|
 | Start one in the project | yes | yes | no | no | yes |
 | End or change one | any | only one they started | no | no | any |
+| Change the project's settings (`50_projects.sql`) | yes | no | no | no | yes |
 
 A role past its `expires_at` counts for nothing. Start Monitoring, Stop Monitoring and the Dev
 Deployment Test ask before anything is written to the camera, through `deploymentAccess.ts`,

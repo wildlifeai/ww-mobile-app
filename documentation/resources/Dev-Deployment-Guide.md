@@ -14,7 +14,7 @@ The Dev Deployment flow is a **developer-facing** alternative to the standard St
 - Validate device health (battery, SD card, self-test) before committing to a full deployment
 
 > [!IMPORTANT]
-> Dev Deployment changes to project settings (capture method, sensitivity, flash, model, and so on) **persist to the database**. This is by design: it allows developers to iterate on project configuration without leaving the deployment screen. The camera choice, the LED brightness and the motion-detection light are the settings with no project home; they reach the device and nothing else.
+> Dev Deployment changes to project settings (capture method, sensitivity, flash, model, and so on) **persist to the database** when a project admin runs the test. This is by design: it allows developers to iterate on project configuration without leaving the deployment screen. For anyone else they apply to the test only: the server lets only a project admin change a project ([the rule](../onboarding/03-DATA-AND-SYNC.md#key-tables)), so the screen says so under the project picker, the camera is configured from the screen as usual, and the project keeps its own settings (#466). The camera choice, the LED brightness and the motion-detection light are the settings with no project home; they reach the device and nothing else.
 
 ## Access
 
@@ -79,7 +79,7 @@ Both flows share these pipeline functions from `deploymentPipeline.ts`:
 | 0 | Camera switch, when the chosen camera is not the one running. `useCameraSwitch.switchTo`: `AI switchslot`, wait for the Sleep, wait for the Wake, confirm with `AI slots`. First, so everything after it is asked of the image that will run the deployment. A switch that does not come back on the chosen camera **aborts the start**. So does a camera that boots and finds no sensor: `AI slots` reports the image's label, not whether its sensor answered, so after the switch the post-boot self-test is read, and bit 8 (main camera not responding) switches back to the previous camera and aborts. Found on WILD-SIFK, whose IMX708 stayed silent for the first four minutes after a switch (22 September 2026) |
 | 1 | AI Model Sync, with the model chosen on screen. It runs after step 0, so a start stopped here for a model the phone lacks has already switched the camera. The screen says under the model picker whether the model is on the phone |
 | 2 | Time Sync |
-| 3 | Persist project settings to DB |
+| 3 | Persist project settings to DB, for a project admin only (#466) |
 | 4 | Reset OPs |
 | 5 | Create DB Record |
 | 6 | Configure Device (capture method, deployment ID, GPS, the flash as the project's four columns, and the project's detection threshold as op16) |
