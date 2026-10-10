@@ -48,7 +48,7 @@ npm run lint             # ESLint
 npm run version:check    # the 5 files carrying the app version agree
 npm run docs:validate    # every path/link in documentation/ resolves
 npx --yes knip@6.39.0    # dead code: unused files, exports, dependencies (Testing Guide)
-npm run test:maestro:smoke   # the one E2E flow CI requires: install, launch, the login screen renders
+npm run test:maestro:smoke   # the E2E flow every PR runs, advisory: install, launch, the login screen renders
 ```
 
 All of these run in CI on each pull request; the smoke flow runs after the native build,
@@ -59,9 +59,10 @@ secrets; what each proves is in the Testing Guide. Every check that can be requi
 so `dev` can sit behind a merge queue without touching the workflows. PR-Agent is the one
 that cannot: it triggers on open and on comments, so it stays advisory.
 The coverage floor is a ratchet at 20%: it only moves up, by hand.
-Expo Doctor gates dependency changes; CodeQL, Schema Mirror Drift's mirror check,
-Dependency Audit, Op Index Drift and Self-Test Bit Drift are advisory, and iOS builds once a week. The Testing Guide's CI/CD table lists every workflow,
-what it proves and whether it blocks.
+Four checks are required on `dev`: `Cloud Type Validation Summary`, `commitlint`, `quality-gates (22.x)`
+and `quality-gates (24.x)`. Everything else is advisory, E2E Smoke, Expo Doctor, React Doctor, Dead Code
+and the WatermelonDB schema check included: they can show red but do not stop a merge. iOS builds once
+a week. The Testing Guide's CI/CD table lists every workflow, what it proves and whether it blocks.
 
 ## Non-negotiables
 
