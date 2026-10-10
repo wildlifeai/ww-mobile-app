@@ -32,6 +32,8 @@ REVOKE INSERT, UPDATE, DELETE ON public.api_logs FROM authenticated;
 -- OAuth tokens, read and written only by the backend's service role. No client reads
 -- them either, so SELECT goes too.
 REVOKE ALL ON public.inat_tokens FROM authenticated;
+-- Organisation API key hashes, the same: only the website backend's service role (#289).
+REVOKE ALL ON public.api_keys FROM authenticated;
 
 -- Profiles are written only by the handle_new_user and sync_user_email triggers.
 REVOKE INSERT, UPDATE, DELETE ON public.users FROM authenticated;
