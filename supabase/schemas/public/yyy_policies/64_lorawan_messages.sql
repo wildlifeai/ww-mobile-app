@@ -1,27 +1,21 @@
 -- *** LoRaWAN Messages RLS Policies ***
 --
 -- Access control for raw LoRaWAN messages from camera devices
--- - Users can only see messages from devices/deployments in their organisation
+-- - The deployment's project and ww_admin read a message
 -- - System processes (via service role) can insert messages
 -- - Only system admins can delete messages
 --
 
--- SELECT: Users can see messages from their organisation's devices/deployments
+-- SELECT: a message is its deployment's project's data (#323). Any project may deploy a
+-- camera (#320), so the camera's organisation no longer reads its messages, and a
+-- message with no deployment is for ww_admin only. has_project_role counts an
+-- organisation manager as a viewer of every project in the organisation (#162).
 CREATE POLICY "lorawan_messages_select_policy"
   ON lorawan_messages
   FOR SELECT
   TO authenticated
   USING (
-    -- WW Admins can see all messages
     has_system_role((SELECT auth.uid()), 'ww_admin')
-    -- Users can see messages from devices in their organisation
-    OR EXISTS (
-      SELECT 1 FROM devices AS d
-      WHERE d.id = lorawan_messages.device_id
-        AND d.deleted_at IS NULL
-        AND has_organisation_role((SELECT auth.uid()), d.organisation_id, 'organisation_member')
-    )
-    -- Users can see messages from deployments in projects they're members of
     OR EXISTS (
       SELECT 1 FROM deployments AS dep
       WHERE dep.id = lorawan_messages.deployment_id
@@ -64,7 +58,7 @@ CREATE POLICY "lorawan_messages_delete_policy"
   );
 
 COMMENT ON POLICY "lorawan_messages_select_policy" ON lorawan_messages
-IS 'Users can view LoRaWAN messages from their organisation''s devices or project deployments';
+IS 'The deployment''s project members and ww_admins can view a LoRaWAN message (#323)';
 
 COMMENT ON POLICY "lorawan_messages_insert_policy" ON lorawan_messages
 IS 'Only ww_admins can insert messages (backend services use service role which bypasses RLS)';
