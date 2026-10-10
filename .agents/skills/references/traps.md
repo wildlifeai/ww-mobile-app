@@ -47,6 +47,19 @@ file is the list of things that look like an app bug and are not, and the revers
   dev deployment reads the post-boot self-test after the switch, and bit 8 switches back and
   aborts. Any other flow that switches slots needs the same check, and a warm wake reports
   0x0000 for a sensor that was missing at boot, so the check has to read the boot's own line.
+- **`Firmware update OK. Executes at next reset.` means the next boot of any kind, a wake from
+  sleep included.** `firmware` moves the boot selector and schedules nothing (`switchslot` schedules
+  a reset, `firmware` does not), and leaving Deep Power Down runs the bootloader, which reads the
+  selector. On WILD-DJZQ, 9 October 2026, an update stopped after image 1's OK and before the app's
+  `AI reset` came up on image 1 at the camera's next wake (#374). That boot is warm, so the slot
+  stays labelled `unknown`. Two things follow. An update cut short between its two images leaves
+  the camera on the other camera, and nothing on the camera says so: `AI slots` labels name a
+  camera, not a build. And a second `AI firmware` in the same wake as the first writes the slot
+  the camera is running from, because `firmware` targets the slot opposite the selector, which has
+  already moved. `AI slots`' "Active slot" is that selector, the slot that boots next. The pair
+  update restarts the camera after each image and checks `AI slots` before each write, and the
+  phone that ran it keeps a record so it can be finished; see
+  [Himax-Firmware-Update.md](../../../documentation/resources/Himax-Firmware-Update.md#an-update-that-stopped-between-images).
 - **A selected flash does not mean a flash.** op13 only chooses the LED; the firmware fires it
   on a capture only when its last light decision, op25, was DARK, and the check after every
   capture rewrites op25. In a lit room the LED never fires whatever the app selected, and that

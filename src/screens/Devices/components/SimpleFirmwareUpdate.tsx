@@ -16,6 +16,12 @@ export interface SimpleFirmwareUpdateProps {
     canStart: boolean
     /** AI only: the camera whose build the catalogue lacks, which stops the pair update (#437) */
     missingVariant?: 'RP3' | 'HM0360' | null
+    /**
+     * AI only: where an update this phone left unfinished stopped and what
+     * finishing does (#374), said instead of the update line; Update then
+     * reads Finish update
+     */
+    unfinished?: string | null
     batteryLevel: number | null
     isBatteryLow: boolean
     externalPowerConfirmed: boolean
@@ -50,6 +56,7 @@ export const SimpleFirmwareUpdate = ({
     isPreflightDone,
     canStart,
     missingVariant,
+    unfinished,
     batteryLevel,
     isBatteryLow,
     externalPowerConfirmed,
@@ -77,7 +84,9 @@ export const SimpleFirmwareUpdate = ({
             {ready && (
                 <>
                     <WWText variant="bodyLarge">
-                        {isPreflightDone ? updateSummary(currentVersion, latestVersion, upToDate) : 'Checking the camera…'}
+                        {isPreflightDone
+                            ? unfinished ?? updateSummary(currentVersion, latestVersion, upToDate)
+                            : 'Checking the camera…'}
                     </WWText>
 
                     {isPreflightDone && !upToDate && !canStart && (
@@ -112,7 +121,7 @@ export const SimpleFirmwareUpdate = ({
                             loading={!isPreflightDone}
                             disabled={!isPreflightDone || !canStart || batteryBlocks}
                         >
-                            Update
+                            {unfinished ? 'Finish update' : 'Update'}
                         </Button>
                     )}
                 </>

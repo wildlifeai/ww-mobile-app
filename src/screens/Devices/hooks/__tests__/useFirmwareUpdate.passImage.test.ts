@@ -58,6 +58,11 @@ describe('useFirmwareUpdate passImage', () => {
 
     beforeEach(() => {
         finishTransfer = null
+        // The camera boots the slot each write selects once `AI reset` and
+        // `AI dpd` restart it, which the update checks before image 2 (#374)
+        const labels = ['RP3 (day/colour)', 'HM0360 (night/IR)']
+        let selector = 0
+        let running = 0
         ;(createBleSession as jest.Mock).mockImplementation(() => ({
             execute: jest.fn(async (build: any) => {
                 const line: string = build().build()
@@ -65,11 +70,17 @@ describe('useFirmwareUpdate passImage', () => {
                 if (line === 'AI ver') return 'WW500_C02 10:09:08 Oct  9 2026'
                 if (line === 'AI dir') return []
                 if (line === 'AI slots') {
-                    return { activeSlot: 0, running: 'RP3 (day/colour)', slotA: 'RP3 (day/colour)', slotB: 'HM0360 (night/IR)', autoSwitch: false }
+                    return { activeSlot: selector, running: labels[running], slotA: labels[0], slotB: labels[1], autoSwitch: false }
                 }
+                if (line.startsWith('AI firmware ')) {
+                    selector = 1 - selector
+                    labels[selector] = line.startsWith('AI firmware H') ? 'HM0360 (night/IR)' : 'RP3 (day/colour)'
+                }
+                if (line === 'AI dpd') running = selector
                 return true
             }),
-            waitForSleep: jest.fn(async () => {}),
+            waitForSleep: jest.fn(async () => true),
+            waitForWake: jest.fn(async () => true),
         }))
         ;(ReferenceDataService.getLatestFirmware as jest.Mock).mockResolvedValue(COLOUR)
         ;(ReferenceDataService.getActiveFirmwares as jest.Mock).mockResolvedValue([COLOUR, NIGHT])

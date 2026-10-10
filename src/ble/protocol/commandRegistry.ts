@@ -205,16 +205,17 @@ export function parseBleFirmwareVersion(reply: string | null | undefined): BleFi
 }
 
 /**
- * HX6538 firmware update error codes returned by xip_update_firmware_from_sd().
- * Maps numeric codes to human-readable descriptions for field debugging.
+ * HX6538 firmware update error codes returned by xip_update_firmware_from_sd()
+ * in the Seeed repo's ww500_md/xip_manager.c, one per step: -1 before flash is
+ * touched, then erase, write, verify and the slot selector. A failed SD read
+ * while writing is a write failure. Every one leaves the running image alone.
  */
 const FIRMWARE_ERROR_CODES: Record<number, string> = {
-  [-1]: 'firmware file not found on SD card (/MANIFEST/output.img)',
-  [-2]: 'SD card read error',
-  [-3]: 'flash erase failed',
-  [-4]: 'flash write failed',
-  [-5]: 'flash verify mismatch — data written does not match source',
-  [-6]: 'slot selector write failed',
+  [-1]: 'firmware file not found on SD card, or the slot selector could not be read',
+  [-2]: 'flash erase failed',
+  [-3]: 'flash write failed',
+  [-4]: 'flash verify mismatch, the data written does not match the file',
+  [-5]: 'slot selector write failed',
 };
 
 /**
@@ -312,6 +313,10 @@ export const commandRegistry = {
       idempotent: false,
       isLongRunning: true,
       requiresExclusiveLock: true,
+      // The CRC check before flash is touched (CLI-FATFS-commands.c in the
+      // Seeed repo). Without it a refusal waited out the 120 s, then counted
+      // as a timeout and the pass ran again.
+      failureRegex: /^Error: (?:CRC mismatch .*Flash NOT modified|cannot read '[^']*' for CRC check)/i,
     }
   ),
   aireset: createSingleLineCommand<boolean>(

@@ -8,7 +8,7 @@ import { useExtendedTheme } from '../../theme'
 import { useAppSelector } from '../../redux'
 import { WWText } from '../../components/ui/WWText'
 import { useFirmwareStatus, FirmwareComponentStatus } from './hooks/useFirmwareStatus'
-import { friendlyVersion, missingFirmware } from '../../utils/firmwareWords'
+import { friendlyVersion, missingFirmware, unfinishedLine } from '../../utils/firmwareWords'
 
 interface FirmwareComponentCardProps {
     title: string
@@ -25,13 +25,15 @@ interface FirmwareComponentCardProps {
 /**
  * "Up to date: 30 Sep build", or "23 Sep build, update available" (#344), or,
  * with one camera's build in the catalogue, "23 Sep build. The colour camera's
- * new firmware is not available yet" rather than either (#437)
+ * new firmware is not available yet" rather than either (#437), or "Update not
+ * finished: 1 of 2 images installed" for an AI update that stopped part way (#374)
  */
 const statusLine = (status: FirmwareComponentStatus): string => {
     const current = status.currentVersion && status.currentVersion !== 'Unknown'
         ? friendlyVersion(status.currentVersion)
         : null
     if (!status.currentVersion) return 'Checking…'
+    if (status.unfinished) return unfinishedLine(status.unfinished.done, status.unfinished.total)
     if (status.isOutdated) return current ? `${current}, update available` : 'Update available'
     if (status.missingVariant) {
         return current ? `${current}. ${missingFirmware(status.missingVariant)}` : missingFirmware(status.missingVariant)
@@ -54,7 +56,7 @@ const FirmwareComponentCard = ({ title, status, colors, spacing, isChecking, isC
                 onPress={onUpdate}
                 disabled={!isConnected || isChecking}
             >
-                <WWText>Update</WWText>
+                <WWText>{status.unfinished ? 'Finish update' : 'Update'}</WWText>
             </Button>
         )}
     </View>

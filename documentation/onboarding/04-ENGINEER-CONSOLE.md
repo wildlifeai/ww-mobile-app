@@ -130,7 +130,7 @@ Commands prefixed with `AI`, routed via BLE to the Himax chip. These interact wi
 |---------|----------|---------|
 | `AI capture 1 500` | `About to capture 1 image ...`, then `Captured 1 images. Last is X.JPG (File write Nms avg.)` | `capture_one` in the list: take one photo. See [Take one photo](#take-one-photo) below. Other counts and intervals are *typed only* |
 | `AI light` | `Checking light level...`, then the AE registers | Measure light without a photo. See [Light-Sensor.md](../resources/Light-Sensor.md) |
-| `AI slots` | `Active slot 1 running 'HM0360 (night/IR)'. Slot A: 'RP3 (day/colour)', Slot B: 'HM0360 (night/IR)'. Auto-switch: off` | Which firmware slot runs, and the camera each slot is built for (day/night switching) |
+| `AI slots` | `Active slot 1 running 'HM0360 (night/IR)'. Slot A: 'RP3 (day/colour)', Slot B: 'HM0360 (night/IR)'. Auto-switch: off` | The slot that boots next ("Active slot", the selector, which `AI firmware` and `AI switchslot` move before the camera restarts), the camera the running image is built for, and each slot's camera as its image's first cold boot labelled it (`unknown` straight after `AI firmware`). Labels name a camera, not a build |
 | `AI switchslot` | `Switched to slot N` / `Slot switch failed` | Boot the other firmware slot; the camera resets on its way into its next sleep |
 
 #### Take one photo
@@ -260,8 +260,8 @@ trying to do rather than by the mechanism underneath.
 | Flow | What It Does |
 |------|-------------|
 | `UPDATE_BLE_FIRMWARE` | Nordic nRF52 OTA update (ZIP) via the DFU screen. |
-| `UPDATE_HIMAX_FIRMWARE` | Himax AI processor update (`AI firmware <file> <0xCRC>` + `AI reset`). Normally flashes **both** camera-variant images, see [Himax-Firmware-Update.md](../resources/Himax-Firmware-Update.md#dual-image-update-camera-variant-pair). |
-| `FIRMWARE_STATUS` | One line per chip, up to date or update available, with Update. With one camera's AI build in the catalogue, the AI line names the camera whose firmware is missing instead ([why](../resources/Himax-Firmware-Update.md#one-cameras-build-only)). Also reached from Start Monitoring, so the screen is production code, not only a bench tool. |
+| `UPDATE_HIMAX_FIRMWARE` | Himax AI processor update (`AI firmware <file> <0xCRC>`, then `AI reset` and `AI dpd`). Normally flashes **both** camera-variant images, see [Himax-Firmware-Update.md](../resources/Himax-Firmware-Update.md#dual-image-update-camera-variant-pair). An update this phone left part way is finished instead, ending on the camera it started on. |
+| `FIRMWARE_STATUS` | One line per chip, up to date or update available, with Update. With one camera's AI build in the catalogue, the AI line names the camera whose firmware is missing instead ([why](../resources/Himax-Firmware-Update.md#one-cameras-build-only)). An AI update this phone ran that stopped between its two images reads "Update not finished", with Finish update ([why](../resources/Himax-Firmware-Update.md#an-update-that-stopped-between-images)). Also reached from Start Monitoring, so the screen is production code, not only a bench tool. |
 | `MODEL_VALIDATION` | Full AI model lifecycle: validate metadata → download → transfer to SD → `erasemodel` → `loadmodel`. Grouped here rather than under file transfer because the transfer is how it works, not what it is for. |
 
 From the console, all three open the **engineer view** of the update screen (`engineer: true`): the build picker, the SD-card or cloud source and the transfer cards. Start Monitoring opens the operator's view, one version line, one button, one bar and one status line with the update's last steps under them, and one result line (#344).

@@ -66,10 +66,17 @@ const GOLDEN: Record<keyof typeof commandRegistry, Row> = {
     aiver: { wire: 'AI ver', accepts: 'WW500_C02 05:31:26 Sep 15 2026' },
     aireset: { wire: 'AI reset', accepts: 'Forcing reset' },
     aidpd: { wire: 'AI dpd', accepts: 'Forcing DPD by clearing inactivity period', rejects: 'Unrecognised command' },
+    // The OK with its CRC from WILD-7VQI on the bench, 1 October 2026 (#374).
+    // The refusals word for word from prvFirmwareCommand, CLI-FATFS-commands.c
+    // in the Seeed repo (dev, 8 October 2026): both come before flash is touched.
     aifirmware: {
         args: ['OUTPUT.IMG', '0x1A2B'],
         wire: 'AI firmware OUTPUT.IMG 0x1A2B',
-        accepts: 'Firmware update OK',
+        accepts: ['Firmware update OK', 'Firmware CRC 0xAE0D matched. Firmware update OK. Executes at next reset.'],
+        rejects: [
+            'Error: CRC mismatch - file 0x1234, expected 0x1A2B. Flash NOT modified.',
+            "Error: cannot read '/MANIFEST/OUTPUT.IMG' for CRC check (4)",
+        ],
     },
     enableCamera: { wire: 'AI enable', accepts: ['Enabled Camera System', 'Camera Enabled'], rejects: 'already enabled' },
     setdid: {
@@ -223,6 +230,21 @@ describe('commandRegistry golden wire format', () => {
         for (const line of ['Joined.', 'Already joined', 'Unconfirmed uplink message sent.', 'Pong', 'Not Joined']) {
             expect(commandRegistry.ping().match(line)).toBe(false)
         }
+    })
+
+    it('names each firmware update error code for the step xip_manager.c returns it from', () => {
+        // The table ran one off from -2 until #374: -2 is the erase, not an SD read
+        const failure = (code: number) => {
+            const cmd = commandRegistry.aifirmware('OUTPUT.IMG', '0x1A2B')
+            cmd.collect(`Firmware update FAILED (error ${code}). Existing firmware unchanged.`)
+            return () => cmd.parser()
+        }
+        expect(failure(-1)).toThrow('Firmware update failed: firmware file not found on SD card, or the slot selector could not be read')
+        expect(failure(-2)).toThrow('Firmware update failed: flash erase failed')
+        expect(failure(-3)).toThrow('Firmware update failed: flash write failed')
+        expect(failure(-4)).toThrow('Firmware update failed: flash verify mismatch, the data written does not match the file')
+        expect(failure(-5)).toThrow('Firmware update failed: slot selector write failed')
+        expect(failure(-6)).toThrow('Firmware update failed: unknown error (-6)')
     })
 
     it('has a golden row for every command in the registry', () => {

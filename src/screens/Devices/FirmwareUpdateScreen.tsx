@@ -15,7 +15,8 @@ import { useFirmwareUpdate, FirmwareTarget, HimaxFirmwareSource, firmware83Filen
 import { useFirmwareOnPhone } from '../../hooks/useOfflineFiles'
 import Firmware from '../../database/models/Firmware'
 import { SimpleFirmwareUpdate } from './components/SimpleFirmwareUpdate'
-import { friendlyVersion } from '../../utils/firmwareWords'
+import { finishSummary, friendlyVersion } from '../../utils/firmwareWords'
+import { classifyHimax } from '../../utils/himaxFirmwareState'
 
 const TARGET_TITLES: Record<FirmwareTarget, string> = {
     ble: 'BLE Firmware Update',
@@ -87,6 +88,8 @@ export const FirmwareUpdateScreen = () => {
         sdCardFiles,
         availableDbFirmwares,
         runningVariant,
+        cameraSlots,
+        updateRecord,
         pairProgress,
         startUpdate,
         cancelUpdate,
@@ -192,12 +195,21 @@ export const FirmwareUpdateScreen = () => {
         target === 'himax' && latestByVariant ? [latestByVariant.rp3, latestByVariant.hm] : [latestFirmware]
     )
 
-    // Device already on the latest build (for the camera it is running)?
-    const deviceUpToDate = useMemo(() => {
-        if (!latestByVariant || !previousVersion) return false
-        const cur = previousVersion.trim()
-        return [latestByVariant.rp3?.version?.trim(), latestByVariant.hm?.version?.trim()].includes(cur)
-    }, [latestByVariant, previousVersion])
+    // Where the camera stands: on the latest build of the camera it is
+    // running, or left part way by an update this phone ran, which Update
+    // then finishes (#374)
+    const himaxState = useMemo(() => (latestByVariant
+        ? classifyHimax({
+            current: previousVersion,
+            slots: cameraSlots ?? null,
+            record: updateRecord ?? null,
+            latest: { RP3: latestByVariant.rp3, HM0360: latestByVariant.hm },
+        })
+        : null), [latestByVariant, previousVersion, cameraSlots, updateRecord])
+    const deviceUpToDate = himaxState?.state === 'up_to_date'
+    const unfinished = himaxState?.state === 'unfinished'
+        ? finishSummary(himaxState.done, himaxState.total, himaxState.endVariant, himaxState.plan)
+        : null
 
     // The one-tap pair update needs both camera images: a variant-labelled DB
     // record per camera whose (variant-lettered) file is already on the SD card.
@@ -298,6 +310,7 @@ export const FirmwareUpdateScreen = () => {
                     isPreflightDone={isPreflightDone}
                     canStart={target === 'himax' ? !!pairSource : !!latestFirmware}
                     missingVariant={missingVariant}
+                    unfinished={target === 'himax' ? unfinished : null}
                     batteryLevel={batteryLevel}
                     isBatteryLow={isBatteryLow && !isDfuMode}
                     externalPowerConfirmed={externalPowerConfirmed}
@@ -455,20 +468,30 @@ export const FirmwareUpdateScreen = () => {
                 {/* ── Primary action: update both cameras ──
                     Source is chosen automatically: SD-card images when present
                     (no transfer, ~2 min), else downloaded from the cloud and
-                    sent over BLE (~10 min). */}
+                    sent over BLE (~3 min, 2 min 54 s on the bench on 10 October 2026). */}
                 {target === 'himax' && !isComplete && !isUpdating && (
                     <View style={[styles.card, { backgroundColor: colors.surfaceVariant, marginBottom: spacing }]}>
                         <WWText variant="titleSmall" style={[styles.marginBottom8, { color: colors.onSurfaceVariant }]}>
                             Update both cameras{latestLabel ? ` — ${latestLabel}` : ''}
                         </WWText>
-                        <WWText variant="bodyMedium" style={[styles.marginBottom8, { color: colors.onSurfaceVariant }]}>
-                            {pairSource === 'sdcard'
-                                ? `Flashes the ${VARIANT_META.RP3.emoji} colour and ${VARIANT_META.HM0360.emoji} night-IR images from the SD card in two passes (about 2 minutes).`
-                                : pairSource === 'download'
-                                    ? `Downloads the ${VARIANT_META.RP3.emoji} colour and ${VARIANT_META.HM0360.emoji} night-IR images from the cloud and sends them over Bluetooth (about 10 minutes — keep the phone nearby).`
-                                    : 'Flashes the colour and night-IR camera images in two passes.'}
-                            {' '}The device finishes on the camera it is using now.
-                        </WWText>
+                        {/* An unfinished update has its own line below, which says what
+                            finishing writes and which camera it ends on; this one would
+                            contradict it (bench, 10 October 2026) */}
+                        {!unfinished && (
+                            <WWText variant="bodyMedium" style={[styles.marginBottom8, { color: colors.onSurfaceVariant }]}>
+                                {pairSource === 'sdcard'
+                                    ? `Flashes the ${VARIANT_META.RP3.emoji} colour and ${VARIANT_META.HM0360.emoji} night-IR images from the SD card in two passes (about 2 minutes).`
+                                    : pairSource === 'download'
+                                        ? `Downloads the ${VARIANT_META.RP3.emoji} colour and ${VARIANT_META.HM0360.emoji} night-IR images from the cloud and sends them over Bluetooth (about 3 minutes, keep the phone nearby).`
+                                        : 'Flashes the colour and night-IR camera images in two passes.'}
+                                {' '}The device finishes on the camera it is using now.
+                            </WWText>
+                        )}
+                        {unfinished && (
+                            <WWText variant="bodySmall" style={[styles.marginBottom8, { color: colors.error }]}>
+                                {unfinished}
+                            </WWText>
+                        )}
                         {missingVariant && (
                             <WWText variant="bodySmall" style={[styles.marginBottom8, { color: colors.error }]}>
                                 No {VARIANT_META[missingVariant].emoji} {VARIANT_META[missingVariant].label} build in the firmware
@@ -489,7 +512,9 @@ export const FirmwareUpdateScreen = () => {
                             disabled={!isPreflightDone || !pairSource || !batteryGateOk}
                         >
                             <WWText>
-                                {pairSource === 'download' ? 'Update both cameras (cloud)' : 'Update both cameras'}
+                                {unfinished
+                                    ? 'Finish update'
+                                    : pairSource === 'download' ? 'Update both cameras (cloud)' : 'Update both cameras'}
                             </WWText>
                         </Button>
                         {!batteryGateOk && (
