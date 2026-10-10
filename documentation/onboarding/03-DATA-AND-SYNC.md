@@ -446,9 +446,13 @@ column lands last.
 > not an error: the pull leaves the local record at its model default, and the push writes the
 > row without that value and still reports success. `lorawan_required`, `record_gps_in_images`
 > and `is_archived` were missing from both for months (#285, ww-backend #170), so a project set
-> to record GPS on the website deployed with GPS zeroed and nothing said why. When you add a
-> column, add it to both lists in the same change, and check the round trip rather than the
-> save dialog.
+> to record GPS on the website deployed with GPS zeroed and nothing said why. `syncDeployments`
+> is the same: it never read back the start snapshot (`camera_model` through
+> `lorawan_snr_at_start`) the push sends, so a deployment pulled onto a second phone had none
+> (#426). When you add a column, add it to both lists in the same change, and check the round
+> trip rather than the save dialog. The app's half is guarded: `syncProjects.columns.test.ts`
+> and `syncDeployments.columns.test.ts` read the pull's source and fail when a local column, or
+> one the deployment push sends, has no line in both branches.
 
 ### Retry Logic
 
@@ -632,6 +636,7 @@ npm run schema:generate
 npm run schema:validate:live:cloud-dev
 
 # 4. Add the new columns to the model, the pull in SupabaseSyncService and the push payload
+#    (a timestamp the model reads with @date must be a number: scripts/README.md, "Timestamps")
 ```
 
 There are no migrations. The adapter in `src/database/index.ts` configures none on purpose,
@@ -663,7 +668,7 @@ shape matters more than the number:
 | Column | Count | What it is |
 |---|---|---|
 | `modified_by`, `deleted_at`, `updated_at`, `created_at` | 76 | audit columns the app defines on tables that genuinely lack them in Supabase (verified: `account_deletion_requests` has none of the three) |
-| `deployment_comments`, `camera_location_description`, `camera_location_image_path` | 3 | **legacy**, and labelled as such in `models/Deployment.ts`. The backend split the first into `start_`/`end_deployment_comments` and pluralised the third to `camera_location_image_paths`; the app uses the new names everywhere |
+| `deployment_comments`, `camera_location_description`, `camera_location_image_path` | 3 | **legacy**. The backend split the first into `start_`/`end_deployment_comments` and pluralised the third to `camera_location_image_paths`; the app uses the new names everywhere. Dropped from the model and the schema at schema 407 (#425) |
 | `remote_id` on `project_invitations` | 1 | confirmed absent upstream. An empty table defeats reading columns from a row, so ask for the one column: `GET /rest/v1/<table>?select=<column>&limit=1` returns 400 when it does not exist, and 200 when it does |
 
 So the validator cannot tell deliberate legacy from real drift, and never will be able to.

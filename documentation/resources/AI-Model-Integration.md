@@ -139,7 +139,18 @@ The backend normalises all model formats before storage:
 | `.zip` (Edge Impulse) | Extract `trained.tflite`, run Vela conversion, rename |
 | `.cc` (C hex array) | Parse hex array → raw bytes → store as `.TFL` |
 
-The mobile app always receives a ready-to-deploy `.TFL` binary from storage — no format conversion is needed on-device.
+The mobile app expects a ready-to-deploy `.TFL` binary from storage and converts nothing.
+
+It does not take that on trust. A TFLite model is a FlatBuffer whose bytes 4 to 7 read `TFL3`,
+and Vela's output keeps them. `syncAiModel` checks the phone's copy with `isTfliteModel`
+([`src/utils/tfliteModel.ts`](../../src/utils/tfliteModel.ts)) before sending any of it, and
+stops the deployment when it fails, naming the model and saying what the file is instead. On
+the bench on 8 October 2026 the dev backend's model `d0000000-0000-4000-8000-0000000000a1` was a
+ZIP archive: the app sent it as `7V1.TFL`, the Himax copied it to flash, could not parse it and
+halted (Seeed #241), and the deployment started on a camera that recorded nothing (#428). The
+phone's cache checks only the size, so it cannot catch this, and a new download brings the same
+file: the fix is the file in storage. For the same reason a `loadmodel` the camera never answers
+stops the deployment and asks for a power cycle, rather than warning and starting it anyway.
 
 ---
 
@@ -214,4 +225,4 @@ file in the model's class order to guarantee this.
 
 ---
 
-*Last Updated: September 29, 2026*
+*Last Updated: October 10, 2026*

@@ -811,6 +811,9 @@ export const useStartDeployment = ({
         } catch (error) {
             logError('Deployment failed:', error)
             progress.setIsFinishing(false)
+            // Nothing else clears it: without this a stopped start left the button
+            // spinning and the project picker locked until the screen was left
+            setSubmitting(false)
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false
         }

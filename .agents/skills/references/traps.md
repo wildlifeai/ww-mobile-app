@@ -82,6 +82,14 @@ file is the list of things that look like an app bug and are not, and the revers
   test that dies before its cleanup leaves op34 at always-on, op13 at its LED and op11 at its
   interval. `AI getop -1` shows all four; the motion test now holds and restores them, see
   [ble.md](ble.md). Read from the code on 8 October 2026, not yet seen on the bench.
+- **A camera that answers commands but never captures or sleeps after a `loadmodel` has halted on
+  a model file it could not parse.** The Himax copies the file to flash, then prints `No valid
+  TFLite model in flash`, `TFLM: model = NULL` and `HALTED` (Seeed #241), and the reply the app
+  waits for never comes. On WILD-DJZQ, 8 October 2026, the file was a ZIP archive stored as the
+  dev backend's model, and the live monitor showed 0 photos and 0 motion while people waved at
+  the camera, which reads as a motion fault. The tell is `read /MANIFEST/7V1.TFL` on the Himax
+  console printing `PK`; only a reset brings it back. Since #428 the deployment checks the
+  phone's copy for `TFL3` before sending it and stops on a `loadmodel` that goes unanswered.
 - **A multi-image capture with a gap above op8 is cut short by the device** (Seeed #208).
   Images after the first never come, `Captured` is never sent, and the app receives `Sleep`
   instead. Keep any `capture N interval` below op8, and treat a `Sleep` during a capture as the
