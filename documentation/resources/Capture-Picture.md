@@ -14,7 +14,7 @@ page is how it behaves now; how it got here is in the
 |---|---|
 | Camera mode: Colour or Black & White, one per firmware slot (the hi-res colour mode went with the firmware's op32 in September 2026) | [`CameraModeSelector`](../../src/components/device/CameraModeSelector.tsx), [`useCameraSwitch`](../../src/hooks/useCameraSwitch.ts) |
 | Flash: Off, White, IR (op13) and brightness (op9) | [`FlashSelector`](../../src/components/device/FlashSelector.tsx) |
-| Capture Image, the step list while it runs, the picture, a gallery | [`CapturePictureSection`](../../src/screens/Devices/components/CapturePictureSection.tsx), [`CaptureSteps`](../../src/screens/Devices/components/CaptureSteps.tsx) |
+| Capture Image, the step list for the latest run, the picture, a gallery | [`CapturePictureSection`](../../src/screens/Devices/components/CapturePictureSection.tsx), [`CaptureSteps`](../../src/screens/Devices/components/CaptureSteps.tsx) |
 | The screen's own logic: settings, hold, step state | [`useCapturePicture`](../../src/screens/Devices/hooks/useCapturePicture.ts), [`useCaptureSteps`](../../src/screens/Devices/hooks/useCaptureSteps.ts), [`captureSteps.ts`](../../src/utils/captureSteps.ts) |
 | The capture itself, shared with the deployment camera view and the Light Sensor screen | [`useCapturePreview`](../../src/hooks/useCapturePreview.ts) |
 | Holding the device awake | [`keepAwake.ts`](../../src/ble/session/keepAwake.ts) |
@@ -32,19 +32,23 @@ page is how it behaves now; how it got here is in the
    writes the file and announces `Captured 1 images. Last is X.JPG`.
 4. `AI txfile X.JPG` straight away. Under the hold the device is still awake and its Save State
    is 3 s away, so nothing races the file handle. Without a hold the flow waits for a sleep here.
-5. Packets arrive at about 1.1 KB/s and are reassembled and saved; the step list counts down.
+5. Packets arrive at the connection interval's rate and are reassembled and saved; the step list
+   counts down. On Android the app asks for the fast interval before the capture and again on
+   the camera's reply to `txfile`, and gives it back when the transfer ends; why twice is in
+   [`connectionPriority.ts`](../../src/ble/protocol/connectionPriority.ts).
 
-Measured on 3 September 2026 with firmware `ae_review` and a 10 to 13 KB image:
+Measured on the bench on 10 October 2026 with WILD-DJZQ, BLE 0.30.57, a Pixel 7 and photos of
+19 to 23 KB:
 
-| Capture | Tap to picture | Of which transfer |
-|---|---|---|
-| Before this design, op8 at 3000 and a wait for sleep before and after the capture | 21.8 s | 10.7 s |
-| Settings unchanged, device asleep at the tap | 10.1 s | 8.1 s |
-| One setting changed (a 3 s sleep, one wake) | 15.9 s | 9.5 s |
-| Flash chosen in a lit room (the op25 write plus that sleep) | 17.6 s | 10.4 s |
+| What was measured | Result |
+|---|---|
+| Transfer at 15 ms, the interval the app asks for | 2.0 to 2.3 s, about 9.7 KB/s |
+| Transfer at 30 ms, what Android gives the camera's own request when the app asks nothing | 3.2 to 3.8 s, 5.1 to 6.1 KB/s |
+| Tap to picture, settings unchanged, camera asleep at the tap | 3.9 s |
+| Tap to picture when the op array had to be read from the camera first (a wake, then a wait for sleep) | 8.5 s |
 
-The transfer is bounded by the nRF's console output per packet, not by BLE or the app; see the
-thread's open items.
+Until BLE 0.30.55 the nRF printed every packet to its console and the transfer ran at about
+1.1 KB/s whatever the link ([ww-hardware #34](https://github.com/wildlifeai/ww-hardware/issues/34)).
 
 ## The hold
 
@@ -96,10 +100,14 @@ once on 3 September 2026; see the thread's open items.
 
 ## The step list
 
-Four steps, ticked on the device's own lines: flash settings, taking the picture, light check
-(with the verdict), transferring (with size and seconds left, at the nominal 1.1 KB/s until 2 KB
-have arrived and at the measured rate after). The app's own stage text sits underneath for the
-waits the device is silent through. No new command is sent for any of it.
+Four steps, ticked on the device's own lines: flash settings, taking the picture (its detail
+covers the wait for sleep), light check (with the verdict), transferring (with size and seconds
+left, at a nominal 6 KB/s, the 30 ms rate, until 2 KB have arrived and at the measured rate
+after). No new command is sent for any of it.
+
+The list stays on screen once the run ends, done or failed, until the next capture starts: the
+file name, the verdict and the transfer's size and time, or the failed step's reason, stay
+readable. A failed capture or transfer also raises the `Capture failed` alert.
 
 ## Leaving the screen
 

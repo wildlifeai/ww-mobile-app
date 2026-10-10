@@ -23,13 +23,12 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
         isCapturing,
         capturedImageUri,
         captureProgress,
-        captureStage,
     } = useCapturePreview({
         device: device || undefined,
         onImageReceived: onImageCaptured,
         onError: (err) => {
             logError('Capture error:', err)
-            Alert.alert('Camera Preview Failed', err?.message || 'An error occurred while capturing preview image.')
+            Alert.alert('Capture failed', err?.message || 'An error occurred while capturing preview image.')
         }
     })
 
@@ -63,11 +62,13 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
 
                 <WWBleDisconnectedBanner connected={!!device?.connected} dfuInProgress={!!device?.dfuInProgress} />
 
+                {/* One line in the words of Capture Picture's step list, under a
+                    bar that fills as the picture arrives */}
                 {isCapturing && (
                     <View style={styles.progressContainer}>
                         <ProgressBar progress={captureProgress} color={theme.colors.primary} />
                         <Text variant="labelSmall" style={styles.progressText}>
-                            {Math.round(captureProgress * 100)}%
+                            {captureProgress > 0 ? 'Transferring the picture…' : 'Taking the picture…'}
                         </Text>
                     </View>
                 )}
@@ -80,9 +81,7 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
                 >
                     <Text>{!device?.connected
                         ? 'Device Disconnected'
-                        : isCapturing
-                            ? (captureProgress > 0 ? `${captureStage} ${Math.round(captureProgress * 100)}%` : (captureStage || 'Capturing…'))
-                            : (capturedImageUri ? '📸 Take Another Photo' : '📸 Take Test Photo')}</Text>
+                        : capturedImageUri ? 'Take Another Photo' : 'Take Test Photo'}</Text>
                 </WWButton>
                 </Card.Content>
             </Card>

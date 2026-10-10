@@ -9,8 +9,6 @@ interface Props {
     state: CaptureStepsState
     /** Clock for the countdown, from useCaptureSteps */
     now: number
-    /** The app's own stage text, shown under the list: it explains the waits the device is silent through */
-    stage?: string
 }
 
 const StepIcon = ({ status, color }: { status: Step['status']; color: string }) => {
@@ -23,11 +21,11 @@ const StepIcon = ({ status, color }: { status: Step['status']; color: string }) 
  * The step list for a Capture Picture run: what has happened, what is
  * happening, and how long the transfer has to go.
  *
- * A capture is 13 s or more of a camera the operator cannot see doing
- * anything, and most of that is the transfer. The list ticks on the device's
- * own messages, so it reports the camera, not the app's hopes for it.
+ * A capture is 4 to 9 s of a camera the operator cannot see doing anything
+ * (bench, 10 October 2026). The list ticks on the device's own messages, so
+ * it reports the camera, not the app's hopes for it.
  */
-export const CaptureSteps = ({ state, now, stage }: Props) => {
+export const CaptureSteps = ({ state, now }: Props) => {
     const { colors } = useExtendedTheme()
 
     const iconColor = (status: Step['status']) =>
@@ -55,8 +53,12 @@ export const CaptureSteps = ({ state, now, stage }: Props) => {
                         {step.key === 'transfer' && transfer && step.status !== 'pending' ? (
                             <>
                                 <ProgressBar progress={fraction} color={colors.primary} style={styles.bar} />
-                                <WWText variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
-                                    {step.status === 'done' && step.detail ? step.detail : describeTransfer(transfer, now)}
+                                {/* Counts down while it runs; done or failed, says how it ended */}
+                                <WWText
+                                    variant="labelSmall"
+                                    style={{ color: step.status === 'failed' ? colors.error : colors.onSurfaceVariant }}
+                                >
+                                    {step.status !== 'active' && step.detail ? step.detail : describeTransfer(transfer, now)}
                                 </WWText>
                             </>
                         ) : step.detail ? (
@@ -70,11 +72,6 @@ export const CaptureSteps = ({ state, now, stage }: Props) => {
                     </View>
                 </View>
             ))}
-            {stage ? (
-                <WWText variant="labelSmall" style={[styles.stage, { color: colors.onSurfaceVariant }]}>
-                    {stage}
-                </WWText>
-            ) : null}
         </View>
     )
 }
@@ -101,9 +98,5 @@ const styles = StyleSheet.create({
     bar: {
         marginTop: 4,
         marginBottom: 2,
-    },
-    stage: {
-        marginTop: 4,
-        textAlign: 'center',
     },
 })
