@@ -121,7 +121,7 @@ BEGIN
   WHERE id = NEW.id AND email IS DISTINCT FROM NEW.email;
   RETURN NEW;
 END;
--- search_path='' (project standard, SKILL.md §4): fully-qualify all calls to prevent
+-- search_path='' (.agents/skills/references/rls-and-security.md): fully-qualify all calls to prevent
 -- search-path hijacking of this SECURITY DEFINER function.
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
 

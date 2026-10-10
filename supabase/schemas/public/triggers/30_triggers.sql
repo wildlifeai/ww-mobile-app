@@ -90,12 +90,12 @@ BEFORE UPDATE OF project_id, setup_by ON public.deployments
 FOR EACH ROW
 EXECUTE FUNCTION public.lock_deployment_columns();
 
--- A client places a deployment only on a device of its project's organisation (#304).
--- UPDATE OF fires when device_id is in the SET list; the function checks only a change.
-CREATE TRIGGER trg_deployments_check_device
-BEFORE INSERT OR UPDATE OF device_id ON public.deployments
+-- A deployment's device_eui is its device's, whatever the client sends (#323). UPDATE OF
+-- fires when either column is in the SET list; the function copies only on a change.
+CREATE TRIGGER trg_deployments_copy_device_eui
+BEFORE INSERT OR UPDATE OF device_id, device_eui ON public.deployments
 FOR EACH ROW
-EXECUTE FUNCTION public.check_deployment_device();
+EXECUTE FUNCTION public.copy_deployment_device_eui();
 
 -- No client update moves a project to another organisation, except a ww_admin's (#260).
 CREATE TRIGGER trg_projects_lock_organisation

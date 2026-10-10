@@ -42,10 +42,12 @@ CREATE INDEX user_roles_active_idx ON user_roles (is_active, expires_at);
 -- organisation-wide project_member used to be allowed, and was then granted the
 -- organisation's deployments but none of its project rows. None existed anywhere, so
 -- the scope was removed rather than completed (2026-10-01). Organisation-wide reading
--- is the organisation_manager's (#162).
+-- is the organisation_manager's (#162). organisation_manager is organisation-scope only
+-- too: system scope was allowed but read by no helper or policy, so it granted nothing,
+-- and no such row existed (#313, 2026-10-10).
 ALTER TABLE user_roles ADD CONSTRAINT user_roles_role_scope_validation CHECK (
   (role = 'ww_admin' AND scope_type = 'system')
-  OR (role = 'organisation_manager' AND scope_type IN ('system', 'organisation'))
+  OR (role = 'organisation_manager' AND scope_type = 'organisation')
   OR (role = 'organisation_member' AND scope_type = 'organisation')
   OR (role IN ('project_admin', 'project_member', 'project_viewer') AND scope_type = 'project')
 );
