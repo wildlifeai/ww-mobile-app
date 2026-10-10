@@ -256,10 +256,6 @@ function generateSchema() {
             { name: 'capture_method_id', type: 'number', isOptional: true, isIndexed: true },
             { name: 'activity_detection_sensitivity_id', type: 'number', isOptional: true, isIndexed: true },
             { name: 'timelapse_interval_seconds', type: 'number', isOptional: true },
-            // Legacy/Model-only fields
-            { name: 'deployment_comments', type: 'string', isOptional: true },
-            { name: 'camera_location_description', type: 'string', isOptional: true },
-            { name: 'camera_location_image_path', type: 'string', isOptional: true },
             { name: 'deployment_photos', type: 'string', isOptional: true } // JSON
         ];
 
@@ -268,16 +264,25 @@ function generateSchema() {
                 tables.deployments.push(field);
             }
         });
+    }
 
-        // Override types for timestamps that come as string from Supabase but are number in Model (@date)
-        const timestampFields = ['deployment_start', 'deployment_end'];
-        tables.deployments = tables.deployments.map(col => {
-            if (timestampFields.includes(col.name)) {
+    // Override types for timestamps that come as string from Supabase but are number in Model (@date).
+    // @date stores epoch milliseconds, and WatermelonDB fits a value to its column's type, so on a
+    // 'string' column it keeps null ('' when required) and reads back null (#425).
+    // Keep in step with TIMESTAMP_COLUMNS in validate-watermelon-schema.js.
+    const timestampFields = {
+        deployments: ['deployment_start', 'deployment_end', 'lorawan_last_verified_at'],
+        user_roles: ['granted_at', 'expires_at'],
+    };
+    Object.entries(timestampFields).forEach(([tableName, fields]) => {
+        if (!tables[tableName]) return;
+        tables[tableName] = tables[tableName].map(col => {
+            if (fields.includes(col.name)) {
                 return { ...col, type: 'number' };
             }
             return col;
         });
-    }
+    });
 
     // 4. Generate Output
     //

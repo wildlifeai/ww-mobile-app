@@ -12,7 +12,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 407,
+    version: 408,
     tables: [
         tableSchema({
             name: 'account_deletion_requests',
@@ -346,7 +346,7 @@ export default appSchema({
                 { name: 'location_description', type: 'string', isOptional: true },
                 { name: 'location_name', type: 'string' },
                 { name: 'longitude', type: 'number', isOptional: true },
-                { name: 'lorawan_last_verified_at', type: 'string', isOptional: true },
+                { name: 'lorawan_last_verified_at', type: 'number', isOptional: true },
                 { name: 'lorawan_network', type: 'string', isOptional: true },
                 { name: 'lorawan_registration_completed', type: 'boolean' },
                 { name: 'lorawan_rssi_at_start', type: 'number', isOptional: true },
@@ -359,9 +359,6 @@ export default appSchema({
                 { name: 'start_deployment_comments', type: 'string', isOptional: true },
                 { name: 'timelapse_interval_seconds', type: 'number', isOptional: true },
                 { name: 'timezone', type: 'string', isOptional: true },
-                { name: 'deployment_comments', type: 'string', isOptional: true },
-                { name: 'camera_location_description', type: 'string', isOptional: true },
-                { name: 'camera_location_image_path', type: 'string', isOptional: true },
                 // System & Sync Fields
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
@@ -992,8 +989,8 @@ export default appSchema({
         tableSchema({
             name: 'user_roles',
             columns: [
-                { name: 'expires_at', type: 'string', isOptional: true },
-                { name: 'granted_at', type: 'string' },
+                { name: 'expires_at', type: 'number', isOptional: true },
+                { name: 'granted_at', type: 'number' },
                 { name: 'granted_by', type: 'string', isOptional: true },
                 { name: 'is_active', type: 'boolean' },
                 { name: 'role', type: 'string' },
