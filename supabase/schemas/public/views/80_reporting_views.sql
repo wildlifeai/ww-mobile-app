@@ -1026,10 +1026,15 @@ GRANT SELECT ON deployment_overview TO authenticated;
 -- GRANT SELECT ON admin_activity_log TO authenticated;
 GRANT SELECT ON recent_activity_summary TO authenticated;
 
--- Grant execute permissions on reporting functions (functions use SECURITY DEFINER)
-GRANT EXECUTE ON FUNCTION get_organisation_report TO authenticated;
-GRANT EXECUTE ON FUNCTION get_user_access_report TO authenticated;
-GRANT EXECUTE ON FUNCTION get_project_health_report TO authenticated;
+-- The reporting functions are SECURITY DEFINER and check no caller, so they read every
+-- organisation and every user's email. Service role only (#310): no client calls them.
+-- Before granting one to authenticated, add a ww_admin check inside it (test 14).
+REVOKE EXECUTE ON FUNCTION get_organisation_report FROM public, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION get_user_access_report FROM public, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION get_project_health_report FROM public, anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_organisation_report TO service_role;
+GRANT EXECUTE ON FUNCTION get_user_access_report TO service_role;
+GRANT EXECUTE ON FUNCTION get_project_health_report TO service_role;
 
 -- =============================================================================
 -- End of Reporting Views and Functions
