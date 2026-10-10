@@ -8,7 +8,27 @@ import { DEPLOYMENT_STATUS } from './DeploymentService'
 
 import ProjectService from './ProjectService'
 import { managedOrganisationIds, seesEverything } from './roleAccess'
-import { log } from '../utils/logger'
+import { isKnownOffline } from './connectivityWatch'
+import { DeviceRow, fetchDeviceRowByBluetoothId, prepareDeviceRow } from './serverDevices'
+import { log, logError } from '../utils/logger'
+import { logCloudFailure } from '../utils/networkErrors'
+
+/**
+ * What the server said about a camera this phone has not met (#451). `found`
+ * carries the device, now on the phone under the server's id.
+ */
+export type ServerDeviceLookup =
+    | { kind: 'found'; device: Device }
+    | { kind: 'none' }
+    | { kind: 'unchecked' }
+
+/**
+ * How long the scanner waits for that answer before registering the camera
+ * itself. Short, because missing it costs little: a second id for a camera the
+ * server has is refused 23505, and the push then takes the server's row
+ * (SupabaseSyncService.settleTakenBluetoothId).
+ */
+const SERVER_LOOKUP_MS = 5_000
 
 
 export const DeviceService = {
@@ -173,6 +193,51 @@ export const DeviceService = {
                 ? new Date(lastDeployment.deploymentStart)
                 : undefined,
             projectName: undefined, // TODO: Resolve project name from deployment
+        }
+    },
+
+    /**
+     * Ask the server for the camera with this Bluetooth id, before the scanner
+     * registers one the phone has not met (#451). A row this account may read
+     * is written to the phone under the server's id, with no outbox CREATE:
+     * `bluetooth_id` is unique on the server, so a second id for the camera
+     * would be refused on every sync. "none" means none this account may read,
+     * not that the camera is unregistered. Offline, failed or slower than
+     * SERVER_LOOKUP_MS, the answer is "unchecked".
+     */
+    adoptFromServer: async (bluetoothId: string): Promise<ServerDeviceLookup> => {
+        if (await isKnownOffline()) return { kind: 'unchecked' }
+
+        let timer: ReturnType<typeof setTimeout> | undefined
+        const timedOut = new Promise<never>((_, reject) => {
+            timer = setTimeout(
+                () => reject(new TypeError(`Network request timed out after ${SERVER_LOOKUP_MS / 1000} s`)),
+                SERVER_LOOKUP_MS,
+            )
+        })
+        let row: DeviceRow | null
+        try {
+            row = await Promise.race([fetchDeviceRowByBluetoothId(bluetoothId), timedOut])
+        } catch (error) {
+            logCloudFailure('[DeviceService] Could not ask the server about this camera:', error)
+            return { kind: 'unchecked' }
+        } finally {
+            clearTimeout(timer)
+        }
+        if (!row) return { kind: 'none' }
+
+        const serverRow = row
+        try {
+            await database.write(async () => {
+                await database.batch(await prepareDeviceRow(serverRow))
+            })
+            const device = await DeviceService.getDeviceById(serverRow.id)
+            if (!device) throw new Error(`device ${serverRow.id} not found after writing it`)
+            log(`[DeviceService] Camera ${bluetoothId} is on the server as ${serverRow.id}, written to the phone`)
+            return { kind: 'found', device }
+        } catch (error) {
+            logError("[DeviceService] Could not write the server's row for this camera to the phone:", error)
+            return { kind: 'unchecked' }
         }
     },
 

@@ -308,7 +308,16 @@ private async uploadOutbox() {
 }
 ```
 
-The outbox is uploaded in a fixed foreign-key order — `projects`, then `devices`, then `deployments` — so a parent row always lands before the child that references it. Because of this, `DeploymentService.createDeployment` queues an idempotent device `CREATE` alongside the deployment (the server's devices insert is `ON CONFLICT DO NOTHING`), guaranteeing the device is in the same push and reaches the server first. Without it, a deployment whose device was never synced fails with `23503` (foreign key) and only a self-healing retry in `SupabaseSyncService` recovers it a cycle later, which the operator sees as a transient sync error (#294). A bare "touch" of the device to trigger UI reactivity records no outbox operation, so it does not count.
+The outbox is uploaded in a fixed foreign-key order, `projects`, then `devices`, then
+`deployments`, so a parent row always lands before the child that references it. A camera's
+device row is queued once, when the scanner first registers it (`DeviceService.createDevice`),
+and not at all when the scanner takes the server's row instead ([A camera the server already
+has](#a-camera-the-server-already-has)). A deployment start queues no device `CREATE` (#451):
+until then it queued one with every deployment, which the server refused with `42501` for a
+camera of another organisation. A deployment whose device the server has never seen fails
+`23503` (foreign key), and the self-healing path in `SupabaseSyncService` then queues the
+device's `CREATE`, unless one is already pending, failed or refused, so it goes up a sync later
+(#294). A bare "touch" of the device to trigger UI reactivity records no outbox operation.
 
 **When the server refuses part of a push (#287).** Each table is still one `push_changes` call,
 but a refused table no longer stops the ones after it:
@@ -331,7 +340,9 @@ but a refused table no longer stops the ones after it:
   camera already has an open deployment on the server, ww-backend #324) leaves that record's
   operations `refused`, with the code and the server's message in `error_message` (#449).
   `42501` with HTTP 401 is the exception: PostgREST answers that way to a call made with no
-  signed-in user, which the next sync may get through, so it stays `failed`.
+  signed-in user, which the next sync may get through, so it stays `failed`. A device `CREATE`
+  refused `23505` on its Bluetooth id is settled as in [A camera the server already
+  has](#a-camera-the-server-already-has).
 - Operations found in `syncing` at the start of a push were stranded by a sync that was cut
   short, and are pushed again.
 - The error names each table and why, for example `Push incomplete. projects: 1 saved; devices:
@@ -345,6 +356,37 @@ pushed: pushing it would write it under this session with the audit fields rewri
 user. It goes out the next time its own account syncs on this phone. A device `CREATE` is the
 exception, because it registers the camera rather than anyone's work, and this account may be
 deploying that camera.
+
+#### A camera the server already has
+
+`devices.bluetooth_id` is unique on the server, and `push_changes` inserts a device `ON
+CONFLICT (id)` only, so a second id for one camera fails the whole call with `23505` ([the
+contract](../../.agents/skills/references/cross-repo-contracts.md)). The phone makes one when no
+local device matches: a camera registered on another phone and not pulled yet, or one this phone
+removed when a deployment moved it out of this account's reach (#411, #451). The scanner asks
+the server first ([05-DEVICE-FLOWS.md](./05-DEVICE-FLOWS.md#a-camera-this-phone-has-not-met)),
+but offline, slow or unable to read the camera, it registers a new one, and the push settles it.
+
+A call carrying one device whose `CREATE` fails `23505` naming `bluetooth_id` asks the server
+for the device with that Bluetooth id (`SupabaseSyncService.settleTakenBluetoothId`):
+
+- **This account may read it.** In one write, the phone takes the server's row under its id,
+  moves every local deployment on the local id to it, rewrites `device_id` in every
+  deployments change not yet uploaded that names the local id (pending, failed, in flight,
+  refused or orphaned, each keeping its status), marks the local `CREATE` `synced` with `replaced: ...` in `error_message`, and
+  removes the local device. The deployments go up with the server's id in the same push.
+- **The server shows no such camera.** It is registered to an organisation this account cannot
+  see. The `CREATE` is `refused` ([Retry Logic](#retry-logic)), and its deployments fail `23503`
+  on every sync until the server gives the app a way to learn the id (ww-backend #327).
+- **The lookup fails.** The `CREATE` stays `failed`, and the next sync asks again.
+
+A device `CREATE` refused `42501`, from a call carrying that one device, is the other case
+(`SupabaseSyncService.settleDeviceAlreadyOnServer`). Postgres checks the INSERT policy before
+`ON CONFLICT`, so re-sending the `CREATE` of a camera the server already has is refused for
+anyone outside its organisation, and phones still hold such copies from deployment starts before
+#451. When the server shows this account a device with that id, they are marked `synced` with
+`already on the server: ...` in `error_message`. When it shows none, the refusal stands, and a
+lookup that fails leaves them `failed`.
 
 ### Pull
 
@@ -484,6 +526,7 @@ that depend on it. Two kinds of operation are kept but never sent again:
   |---|---|
   | `23P01 ... deployments_one_open_per_device` | The camera already has an open deployment on the server (ww-backend #324) |
   | `42501 ...` | Row-level security or a trigger would not let this account write it: no role in the project or organisation, or a viewer |
+  | `23505 This camera is registered on the server to an organisation this account cannot see` | A new camera whose Bluetooth id the server has under another id this account cannot read ([A camera the server already has](#a-camera-the-server-already-has)) |
   | `not_applied: ...` | An update or delete that matched no row: the row is gone, or this account may no longer change it (a creator made a viewer, ww-backend #266) |
 
   A refused change stays on the phone with its record. Nothing sends it again: once the cause

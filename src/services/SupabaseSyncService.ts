@@ -4,7 +4,6 @@ import database from '../database'
 import { getSupabaseClient } from './supabase'
 import SyncOutbox from '../database/models/SyncOutbox'
 import SyncStateService, { PULL_WATERMARK_KEYS, SYNC_STATE_KEYS } from './SyncStateService'
-import { Database } from '../types/database.types'
 import UserRole from '../database/models/UserRole'
 import Device from '../database/models/Device'
 import Project from '../database/models/Project'
@@ -18,14 +17,13 @@ import { DEFAULT_FLASH_LED, DEFAULT_FLASH_MODE } from '../utils/projectFlash'
 import { DEFAULT_PHOTO_INTERVAL_MS, DEFAULT_PHOTOS_PER_TRIGGER } from '../utils/projectBurst'
 import { DEFAULT_DETECTION_THRESHOLD_PCT } from '../utils/projectDetectionThreshold'
 import { GONE_FROM_SERVER, isGoneFromServer } from './goneFromServer'
+import { DeviceRow, fetchDeviceRowByBluetoothId, prepareDeviceRow, serverShowsDevice } from './serverDevices'
 
 
 import { setGlobalSyncing, markInitialSyncComplete } from '../redux/slices/syncSlice'
 
 /** The tables a deployment points at */
 type ParentTable = 'projects' | 'devices'
-
-type DeviceRow = Database['public']['Tables']['devices']['Row']
 
 /** Why some of a table's changes did not reach the server */
 interface PushProblem {
@@ -103,6 +101,21 @@ const REFUSED_FOR_GOOD = new Set(['42501', '23P01'])
  */
 const isRefusedForGood = (error: { code?: string }, httpStatus?: number): boolean =>
     !!error.code && REFUSED_FOR_GOOD.has(error.code) && httpStatus !== 401
+
+/**
+ * Whether a push_changes error is a camera's Bluetooth id already on the
+ * server under another id (#451). `devices.bluetooth_id` is unique, as a
+ * column constraint and as a unique index, so either name may come back, and
+ * the devices insert covers only ON CONFLICT (id).
+ */
+const isBluetoothIdTaken = (error: { code?: string, message?: string, details?: string | null }): boolean =>
+    error.code === '23505' && /bluetooth_id/.test(`${error.message ?? ''} ${error.details ?? ''}`)
+
+/** In error_message, for the Settings line, when the server has the camera under an id this account cannot read */
+const CAMERA_REGISTERED_ELSEWHERE = '23505 This camera is registered on the server to an organisation this account cannot see'
+
+/** The outbox statuses of a change not yet on the server, `orphaned` included since it may go back to `pending` */
+const NOT_UPLOADED = ['pending', 'failed', 'syncing', 'refused', 'orphaned']
 
 /** One table's line in the push report, e.g. "devices: 1 refused by the server (42501 ...)" */
 const describeOutcome = (tableName: string, outcome: PushOutcome): string => {
@@ -668,6 +681,24 @@ class SupabaseSyncService {
                 if (error) {
                     logCloudFailure(`❌ Push failed for ${tableName}:`, error)
 
+                    // A camera the server has under another id (#451), on the same
+                    // one-record rule as below
+                    if (tableName === 'devices' && recordIds.size === 1 && isBluetoothIdTaken(error)) {
+                        return await this.settleTakenBluetoothId(tableOps, error)
+                    }
+
+                    // A camera's CREATE refused 42501 for a row the server already
+                    // has: until #451 every deployment start queued one, and
+                    // Postgres checks the INSERT policy before ON CONFLICT, so
+                    // anyone outside the camera's organisation was refused. Phones
+                    // still hold those copies, which would each read as a refused
+                    // "New camera" in Settings.
+                    if (tableName === 'devices' && recordIds.size === 1 && error.code === '42501' && httpStatus !== 401
+                        && tableOps.every(op => op.operationType.toUpperCase() === 'CREATE')) {
+                        const settled = await this.settleDeviceAlreadyOnServer(tableOps, error)
+                        if (settled) return settled
+                    }
+
                     // A call carrying one record is the record-by-record retry, or a
                     // table with one record to send, so a refusal for good there is
                     // that record's own: it is kept as 'refused' and never sent
@@ -916,6 +947,176 @@ class SupabaseSyncService {
             throw new Error(`Push incomplete. ${report.join('; ')}`)
         }
         log(`✅ Push complete. ${report.join('; ')}`)
+    }
+
+    /**
+     * Settle a device CREATE refused 42501 when the server already shows this
+     * account a device with its id (#451): the row is there, so the change is
+     * done, and the CREATE and any copies in this call are marked synced with
+     * why. Null when the server shows none, so the refusal stands like any
+     * other 42501. A lookup that fails leaves them failed, to ask again next
+     * sync, since a refused change is never sent again.
+     */
+    private async settleDeviceAlreadyOnServer(
+        tableOps: SyncOutbox[],
+        error: { code?: string, message?: string },
+    ): Promise<PushOutcome | null> {
+        const deviceId = tableOps[0].recordId
+        const refusal = `${error.code} ${error.message}`
+        const markAll = async (status: string, errorMessage: string) => {
+            await database.write(async () => {
+                await database.batch(...tableOps.map(op => op.prepareUpdate(o => {
+                    o.status = status
+                    o.errorMessage = errorMessage
+                    o.retryCount = op.retryCount + 1
+                })))
+            })
+        }
+
+        let onServer: boolean
+        try {
+            onServer = await serverShowsDevice(deviceId)
+        } catch (lookupError) {
+            logCloudFailure(`❌ Could not ask the server whether it has device ${deviceId}:`, lookupError)
+            await markAll('failed', refusal)
+            return {
+                saved: 0,
+                failedRecordIds: new Set([deviceId]),
+                refused: true,
+                problems: [{ count: tableOps.length, reason: `refused by the server (${refusal})` }],
+            }
+        }
+        if (!onServer) return null
+
+        await markAll('synced', `already on the server: the camera's row is there, and this account may not insert it again (${refusal})`)
+        log(`📷 Device ${deviceId} is already on the server, so its refused CREATE is done`)
+        return { saved: tableOps.length, failedRecordIds: new Set(), refused: false, problems: [] }
+    }
+
+    /**
+     * Settle a device CREATE refused 23505 because the server has this camera
+     * under another id (#451), from a call carrying that one device.
+     *
+     * The phone gave the camera a new id when no local device matched: a camera
+     * registered on another phone, or one this phone removed when a deployment
+     * moved it out of reach (ww-backend #272). Sent again, it is refused again.
+     *
+     * When this account may read the server's row, the phone takes it: the
+     * row is written under the server's id, every local deployment and every
+     * queued deployments change naming the local id is moved to it, the local
+     * CREATE is marked synced with why, and the local device goes. All in one
+     * write, so the deployments go up with the server's id in this push. A
+     * queued change keeps its status, a refused one included: it was refused
+     * for its own reason, never for 23503, which is retried.
+     *
+     * When the server shows no such row, the camera is registered to an
+     * organisation this account cannot see, and the CREATE is refused for good
+     * with a reason Settings shows as it is. Its deployments keep failing 23503
+     * until the server gives the app a way to learn the id. A lookup that
+     * fails leaves the CREATE failed, so the next sync asks again.
+     */
+    private async settleTakenBluetoothId(
+        tableOps: SyncOutbox[],
+        error: { code?: string, message?: string },
+    ): Promise<PushOutcome> {
+        const localId = tableOps[0].recordId
+        const recordIds = new Set([localId])
+        const refusal = `${error.code} ${error.message}`
+        const markAll = async (status: string, errorMessage: string) => {
+            await database.write(async () => {
+                await database.batch(...tableOps.map(op => op.prepareUpdate(o => {
+                    o.status = status
+                    o.errorMessage = errorMessage
+                    o.retryCount = op.retryCount + 1
+                })))
+            })
+        }
+
+        let bluetoothId: string | undefined
+        try {
+            bluetoothId = JSON.parse(tableOps[0].payload).bluetooth_id || undefined
+        } catch (e) {
+            bluetoothId = undefined
+        }
+
+        let serverRow: DeviceRow | null = null
+        try {
+            serverRow = bluetoothId ? await fetchDeviceRowByBluetoothId(bluetoothId) : null
+        } catch (lookupError) {
+            logCloudFailure(`❌ Could not ask the server which device has the Bluetooth id ${bluetoothId}:`, lookupError)
+            await markAll('failed', refusal)
+            return {
+                saved: 0,
+                failedRecordIds: recordIds,
+                refused: true,
+                problems: [{ count: tableOps.length, reason: `refused by the server (${refusal})` }],
+            }
+        }
+
+        if (!serverRow) {
+            logWarn(`🚫 Camera ${bluetoothId} is on the server under an id this account cannot read, so device ${localId} will not be sent again`)
+            await markAll('refused', CAMERA_REGISTERED_ELSEWHERE)
+            return {
+                saved: 0,
+                failedRecordIds: recordIds,
+                refused: true,
+                problems: [{ count: tableOps.length, reason: `refused by the server (${CAMERA_REGISTERED_ELSEWHERE})` }],
+            }
+        }
+        const saved: PushOutcome = { saved: tableOps.length, failedRecordIds: new Set(), refused: false, problems: [] }
+        if (serverRow.id === localId) {
+            // The server has this very row, so there is nothing to replace
+            await markAll('synced', refusal)
+            return saved
+        }
+
+        const serverId = serverRow.id
+        const row = serverRow
+        const outbox = database.get<SyncOutbox>('sync_outbox')
+        // Copies of this CREATE refused before, as well as the ones in this call
+        const deviceOps = Array.from(new Map([
+            ...tableOps,
+            ...await outbox.query(
+                Q.where('table_name', 'devices'),
+                Q.where('record_id', localId),
+                Q.where('status', Q.oneOf(NOT_UPLOADED)),
+            ).fetch(),
+        ].map(op => [op.id, op])).values())
+        const deploymentOps = (await outbox.query(
+            Q.where('table_name', 'deployments'),
+            Q.where('status', Q.oneOf(NOT_UPLOADED)),
+        ).fetch()).filter(op => {
+            try {
+                return JSON.parse(op.payload).device_id === localId
+            } catch (e) {
+                return false
+            }
+        })
+        const deployments = await database.get<Deployment>('deployments')
+            .query(Q.where('device_id', localId))
+            .fetch()
+        const localDevice = await database.get<Device>('devices').find(localId).catch(() => undefined)
+        const replaced = `replaced: the server already has this camera as ${serverId} (${refusal}), and its row took the place of this one`
+
+        await database.write(async () => {
+            await database.batch(
+                await prepareDeviceRow(row),
+                ...deployments.map(deployment => deployment.prepareUpdate(rec => {
+                    rec.deviceId = serverId
+                })),
+                ...deploymentOps.map(op => op.prepareUpdate(o => {
+                    o.payload = JSON.stringify({ ...JSON.parse(op.payload), device_id: serverId })
+                })),
+                ...deviceOps.map(op => op.prepareUpdate(o => {
+                    o.status = 'synced'
+                    o.errorMessage = replaced
+                })),
+                ...(localDevice ? [localDevice.prepareDestroyPermanently()] : []),
+            )
+        })
+        logWarn(`📷 Camera ${bluetoothId} is on the server as ${serverId}: took its row in place of device ${localId}, and moved ${deployments.length} deployment(s) and ${deploymentOps.length} queued change(s) to it`)
+
+        return saved
     }
 
     /**
@@ -1743,7 +1944,7 @@ class SupabaseSyncService {
                     continue
                 }
 
-                await this.writeDeviceRow(row)
+                await database.batch(await prepareDeviceRow(row))
             }
             // Update timestamp
             const maxTimestamp = Math.max(...data.map((d: any) => new Date(d.updated_at).getTime()))
@@ -1751,33 +1952,6 @@ class SupabaseSyncService {
         })
 
         log('✅ Devices sync complete')
-    }
-
-    /** Write a server devices row to the phone, inside a write: update the record, or create it with the server's id */
-    private async writeDeviceRow(row: DeviceRow): Promise<void> {
-        const collection = database.get<Device>('devices')
-        try {
-            const existing = await collection.find(row.id)
-            await existing.update((rec) => {
-                rec.bluetoothId = row.bluetooth_id
-                rec.name = row.name
-                rec.organisationId = row.organisation_id ?? ''
-                rec.deviceEui = row.device_eui ?? undefined
-                rec.updatedAt = new Date(row.updated_at ?? Date.now())
-            })
-        } catch (e) {
-            // Not found, create
-            await collection.create((rec) => {
-                rec._raw.id = row.id || '' // Use server ID
-                rec.bluetoothId = row.bluetooth_id
-                rec.name = row.name
-                rec.organisationId = row.organisation_id ?? ''
-                rec.deviceEui = row.device_eui ?? undefined;
-                // Use _raw to bypass @readonly check
-                (rec._raw as any).created_at = new Date(row.created_at ?? Date.now()).getTime()
-                rec.updatedAt = new Date(row.updated_at ?? Date.now())
-            })
-        }
     }
 
     /**
@@ -1810,7 +1984,7 @@ class SupabaseSyncService {
             const rows = ((data ?? []) as DeviceRow[]).filter(row => !!row?.id)
             if (rows.length > 0) {
                 await database.write(async () => {
-                    for (const row of rows) await this.writeDeviceRow(row)
+                    for (const row of rows) await database.batch(await prepareDeviceRow(row))
                 })
             }
             log(`📷 ${missing.length} device(s) of deployments on this phone were missing, fetched ${rows.length} by id`)

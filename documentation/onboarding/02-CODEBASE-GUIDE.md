@@ -169,6 +169,7 @@ services/
 ├── ProjectService.ts          # Project CRUD + outbox
 ├── DeploymentService.ts       # Deployment lifecycle
 ├── DeviceService.ts           # Device record management
+├── serverDevices.ts           # A camera's server row: read by Bluetooth id, written to the phone (#451)
 ├── UserRoleService.ts         # User role management
 ├── InvitationService.ts       # Member invitations
 ├── AiModelService.ts          # AI model metadata, the model file cache

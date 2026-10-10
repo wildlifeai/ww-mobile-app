@@ -19,7 +19,8 @@ User-facing device workflows covering the full deployment lifecycle: connect →
 ```mermaid
 flowchart TD
     A["Scanner auto-discovers BLE device"] --> B["Auto-connect to first device"]
-    B --> C{"Active Deployment?"}
+    B --> R["Find the camera: this phone, the server, or register it"]
+    R --> C{"Active Deployment?"}
     C -- Yes --> D{"User has project access?"}
     D -- Yes --> E["Route → End Deployment"]
     D -- No --> F["Show 'Access Denied' dialog"]
@@ -29,6 +30,27 @@ flowchart TD
     G -- Yes --> J["Look up last project used"]
     J --> L["Route → Start Deployment"]
 ```
+
+### A camera this phone has not met
+
+The scanner looks the camera up by its Bluetooth id, on the phone first
+(`DeviceService.getDeviceByBluetoothId`). When the phone has no device for it:
+
+1. **No one signed in:** "Not signed in", and the scanner disconnects.
+2. **It asks the server** (`DeviceService.adoptFromServer`, #451), unless NetInfo says the
+   phone is offline, and waits up to 5 s. A row this account may read is written to the phone
+   under the server's id, with nothing queued, and the flow carries on with it. Nothing found
+   means nothing this account may read, not an unregistered camera.
+3. **Otherwise it registers the camera** in the current organisation (`DeviceService.createDevice`),
+   which queues its `CREATE`.
+4. **With no current organisation it cannot**, since only a member of an organisation may
+   register a camera, and a project invitation makes no one a member. The scanner says so,
+   "Cannot register this camera", and disconnects.
+
+Who may read or register a camera is in [the
+contract](../../.agents/skills/references/cross-repo-contracts.md). A camera registered here that
+the server already has under another id is settled by the push
+([03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md#a-camera-the-server-already-has)).
 
 ### ScannerRoutingDialog States
 
@@ -390,6 +412,7 @@ If the device is not connected, the user can "Force End (Database Only)":
 |-------|-------|-----|
 | Dialog not appearing | Device timeout | Clear app data or re-connect |
 | "No Projects Found" | User has no projects in current org | Create a project first |
+| "Cannot register this camera" | The camera is neither on this phone nor one this account may read on the server, and the account has no organisation ([above](#a-camera-this-phone-has-not-met)) | An organisation manager adds the user to the organisation, or registers the camera. If the phone was offline, try again with a connection |
 | Infinite connect loop | Navigation guard not reset | Fixed via `hasNavigatedRef` in `useEngineerConnect` |
 
 ### Start Deployment
