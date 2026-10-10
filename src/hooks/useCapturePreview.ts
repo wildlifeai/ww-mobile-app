@@ -165,6 +165,12 @@ export const useCapturePreview = ({
         const messageListener = (event: BleEvent & { type: 'TEXT_LINE' }) => {
             if (!device || event.deviceId !== device.id) return;
             const msg = event.line;
+            // The camera's reply to txfile follows its own interval request: ask
+            // again so ours is the one Android applies last
+            if (downloadRequested.current && /^\d+ bytes in \S+/.test(msg.trim())) {
+                fastIntervalFor.current = device.id
+                requestFastInterval(device.id)
+            }
             // Check if we are expecting a download and receive the finish signal
             if (downloadRequested.current && msg.includes('Finished sending')) {
                 const match = msg.match(/sending (\d+) bytes/)
@@ -277,6 +283,10 @@ export const useCapturePreview = ({
 
             // ── Phase 2: CAPTURE ────────────────────────────────────────
             setCaptureStage(`Capturing ${captureCount} image(s)…`)
+            // Asked before the capture, so 15 ms is in place when txfile goes,
+            // and again on the camera's reply to txfile (connectionPriority.ts)
+            fastIntervalFor.current = device.id
+            await requestFastInterval(device.id)
             log(`[useCapturePreview] Phase 2: Capture — sending AI capture ${captureCount} ${captureInterval}`)
             const captureResult = await session.execute(() => commandRegistry.capture(captureCount, captureInterval))
             const capturedFilename = typeof captureResult === 'string' ? captureResult : '.'
@@ -303,8 +313,6 @@ export const useCapturePreview = ({
             resetDownloadTimeout()
 
             setCaptureStage('Transferring image over Bluetooth…')
-            fastIntervalFor.current = device.id
-            await requestFastInterval(device.id)
             log(`[useCapturePreview] Phase 3: Transfer — requesting txfile ${capturedFilename}`)
             await session.execute(() => commandRegistry.txfile(capturedFilename))
 

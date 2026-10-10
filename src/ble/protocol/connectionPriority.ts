@@ -13,6 +13,13 @@ import { log } from '../../utils/logger'
  * High priority gets Android to the bottom of the range. iOS has no such call,
  * so there the camera's request is the only lever.
  *
+ * Whichever request Android applies last wins, and the camera sends its own
+ * when `txfile` arrives. Asked only before `txfile`, the link went to 15 ms and
+ * then back to 30 ms (bench, 10 October 2026, 19.5 KB in 3.2 s). Asked only
+ * after the camera's `N bytes in FILE` reply, 15 ms landed too late for a small
+ * photo (3.5 s). Asked both early and again after that reply, the photo took
+ * 2.0 s at 15 ms, twice. So callers ask early and again on the reply.
+ *
  * Uploads make the same two calls in `runFileTransferPipeline`. A refused
  * request is not fatal: the photo still comes, only slower.
  */

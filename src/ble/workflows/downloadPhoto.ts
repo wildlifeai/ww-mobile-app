@@ -18,7 +18,8 @@
  * runs).
  *
  * On Android it asks for high connection priority for the length of the
- * download (`connectionPriority.ts`).
+ * download, before `txfile` and again once the camera has answered it, after
+ * the camera's own interval request (`connectionPriority.ts`).
  */
 import { imageReassemblerEmitter } from '../emitters'
 import { bleEventBus, BleEvent } from '../protocol/eventBus'
@@ -69,7 +70,10 @@ export const downloadPhoto = (session: PhotoSession, deviceId: string, fileName:
         const onLine = (event: BleEvent & { type: 'TEXT_LINE' }) => {
             if (event.deviceId !== deviceId) return
             const size = /^(\d+) bytes in (\S+)/.exec(event.line.trim())
-            if (size && size[2].toUpperCase() === fileName.toUpperCase()) bytes = parseInt(size[1], 10)
+            if (size && size[2].toUpperCase() === fileName.toUpperCase()) {
+                bytes = parseInt(size[1], 10)
+                requestFastInterval(deviceId)
+            }
             if (!event.line.includes('Finished sending')) return
             if (grace) clearTimeout(grace)
             grace = setTimeout(() => imageReassemblerEmitter.emit('force_finalize'), FINISH_GRACE_MS)

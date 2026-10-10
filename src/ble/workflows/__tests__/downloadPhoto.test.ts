@@ -5,6 +5,7 @@ jest.mock('../../protocol/connectionPriority', () => ({
 jest.mock('../../../utils/logger', () => ({ log: jest.fn() }))
 
 import { imageReassemblerEmitter } from '../../emitters'
+import { bleEventBus } from '../../protocol/eventBus'
 import { requestFastInterval, releaseFastInterval } from '../../protocol/connectionPriority'
 import { downloadPhoto } from '../downloadPhoto'
 
@@ -34,6 +35,21 @@ describe('downloadPhoto connection priority', () => {
         imageReassemblerEmitter.emit('onImageComplete', 'file://IMG001.JPG')
         await expect(done).resolves.toEqual({ uri: 'file://IMG001.JPG', bytes: null })
         expect(request).toHaveBeenCalledWith('dev_a')
+        expect(release).toHaveBeenCalledWith('dev_a')
+    })
+
+    it('asks again once the camera answers txfile, after its own interval request', async () => {
+        const session = { execute: jest.fn(async () => undefined) as any }
+
+        const done = downloadPhoto(session, 'dev_a', 'IMG003.JPG')
+        await flush()
+        expect(request).toHaveBeenCalledTimes(1)
+
+        bleEventBus.emitEvent({ type: 'TEXT_LINE', line: '19536 bytes in IMG003.JPG', ts: Date.now(), deviceId: 'dev_a' })
+        expect(request).toHaveBeenCalledTimes(2)
+
+        imageReassemblerEmitter.emit('onImageComplete', 'file://IMG003.JPG')
+        await expect(done).resolves.toEqual({ uri: 'file://IMG003.JPG', bytes: 19536 })
         expect(release).toHaveBeenCalledWith('dev_a')
     })
 
