@@ -100,8 +100,9 @@ The app has no JPEG decoder, so it judges what the camera reports:
 
 - **Sharpness is the JPEG's size.** A sharper photo holds more detail and compresses less. On
   the bench (6 October 2026, WILD-5WGJ) the file size peaked where a Laplacian sharpness score of
-  the same photos peaked, correlation 0.92. It also keeps the sweep's 13 photos off Bluetooth,
-  which carries about 1.1 KB/s: only the sharpest is downloaded.
+  the same photos peaked, correlation 0.92. It also keeps the sweep's 13 photos off Bluetooth:
+  only the sharpest is downloaded. At 2 to 4 s a photo (bench, 10 October 2026, see
+  [Capture-Picture.md](Capture-Picture.md)) the other 12 would add 25 to 50 s.
 - **Brightness is the HM0360's `AE Mean`**, from the register block it sends after every
   capture. Both camera images send the HM0360's block, so the colour photo is judged by size
   only.
