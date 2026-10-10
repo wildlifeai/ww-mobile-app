@@ -130,7 +130,7 @@ Commands prefixed with `AI`, routed via BLE to the Himax chip. These interact wi
 |---------|----------|---------|
 | `AI capture 1 500` | `About to capture 1 image ...`, then `Captured 1 images. Last is X.JPG (File write Nms avg.)` | `capture_one` in the list: take one photo. See [Take one photo](#take-one-photo) below. Other counts and intervals are *typed only* |
 | `AI light` | `Checking light level...`, then the AE registers | Measure light without a photo. See [Light-Sensor.md](../resources/Light-Sensor.md) |
-| `AI slots` | `Active slot 1 running 'HM0360 (night/IR)'. Slot A: 'RP3 (day/colour)', Slot B: 'HM0360 (night/IR)'. Auto-switch: off` | Which firmware slot runs, and the camera each slot is built for (day/night switching) |
+| `AI slots` | `Active slot 1 running 'HM0360 (night/IR)'. Slot A: 'RP3 (day/colour)', Slot B: 'HM0360 (night/IR)'. Auto-switch: off` | The slot that boots next ("Active slot", the selector, which `AI firmware` and `AI switchslot` move before the camera restarts), the camera the running image is built for, and each slot's camera as its image's first cold boot labelled it (`unknown` straight after `AI firmware`). Labels name a camera, not a build |
 | `AI switchslot` | `Switched to slot N` / `Slot switch failed` | Boot the other firmware slot; the camera resets on its way into its next sleep |
 
 #### Take one photo
@@ -173,7 +173,7 @@ The following subset is directly used during deployment:
 | 9 | `LED_BRIGHTNESS` | Flash brightness 0–100% |
 | 10 | `CAMERA_ENABLED` | 1 = on, 0 = off (always sent last) |
 | 11 | `MD_INTERVAL` | 1000ms for activity/mixed, 0 for timelapse |
-| 12 | `FLASH_DURATION` | Flash pulse duration in ms |
+| 12 | `FLASH_DURATION` | Read by nothing: the firmware turns the LED off when the image arrives. Only `AI flash` writes it |
 | 13 | `FLASH_LED` | Which LED the capture flash uses: 0 = none, 1 = visible, 2 = IR. Written from the project's `flash_led` at deployment |
 | 14 | `MODEL_PROJECT` | Currently loaded AI model ID |
 | 15 | `MODEL_VERSION` | Currently loaded AI model version |
@@ -182,6 +182,7 @@ The following subset is directly used during deployment:
 | 18 | `TEST_MODE_BITS` | Diagnostic bitmask (bit 1 = `TEST_BIT_SAVE_BMP`, bit 3 = `TEST_BIT_SKIP_FILE_CREATION`). Neither deployment writes it since 21 September 2026; the reset leaves it 0 |
 | 19 | `IMAGES_COUNT` | Total images captured (reset on new deployment) |
 | 20 | `IMAGES_FILE_INDEX` | Image subdirectory counter (reset on new deployment) |
+| 32 | `LORAWAN_PING_MINUTES` | LoRaWAN ping period in minutes, 0 = never join. Factory 720 (12 h); a deployment writes 720 or 0 from the project's `lorawan_required`. Was `CAM_RESOLUTION` before ae_review, so firmware without op34 is never written |
 | 34 | `FLASH_MODE` | When the flash is armed: 0 = off, 1 = light sensor, 2 = always on, 3 = time of day. Written from the project's `flash_mode`. With op13 it is the gate the firmware's `ledFlashIsActive()` tests, so it also decides whether motion frames get IR light at night |
 | 35 | `FLASH_TOD_START` | Time-of-day mode only: minutes after midnight UTC when the flash turns on |
 | 36 | `FLASH_TOD_DURATION` | Time-of-day mode only: how many minutes it stays on, wrapping past midnight |
@@ -227,6 +228,10 @@ or connects.
 
 **Flows & Processes** (`FlowsReferenceModal`): multi-step workflows or convenience wrappers. These either compose multiple BLE commands, interact with app services (cloud, GPS, navigation), or wrap a single `setop` with a human-readable name. Tapping "Run" executes the full sequence.
 
+The Flows list is laid out like the Commands list: its groups are toggles, all closed when it
+opens and one open at a time, and the ? beside the title says how it works. Flows have no
+processor, so there is no heading above the groups.
+
 > [!NOTE]
 > In the codebase, commands have `type: 'command'` and flows have `type: 'process'` or `type: 'local'` in `COMMANDS` ([types.ts](../../src/ble/types.ts)).
 
@@ -255,8 +260,8 @@ trying to do rather than by the mechanism underneath.
 | Flow | What It Does |
 |------|-------------|
 | `UPDATE_BLE_FIRMWARE` | Nordic nRF52 OTA update (ZIP) via the DFU screen. |
-| `UPDATE_HIMAX_FIRMWARE` | Himax AI processor update (`AI firmware <file> <0xCRC>` + `AI reset`). Normally flashes **both** camera-variant images, see [Himax-Firmware-Update.md](../resources/Himax-Firmware-Update.md#dual-image-update-camera-variant-pair). |
-| `FIRMWARE_STATUS` | One line per chip, up to date or update available, with Update. Also reached from Start Monitoring, so the screen is production code, not only a bench tool. |
+| `UPDATE_HIMAX_FIRMWARE` | Himax AI processor update (`AI firmware <file> <0xCRC>`, then `AI reset` and `AI dpd`). Normally flashes **both** camera-variant images, see [Himax-Firmware-Update.md](../resources/Himax-Firmware-Update.md#dual-image-update-camera-variant-pair). An update this phone left part way is finished instead, ending on the camera it started on. |
+| `FIRMWARE_STATUS` | One line per chip, up to date or update available, with Update. With one camera's AI build in the catalogue, the AI line names the camera whose firmware is missing instead ([why](../resources/Himax-Firmware-Update.md#one-cameras-build-only)). An AI update this phone ran that stopped between its two images reads "Update not finished", with Finish update ([why](../resources/Himax-Firmware-Update.md#an-update-that-stopped-between-images)). Also reached from Start Monitoring, so the screen is production code, not only a bench tool. |
 | `MODEL_VALIDATION` | Full AI model lifecycle: validate metadata → download → transfer to SD → `erasemodel` → `loadmodel`. Grouped here rather than under file transfer because the transfer is how it works, not what it is for. |
 
 From the console, all three open the **engineer view** of the update screen (`engineer: true`): the build picker, the SD-card or cloud source and the transfer cards. Start Monitoring opens the operator's view, one version line, one button, one bar and one status line with the update's last steps under them, and one result line (#344).
@@ -271,7 +276,8 @@ From the console, all three open the **engineer view** of the update screen (`en
 
 | Flow | What It Does |
 |------|-------------|
-| `DEV_DEPLOYMENT_TEST` | Full deployment with the project's capture method and capture flash chosen on screen, plus the camera, pictures per trigger, LED brightness and AI model. See [Dev-Deployment-Guide.md](../resources/Dev-Deployment-Guide.md). |
+| `DEVICE_CHECK` | The ship check for a finished unit, about five minutes. It resets the settings to factory defaults and leaves the unit on them. First a restart and its self-test, which flags a camera that does not answer before anything else, then firmware and both camera images, the colour camera and its focus lens, the white flash, battery, clocks, SD card, LEDs, light sensor, motion, the black and white camera and the IR flash. One step per screen while it runs, then a pass, warn or fail per step. The operator confirms the LEDs, both flashes and the framing, and taps while waving for the motion test. See [Device-Check.md](../resources/Device-Check.md). |
+| `DEV_DEPLOYMENT_TEST` | Full deployment with the project's capture method and capture flash chosen on screen (the time-of-day window in local time), plus the camera, pictures per trigger, LED brightness, motion-detection light and AI model, and a button that lights the white LED. See [Dev-Deployment-Guide.md](../resources/Dev-Deployment-Guide.md). |
 | `FILE_TRANSFER_TEST` | Sends a test file to the SD card to exercise the `ftx` pipeline end to end. |
 
 ### Removed, and why
@@ -282,11 +288,6 @@ From the console, all three open the **engineer view** of the update screen (`en
 | `TX_FILE` | Deleted. It was the only `process` entry with no navigation handler, so it fell through to `writeRaw` and bypassed the command registry: its `Failed to open ''. (6)` never reached the operator, while `commandRegistry.txfile` handles that case and `useCapturePreview` already calls it properly. |
 | `CLEAR_CONSOLE` | Deleted as a flow, since it sent nothing to the device. Clearing the output is the trash icon in the screen header, beside the Commands and Flows icons (#302, 21 September 2026). The September tidy recorded a Clear button on the console header that was never actually added. |
 | `TRANSFER_CONFIG` | Deleted with its screen and hook, 455 lines reachable from nowhere. The deployment pipeline transfers config as part of a real deployment. |
-
-> [!WARNING]
-> `TRANSFER_AI_MODEL` is still defined and routed but **absent from the Flows modal**, so there is
-> no way to run it. The modal is a hand-maintained allowlist with no coverage test, unlike
-> `CommandReferenceModal`, so an entry can be fully wired and still invisible.
 
 ## Hardware Testing Tools (Detailed)
 
@@ -302,7 +303,7 @@ The following screens are accessed from the Engineer Console → Flows modal. Th
 - Sets `TEST_BIT_SKIP_FILE_CREATION` (OP 18, bit 3) before capture so firmware streams MD data without saving JPEGs
 - Parses `HM0360 motion in N blocks:` header + 32 hex-byte grid data from BLE text lines
 - Renders the 16×16 grid as a precomputed text string, a visual feedback loop that helps understand environmental threshold behaviour. The grid is the HM0360's own detector read once per test frame, not motion between the test's frames, and frame 1 is always empty
-- Sends `AI md` only when op17 differs from the chosen level. When it is sent, a refusal (`Unrecognised`, the RP3 build) or a reply that never comes is shown on the card rather than swallowed; after a refusal the selector is disabled for the visit (#272)
+- Writes the sensitivity only when op17 differs from the chosen level, as `AI setop 17 <level>`, which the camera acknowledges, then sends `AI md <level>` only to learn whether the build applies a level. The HM0360 build applies op17 at the sleep before the capture and at the capture's wake; its `md` reply never arrives (ww-hardware #52) and is no longer shown (#385). The RP3 build refuses `md` (`Unrecognised`, Seeed #211): the card says the colour camera ignores the sensitivity, in the neutral colour since the test still runs, op17 goes back to its previous value, and the selector is disabled for the visit (#272). "May not have taken" now means the `setop` itself went unanswered
 - The interval floor is 0.5 s, the fastest the device has been shown to sustain
 - **On completion/stop**, automatically resets `TEST_MODE_BITS` to 0 so subsequent captures (e.g., photo preview) save JPEG files normally
 
@@ -316,7 +317,20 @@ deployment instead of a dimmer version of it.
 
 The gate itself is op34 with op13: since `ae_review` the LED fires only when the flash mode arms
 it, so the screen holds op34 at always-on for a test that asks for an LED and puts the previous
-mode back when the test ends ([`flashHold.ts`](../../src/ble/session/flashHold.ts)).
+mode back when the test ends ([`flashHold.ts`](../../src/ble/session/flashHold.ts)). The LED and
+brightness are held the same way, op13 and op9 through
+[`flashLedHold.ts`](../../src/ble/session/flashLedHold.ts): both are the camera's own photo
+settings, and until #387 a test left them at its values for good.
+
+Putting op13 back is also what stops the camera flashing after the test (#383). On the way into
+Deep Power Down the firmware arms the HM0360's STROBE, which lights op21's LED on every motion
+frame, when op11 is non-zero, op21 names an LED and `ledFlashIsActive()` is non-zero, and that
+returns op13, read live, whenever the flash is armed. The flash mode is only read at wake, and the
+wake the test ends in read op34 at always-on, so an op13 left at the test's LED kept a camera with
+op11 set flashing through the sleep after the test, link or no link, until the next wake, however
+promptly op34 went back. The cleanup runs inside that wake and puts op13 back before the sleep.
+A test whose app died or whose link dropped leaves all of them owed on disk, and the next motion
+test on the camera pays them, with a flash of its own or without.
 
 **The detector's rate is the test's interval, held for the test (#274).** The HM0360 takes its
 rate from op11 `MD_INTERVAL` on the way into Deep Power Down, and nothing re-arms it while the
@@ -370,7 +384,7 @@ Three OPs control the LED flash hardware:
 | OP | Constant | Range | Notes |
 |----|----------|-------|-------|
 | 9 | `LED_BRIGHTNESS` | 0–100 | Percentage. **0 = dim, not off.** Use OP 13 = 0 to fully disable the flash. |
-| 12 | `FLASH_DURATION` | ms | Flash pulse duration. Currently only applies to the RP3 camera, untested on HM0360. |
+| 12 | `FLASH_DURATION` | ms | Read by nothing: the firmware turns the LED off when the image arrives (Charles Palmer, 6 October 2026). Only `AI flash` writes it. |
 | 13 | `FLASH_LED` | 0, 1, 2 | 0 = off (no flash), 1 = visible (white) LED, 2 = IR LED |
 
 > [!IMPORTANT]

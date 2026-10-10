@@ -38,6 +38,45 @@ export const updateSummary = (current?: string | null, latest?: string | null, u
     return 'Update to the latest firmware.'
 }
 
+/** A camera named the way the update screen names the two images, colour and night-IR */
+const cameraWord = (variant: 'RP3' | 'HM0360'): string => variant === 'RP3' ? 'colour' : 'night-IR'
+
+/**
+ * Why there is no AI update while the catalogue holds one camera's build only:
+ * the update installs both images, so it waits for the other (#437).
+ */
+export const missingFirmware = (variant: 'RP3' | 'HM0360'): string =>
+    `The ${cameraWord(variant)} camera's new firmware is not available yet`
+
+/** How far an AI update that stopped part way got, as far as this phone heard (#374) */
+const stoppedAfter = (done: number, total: number): string | null =>
+    done > 0 && done < total ? `${done} of ${total}` : null
+
+/** Firmware Status's line for an AI update that stopped part way: "Update not finished: 1 of 2 images installed" */
+export const unfinishedLine = (done: number, total: number): string => {
+    const count = stoppedAfter(done, total)
+    return count ? `Update not finished: ${count} images installed` : 'Update not finished'
+}
+
+/**
+ * The line before finishing an AI update that stopped part way (#374): where
+ * it stopped, what finishing installs and the camera it ends on. `plan` is
+ * what finishing writes, the end camera's image last.
+ */
+export const finishSummary = (
+    done: number,
+    total: number,
+    endVariant: 'RP3' | 'HM0360',
+    plan: Array<{ version?: string | null; cameraVariant?: string | null }>,
+): string => {
+    const count = stoppedAfter(done, total)
+    const stopped = count ? `The last update stopped after image ${count}.` : 'The last update stopped part way.'
+    const camera = cameraWord(endVariant)
+    const images = plan.length === 1 && plan[0].cameraVariant === endVariant ? `the ${camera} image` : 'both images'
+    const build = friendlyVersion(plan[plan.length - 1]?.version)
+    return `${stopped} Finishing installs ${images}${build ? `, ${inSentence(build)},` : ''} and puts the camera back on the ${camera} camera.`
+}
+
 /** One status line while an update runs. */
 export const updateStep = (
     target: FirmwareTarget,

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Alert } from 'react-native'
 import { useAppSelector } from '../../../redux'
 import { Q } from '@nozbe/watermelondb'
@@ -7,6 +7,7 @@ import { useFocusEffect } from '@react-navigation/native'
 import { DeploymentService } from '../../../services/DeploymentService'
 import { DeploymentPhotoService } from '../../../services/DeploymentPhotoService'
 import ProjectService from '../../../services/ProjectService'
+import { projectsToDeployInto, startRefusal, START_REFUSED_TITLE } from '../../../services/deploymentAccess'
 import ReferenceDataService from '../../../services/ReferenceDataService'
 import Device from '../../../database/models/Device'
 import Deployment from '../../../database/models/Deployment'
@@ -15,6 +16,7 @@ import FirmwareService from '../../../services/FirmwareService'
 import { useBleSession } from '../../../hooks/useBleSession'
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { checkSdCard } from '../../../ble/workflows/checkSdCard'
+import { pingLorawan, lorawanRequiredWarning, LORAWAN_REQUIRED_WARNING } from '../../../ble/workflows/lorawanPing'
 import { sleep } from '../../../utils/helpers'
 import { selfTestCache } from '../../../ble/protocol/selfTestCache'
 import { parseSelfTestBits, SelfTestBit, SD_CARD_POWER_CYCLE_HINT } from '../../../utils/deviceSelfTest'
@@ -104,7 +106,18 @@ export const useStartDeployment = ({
 
     const [submitting, setSubmitting] = useState(false)
     const [project, setProject] = useState<any>(null)
-    const [availableProjects, setAvailableProjects] = useState<ProjectWithDetails[]>([])
+    const [deployableProjects, setDeployableProjects] = useState<ProjectWithDetails[]>([])
+    // The picker offers the projects this account may deploy into (#450). The
+    // one the scanner chose stays in it when it is not one of them, so the
+    // field still names it while the screen says why it cannot be used.
+    const availableProjects = useMemo<ProjectWithDetails[]>(() => (
+        project && !deployableProjects.some(p => p.id === project.id)
+            ? [project, ...deployableProjects]
+            : deployableProjects
+    ), [project, deployableProjects])
+    // Why this account may not start a deployment in the chosen project, or
+    // null: shown under the picker, and again on the press
+    const [startRefusalReason, setStartRefusalReason] = useState<string | null>(null)
     const [captureMethodName, setCaptureMethodName] = useState<string>('')
     const [sensitivityLabel, setSensitivityLabel] = useState<string>('')
     
@@ -192,7 +205,7 @@ export const useStartDeployment = ({
                 
                 if (user?.id && currentOrganisation?.id) {
                     const projs = await ProjectService.getProjectsForUserInOrganisation(user.id, currentOrganisation.id)
-                    setAvailableProjects(withoutArchived(projs))
+                    setDeployableProjects(await projectsToDeployInto(user.id, withoutArchived(projs)))
                 }
 
                 if (proj && proj.capture_method_id) {
@@ -227,6 +240,19 @@ export const useStartDeployment = ({
             getLocation()
         }, [initialProjectId, deviceId, loadProjectAndDevice, getLocation])
     )
+
+    // From the phone's roles, so offline too (#450)
+    useEffect(() => {
+        let isMounted = true
+        if (!project?.id) {
+            setStartRefusalReason(null)
+            return
+        }
+        startRefusal(user?.id, project.id)
+            .then(reason => { if (isMounted) setStartRefusalReason(reason) })
+            .catch(err => logWarn('[DeploymentDetails] Role check failed:', err))
+        return () => { isMounted = false }
+    }, [project?.id, user?.id])
 
     // Location Name logic based on GPS and Project Deployments
     useEffect(() => {
@@ -335,37 +361,27 @@ export const useStartDeployment = ({
         }
     }, [availableProjects, project?.id]);
 
-    // Validate LoRaWAN connectivity if required
+    // Validate LoRaWAN connectivity if required, reading the same result as
+    // the Signal Test card (#348)
     useEffect(() => {
         let isMounted = true;
         const checkLorawan = async () => {
-             if (project?.lorawan_required && bleDevice?.connected) {
+             if (project?.lorawan_required && bleDevice?.connected && bleSession) {
                   log('[Deployment] Project requires LoRaWAN. Pinging network...')
-                  try {
-                      await bleSession?.execute(commandRegistry.ping)
-                      log('[Deployment] LoRaWAN ping successful.')
-                      if (isMounted) {
-                          setInitErrors(prev => ({
-                              ...prev,
-                              deviceHealth: (prev.deviceHealth || []).filter(msg => !msg.includes('LoRaWAN is required'))
-                          }))
-                      }
-                  } catch (err) {
-                      logWarn('[Deployment] LoRaWAN ping failed:', err)
-                      if (isMounted) {
-                          setInitErrors(prev => {
-                              const existing = prev.deviceHealth || []
-                              const msg = 'LoRaWAN is required but the test message failed.'
-                              if (!existing.includes(msg)) return { ...prev, deviceHealth: [...existing, msg] }
-                              return prev
-                          })
-                      }
+                  const result = await pingLorawan(bleSession)
+                  log(`[Deployment] LoRaWAN ping: ${result}`)
+                  const warning = lorawanRequiredWarning(result)
+                  if (isMounted) {
+                      setInitErrors(prev => {
+                          const others = (prev.deviceHealth || []).filter(msg => !msg.startsWith(LORAWAN_REQUIRED_WARNING))
+                          return { ...prev, deviceHealth: warning ? [...others, warning] : others }
+                      })
                   }
              } else if (!project?.lorawan_required) {
                  if (isMounted) {
                       setInitErrors(prev => ({
                           ...prev,
-                          deviceHealth: (prev.deviceHealth || []).filter(msg => !msg.includes('LoRaWAN is required'))
+                          deviceHealth: (prev.deviceHealth || []).filter(msg => !msg.startsWith(LORAWAN_REQUIRED_WARNING))
                       }))
                  }
              }
@@ -456,9 +472,40 @@ export const useStartDeployment = ({
             return
         }
 
-        progress.reset('Starting deployment...')
         setSubmitting(true)
         isStartDeploymentInProgress.current = true
+
+        // 0. Whether this account may deploy into the project at all. The
+        // server refuses a viewer's deployment (ww-backend 52_deployments.sql),
+        // so a viewer is stopped here, before the server is asked or anything
+        // is written to the camera (#450). Asked again at the press, from the
+        // phone's roles: a sync may have changed them since the screen opened.
+        const refusal = await startRefusal(user.id, project.id)
+        if (refusal) {
+            setStartRefusalReason(refusal)
+            setSubmitting(false)
+            isStartDeploymentInProgress.current = false
+            Alert.alert(START_REFUSED_TITLE, refusal)
+            return
+        }
+        progress.reset('Starting deployment...')
+
+        // 0b. A camera has one open deployment at a time, and the server refuses
+        // a second (ww-backend #324). The scanner sent one open on this phone to
+        // End Deployment; this asks the server about one the phone does not
+        // hold (#448), before anything is written to the camera. Offline, or
+        // when the server cannot be asked, it warns and carries on.
+        progress.addLog('Checking the server for an open deployment on this camera...')
+        progress.setFinishStep('Checking the server...')
+        const openDeployment = await DeploymentService.checkServerForOpenDeployment(deviceId || '', user.id)
+        if (openDeployment.kind === 'open') {
+            progress.setIsFinishing(false)
+            setSubmitting(false)
+            isStartDeploymentInProgress.current = false
+            Alert.alert('Already Deployed', openDeployment.message)
+            return
+        }
+        if (openDeployment.kind === 'unchecked') progress.addLog(`⚠️ ${openDeployment.message}`)
 
         const cb = {
             addLog: progress.addLog,
@@ -596,6 +643,9 @@ export const useStartDeployment = ({
                     // The detection threshold (op16), from the project since
                     // #342. The reset sets op16 to 18, which is the default 57%.
                     detectionThreshold: project,
+                    // LoRaWAN on or off (op32) as the project asks: the 720 min
+                    // ping when it is required, 0 (never join) when not
+                    lorawanRequired: project.lorawan_required ?? false,
                 }, cb, opsAfterReset)
             } catch (configError) {
                 logError('[Deployment] Configuration failed:', configError)
@@ -817,6 +867,9 @@ export const useStartDeployment = ({
         } catch (error) {
             logError('Deployment failed:', error)
             progress.setIsFinishing(false)
+            // Nothing else clears it: without this a stopped start left the button
+            // spinning and the project picker locked until the screen was left
+            setSubmitting(false)
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false
         }
@@ -922,7 +975,7 @@ export const useStartDeployment = ({
     const [deploymentStartTime, setDeploymentStartTime] = useState<Date | null>(null)
 
     return {
-        formState, submitting, project, availableProjects, captureMethodName, sensitivityLabel,
+        formState, submitting, project, availableProjects, startRefusalReason, captureMethodName, sensitivityLabel,
         device, bleDevice, isInitializing, initProgress, initStep, initErrors, setInitErrors, aiProcessorFailed,
         finishProgress: progress.finishProgress, finishStep: progress.finishStep,
         finishLogs: progress.finishLogs, isFinishing: progress.isFinishing,

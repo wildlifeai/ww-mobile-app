@@ -23,9 +23,9 @@ day are in [traps.md](traps.md).
   from a hand-maintained allowlist, a `pick([...])` per group, so a command can be fully
   defined in `COMMANDS`, work when typed, and never appear in the UI. `slots` and
   `switchslot` were unreachable that way until August 2026. A coverage test now fails CI if a
-  `type: 'command'` entry belongs to no group. **`FlowsReferenceModal` has the same shape and
-  no equivalent guard**, so `type: 'process'` entries can still go missing silently. When you
-  add one, open the modal and confirm it renders.
+  `type: 'command'` entry belongs to no group. `FlowsReferenceModal` has the same shape and
+  the same guard, `FlowsReferenceModal.coverage.test.ts`, for `type: 'process'` and
+  `type: 'local'` entries.
 - **A console command never fills in a value for the operator.** A `COMMANDS` entry whose
   `writeCommand` takes arguments declares them as `params`; the Commands list asks for each and
   sends nothing until they check out, and `useEngineerConsoleActions` refuses one that arrives
@@ -122,7 +122,10 @@ day are in [traps.md](traps.md).
   connect time. Never `setop 8` from a screen and never keep the original only in a ref, which
   the motion test did until #271. The one exception is a deployment, which sets op8 as the
   field value (above 1000 for a burst, #317) and calls `keepAwake.forget` first, so no hold or
-  owed restore from before it can write the old value back. Every way out of a flow must release its holds, failures
+  owed restore from before it can write the old value back. `acquire(..., { exact: true })` also
+  brings a longer value down for the visit and puts it back, for a flow that needs the device to
+  sleep soon as well as to stay awake: the Device Check waits for a sleep several times, and a
+  bench unit left at 60 s made each wait time out. Every way out of a flow must release its holds, failures
   included: a hold left in memory makes the next `acquire` a no-op. While `keepAwake.holds(deviceId)` the capture path sends `txfile` straight after
   `Captured` instead of paying a wake: 22 s to 13 s for the same picture.
 - **op11 is a field setting too, and the motion test holds it through
@@ -135,10 +138,30 @@ day are in [traps.md](traps.md).
   could hold needs the same `forget`. With the detector armed through the setup sleep, a motion
   wake can take and report a capture of its own first, so the test counts grids and ends only
   after its own `About to capture` (bench, 1 October 2026).
-- **The app runs ahead of the firmware on op indices, deliberately.** op32, `CAM_RESOLUTION`,
-  exists here before it ships on the device. Guard on the array length before touching a high
-  index, the way `useCapturePicture` does for the white balance gains, rather than reading it
-  and hoping. `getop` now has a `failureRegex` for the out-of-range error and it is
+- **The motion test's flash is held too: op34 through `flashHold`, op13 and op9 through
+  `ble/session/flashLedHold.ts` (#387).** op13 and op9 are the camera's own photo settings, and
+  a plain `setop` left a test's LED and brightness on the card for good. op13 also decides
+  whether the camera flashes while it sleeps: `image_sleepNow()` arms the HM0360's STROBE, which
+  lights op21's LED on every motion frame, when op11 is non-zero, op21 names an LED and
+  `ledFlashIsActive()` is non-zero, and that returns op13, read live, whenever the flash is armed.
+  The mode is only read at wake (`setupLEDFlash()`), and the wake a flash test ends in read op34
+  at always-on, so the cleanup must put op13 back inside that wake, before the sleep, or a camera
+  with op11 set flashes through it with no link (#383; the code says so, the bench has not yet).
+  Putting op34 back does not help that sleep, and on a camera whose own op13 is an LED (deployed
+  with a flash) nothing the app writes in that wake does: the sleep strobes until the next wake
+  re-reads op34. Applying the mode on `setop` is the firmware question in Seeed #209.
+  flashLedHold works like mdIntervalHold: the owed record goes to disk before the writes, the
+  test's cleanup pays what a dropped test left owed on op13, op9 and op34 with or without a flash
+  of its own, and a deployment calls `flashHold.forget` and `flashLedHold.forget` first, because
+  the project's LED can be the one a test held. Its `restorePending` also checks the device still
+  reads the value the hold wrote, so a choice made since in Capture Picture or Device Settings
+  stands. Capture Picture writes op13 and op9 as settings, on purpose, and holds only op34.
+- **The app runs ahead of the firmware on op indices, deliberately, and one index changed
+  meaning.** Guard on the array length before touching a high index, the way
+  `useCapturePicture` does for the white balance gains, rather than reading it and hoping. op32
+  was `CAM_RESOLUTION` (the hi-res switch) before ae_review and is `LORAWAN_PING_MINUTES` since
+  October 2026, so anything that writes it checks the table reaches op34 first, as the reset and
+  `configureLorawan` do. `getop` now has a `failureRegex` for the out-of-range error and it is
   non-retryable: without it a rejection matched neither success nor failure and burned 8 s,
   then retried, which silently broke a whole flow for 16 s at a time.
 - **The nRF strips the op array out of the Sleep broadcast.** The Himax sends all 32 values on
@@ -165,9 +188,17 @@ day are in [traps.md](traps.md).
   State and DPD waits that stop `txfile` racing FatFS and corrupting the file handle (the
   post-capture one is skipped while `keepAwake.holds(deviceId)`, the pre-capture one always
   runs because that wake applies any changed setting), and the reassembly that turns binary
-  packets into an image URI with byte-level progress. Use it whenever you need an image. What
+  packets into an image URI with byte-level progress. Use it whenever a screen needs an image. What
   Capture Picture does around it is in
-  [Capture-Picture.md](../../../documentation/resources/Capture-Picture.md).
+  [Capture-Picture.md](../../../documentation/resources/Capture-Picture.md). The Device Check
+  is the one exception: it takes about 25 photos and keeps four, so it captures through the
+  registry inside one keepAwake hold and downloads with `workflows/downloadPhoto.ts`. Anything
+  else capturing that way needs the same op10/op18 pre-flight and the hold.
+- **The focus lens forgets its position when the AI processor sleeps.** `AI vcm` only holds
+  while the processor is awake, because the camera powers off with it, so a photo at a lens
+  position must follow its `vcm` inside one keepAwake hold. Below about 256 the lens does not
+  move at all (bench, 6 October 2026). The Device Check judges focus by JPEG size, see
+  [Device-Check.md](../../../documentation/resources/Device-Check.md).
 - **To measure light, do not take a photo.** `AI light` is about a second, no JPEG, no flash and
   no transfer, against 13 to 50 s for a capture. It is **two-phase**, because the command's reply
   is only an acknowledgement and the reading arrives afterwards as unsolicited telemetry, so the
@@ -178,6 +209,11 @@ day are in [traps.md](traps.md).
   deployment cannot disagree on what a complete reading is. The deployment took a capture here
   until #304, which cost 21 s on the bench the day it was replaced. See
   [Light-Sensor.md](../../../documentation/resources/Light-Sensor.md).
+- **`AI dir` lists the firmware's current folder, which is not always the photo folder.** Writing
+  a photo moves it into `/MEDIA/<deployment>/IMAGES.NNN`, but saving CONFIG.TXT after any op
+  change moves it to MANIFEST, and `dir` takes no path. Read sizes from `dir` only straight after
+  the photos, or take one photo's size from the `N bytes in FILE` reply to `txfile`, which changes
+  into the photo folder itself (bench, 6 October 2026).
 - **Ask what the device already tells you before adding a poll.** Self-test bits arrive
   unprompted after *every* wake, and the light decision after every light check. A September
   2026 bench run counted 25 `Error bits` lines received against 6 `selftest` commands sent.

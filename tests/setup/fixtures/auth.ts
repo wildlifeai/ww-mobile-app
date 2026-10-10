@@ -38,30 +38,6 @@ export const existingUserRegisterCredentials = {
 	organization: "Wildlife AI Org",
 }
 
-// Form validation test cases - array format
-export const formValidationTestCases = [
-	{
-		name: "empty email",
-		input: { email: "", password: "password123" },
-		expectedError: "Email is required",
-	},
-	{
-		name: "invalid email format",
-		input: { email: "invalid-email", password: "password123" },
-		expectedError: "Please enter a valid email address",
-	},
-	{
-		name: "empty password",
-		input: { email: "test@example.com", password: "" },
-		expectedError: "Password is required",
-	},
-	{
-		name: "short password",
-		input: { email: "test@example.com", password: "123" },
-		expectedError: "Password must be at least 6 characters",
-	},
-]
-
 // Form validation test cases
 export const formValidationCases = {
 	email: {
@@ -94,12 +70,6 @@ export const authErrorMessages = {
 	userNotFound: "User not found",
 	passwordTooWeak: "Password is too weak",
 	tokenInvalid: "Token is invalid",
-}
-
-// Pending confirmation auth response
-export const pendingConfirmationAuthResponse = {
-	data: { user: null, session: null },
-	error: { message: "Signup requires email confirmation" },
 }
 
 // Mock deep link data

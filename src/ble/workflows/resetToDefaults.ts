@@ -35,7 +35,7 @@ export interface ResetToDefaultsOptions {
  * parameters the reset has just changed underneath it.
  */
 export async function executeResetToDefaults(
-    session: BleSession,
+    session: Pick<BleSession, 'execute'>,
     options?: ResetToDefaultsOptions
 ): Promise<string[] | null> {
     const { onProgress, isCancelled } = options || {}
@@ -78,6 +78,12 @@ export async function executeResetToDefaults(
             if (currentOps.length <= 23 &&
                 (index === OP_PARAMETER.MD_FLASH_LED ||
                  index === OP_PARAMETER.MD_FLASH_BRIGHTNESS_PERCENT)) {
+                continue
+            }
+            // op32 was CAM_RESOLUTION, the hi-res switch, on firmware before
+            // ae_review, which is also the firmware without the flash mode
+            // (op34). The LoRaWAN default there would turn hi-res on.
+            if (index === OP_PARAMETER.LORAWAN_PING_MINUTES && currentOps.length <= OP_PARAMETER.FLASH_MODE) {
                 continue
             }
         }

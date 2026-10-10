@@ -57,7 +57,7 @@ Configured in `eas.json`:
 
 | Profile | Output | `EXPO_PUBLIC_SUPABASE_ENV` | Purpose |
 |---------|--------|---------------------------|---------|
-| `ci` | APK / iOS simulator | *(unset)* | CI smoke builds |
+| `e2e` | APK (internal) | `cloud-dev` | CI builds, locally on the runner, for the Maestro flows; release-type so the bundle is in the APK |
 | `development` | APK/IPA (internal) | *(unset — falls back to the local `.env`)* | Dev client for testing |
 | `staging` | APK/IPA (internal) | `cloud-staging` | Pre-production validation |
 | `preview` | APK/IPA (internal) | `cloud-dev` | Internal team testing |
@@ -117,6 +117,13 @@ extra: {
 ```
 
 > [!CAUTION]
+> **expo-doctor and the committed native folders**: because `android/` is tracked and prebuild
+> runs before a build, `expo-doctor` would warn on every run that EAS will not sync
+> `app.config.ts` into it. That check is off in `package.json`
+> (`expo.doctor.appConfigFieldsNotSyncedCheck.enabled: false`); the other checks run in CI
+> (`.github/workflows/expo-doctor.yml`), with the few packages they skip and why listed in the
+> Testing Guide. Turn it back on if the project ever moves to generated native folders.
+
 > **Native File Secret Leaks (Bare Workflow)**: Do NOT use `process.env.SECRET_KEY` in `app.config.ts` for native configuration fields like `android.config.googleMaps.apiKey`. Running `npx expo prebuild` locally will write the raw secret directly into `AndroidManifest.xml` and `Info.plist`. Since `android/` and `ios/` folders are tracked in version control, committing them will leak your secrets to GitHub! Instead, use Gradle placeholders (e.g., `"${GOOGLE_MAPS_API_KEY_ANDROID}"`) in `app.config.ts` so `prebuild` writes the placeholder, and resolve it dynamically in `build.gradle` or native code.
 
 ### Accessing Config in Code

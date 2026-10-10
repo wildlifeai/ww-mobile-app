@@ -18,7 +18,7 @@ The default transport is **credit-based streaming with cumulative ACKs**: the ap
 **Protocol version:** v1 (no version byte in packets). Wire format is unchanged between window sizes, and only the app's send pacing differs, so nothing in the packets tells the app which relay it is talking to. The `ver` string is the only signal, which is why the floor below reads it.
 
 > [!IMPORTANT]
-> Do **not** call `requestConnectionPriority(HIGH)` mid-transfer. It desyncs the nRF↔HX I2C link (measured, 2026-07-10). The priority request belongs at connect time only.
+> Do **not** call `requestConnectionPriority(HIGH)` mid-transfer. It desyncs the nRF↔HX I2C link (measured, 2026-07-10). The request belongs before packets flow: at connect, and on Android before an upload or a photo download starts (`connectionPriority.ts`), given back when it ends.
 
 ### The BLE firmware floor
 
@@ -171,7 +171,7 @@ Augment:    2 bytes of 0x00 appended after data
 | FILE_DATA | `writeWithoutResponse()` | Session aborts after 3 consecutive ACK timeouts |
 | FILE_END | `write()` (with BLE response) | BLE-level confirmation; no app retries |
 
-**Session-level retry:** on `ftx err 7` (SD write fail) the device closes the file, so the app restarts the whole session from `FILE_START` — up to `MAX_SESSION_RETRIES` (2) additional attempts. The per-error policies in the table below are the source of truth and live in [`fileTransferTypes.ts`](../../src/ble/protocol/fileTransfer/fileTransferTypes.ts) as `ERROR_RETRY_POLICY`.
+**Session-level retry:** on `ftx err 7` (SD write fail) the device closes the file, so the app restarts the whole session from `FILE_START`, up to `MAX_SESSION_RETRIES` (2) additional attempts. A write timeout is retried the same way. Any other `ftx err` ends the transfer; `isRecoverable` in [`runFileTransferPipeline.ts`](../../src/ble/protocol/fileTransfer/runFileTransferPipeline.ts) is the whole policy.
 
 ### Timeout Values
 
@@ -190,19 +190,17 @@ Augment:    2 bytes of 0x00 appended after data
 
 ### Measured Performance
 
-Throughput is **not flat**. Android grants a fast connection interval at connect and decays it after roughly 24 seconds, so transfers start fast and settle slower. Figures below are bench-measured on the Android test device (BLE fw 0.30.47), not estimates:
+Since BLE 0.30.52 the camera holds the fast connection interval for the whole upload, so throughput is flat. Until then Android decayed the interval about 24 s in and uploads dropped from about 8 KB/s to 1.3 KB/s (BLE 0.30.47). Measured on 2 October 2026, BLE 0.30.52, Android, a 512,000-byte file in 2,125 packets ([ww-hardware #34](https://github.com/wildlifeai/ww-hardware/issues/34)):
 
 | Metric | Value |
 |--------|-------|
 | Chunk size | ≤241 bytes per FILE_DATA packet |
-| Burst throughput (first ~24 s) | ~8 KB/s |
-| Sustained throughput (after decay) | ~1.3 KB/s |
-| Files ≤ ~190 KB | ride the fast window entirely |
-| 472 KB firmware image | ~4 minutes |
-| 2 MB model | ~25 minutes |
+| Connection interval | 30 ms for the whole transfer |
+| Time per packet | 45 ms |
+| Throughput | 5.3 KB/s throughout |
+| 512,000-byte file | 96.3 s |
 
-> [!NOTE]
-> Show users an ETA built from this two-phase profile. A single flat rate makes the progress bar look stuck once the interval decays.
+At that rate a 472 KB firmware image takes about 1.5 minutes and a 2 MB model about 6.5 minutes (worked out from the rate, not timed). The progress card's time left comes from the rate measured so far in the same transfer (`runFileTransferPipeline.ts`), so it follows whatever interval the phone was given.
 
 Per-phone variance is expected and large; a per-handset timing table is tracked as QA item E.11 in [empty_sd_update_architecture.md](../development%20reports/empty_sd_update_architecture.md).
 

@@ -1,0 +1,19 @@
+# Offline scenario, phase 1 of 3 (scripts/maestro-offline.sh): online, sign in
+# and reach the project list, so the local database holds the organisation's
+# projects before the network goes. Not in ../config.yaml: the three phases
+# share one app state and the script switches airplane mode between them.
+#
+# Needs E2E_TEST_EMAIL and E2E_TEST_PASSWORD from the run, see ../subflows/sign-in.yaml.
+# appId comes from the run (`-e APP_ID=...`), see ../smoke/app-startup.yaml
+appId: ${APP_ID}
+---
+- runFlow: ../subflows/sign-in.yaml
+- tapOn:
+    id: "bottom-tab-projects"
+- extendedWaitUntil:
+    visible:
+      id: "project-search-bar"
+    timeout: 60000
+- assertNotVisible:
+    id: "offline-indicator"
+- takeScreenshot: offline-1-online

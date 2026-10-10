@@ -100,6 +100,16 @@ describe('captureSteps', () => {
         expect(eta.seconds).toBe(Math.ceil((11818 - 1182) / NOMINAL_RATE_BPS))
     })
 
+    it('opens a 19 KB photo at about the time it takes, not at the old 1.1 KB/s', () => {
+        // Bench, 10 October 2026: 19 to 23 KB took 2.0 to 2.3 s at 15 ms and 3.2
+        // to 3.8 s at 30 ms. The nominal rate is the 30 ms one; 1100 B/s said 18 s.
+        expect(NOMINAL_RATE_BPS).toBe(6000)
+        let s = settingsApplied(begin(), false)
+        s = deviceLine(s, 'Captured 1 images. Last is 59200A50.JPG (File write 51ms avg.)', T0)
+        s = deviceLine(s, '19354 bytes in 59200A50.JPG', T0 + 100)
+        expect(describeTransfer(s.transfer!, T0 + 100)).toBe('18.9 KB, about 4 s')
+    })
+
     it('measures the real rate once enough has arrived, and keeps counting between packets', () => {
         let s = throughBytesIn()
         s = transferProgress(s, 0.5, T0 + 7000) // 5909 bytes in 5 s = 1182 B/s
@@ -112,7 +122,7 @@ describe('captureSteps', () => {
 
     it('describes the transfer for a person', () => {
         let s = throughBytesIn()
-        expect(describeTransfer(s.transfer!, T0 + 2000)).toBe('11.5 KB, about 11 s')
+        expect(describeTransfer(s.transfer!, T0 + 2000)).toBe('11.5 KB, about 2 s')
         s = transferProgress(s, 0.5, T0 + 7000)
         expect(describeTransfer(s.transfer!, T0 + 7000)).toBe('11.5 KB, about 5 s left')
         s = imageSaved(s, T0 + 12000)

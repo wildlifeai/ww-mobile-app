@@ -7,8 +7,11 @@ import SyncOutbox from '../database/models/SyncOutbox'
 import OutboxService from './OutboxService'
 import SupabaseSyncService from './SupabaseSyncService'
 import ProjectService from './ProjectService'
+import { getSupabaseClient } from './supabase'
+import { isKnownOffline } from './connectivityWatch'
 import { seesEverything, seesOrganisation } from './roleAccess'
 import { log, logError, logWarn } from '../utils/logger'
+import { logCloudFailure } from '../utils/networkErrors'
 
 
 // Deployment Status IDs based on backend deployment_statuses lookup table
@@ -18,6 +21,25 @@ export const DEPLOYMENT_STATUS = {
     STARTED: 2,
     ENDED: 3
 }
+
+/**
+ * What the server said, before a start, about another open deployment on the
+ * camera (#448). `message` is for the operator: the reason to stop when one is
+ * open, the warning when the server could not be asked.
+ */
+export type OpenDeploymentCheck =
+    | { kind: 'none' }
+    | { kind: 'open'; message: string }
+    | { kind: 'unchecked'; message: string }
+
+/**
+ * How long a start waits for the answer before carrying on unchecked. The
+ * client's own limit on a read is 30 s (supabaseFetch.ts), too long to hold an
+ * operator at the camera for a check that never blocks offline anyway.
+ */
+const OPEN_DEPLOYMENT_CHECK_MS = 10_000
+
+const UNCHECKED_WARNING = 'Could not ask the server whether this camera is still deployed elsewhere. If it is, the server will refuse this deployment.'
 
 export const DeploymentService = {
     /**
@@ -166,65 +188,32 @@ export const DeploymentService = {
 
         if (!newDeployment) throw new Error("Failed to create deployment instance")
 
-        // 4. Ensure the device is queued for sync, then touch it for reactivity.
+        // 4. Touch the device, so its observers refresh. It records no outbox
+        // operation.
         //
-        // A deployment's device_id is a foreign key: push_changes inserts the
-        // deployment only if the device row already exists on the server. The
-        // device usually reaches the server from its own CREATE op at discovery
-        // (DeviceService.createDevice), but that op can be gone — e.g. it was
-        // refused before the devices INSERT policy existed (ww-backend #179) and
-        // then abandoned. When it is, the deployment push fails with 23503 and
-        // only the self-healing retry in SupabaseSyncService recovers it, one
-        // cycle late, which the operator sees as a sync error.
-        //
-        // So queue an idempotent device CREATE here. push_changes' devices insert
-        // is ON CONFLICT (id) DO NOTHING, so re-queuing a device already on the
-        // server is a harmless no-op; if it is missing, the ordered push (devices
-        // before deployments) now satisfies the foreign key on the first attempt
-        // and the self-heal stays a fallback. Skipped when a device CREATE is
-        // already waiting in the outbox, so no duplicate op is made.
+        // No device CREATE is queued here any more (#451). One was, from
+        // 5 September 2026, for devices whose CREATE had been abandoned before
+        // the devices INSERT policy existed (ww-backend #179). It went up with
+        // every deployment, also for cameras already on the server, where the
+        // INSERT policy refuses it with 42501 for anyone outside the camera's
+        // organisation, and Settings showed a refused "New camera" once per
+        // deployment (#449). The camera's own CREATE is queued when the scanner
+        // first registers it (DeviceService.createDevice), a camera taken from
+        // the server needs none, and a device whose CREATE is genuinely missing
+        // is still healed by the 23503 path in SupabaseSyncService, a sync later.
         try {
             const device = await database.get<Device>('devices').find(data.deviceId)
-
-            const pendingDeviceCreate = await database.get<SyncOutbox>('sync_outbox').query(
-                Q.where('table_name', 'devices'),
-                Q.where('record_id', device.id),
-                Q.where('operation_type', 'CREATE'),
-                Q.where('status', Q.oneOf(['pending', 'syncing', 'failed'])),
-            ).fetch()
-
             await database.write(async () => {
-                const batchOps: (Device | SyncOutbox)[] = [
-                    // Bump updated_at to trigger observers/refresh.
-                    device.prepareUpdate(() => {}),
-                ]
-
-                if (pendingDeviceCreate.length === 0) {
-                    batchOps.push(OutboxService.recordOperation({
-                        operation: 'CREATE',
-                        tableName: 'devices',
-                        recordId: device.id,
-                        payload: {
-                            id: device.id,
-                            bluetooth_id: device.bluetoothId,
-                            name: device.name,
-                            organisation_id: device.organisationId || null,
-                            device_eui: device.deviceEui || null,
-                            modified_by: data.setupBy,
-                        },
-                        userId: data.setupBy,
-                    }))
-                }
-
-                await database.batch(...batchOps)
+                await database.batch(device.prepareUpdate(() => {}))
             })
-            log('[DeploymentService] Ensured device is queued for sync:', data.deviceId)
         } catch (e) {
-            logWarn('[DeploymentService] Failed to ensure device is queued for sync:', e)
+            logWarn('[DeploymentService] Could not touch the device:', e)
         }
 
-        // Trigger background sync
-        SupabaseSyncService.debouncedSync()
+        // Send it now rather than after the 2 s debounce. The camera is given
+        // this id next and stamps every photo with it, and the operator may
+        // quit the app on the live view before anything else syncs
+        SupabaseSyncService.requestSync()
 
         return newDeployment
     },
@@ -239,36 +228,32 @@ export const DeploymentService = {
     ): Promise<Deployment> => {
         log('[DeploymentService] Ending deployment:', deploymentId)
 
-        return await database.write(async () => {
+        const ended = await database.write(async () => {
             const deploymentsCollection = database.get<Deployment>('deployments')
             const deployment = await deploymentsCollection.find(deploymentId)
 
-            // 1. Prepare update
-            const updateOp = deployment.prepareUpdate((record) => {
-                record.deploymentStatusId = DEPLOYMENT_STATUS.ENDED
-                record.deploymentEnd = new Date()
-                record.endedBy = endedBy ?? undefined
-                record.endDeploymentComments = notes
-                record.modifiedBy = endedBy ?? 'system'
-            })
+            // The end and its outbox record, which carries only the columns the end changed
+            const [updateOp, outboxOp] = prepareDeploymentUpdate(
+                deployment,
+                endedBy ?? 'system', // Fallback if null, but should be provided
+                (record) => {
+                    record.deploymentStatusId = DEPLOYMENT_STATUS.ENDED
+                    record.deploymentEnd = new Date()
+                    record.endedBy = endedBy ?? undefined
+                    record.endDeploymentComments = notes
+                    record.modifiedBy = endedBy ?? 'system'
+                },
+            )
 
-            // 2. Prepare outbox record
-            const outboxOp = OutboxService.recordOperation({
-                operation: 'UPDATE',
-                tableName: 'deployments',
-                recordId: deployment.id,
-                payload: mapModelToPayload(deployment),
-                userId: endedBy ?? 'system', // Fallback if null, but should be provided
-            })
-
-            // 3. Execute batch
             await database.batch(updateOp, outboxOp)
-
-            // Trigger background sync
-            SupabaseSyncService.debouncedSync()
 
             return deployment
         })
+
+        // The end, as soon as it is written, as for createDeployment
+        SupabaseSyncService.requestSync()
+
+        return ended
     },
 
     /**
@@ -333,6 +318,50 @@ export const DeploymentService = {
         ).fetch()
 
         return deployments[0]
+    },
+
+    /**
+     * Ask the server whether a camera has an open deployment this phone does
+     * not hold, before a start writes anything to it (#448).
+     *
+     * A camera has at most one open deployment (ww-backend #324,
+     * `deployments_one_open_per_device`), and a push that creates the next one
+     * while another is open is refused with 23P01. The scanner already sends a
+     * camera with an open deployment on this phone to End Deployment; this
+     * covers one started by someone else, or on another phone and not pulled.
+     *
+     * It sees only what this account may read: deployments in projects where
+     * it holds a role, an organisation it manages, or everything for a
+     * ww_admin. "none" means none of those. A deployment in any other project
+     * is invisible here, and the server's refusal is then the only word on it.
+     *
+     * Never blocks on the network: offline, failed or slower than
+     * OPEN_DEPLOYMENT_CHECK_MS, the answer is "unchecked" with a warning.
+     */
+    checkServerForOpenDeployment: async (deviceId: string, userId: string): Promise<OpenDeploymentCheck> => {
+        if (!deviceId || await isKnownOffline()) return { kind: 'unchecked', message: UNCHECKED_WARNING }
+
+        let timer: ReturnType<typeof setTimeout> | undefined
+        const timedOut = new Promise<never>((_, reject) => {
+            timer = setTimeout(
+                () => reject(new TypeError(`Network request timed out after ${OPEN_DEPLOYMENT_CHECK_MS / 1000} s`)),
+                OPEN_DEPLOYMENT_CHECK_MS,
+            )
+        })
+        try {
+            const message = await Promise.race([describeOpenDeploymentElsewhere(deviceId, userId), timedOut])
+            if (!message) {
+                log('[DeploymentService] No open deployment this account can see on device', deviceId)
+                return { kind: 'none' }
+            }
+            log('[DeploymentService] Open deployment on the server for device', deviceId)
+            return { kind: 'open', message }
+        } catch (error) {
+            logCloudFailure('[DeploymentService] Could not ask the server about open deployments on this camera:', error)
+            return { kind: 'unchecked', message: UNCHECKED_WARNING }
+        } finally {
+            clearTimeout(timer)
+        }
     },
 
     /**
@@ -423,10 +452,83 @@ export const DeploymentService = {
 }
 
 /**
- * Helper to map model to plain object for sync (snake_case).
- * Exported because sync payloads must always be complete records:
- * push_changes overwrites every column, so partial payloads would
- * null out the missing fields.
+ * The operator's message for an open deployment on the server that this phone
+ * does not hold, or holds and has not ended, or null when there is none this
+ * account can see. A failed read throws.
+ */
+async function describeOpenDeploymentElsewhere(deviceId: string, userId: string): Promise<string | null> {
+    const client = getSupabaseClient()
+    const { data, error } = await client
+        .from('deployments')
+        .select('id, project_id, setup_by, deployment_start')
+        .eq('device_id', deviceId)
+        .is('deployment_end', null)
+        .is('deleted_at', null)
+    if (error) throw error
+    if (!data || data.length === 0) return null
+
+    // One this phone has ended, the end not uploaded yet, is not in the way:
+    // the outbox sends the end before the new deployment or in the same
+    // push_changes call, and the constraint is checked at commit.
+    const here = await database.get<Deployment>('deployments')
+        .query(Q.where('id', Q.oneOf(data.map(row => row.id))))
+        .fetch()
+    const endedHere = new Set(here.filter(d => d.deploymentStatusId === DEPLOYMENT_STATUS.ENDED).map(d => d.id))
+    const open = data.find(row => !endedHere.has(row.id))
+    if (!open) return null
+
+    // Whoever can read a deployment can read its project. Another person's
+    // name comes only from get_project_members, which answers a member of
+    // the project and no one else, so it may be missing.
+    const { data: project } = await client.from('projects').select('name').eq('id', open.project_id).maybeSingle()
+    let startedBy: string | null = null
+    if (open.setup_by === userId) {
+        startedBy = 'you'
+    } else if (open.setup_by) {
+        const { data: members } = await client.rpc('get_project_members', { p_project_id: open.project_id })
+        startedBy = members?.find(member => member.id === open.setup_by)?.name?.trim() || null
+    }
+
+    const where = project?.name ? `"${project.name}"` : 'another project'
+    const by = startedBy ? ` by ${startedBy}` : ''
+    const on = open.deployment_start ? ` on ${new Date(open.deployment_start).toLocaleDateString()}` : ''
+    return `This camera is still deployed in ${where}, started${by}${on}. That deployment has to be ended before the camera can be deployed again.`
+}
+
+/**
+ * Prepare a change to a deployment, and its outbox UPDATE carrying only the
+ * columns the change touched (#411), for the caller to batch. push_changes
+ * keeps any column an update leaves out (ww-backend #172). The whole record
+ * let a phone holding an older copy put the old location_name, latitude and
+ * longitude back over a website edit when it ended the deployment or swapped
+ * in a photo path, since the push runs before the pull.
+ */
+export function prepareDeploymentUpdate(
+    deployment: Deployment,
+    userId: string,
+    change: (record: Deployment) => void,
+): [Deployment, SyncOutbox] {
+    const before = mapModelToPayload(deployment)
+    // prepareUpdate applies the change to the record at once, and stamps updated_at
+    const updateOp = deployment.prepareUpdate(change)
+    const after = mapModelToPayload(deployment)
+    const changed = Object.fromEntries(
+        Object.entries(after).filter(([key, value]) => JSON.stringify(value) !== JSON.stringify(before[key]))
+    )
+    const outboxOp = OutboxService.recordOperation({
+        operation: 'UPDATE',
+        tableName: 'deployments',
+        recordId: deployment.id,
+        payload: { ...changed, id: deployment.id, updated_at: after.updated_at },
+        userId,
+    })
+    return [updateOp, outboxOp]
+}
+
+/**
+ * Helper to map model to plain object for sync (snake_case): the whole
+ * record, for a CREATE. An update sends only what it changed, through
+ * prepareDeploymentUpdate.
  */
 export function mapModelToPayload(model: Deployment): any {
     return {

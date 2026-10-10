@@ -4,7 +4,6 @@ import database from '../database'
 import { getSupabaseClient } from './supabase'
 import SyncOutbox from '../database/models/SyncOutbox'
 import SyncStateService, { PULL_WATERMARK_KEYS, SYNC_STATE_KEYS } from './SyncStateService'
-import { Database } from '../types/database.types'
 import UserRole from '../database/models/UserRole'
 import Device from '../database/models/Device'
 import Project from '../database/models/Project'
@@ -17,6 +16,8 @@ import { logCloudFailure } from '../utils/networkErrors'
 import { DEFAULT_FLASH_LED, DEFAULT_FLASH_MODE } from '../utils/projectFlash'
 import { DEFAULT_PHOTO_INTERVAL_MS, DEFAULT_PHOTOS_PER_TRIGGER } from '../utils/projectBurst'
 import { DEFAULT_DETECTION_THRESHOLD_PCT } from '../utils/projectDetectionThreshold'
+import { GONE_FROM_SERVER, isGoneFromServer } from './goneFromServer'
+import { DeviceRow, fetchDeviceRowByBluetoothId, prepareDeviceRow, serverShowsDevice } from './serverDevices'
 
 
 import { setGlobalSyncing, markInitialSyncComplete } from '../redux/slices/syncSlice'
@@ -52,6 +53,24 @@ const isHeldForAnotherAccount = (op: SyncOutbox, currentUserId: string): boolean
     return !(op.tableName === 'devices' && op.operationType.toUpperCase() === 'CREATE')
 }
 
+/** A site photo still only on the phone, not yet in the bucket */
+const hasLocalPhotos = (deployment: Deployment): boolean => {
+    try {
+        const raw: any = deployment.cameraLocationImagePaths
+        const paths: string[] = typeof raw === 'string' ? JSON.parse(raw) : (raw || [])
+        return paths.some(path => typeof path === 'string' && path.startsWith('file://'))
+    } catch (e) {
+        return false
+    }
+}
+
+/** Keep, never retry, a change to a deployment the server no longer has for this account (#411) */
+const prepareOrphanOnGoneDeployment = (op: SyncOutbox, deployment: Deployment) => op.prepareUpdate(o => {
+    const label = deployment.name ? `"${deployment.name}" (${deployment.id})` : deployment.id
+    o.status = 'orphaned'
+    o.errorMessage = `orphaned: deployment ${label} was deleted on the server, or moved out of this account's projects`
+})
+
 const mergeOutcomes = (outcomes: PushOutcome[]): PushOutcome => {
     const problems = new Map<string, number>()
     for (const outcome of outcomes) {
@@ -67,6 +86,37 @@ const mergeOutcomes = (outcomes: PushOutcome[]): PushOutcome => {
     }
 }
 
+/**
+ * Refusals the server gives again however often the change is sent (#449):
+ * row-level security or a trigger saying no (42501), and a second open
+ * deployment on one camera (23P01, ww-backend #324). Any other code, a timeout
+ * or a broken constraint the next sync may mend, is retried as before.
+ */
+const REFUSED_FOR_GOOD = new Set(['42501', '23P01'])
+
+/**
+ * Whether a push_changes error is a refusal for good. PostgREST answers 42501
+ * with HTTP 401 when the call went out with no signed-in user (the anonymous
+ * role may not call push_changes at all), which a later sync signed in can mend.
+ */
+const isRefusedForGood = (error: { code?: string }, httpStatus?: number): boolean =>
+    !!error.code && REFUSED_FOR_GOOD.has(error.code) && httpStatus !== 401
+
+/**
+ * Whether a push_changes error is a camera's Bluetooth id already on the
+ * server under another id (#451). `devices.bluetooth_id` is unique, as a
+ * column constraint and as a unique index, so either name may come back, and
+ * the devices insert covers only ON CONFLICT (id).
+ */
+const isBluetoothIdTaken = (error: { code?: string, message?: string, details?: string | null }): boolean =>
+    error.code === '23505' && /bluetooth_id/.test(`${error.message ?? ''} ${error.details ?? ''}`)
+
+/** In error_message, for the Settings line, when the server has the camera under an id this account cannot read */
+const CAMERA_REGISTERED_ELSEWHERE = '23505 This camera is registered on the server to an organisation this account cannot see'
+
+/** The outbox statuses of a change not yet on the server, `orphaned` included since it may go back to `pending` */
+const NOT_UPLOADED = ['pending', 'failed', 'syncing', 'refused', 'orphaned']
+
 /** One table's line in the push report, e.g. "devices: 1 refused by the server (42501 ...)" */
 const describeOutcome = (tableName: string, outcome: PushOutcome): string => {
     const parts = outcome.saved > 0 ? [`${outcome.saved} saved`] : []
@@ -79,6 +129,8 @@ const describeOutcome = (tableName: string, outcome: PushOutcome): string => {
 class SupabaseSyncService {
     private realtimeChannel: RealtimeChannel | null = null
     private isSyncing = false
+    /** A sync was asked for while one was running, see sync() */
+    private syncAgain = false
     private syncDebounceTimer: NodeJS.Timeout | null = null
     private readonly SYNC_DEBOUNCE_MS = 2000 // 2 seconds
     private store: any = null
@@ -122,6 +174,10 @@ class SupabaseSyncService {
             await SyncStateService.set(SYNC_STATE_KEYS.SYNC_IN_PROGRESS, 'false')
         })
         log('✅ Sync state reset complete')
+
+        // A run killed mid-sync leaves the flag behind, and the sign-in sync
+        // can read it before this clears it
+        this.syncAgainIfAsked()
     }
 
     /**
@@ -146,13 +202,57 @@ class SupabaseSyncService {
     }
 
     /**
+     * Start a sync and do not wait for it, for a change the website should
+     * see while the app is still open, such as a deployment started or ended
+     * on the phone. Never throws: sync() logs its own failures. Offline it
+     * does nothing, and the reconnect sync uploads the change later.
+     */
+    requestSync() {
+        this.sync().catch(() => {})
+    }
+
+    /**
+     * Start what a sync hands on once the pull is in, and do not wait for it:
+     * the site photos still only on the phone, and the models and firmware a
+     * field visit needs (#333). Lazy requires: DeploymentPhotoService depends
+     * on this service, and Jest here rejects a dynamic import(), so the photo
+     * trigger, written that way, never ran under test.
+     */
+    private startPhotoUploadAndPrefetch(userId: string) {
+        try {
+            const { DeploymentPhotoService } = require('./DeploymentPhotoService')
+            DeploymentPhotoService.uploadAllPending(userId).catch((e: unknown) =>
+                logWarn('⚠️ [SupabaseSyncService] Pending photo upload failed:', e)
+            )
+        } catch (e) {
+            logWarn('⚠️ [SupabaseSyncService] Could not start photo upload:', e)
+        }
+        try {
+            require('./OfflinePrefetchService').default.request('sync')
+        } catch (e) {
+            logWarn('⚠️ [SupabaseSyncService] Could not start the offline pre-download:', e)
+        }
+    }
+
+    /** Run the sync asked for while the last one ran */
+    private syncAgainIfAsked() {
+        if (!this.syncAgain) return
+        this.syncAgain = false
+        log('🔁 A sync was asked for while the last one ran, syncing again')
+        this.requestSync()
+    }
+
+    /**
      * Immediate sync - bypasses debouncing
      */
     async sync() {
         // Check if sync already in progress (via SyncStateService)
         const inProgress = await SyncStateService.isSyncInProgress()
         if (inProgress || this.isSyncing) {
-            // log('⏳ Sync already in progress, skipping.')
+            // The running sync may have read the outbox before the caller's
+            // change was queued, so it syncs once more when it ends: one more,
+            // however many ask meanwhile
+            this.syncAgain = true
             return
         }
 
@@ -253,8 +353,8 @@ class SupabaseSyncService {
             // ================================================================
             // STEP 2: PULL REMOTE CHANGES
             // ================================================================
-            await this.pullRemoteChanges()
-            await this.syncUserRoles()
+            await this.pullRemoteChanges(user.id)
+            await this.syncUserRoles(user.id)
             if (await this.syncProjects()) {
                 await this.reconcileProjects(user.id)
             } else {
@@ -262,6 +362,7 @@ class SupabaseSyncService {
             }
             await this.syncDevices()
             await this.syncDeployments()
+            await this.pullMissingDevices()
 
             // Mark initial sync complete once the pull is in, whatever the push
             // did: routing decisions in the scanner only need the pulled data
@@ -276,6 +377,11 @@ class SupabaseSyncService {
                     logWarn('⚠️ [SupabaseSyncService] Failed to dispatch initial sync complete:', e)
                 }
             }
+
+            // Before the push error, as the pull is (#449): thrown first, one
+            // change the server would not take stopped every deployment's site
+            // photos and the field-visit downloads, on every sync
+            this.startPhotoUploadAndPrefetch(user.id)
 
             if (pushError) throw pushError
 
@@ -297,20 +403,6 @@ class SupabaseSyncService {
 
                 // log(`✅ Sync completed successfully in ${syncDuration}ms (total syncs: ${syncCount})`)
             })
-
-            // Retry any deployment photos still waiting to reach storage
-            // (lazy import: DeploymentPhotoService depends on this service)
-            try {
-                const { DeploymentPhotoService } = await import('./DeploymentPhotoService')
-                DeploymentPhotoService.uploadAllPending(user.id).catch((e: unknown) =>
-                    logWarn('⚠️ [SupabaseSyncService] Pending photo upload failed:', e)
-                )
-            } catch (e) {
-                logWarn('⚠️ [SupabaseSyncService] Could not start photo upload:', e)
-            }
-
-            // Put the models and firmware a field visit needs on the phone (#333)
-            require('./OfflinePrefetchService').default.request('sync')
         } catch (error) {
             logCloudFailure('❌ Sync failed:', error)
 
@@ -336,6 +428,8 @@ class SupabaseSyncService {
                     logWarn('⚠️ [SupabaseSyncService] Failed to dispatch sync end:', e)
                 }
             }
+
+            this.syncAgainIfAsked()
         }
     }
 
@@ -373,8 +467,15 @@ class SupabaseSyncService {
         // 'syncing' is only left behind by a sync that was cut short: a crash, or
         // the old stop-the-chain break, which stranded every table after the
         // failure for good. Syncs never overlap, so any found here are resumed.
+        // 'refused' (#449) and 'orphaned' (#330, #411) are kept, never sent.
         const queuedOps = await database.get<SyncOutbox>('sync_outbox')
-            .query(Q.where('status', Q.oneOf(['pending', 'failed', 'syncing'])))
+            .query(
+                Q.where('status', Q.oneOf(['pending', 'failed', 'syncing'])),
+                // Oldest first. Two queued updates to one row go up in one call, each
+                // carrying only its own columns (#411), and push_changes applies them
+                // in the order sent, so the later change to a column must come last.
+                Q.sortBy('lamport_clock', Q.asc),
+            )
             .fetch()
 
         // Another account's unsynced changes stay queued until it signs in on
@@ -572,7 +673,7 @@ class SupabaseSyncService {
             const recordIds = new Set(tableOps.map(op => op.recordId))
 
             try {
-                const { data, error } = await (client as any).rpc('push_changes', { changes })
+                const { data, error, status: httpStatus } = await (client as any).rpc('push_changes', { changes })
 
                 // IMPORTANT DEBUG: Log processed count to detect silent failures
                 // log(`✅ Server processed ${data?.processed ?? '?'} operations for ${tableName}`)
@@ -580,16 +681,42 @@ class SupabaseSyncService {
                 if (error) {
                     logCloudFailure(`❌ Push failed for ${tableName}:`, error)
 
-                    // Mark these specific ops as failed
+                    // A camera the server has under another id (#451), on the same
+                    // one-record rule as below
+                    if (tableName === 'devices' && recordIds.size === 1 && isBluetoothIdTaken(error)) {
+                        return await this.settleTakenBluetoothId(tableOps, error)
+                    }
+
+                    // A camera's CREATE refused 42501 for a row the server already
+                    // has: until #451 every deployment start queued one, and
+                    // Postgres checks the INSERT policy before ON CONFLICT, so
+                    // anyone outside the camera's organisation was refused. Phones
+                    // still hold those copies, which would each read as a refused
+                    // "New camera" in Settings.
+                    if (tableName === 'devices' && recordIds.size === 1 && error.code === '42501' && httpStatus !== 401
+                        && tableOps.every(op => op.operationType.toUpperCase() === 'CREATE')) {
+                        const settled = await this.settleDeviceAlreadyOnServer(tableOps, error)
+                        if (settled) return settled
+                    }
+
+                    // A call carrying one record is the record-by-record retry, or a
+                    // table with one record to send, so a refusal for good there is
+                    // that record's own: it is kept as 'refused' and never sent
+                    // again (#449). Several records go back as 'failed', and are
+                    // retried one at a time right after.
+                    const refusedForGood = recordIds.size === 1 && isRefusedForGood(error, httpStatus)
                     await database.write(async () => {
                         for (const op of tableOps) {
                             await op.update(o => {
-                                o.status = 'failed'
-                                o.errorMessage = error.message
+                                o.status = refusedForGood ? 'refused' : 'failed'
+                                o.errorMessage = refusedForGood ? `${error.code} ${error.message}` : error.message
                                 o.retryCount = op.retryCount + 1
                             })
                         }
                     })
+                    if (refusedForGood) {
+                        logWarn(`🚫 The server refused ${tableName} ${Array.from(recordIds)[0]} for good (${error.code}), it will not be sent again`)
+                    }
 
                     // SPECIAL HANDLING: Self-healing for Foreign Key errors (23503)
                     if (error.code === '23503') {
@@ -612,11 +739,13 @@ class SupabaseSyncService {
                                 try {
                                     const localDevice = await devicesCollection.find(deviceId)
                                     if (localDevice) {
+                                        // Not one the server refused for good either: a copy
+                                        // would only be refused again, one more each cycle
                                         const existingOps = await database.get<SyncOutbox>('sync_outbox').query(
                                             Q.where('table_name', 'devices'),
                                             Q.where('record_id', deviceId),
                                             Q.where('operation_type', 'CREATE'),
-                                            Q.where('status', Q.oneOf(['pending', 'failed']))
+                                            Q.where('status', Q.oneOf(['pending', 'failed', 'refused']))
                                         ).fetch()
 
                                         if (existingOps.length === 0) {
@@ -673,7 +802,9 @@ class SupabaseSyncService {
                 // has (ON CONFLICT DO NOTHING), so it counts as saved. For an
                 // UPDATE or DELETE the change did not land: the row is missing,
                 // or row-level security would not let this account change it.
-                // Marking those synced lost them silently, so they stay queued.
+                // Marking those synced lost them silently (#287), and retrying
+                // them got the same answer on every sync, so they are kept as
+                // 'refused' and not sent again (#449).
                 const notAppliedIds = new Set<string>(
                     (Array.isArray(data?.conflicts) ? data.conflicts : []).map((c: any) => String(c?.id))
                 )
@@ -683,12 +814,19 @@ class SupabaseSyncService {
                 if (notAppliedOps.length > 0) {
                     logWarn(`⚠️ Server did not apply ${notAppliedOps.length} ${tableName} change(s):`, data.conflicts)
                 }
+                // The reply names rows, not operations. Sent with its record's
+                // CREATE, the entry may be the CREATE's, a row the server already
+                // had (a reply lost after the commit), so that change goes again
+                // on its own next sync, where the answer can only be its own.
+                const createdHere = new Set(tableOps
+                    .filter(op => op.operationType.toUpperCase() === 'CREATE')
+                    .map(op => op.recordId))
 
                 await database.write(async () => {
                     for (const op of tableOps) {
                         if (notAppliedOps.includes(op)) {
                             await op.update(o => {
-                                o.status = 'failed'
+                                o.status = createdHere.has(op.recordId) ? 'failed' : 'refused'
                                 o.errorMessage = 'not_applied: the row is missing on the server, or this account may not change it'
                                 o.retryCount = op.retryCount + 1
                             })
@@ -749,6 +887,19 @@ class SupabaseSyncService {
             // project and device. Only the deployments whose parent is missing wait.
             const waitingProblems: PushProblem[] = []
             if (tableName === 'deployments') {
+                // A deployment the server no longer has for this account, kept here
+                // for its unsynced work (applyServerDeletions, #411): a change made to
+                // it since cannot land either, so it joins that work, orphaned
+                const onGone = await this.opsOnGoneDeployments(tableOps)
+                if (onGone.size > 0) {
+                    logWarn(`📦 ${onGone.size} deployments op(s) are for a deployment the server no longer has for this account, kept as orphaned`)
+                    await database.write(async () => {
+                        await database.batch(...Array.from(onGone, ([op, deployment]) => prepareOrphanOnGoneDeployment(op, deployment)))
+                    })
+                    tableOps = tableOps.filter(op => !onGone.has(op))
+                    if (tableOps.length === 0) continue
+                }
+
                 const waiting = await this.deploymentsWaitingOnParents(tableOps, devicesNotOnServer)
                 if (waiting.length > 0) {
                     logWarn(`⏳ Holding back ${waiting.length} deployments op(s): their project or device has not reached the server`)
@@ -799,6 +950,176 @@ class SupabaseSyncService {
     }
 
     /**
+     * Settle a device CREATE refused 42501 when the server already shows this
+     * account a device with its id (#451): the row is there, so the change is
+     * done, and the CREATE and any copies in this call are marked synced with
+     * why. Null when the server shows none, so the refusal stands like any
+     * other 42501. A lookup that fails leaves them failed, to ask again next
+     * sync, since a refused change is never sent again.
+     */
+    private async settleDeviceAlreadyOnServer(
+        tableOps: SyncOutbox[],
+        error: { code?: string, message?: string },
+    ): Promise<PushOutcome | null> {
+        const deviceId = tableOps[0].recordId
+        const refusal = `${error.code} ${error.message}`
+        const markAll = async (status: string, errorMessage: string) => {
+            await database.write(async () => {
+                await database.batch(...tableOps.map(op => op.prepareUpdate(o => {
+                    o.status = status
+                    o.errorMessage = errorMessage
+                    o.retryCount = op.retryCount + 1
+                })))
+            })
+        }
+
+        let onServer: boolean
+        try {
+            onServer = await serverShowsDevice(deviceId)
+        } catch (lookupError) {
+            logCloudFailure(`❌ Could not ask the server whether it has device ${deviceId}:`, lookupError)
+            await markAll('failed', refusal)
+            return {
+                saved: 0,
+                failedRecordIds: new Set([deviceId]),
+                refused: true,
+                problems: [{ count: tableOps.length, reason: `refused by the server (${refusal})` }],
+            }
+        }
+        if (!onServer) return null
+
+        await markAll('synced', `already on the server: the camera's row is there, and this account may not insert it again (${refusal})`)
+        log(`📷 Device ${deviceId} is already on the server, so its refused CREATE is done`)
+        return { saved: tableOps.length, failedRecordIds: new Set(), refused: false, problems: [] }
+    }
+
+    /**
+     * Settle a device CREATE refused 23505 because the server has this camera
+     * under another id (#451), from a call carrying that one device.
+     *
+     * The phone gave the camera a new id when no local device matched: a camera
+     * registered on another phone, or one this phone removed when a deployment
+     * moved it out of reach (ww-backend #272). Sent again, it is refused again.
+     *
+     * When this account may read the server's row, the phone takes it: the
+     * row is written under the server's id, every local deployment and every
+     * queued deployments change naming the local id is moved to it, the local
+     * CREATE is marked synced with why, and the local device goes. All in one
+     * write, so the deployments go up with the server's id in this push. A
+     * queued change keeps its status, a refused one included: it was refused
+     * for its own reason, never for 23503, which is retried.
+     *
+     * When the server shows no such row, the camera is registered to an
+     * organisation this account cannot see, and the CREATE is refused for good
+     * with a reason Settings shows as it is. Its deployments keep failing 23503
+     * until the server gives the app a way to learn the id. A lookup that
+     * fails leaves the CREATE failed, so the next sync asks again.
+     */
+    private async settleTakenBluetoothId(
+        tableOps: SyncOutbox[],
+        error: { code?: string, message?: string },
+    ): Promise<PushOutcome> {
+        const localId = tableOps[0].recordId
+        const recordIds = new Set([localId])
+        const refusal = `${error.code} ${error.message}`
+        const markAll = async (status: string, errorMessage: string) => {
+            await database.write(async () => {
+                await database.batch(...tableOps.map(op => op.prepareUpdate(o => {
+                    o.status = status
+                    o.errorMessage = errorMessage
+                    o.retryCount = op.retryCount + 1
+                })))
+            })
+        }
+
+        let bluetoothId: string | undefined
+        try {
+            bluetoothId = JSON.parse(tableOps[0].payload).bluetooth_id || undefined
+        } catch (e) {
+            bluetoothId = undefined
+        }
+
+        let serverRow: DeviceRow | null = null
+        try {
+            serverRow = bluetoothId ? await fetchDeviceRowByBluetoothId(bluetoothId) : null
+        } catch (lookupError) {
+            logCloudFailure(`❌ Could not ask the server which device has the Bluetooth id ${bluetoothId}:`, lookupError)
+            await markAll('failed', refusal)
+            return {
+                saved: 0,
+                failedRecordIds: recordIds,
+                refused: true,
+                problems: [{ count: tableOps.length, reason: `refused by the server (${refusal})` }],
+            }
+        }
+
+        if (!serverRow) {
+            logWarn(`🚫 Camera ${bluetoothId} is on the server under an id this account cannot read, so device ${localId} will not be sent again`)
+            await markAll('refused', CAMERA_REGISTERED_ELSEWHERE)
+            return {
+                saved: 0,
+                failedRecordIds: recordIds,
+                refused: true,
+                problems: [{ count: tableOps.length, reason: `refused by the server (${CAMERA_REGISTERED_ELSEWHERE})` }],
+            }
+        }
+        const saved: PushOutcome = { saved: tableOps.length, failedRecordIds: new Set(), refused: false, problems: [] }
+        if (serverRow.id === localId) {
+            // The server has this very row, so there is nothing to replace
+            await markAll('synced', refusal)
+            return saved
+        }
+
+        const serverId = serverRow.id
+        const row = serverRow
+        const outbox = database.get<SyncOutbox>('sync_outbox')
+        // Copies of this CREATE refused before, as well as the ones in this call
+        const deviceOps = Array.from(new Map([
+            ...tableOps,
+            ...await outbox.query(
+                Q.where('table_name', 'devices'),
+                Q.where('record_id', localId),
+                Q.where('status', Q.oneOf(NOT_UPLOADED)),
+            ).fetch(),
+        ].map(op => [op.id, op])).values())
+        const deploymentOps = (await outbox.query(
+            Q.where('table_name', 'deployments'),
+            Q.where('status', Q.oneOf(NOT_UPLOADED)),
+        ).fetch()).filter(op => {
+            try {
+                return JSON.parse(op.payload).device_id === localId
+            } catch (e) {
+                return false
+            }
+        })
+        const deployments = await database.get<Deployment>('deployments')
+            .query(Q.where('device_id', localId))
+            .fetch()
+        const localDevice = await database.get<Device>('devices').find(localId).catch(() => undefined)
+        const replaced = `replaced: the server already has this camera as ${serverId} (${refusal}), and its row took the place of this one`
+
+        await database.write(async () => {
+            await database.batch(
+                await prepareDeviceRow(row),
+                ...deployments.map(deployment => deployment.prepareUpdate(rec => {
+                    rec.deviceId = serverId
+                })),
+                ...deploymentOps.map(op => op.prepareUpdate(o => {
+                    o.payload = JSON.stringify({ ...JSON.parse(op.payload), device_id: serverId })
+                })),
+                ...deviceOps.map(op => op.prepareUpdate(o => {
+                    o.status = 'synced'
+                    o.errorMessage = replaced
+                })),
+                ...(localDevice ? [localDevice.prepareDestroyPermanently()] : []),
+            )
+        })
+        logWarn(`📷 Camera ${bluetoothId} is on the server as ${serverId}: took its row in place of device ${localId}, and moved ${deployments.length} deployment(s) and ${deploymentOps.length} queued change(s) to it`)
+
+        return saved
+    }
+
+    /**
      * The deployment operations that must wait for a parent the server does not
      * have. A deployment whose parent is already there goes ahead, whatever
      * happened to other rows (#287).
@@ -807,21 +1128,37 @@ class SupabaseSyncService {
      * sync: a project can also disappear from the server on its own, deleted on
      * the website or by a database reset, and a deployment pushed into it is
      * refused with 42501 on every sync (#330). Such a deployment waits here, and
-     * the project reconcile after the pull marks it orphaned. A device is only
-     * checked when its own change failed in this sync; a device the server has
-     * never seen is healed by the 23503 path below.
+     * the project reconcile after the pull marks it orphaned. An update names
+     * only the columns it changed (#411), so its project is the one the
+     * deployment has on the phone. A device is only checked when its own change
+     * failed in this sync; a device the server has never seen is healed by the
+     * 23503 path below.
      */
     private async deploymentsWaitingOnParents(
         deploymentOps: SyncOutbox[],
         devicesNotOnServer: Set<string>,
     ): Promise<SyncOutbox[]> {
-        const parentsOf = (op: SyncOutbox): { projectId?: string, deviceId?: string } => {
+        const named = (op: SyncOutbox): { projectId?: string, deviceId?: string } => {
             try {
                 const payload = JSON.parse(op.payload)
                 return { projectId: payload.project_id || undefined, deviceId: payload.device_id || undefined }
             } catch (e) {
                 return {}
             }
+        }
+        const unnamed = deploymentOps.filter(op => !named(op).projectId).map(op => op.recordId)
+        const localProject = new Map<string, string>()
+        if (unnamed.length > 0) {
+            const local = await database.get<Deployment>('deployments')
+                .query(Q.where('id', Q.oneOf(Array.from(new Set(unnamed)))))
+                .fetch()
+            for (const deployment of local) {
+                if (deployment.projectId) localProject.set(deployment.id, deployment.projectId)
+            }
+        }
+        const parentsOf = (op: SyncOutbox): { projectId?: string, deviceId?: string } => {
+            const { projectId, deviceId } = named(op)
+            return { projectId: projectId || localProject.get(op.recordId), deviceId }
         }
 
         const suspects: Record<ParentTable, Set<string>> = { projects: new Set(), devices: new Set() }
@@ -845,6 +1182,25 @@ class SupabaseSyncService {
         }
         // Every operation on a blocked record waits, so they stay in order
         return deploymentOps.filter(op => blockedRecords.has(op.recordId))
+    }
+
+    /**
+     * The deployment operations on a deployment kept on the phone as gone from
+     * the server (applyServerDeletions), each with its deployment
+     */
+    private async opsOnGoneDeployments(deploymentOps: SyncOutbox[]): Promise<Map<SyncOutbox, Deployment>> {
+        const recordIds = Array.from(new Set(deploymentOps.map(op => op.recordId)))
+        const gone = new Map((await database.get<Deployment>('deployments')
+            .query(Q.where('id', Q.oneOf(recordIds)))
+            .fetch())
+            .filter(isGoneFromServer)
+            .map(deployment => [deployment.id, deployment]))
+        const onGone = new Map<SyncOutbox, Deployment>()
+        for (const op of deploymentOps) {
+            const deployment = gone.get(op.recordId)
+            if (deployment) onGone.set(op, deployment)
+        }
+        return onGone
     }
 
     /**
@@ -915,10 +1271,11 @@ class SupabaseSyncService {
                 .query(Q.where('scope_type', 'project'))
                 .fetch()
             const unsyncedOps = await database.get<SyncOutbox>('sync_outbox')
-                .query(Q.where('status', Q.oneOf(['pending', 'failed', 'syncing', 'orphaned'])))
+                .query(Q.where('status', Q.oneOf(['pending', 'failed', 'syncing', 'refused', 'orphaned'])))
                 .fetch()
 
-            // A project whose CREATE has not reached the server is new, not gone
+            // A project whose CREATE has not reached the server is new, not gone.
+            // One whose CREATE the server refused (#449) stays on the phone too.
             const createsQueued = new Set(unsyncedOps
                 .filter(op => op.tableName === 'projects'
                     && op.operationType.toUpperCase() === 'CREATE'
@@ -953,23 +1310,17 @@ class SupabaseSyncService {
                     return undefined
                 }
             }
-            const hasLocalPhotos = (deployment: Deployment): boolean => {
-                try {
-                    const raw: any = deployment.cameraLocationImagePaths
-                    const paths: string[] = typeof raw === 'string' ? JSON.parse(raw) : (raw || [])
-                    return paths.some(path => typeof path === 'string' && path.startsWith('file://'))
-                } catch (e) {
-                    return false
-                }
-            }
 
             const operations: any[] = []
 
             // A project can come back: a role granted again, or an earlier answer
             // that was short, as during a database reseed. Its orphaned changes
-            // go back in the queue.
+            // go back in the queue. Not those on a deployment the server itself no
+            // longer has (#411): its project being there does not bring it back.
+            const goneDeployments = new Set(deployments.filter(isGoneFromServer).map(d => d.id))
             const restored = unsyncedOps.filter(op => {
                 if (op.status !== 'orphaned') return false
+                if (op.tableName === 'deployments' && goneDeployments.has(op.recordId)) return false
                 const projectId = projectOf(op)
                 return !!projectId && serverIds.has(projectId)
             })
@@ -1046,9 +1397,8 @@ class SupabaseSyncService {
         }
         if (missing.length === 0) return
 
-        log(`🔁 ${missing.length} project(s) on the server are not on this phone (${missing.join(', ')}), next sync pulls projects, roles and deployments in full`)
+        log(`🔁 ${missing.length} project(s) on the server are not on this phone (${missing.join(', ')}), next sync pulls projects and deployments in full`)
         await database.write(async () => {
-            await SyncStateService.delete(SYNC_STATE_KEYS.USER_ROLES_LAST_PULLED_AT)
             await SyncStateService.delete(SYNC_STATE_KEYS.PROJECTS_LAST_PULLED_AT)
             await SyncStateService.delete(SYNC_STATE_KEYS.DEPLOYMENTS_LAST_PULLED_AT)
         })
@@ -1056,8 +1406,13 @@ class SupabaseSyncService {
 
     /**
      * Pull remote changes from server
+     *
+     * The rows themselves come from the REST pulls that follow, which keep a
+     * record whose change is still in the outbox (#349). What only pull_changes
+     * can say is which rows have gone, so this applies its deletions (#411) and
+     * moves the watermark only once they are on the phone.
      */
-    private async pullRemoteChanges(): Promise<void> {
+    private async pullRemoteChanges(userId: string): Promise<void> {
         const lastPulledStr = await SyncStateService.get(SYNC_STATE_KEYS.LAST_PULL_TIMESTAMP)
         const lastPulledAt = lastPulledStr ? parseInt(lastPulledStr, 10) : 0
 
@@ -1073,136 +1428,14 @@ class SupabaseSyncService {
             throw error
         }
 
-        const { changes: rawChanges, conflicts, timestamp } = data as any
+        const { changes, timestamp } = data as any
 
-        // ================================================================
-        // CRITICAL: Filter out records with pending local changes
-        // ================================================================
-        // log('🔍 Filtering pending local changes from server updates...')
-
-        // Get all pending operations from outbox
-        const pendingOps = await database.get<SyncOutbox>('sync_outbox')
-            .query(Q.where('status', 'pending'))
-            .fetch()
-
-        // Build set of record IDs that have pending changes
-        const pendingByTable: Record<string, Set<string>> = {
-            projects: new Set(),
-            devices: new Set(),
-            deployments: new Set(),
-        }
-
-        for (const op of pendingOps) {
-            if (pendingByTable[op.tableName]) {
-                pendingByTable[op.tableName].add(op.recordId)
-            }
-        }
-
-        log(`📦 Found ${pendingOps.length} pending operations in outbox:`)
-        for (const [table, ids] of Object.entries(pendingByTable)) {
-            if (ids.size > 0) {
-                log(`   - ${table}: ${ids.size} pending`)
-            }
-        }
-
-        // Filter server changes to exclude pending records
-        const safeChanges = {
-            projects: {
-                created: (rawChanges.projects?.created || []).filter((p: any) => {
-                    const isPending = pendingByTable.projects.has(p.id)
-                    if (isPending) {
-                        log(`   ⚠️ Filtered project CREATED: ${p.id} (has pending changes)`)
-                    }
-                    return !isPending
-                }),
-                updated: (rawChanges.projects?.updated || []).filter((p: any) => {
-                    const isPending = pendingByTable.projects.has(p.id)
-                    if (isPending) {
-                        log(`   ⚠️ Filtered project UPDATED: ${p.id} (has pending changes)`)
-                    }
-                    return !isPending
-                }),
-                deleted: (rawChanges.projects?.deleted || []).filter((id: string) => {
-                    const isPending = pendingByTable.projects.has(id)
-                    if (isPending) {
-                        log(`   ⚠️ Filtered project DELETED: ${id} (has pending changes)`)
-                    }
-                    return !isPending
-                }),
-            },
-            deployments: {
-                created: (rawChanges.deployments?.created || []).filter((d: any) => {
-                    const isPending = pendingByTable.deployments.has(d.id)
-                    if (isPending) {
-                        log(`   ⚠️ Filtered deployment CREATED: ${d.id} (has pending changes)`)
-                    }
-                    return !isPending
-                }),
-                updated: (rawChanges.deployments?.updated || []).filter((d: any) => {
-                    const isPending = pendingByTable.deployments.has(d.id)
-                    if (isPending) {
-                        log(`   ⚠️ Filtered deployment UPDATED: ${d.id} (has pending changes)`)
-                    }
-                    return !isPending
-                }),
-                deleted: (rawChanges.deployments?.deleted || []).filter((id: string) => {
-                    const isPending = pendingByTable.deployments.has(id)
-                    if (isPending) {
-                        log(`   ⚠️ Filtered deployment DELETED: ${id} (has pending changes)`)
-                    }
-                    return !isPending
-                }),
-            },
-
-            devices: {
-                created: (rawChanges.devices?.created || []).filter((d: any) => {
-                    const isPending = pendingByTable.devices.has(d.id)
-                    if (isPending) {
-                        log(`   ⚠️ Filtered device CREATED: ${d.id} (has pending changes)`)
-                    }
-                    return !isPending
-                }),
-                updated: (rawChanges.devices?.updated || []).filter((d: any) => {
-                    const isPending = pendingByTable.devices.has(d.id)
-                    if (isPending) {
-                        log(`   ⚠️ Filtered device UPDATED: ${d.id} (has pending changes)`)
-                    }
-                    return !isPending
-                }),
-                deleted: (rawChanges.devices?.deleted || []).filter((id: string) => {
-                    const isPending = pendingByTable.devices.has(id)
-                    if (isPending) {
-                        log(`   ⚠️ Filtered device DELETED: ${id} (has pending changes)`)
-                    }
-                    return !isPending
-                }),
-            },
-        }
-
-        // Log filtering stats
-        const totalFiltered =
-            (rawChanges.projects?.created?.length || 0) - (safeChanges.projects.created.length) +
-            (rawChanges.projects?.updated?.length || 0) - (safeChanges.projects.updated.length) +
-            (rawChanges.projects?.deleted?.length || 0) - (safeChanges.projects.deleted.length) +
-            (rawChanges.deployments?.created?.length || 0) - (safeChanges.deployments.created.length) +
-            (rawChanges.deployments?.updated?.length || 0) - (safeChanges.deployments.updated.length) +
-            (rawChanges.deployments?.deleted?.length || 0) - (safeChanges.deployments.deleted.length) +
-
-            (rawChanges.devices?.created?.length || 0) - (safeChanges.devices.created.length) +
-            (rawChanges.devices?.updated?.length || 0) - (safeChanges.devices.updated.length) +
-            (rawChanges.devices?.deleted?.length || 0) - (safeChanges.devices.deleted.length)
-
-        if (totalFiltered > 0) {
-            log(`✅ Filtered ${totalFiltered} server changes with pending local modifications`)
-        } else {
-            log('✅ No pending changes, applying all server updates')
-        }
-
-        // Handle conflicts (if any)
-        if (conflicts && conflicts.length > 0) {
-            logWarn(`⚠️ ${conflicts.length} conflicts detected:`, conflicts)
-            // TODO: Store conflicts for user resolution
-            // For now, just log them
+        try {
+            await this.applyServerDeletions(changes, userId)
+        } catch (e) {
+            // The watermark stays where it was, so the next pull lists them again
+            logWarn('⚠️ Could not apply the deletions pull_changes listed, the next sync tries again:', e)
+            return
         }
 
         // Update last pull timestamp
@@ -1217,59 +1450,170 @@ class SupabaseSyncService {
     }
 
     /**
-     * Sync user roles (incremental pull)
-     * Syncs the user_roles table which replaces project_members
+     * Apply the deletions pull_changes lists for deployments and devices (#411)
+     *
+     * The REST pulls never see a row go: the server hides soft-deleted rows, and
+     * a deployment moved out of this account's projects (ww-backend #260), or a
+     * device it can no longer read, simply stops appearing. pull_changes lists
+     * their ids (sync_deleted_ids): rows soft-deleted since the last pull that
+     * this account could read, and rows it has lost access to.
+     *
+     * A listed deployment is removed, unless it holds work not yet uploaded: an
+     * outbox operation not on the server (any account's, refused and orphaned
+     * included) or a site photo still only on the phone. Then, as for a project
+     * that is gone (#330), its row and photos stay, and this account's changes
+     * to it, a refused one too (#449), become 'orphaned', kept and never
+     * retried, with the reason in error_message. The row is marked
+     * GONE_FROM_SERVER so that nothing more is uploaded for it (see
+     * goneFromServer.ts). Another account's held changes are left for that
+     * account.
+     *
+     * A listed device is removed unless a deployment still on the phone points
+     * at it, or a change to it has not reached the server.
+     *
+     * Projects are left to reconcileProjects, which compares the phone with the
+     * full list of this account's projects.
      */
-    private async syncUserRoles(): Promise<void> {
-        const LAST_PULLED_KEY = SYNC_STATE_KEYS.USER_ROLES_LAST_PULLED_AT
-        const lastPulledStr = await SyncStateService.get(LAST_PULLED_KEY)
-        const lastPulledAt = lastPulledStr ? new Date(parseInt(lastPulledStr, 10)).toISOString() : new Date(0).toISOString()
+    private async applyServerDeletions(changes: any, userId: string): Promise<void> {
+        const listed = (table: 'deployments' | 'devices') => new Set<string>(
+            (Array.isArray(changes?.[table]?.deleted) ? changes[table].deleted : []).map(String)
+        )
+        const deploymentIds = listed('deployments')
+        const deviceIds = listed('devices')
+        if (deploymentIds.size === 0 && deviceIds.size === 0) return
 
-        log('👥 Syncing user roles since', lastPulledAt)
+        const deployments = await database.get<Deployment>('deployments').query().fetch()
+        const unsyncedOps = await database.get<SyncOutbox>('sync_outbox')
+            .query(Q.where('status', Q.oneOf(['pending', 'failed', 'syncing', 'refused', 'orphaned'])))
+            .fetch()
+        const opsOn = (table: string, recordId: string) =>
+            unsyncedOps.filter(op => op.tableName === table && op.recordId === recordId)
 
-        const client = getSupabaseClient()
-        const { data, error } = await client
+        const operations: any[] = []
+        const removedDeployments = new Set<string>()
+        const keptDeployments: string[] = []
+        let orphaned = 0
+
+        for (const deployment of deployments.filter(d => deploymentIds.has(d.id))) {
+            const itsOps = opsOn('deployments', deployment.id)
+            if (itsOps.length === 0 && !hasLocalPhotos(deployment)) {
+                operations.push(deployment.prepareDestroyPermanently())
+                removedDeployments.add(deployment.id)
+                continue
+            }
+            const toOrphan = itsOps.filter(op => op.status !== 'orphaned' && !isHeldForAnotherAccount(op, userId))
+            toOrphan.forEach(op => operations.push(prepareOrphanOnGoneDeployment(op, deployment)))
+            if (!isGoneFromServer(deployment)) {
+                operations.push(deployment.prepareUpdate(rec => {
+                    rec.customSyncStatus = GONE_FROM_SERVER
+                }))
+            }
+            keptDeployments.push(deployment.id)
+            orphaned += toOrphan.length
+        }
+
+        // A device goes only when nothing left on the phone needs it
+        const stillUsed = new Set(deployments.filter(d => !removedDeployments.has(d.id)).map(d => d.deviceId))
+        const devices = deviceIds.size > 0
+            ? await database.get<Device>('devices').query(Q.where('id', Q.oneOf(Array.from(deviceIds)))).fetch()
+            : []
+        const keptDevices: string[] = []
+        for (const device of devices) {
+            if (stillUsed.has(device.id) || opsOn('devices', device.id).length > 0) {
+                keptDevices.push(device.id)
+                continue
+            }
+            operations.push(device.prepareDestroyPermanently())
+        }
+
+        if (operations.length > 0) {
+            await database.write(async () => {
+                await database.batch(...operations)
+            })
+        }
+
+        const removedDevices = devices.length - keptDevices.length
+        if (removedDeployments.size > 0 || removedDevices > 0) {
+            log(`🧹 Removed ${removedDeployments.size} deployment(s) and ${removedDevices} device(s) the server deleted or no longer shares with this account`)
+        }
+        if (keptDeployments.length > 0) {
+            logWarn(`📦 Kept ${keptDeployments.length} deployment(s) the server no longer has for this account, for work not yet uploaded (${keptDeployments.join(', ')}); ${orphaned} change(s) marked orphaned and no longer retried`)
+        }
+        if (keptDevices.length > 0) {
+            log(`📷 Kept ${keptDevices.length} device(s) the server listed as gone, still used on this phone (${keptDevices.join(', ')})`)
+        }
+    }
+
+    /**
+     * Sync this account's roles (#375)
+     *
+     * Reads every live role the server holds for this account, not only the
+     * ones changed since a watermark, and makes the phone match it. The server
+     * shows live rows only (user_roles_select_policy hides a soft-deleted one),
+     * so a role taken away, or the lower of two roles in one scope that
+     * ww-backend #248 soft-deleted, never reaches an incremental pull: it only
+     * shows as absence. It is a handful of rows.
+     *
+     * A server role finds its local row by id, then by role and scope. The
+     * second covers the creator's project_admin that createProject writes, and
+     * rows pulled before #375, which carry local ids. A system role's scope is
+     * NULL and matches NULL: the old lookup asked for '' and stored NULL, so
+     * every full pull added a copy, and it left out the role, so two roles in
+     * one scope shared a row. A new row takes the server's id.
+     *
+     * Every other local role of this account goes: a copy, or a role the
+     * server no longer has. Kept are the creator's role in a project whose
+     * CREATE has not reached the server, and everything when the server lists
+     * no roles at all, which reads as a bad answer rather than as losing them
+     * all. Other accounts' rows, from the member cache (#307) or an earlier
+     * sign-in (#267), are not touched.
+     */
+    private async syncUserRoles(userId: string): Promise<void> {
+        log('👥 Syncing user roles')
+
+        const { data, error } = await getSupabaseClient()
             .from('user_roles')
             .select('*')
-            .gt('updated_at', lastPulledAt)
+            .eq('user_id', userId)
+            .is('deleted_at', null)
 
-        if (error) {
+        if (error || !Array.isArray(data)) {
             logCloudFailure('❌ Failed to sync user roles:', error)
             return
         }
+        const live = data as any[]
+        const sameRole = (local: UserRole, row: any) => local.role === row.role
+            && local.scopeType === row.scope_type
+            && (local.scopeId || null) === (row.scope_id || null)
 
-        if (!data || data.length === 0) {
-            log('✅ No new user role changes')
-            return
-        }
-
-        log(`📥 Received ${data.length} user role updates`)
-
-        const usersToSync = new Set<string>()
-
+        let added = 0
+        let updated = 0
+        let removed = 0
         await database.write(async () => {
             const collection = database.get<UserRole>('user_roles')
-            const operations = []
+            const local = await collection.query(Q.where('user_id', userId)).fetch()
 
-            for (const row of data as any[]) {
-                usersToSync.add(row.user_id) // Track user ID for profile sync
+            // By id first, so a match by role and scope cannot take a row that
+            // is another server role's own record
+            const matched = new Map<any, UserRole>()
+            const taken = new Set<string>()
+            const claim = (row: any, mine: UserRole | undefined) => {
+                if (!mine) return
+                matched.set(row, mine)
+                taken.add(mine.id)
+            }
+            for (const row of live) claim(row, local.find(r => r.id === row.id))
+            for (const row of live) {
+                if (!matched.has(row)) claim(row, local.find(r => !taken.has(r.id) && sameRole(r, row)))
+            }
 
-                // Check if exists
-                const existing = await collection.query(
-                    Q.where('user_id', row.user_id),
-                    Q.where('scope_type', row.scope_type),
-                    Q.where('scope_id', row.scope_id || '')
-                ).fetch()
-
-                if (existing.length > 0) {
-                    await existing[0].update((rec) => {
-                        rec.role = row.role
-                        rec.isActive = row.is_active
-                        rec.modifiedBy = row.modified_by
-                        rec.updatedAt = new Date(row.updated_at ?? Date.now())
-                    })
-                } else {
-                    const newRec = collection.prepareCreate((rec) => {
+            const operations: any[] = []
+            for (const row of live) {
+                const mine = matched.get(row)
+                const updatedAt = new Date(row.updated_at ?? Date.now())
+                if (!mine) {
+                    operations.push(collection.prepareCreate((rec) => {
+                        rec._raw.id = row.id
                         rec.userId = row.user_id
                         rec.role = row.role
                         rec.scopeType = row.scope_type
@@ -1281,28 +1625,57 @@ class SupabaseSyncService {
                         rec.modifiedBy = row.modified_by;
                         // Use _raw to bypass @readonly check
                         (rec._raw as any).created_at = new Date(row.created_at ?? Date.now()).getTime()
-                        rec.updatedAt = new Date(row.updated_at ?? Date.now())
-                    })
-                    operations.push(newRec)
+                        rec.updatedAt = updatedAt
+                    }))
+                    added++
+                } else if (mine.role !== row.role || mine.isActive !== row.is_active
+                    || (row.updated_at && Number(mine.updatedAt) !== updatedAt.getTime())) {
+                    // A promotion changes the role on the same server row (#248),
+                    // and an expiry set later arrives the same way
+                    operations.push(mine.prepareUpdate((rec) => {
+                        rec.role = row.role
+                        rec.isActive = row.is_active
+                        if (row.granted_at) rec.grantedAt = new Date(row.granted_at)
+                        rec.expiresAt = row.expires_at ? new Date(row.expires_at) : undefined
+                        rec.modifiedBy = row.modified_by
+                        rec.updatedAt = updatedAt
+                    }))
+                    updated++
                 }
             }
-            if (operations.length > 0) {
-                await database.batch(operations)
+
+            const unmatched = local.filter(r => !taken.has(r.id))
+            if (unmatched.length > 0 && live.length === 0) {
+                logWarn(`⚠️ The server lists no roles for this account, kept the ${unmatched.length} on this phone`)
+            } else if (unmatched.length > 0) {
+                // The creator's role in a project still to be created on the server,
+                // or refused there and kept on the phone (reconcileProjects, #449)
+                const createsQueued = new Set((await database.get<SyncOutbox>('sync_outbox')
+                    .query(
+                        Q.where('table_name', 'projects'),
+                        Q.where('status', Q.oneOf(['pending', 'failed', 'syncing', 'refused'])),
+                    )
+                    .fetch())
+                    .filter(op => op.operationType.toUpperCase() === 'CREATE')
+                    .map(op => op.recordId))
+                for (const r of unmatched) {
+                    if (r.scopeType === 'project' && !!r.scopeId && createsQueued.has(r.scopeId)) continue
+                    operations.push(r.prepareDestroyPermanently())
+                    removed++
+                }
             }
-            
-            // Update timestamp
-            if (data.length > 0) {
-                const maxTimestamp = Math.max(...data.map((d: any) => new Date(d.updated_at).getTime()))
-                await SyncStateService.set(LAST_PULLED_KEY, maxTimestamp.toString())
+
+            if (operations.length > 0) {
+                await database.batch(...operations)
             }
         })
 
         // Sync missing user profiles
-        if (usersToSync.size > 0) {
-            await this.syncUserProfiles(Array.from(usersToSync))
+        if (live.length > 0) {
+            await this.syncUserProfiles(Array.from(new Set(live.map(row => row.user_id as string))))
         }
 
-        log('✅ User roles sync complete')
+        log(`✅ User roles sync complete: ${live.length} on the server, ${added} added, ${updated} updated, ${removed} removed here`)
     }
 
     /**
@@ -1360,8 +1733,10 @@ class SupabaseSyncService {
      * them: the row is older than the change, and on 1 October 2026 applying it
      * put a deployment's local photo path back over the uploaded one, which made
      * the next upload drop the photo (#347). The record comes back in a later
-     * pull once the change is pushed. An outbox that cannot be read leaves the
-     * pull as it was, applying every row.
+     * pull once the change is pushed. A change the server refused (#449) or that
+     * is orphaned never will be, so it holds nothing back: the server's row is
+     * the one that stands. An outbox that cannot be read leaves the pull as it
+     * was, applying every row.
      */
     private async unsyncedRecordIds(table: 'projects' | 'devices' | 'deployments'): Promise<Set<string>> {
         try {
@@ -1556,11 +1931,6 @@ class SupabaseSyncService {
         const unsynced = await this.unsyncedRecordIds('devices')
 
         await database.write(async () => {
-            const collection = database.get<Device>('devices')
-
-            // Explicitly type the row to match Supabase schema
-            type DeviceRow = Database['public']['Tables']['devices']['Row']
-
             for (const row of data as DeviceRow[]) {
                 if (!row) {
                     logError('[Sync] Found undefined row in devices data!')
@@ -1574,29 +1944,7 @@ class SupabaseSyncService {
                     continue
                 }
 
-                // Check if exists
-                try {
-                    const existing = await collection.find(row.id)
-                    await existing.update((rec) => {
-                        rec.bluetoothId = row.bluetooth_id
-                        rec.name = row.name
-                        rec.organisationId = row.organisation_id ?? ''
-                        rec.deviceEui = row.device_eui ?? undefined
-                        rec.updatedAt = new Date(row.updated_at ?? Date.now())
-                    })
-                } catch (e) {
-                    // Not found, create
-                    await collection.create((rec) => {
-                        rec._raw.id = row.id || '' // Use server ID
-                        rec.bluetoothId = row.bluetooth_id
-                        rec.name = row.name
-                        rec.organisationId = row.organisation_id ?? ''
-                        rec.deviceEui = row.device_eui ?? undefined;
-                        // Use _raw to bypass @readonly check
-                        (rec._raw as any).created_at = new Date(row.created_at ?? Date.now()).getTime()
-                        rec.updatedAt = new Date(row.updated_at ?? Date.now())
-                    })
-                }
+                await database.batch(await prepareDeviceRow(row))
             }
             // Update timestamp
             const maxTimestamp = Math.max(...data.map((d: any) => new Date(d.updated_at).getTime()))
@@ -1604,6 +1952,45 @@ class SupabaseSyncService {
         })
 
         log('✅ Devices sync complete')
+    }
+
+    /**
+     * Fetch by id the device of any deployment on the phone that lacks it (#411)
+     *
+     * A deployment moved into one of this account's projects (ww-backend #260)
+     * arrives through the deployment pull, and its camera may never have been on
+     * this phone. The move bumps the device's updated_at, so the device pull
+     * normally brings it; this covers a pull that did not. It asks the server
+     * only when a device is missing, leaves the device watermark alone, and on
+     * a failure only logs, so the next sync asks again.
+     */
+    private async pullMissingDevices(): Promise<void> {
+        try {
+            const deployments = await database.get<Deployment>('deployments').query().fetch()
+            const wanted = Array.from(new Set(deployments.map(d => d.deviceId).filter((id): id is string => !!id)))
+            if (wanted.length === 0) return
+            const here = new Set((await database.get<Device>('devices')
+                .query(Q.where('id', Q.oneOf(wanted)))
+                .fetch())
+                .map(d => d.id))
+            const missing = wanted.filter(id => !here.has(id))
+            if (missing.length === 0) return
+
+            const { data, error } = await getSupabaseClient()
+                .from('devices')
+                .select('*')
+                .in('id', missing)
+            if (error) throw error
+            const rows = ((data ?? []) as DeviceRow[]).filter(row => !!row?.id)
+            if (rows.length > 0) {
+                await database.write(async () => {
+                    for (const row of rows) await database.batch(await prepareDeviceRow(row))
+                })
+            }
+            log(`📷 ${missing.length} device(s) of deployments on this phone were missing, fetched ${rows.length} by id`)
+        } catch (error) {
+            logCloudFailure('❌ Could not fetch the devices missing for deployments on this phone:', error)
+        }
     }
 
 
@@ -1635,6 +2022,8 @@ class SupabaseSyncService {
 
         log(`📥 Received ${data.length} deployment updates`)
 
+        // Before reading the outbox: work put back in the queue counts as unsynced
+        await this.restoreReturnedDeployments(data.map((row: any) => row.id))
         const unsynced = await this.unsyncedRecordIds('deployments')
 
         await database.write(async () => {
@@ -1671,6 +2060,26 @@ class SupabaseSyncService {
                         rec.captureMethodId = row.capture_method_id ?? undefined
                         rec.activityDetectionSensitivityId = row.activity_detection_sensitivity_id ?? undefined
                         rec.timelapseIntervalSeconds = row.timelapse_interval_seconds ?? undefined
+
+                        // The camera as it was at the start. Pulled since #426: a
+                        // deployment this phone did not start arrived with none.
+                        // It never changes after the start, so a value the server
+                        // lacks keeps the phone's. A server that still let an update
+                        // set it took nulls, and false for the registration, from
+                        // phones that ended a deployment they had pulled empty.
+                        rec.cameraModel = row.camera_model ?? rec.cameraModel
+                        rec.lorawanNetwork = row.lorawan_network ?? rec.lorawanNetwork
+                        rec.deviceEui = row.device_eui ?? rec.deviceEui
+                        rec.lorawanRegistrationCompleted = row.lorawan_registration_completed || rec.lorawanRegistrationCompleted
+                        rec.lorawanLastVerifiedAt = row.lorawan_last_verified_at ? new Date(row.lorawan_last_verified_at) : rec.lorawanLastVerifiedAt
+                        rec.aiModelId = row.ai_model_id ?? rec.aiModelId
+                        rec.bleFirmwareId = row.ble_firmware_id ?? rec.bleFirmwareId
+                        rec.himaxFirmwareId = row.himax_firmware_id ?? rec.himaxFirmwareId
+                        rec.batteryLevelAtStart = row.battery_level_at_start ?? rec.batteryLevelAtStart
+                        rec.sdCardTotalKbAtStart = row.sd_card_total_kb_at_start ?? rec.sdCardTotalKbAtStart
+                        rec.sdCardAvailableKbAtStart = row.sd_card_available_kb_at_start ?? rec.sdCardAvailableKbAtStart
+                        rec.lorawanRssiAtStart = row.lorawan_rssi_at_start ?? rec.lorawanRssiAtStart
+                        rec.lorawanSnrAtStart = row.lorawan_snr_at_start ?? rec.lorawanSnrAtStart
 
                         rec.name = row.name ?? ''
                         rec.setupBy = row.setup_by || ''
@@ -1714,6 +2123,21 @@ class SupabaseSyncService {
                         rec.activityDetectionSensitivityId = row.activity_detection_sensitivity_id ?? undefined
                         rec.timelapseIntervalSeconds = row.timelapse_interval_seconds ?? undefined
 
+                        // The camera as it was at the start (#426)
+                        rec.cameraModel = row.camera_model ?? undefined
+                        rec.lorawanNetwork = row.lorawan_network ?? undefined
+                        rec.deviceEui = row.device_eui ?? undefined
+                        rec.lorawanRegistrationCompleted = row.lorawan_registration_completed ?? false
+                        rec.lorawanLastVerifiedAt = row.lorawan_last_verified_at ? new Date(row.lorawan_last_verified_at) : null
+                        rec.aiModelId = row.ai_model_id ?? undefined
+                        rec.bleFirmwareId = row.ble_firmware_id ?? undefined
+                        rec.himaxFirmwareId = row.himax_firmware_id ?? undefined
+                        rec.batteryLevelAtStart = row.battery_level_at_start ?? undefined
+                        rec.sdCardTotalKbAtStart = row.sd_card_total_kb_at_start ?? undefined
+                        rec.sdCardAvailableKbAtStart = row.sd_card_available_kb_at_start ?? undefined
+                        rec.lorawanRssiAtStart = row.lorawan_rssi_at_start ?? undefined
+                        rec.lorawanSnrAtStart = row.lorawan_snr_at_start ?? undefined
+
                         rec.name = row.name ?? ''
                         rec.setupBy = row.setup_by || ''
                         rec.endedBy = row.ended_by ?? undefined
@@ -1751,6 +2175,42 @@ class SupabaseSyncService {
         })
 
         log('✅ Deployments sync complete')
+    }
+
+    /**
+     * A deployment kept on the phone as gone from the server (#411) that the
+     * server sends again, moved back into one of this account's projects or
+     * restored, is no longer gone: the mark is cleared and its orphaned changes
+     * go back in the queue. The pull then keeps the local copy, as for any
+     * change still to push (#349), and the push sends those changes.
+     */
+    private async restoreReturnedDeployments(pulledIds: string[]): Promise<void> {
+        if (pulledIds.length === 0) return
+        const returned = (await database.get<Deployment>('deployments')
+            .query(Q.where('id', Q.oneOf(pulledIds)))
+            .fetch())
+            .filter(isGoneFromServer)
+        if (returned.length === 0) return
+
+        const orphanedOps = await database.get<SyncOutbox>('sync_outbox')
+            .query(
+                Q.where('table_name', 'deployments'),
+                Q.where('record_id', Q.oneOf(returned.map(d => d.id))),
+                Q.where('status', 'orphaned'),
+            )
+            .fetch()
+        await database.write(async () => {
+            await database.batch(
+                ...returned.map(deployment => deployment.prepareUpdate(rec => {
+                    rec.customSyncStatus = undefined
+                })),
+                ...orphanedOps.map(op => op.prepareUpdate(o => {
+                    o.status = 'pending'
+                    o.errorMessage = undefined
+                })),
+            )
+        })
+        log(`↩️ ${returned.length} deployment(s) the server had taken away are back, ${orphanedOps.length} orphaned change(s) queued again`)
     }
 
     private parseDateToTimestamp(dateInput: any): number {

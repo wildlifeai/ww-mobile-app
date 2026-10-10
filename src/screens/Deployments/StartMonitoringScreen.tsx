@@ -44,7 +44,7 @@ export const StartMonitoringDetailsStep = () => {
 
     // Destructure everything from hook first
     const {
-        formState, submitting, project, availableProjects, sensitivityLabel,
+        formState, submitting, project, availableProjects, startRefusalReason, sensitivityLabel,
         device, bleDevice, isInitializing, initProgress, initStep, initErrors, setInitErrors, aiProcessorFailed,
         finishProgress, finishStep, finishLogs, isFinishing, isStartSuccess,
         handleImageCaptured,
@@ -124,6 +124,8 @@ export const StartMonitoringDetailsStep = () => {
         firmwareStatus.statuses.ble.isOutdated || 
         firmwareStatus.statuses.himax.isOutdated
     )
+    // An AI update this phone ran stopped part way, so the camera may be on the other camera's image (#374)
+    const isAiUpdateUnfinished = !!firmwareStatus.statuses.himax.unfinished
 
     const headerLeft = useCallback(() => (
         <IconButton
@@ -260,11 +262,13 @@ export const StartMonitoringDetailsStep = () => {
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                             <WWIcon source="alert-circle-outline" size={24} color="#E65100" />
                             <Text variant="titleSmall" style={{ color: '#E65100', marginLeft: 8, flex: 1 }}>
-                                Firmware Update Available
+                                {isAiUpdateUnfinished ? 'AI firmware update not finished' : 'Firmware Update Available'}
                             </Text>
                         </View>
                         <Text variant="bodySmall" style={{ color: '#E65100', marginBottom: 8 }}>
-                            One or more firmware components are outdated. We recommend updating them via the Engineer Console for optimal performance, but you may proceed with monitoring.
+                            {isAiUpdateUnfinished
+                                ? 'The last AI firmware update stopped part way, so the camera may be on the wrong image. Finish it before you start monitoring.'
+                                : 'One or more firmware components are outdated. We recommend updating them via the Engineer Console for optimal performance, but you may proceed with monitoring.'}
                         </Text>
                         <Button
                             mode="contained"
@@ -295,6 +299,14 @@ export const StartMonitoringDetailsStep = () => {
                                 onChange={handleProjectChange}
                                 disabled={submitting || isInitializing}
                             />
+                            {/* Why this account may not deploy into the chosen
+                                project: a viewer, or no role in it (#450).
+                                Start says it again on the press. */}
+                            {startRefusalReason && (
+                                <Text variant="labelSmall" style={[styles.startRefusal, { color: theme.colors.error }]}>
+                                    {startRefusalReason}
+                                </Text>
+                            )}
                         </View>
 
                         {/* Feature icons row */}
@@ -493,6 +505,9 @@ const styles = StyleSheet.create({
     modelOnPhone: {
         marginTop: 8,
         textAlign: 'center',
+    },
+    startRefusal: {
+        marginTop: 8,
     },
     projectSelectContainer: {
         marginBottom: 16,

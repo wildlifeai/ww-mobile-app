@@ -109,10 +109,21 @@ class KeepAwake {
      * what to put back. Idempotent: a second call while a hold is active does
      * nothing.
      *
+     * `exact` also brings a longer value down to `holdMs`, for a flow that
+     * needs the device to sleep soon as well as to stay awake: the Device Check
+     * waits for a sleep several times, and a bench unit left at 60 s made
+     * every one of those waits time out (6 October 2026). The longer value is
+     * put back the same way as a raised one.
+     *
      * @returns true when a hold is active afterwards; false when op8 could not
      *          be read, in which case nothing was written.
      */
-    public async acquire(session: KeepAwakeSession, deviceId: string, holdMs: number = DEFAULT_HOLD_MS): Promise<boolean> {
+    public async acquire(
+        session: KeepAwakeSession,
+        deviceId: string,
+        holdMs: number = DEFAULT_HOLD_MS,
+        options: { exact?: boolean } = {}
+    ): Promise<boolean> {
         if (this.holdsByDevice.has(deviceId)) return true
 
         const owed = await this.owed(deviceId)
@@ -132,8 +143,9 @@ class KeepAwake {
         // Write the hold when the device sleeps sooner than it, and also when it
         // sleeps later because of an earlier raise of ours that asked for more
         // (an owed original means the value on the device is ours). A larger
-        // value someone else chose is left alone.
-        const write = current < holdMs || (owed !== null && current > holdMs)
+        // value someone else chose is left alone, unless the caller asked for
+        // exactly the hold.
+        const write = current < holdMs || (current > holdMs && (owed !== null || options.exact === true))
         if (write) {
             await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: holdMs }))
         }

@@ -3,7 +3,7 @@
 > [!CAUTION]
 > **Superseded.** The window=2 design described here was never the shipped design. Current transport is credit-based streaming with cumulative ACKs (`windowSize ?? 12`). See [File-Transfer-Protocol.md](../resources/File-Transfer-Protocol.md) for the current protocol and [fast_file_transfer_proposal.md](fast_file_transfer_proposal.md) for how it got there.
 >
-> Retained for the `ftx err 7` root-cause analysis (§CRITICAL), which drove real firmware fixes. Note its error-code table marks codes 1 and 9 as "Fail"; the app's actual policy is `auto_once` for both — see `ERROR_RETRY_POLICY` in `fileTransferTypes.ts`.
+> Retained for the `ftx err 7` root-cause analysis (§CRITICAL), which drove real firmware fixes. Its error-code table is not the app's policy: the app retries a whole session only on code 7 and on a write timeout (`isRecoverable` in `runFileTransferPipeline.ts`).
 
 **Date:** 2026-04-29  
 **Mobile App Version:** 0.0.44  

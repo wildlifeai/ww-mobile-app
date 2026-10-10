@@ -39,8 +39,10 @@ const GOLDEN: Record<keyof typeof commandRegistry, Row> = {
     version: { wire: 'ver', accepts: 'WW500-C02 V 00.30.50 02:56:03 Sep 15 2026' },
     dfu: { wire: 'dfu', accepts: 'Device will enter DFU mode after disconnecting.' },
     reset: { wire: 'reset', accepts: 'Device will reset after disconnecting.' },
-    ping: { wire: 'ping', accepts: ['Joined', 'Not Joined'] },
-    pingToNetwork: { wire: 'ping', accepts: 'Pong', rejects: 'Error: no network' },
+    // Word for word from processPing() in ww-hardware ble_commands.c (dev,
+    // October 2026). `Not joined yet.` from WILD-7VQI, nRF 0.30.52, on the
+    // bench on 1 October 2026 (#348); `OK` and `Busy` from the source only.
+    ping: { wire: 'ping', accepts: ['OK', 'Not joined yet.', 'Busy'] },
     network: { wire: 'network', accepts: ['RSSI: -80dB, SNR: 5dB', 'No network comms yet'] },
     setutc: {
         args: ['2026-09-20T05:17:54.123Z'],
@@ -55,15 +57,26 @@ const GOLDEN: Record<keyof typeof commandRegistry, Row> = {
     selftest: { wire: 'selftest', accepts: 'Error bits = 0x0000' },
     wake: { wire: 'wake', accepts: ['Wake', 'Waking AI processor', 'AI processor is awake'] },
     camera_type: { wire: 'camera_type', accepts: 'Camera type: RP3' },
+    temp: { wire: 'temp', accepts: 'Temperature: 24.75C' },
+    getutc: { wire: 'getutc', accepts: 'UTC is: 2026-10-06T04:12:33Z' },
+    boardLed: { args: ['g', 2, 300], wire: 'flashg 2 300', accepts: 'Flashing 300ms 2 times' },
 
     // -- relayed to the Himax with the `AI ` prefix --
     aiinfo: { wire: 'AI info', accepts: '30000K total, 29000K available' },
     aiver: { wire: 'AI ver', accepts: 'WW500_C02 05:31:26 Sep 15 2026' },
     aireset: { wire: 'AI reset', accepts: 'Forcing reset' },
+    aidpd: { wire: 'AI dpd', accepts: 'Forcing DPD by clearing inactivity period', rejects: 'Unrecognised command' },
+    // The OK with its CRC from WILD-7VQI on the bench, 1 October 2026 (#374).
+    // The refusals word for word from prvFirmwareCommand, CLI-FATFS-commands.c
+    // in the Seeed repo (dev, 8 October 2026): both come before flash is touched.
     aifirmware: {
         args: ['OUTPUT.IMG', '0x1A2B'],
         wire: 'AI firmware OUTPUT.IMG 0x1A2B',
-        accepts: 'Firmware update OK',
+        accepts: ['Firmware update OK', 'Firmware CRC 0xAE0D matched. Firmware update OK. Executes at next reset.'],
+        rejects: [
+            'Error: CRC mismatch - file 0x1234, expected 0x1A2B. Flash NOT modified.',
+            "Error: cannot read '/MANIFEST/OUTPUT.IMG' for CRC check (4)",
+        ],
     },
     enableCamera: { wire: 'AI enable', accepts: ['Enabled Camera System', 'Camera Enabled'], rejects: 'already enabled' },
     setdid: {
@@ -103,6 +116,30 @@ const GOLDEN: Record<keyof typeof commandRegistry, Row> = {
         accepts: 'Captured 1 images. Last is AAF67400.JPG (File write 20ms avg.)',
     },
     light: { wire: 'AI light', accepts: 'Checking light level...', rejects: 'Unrecognised command' },
+    // The firmware's `flash` replies with an empty line; the processor's Sleep
+    // a second later is the first thing to match. Bench 3 September 2026,
+    // capture-flash-and-keep-awake: `AI flash 50 500` lit the LED.
+    // Bench, 6 October 2026, WILD-5WGJ on a 5 October RP3 build
+    vcm: {
+        args: [1023],
+        wire: 'AI vcm 1023',
+        accepts: 'VCM position set to 1023',
+        rejects: ['VCM write failed (1). Is the camera powered?', 'Unrecognised command'],
+    },
+    aiSetutc: {
+        args: ['2026-10-06T04:12:33.123Z'],
+        wire: 'AI setutc 2026-10-06T04:12:33Z',
+        accepts: 'RTC set to 2026-10-06T04:12:33Z (this took 1012ms)',
+        rejects: 'Error -2 setting RTC',
+    },
+    aiGetutc: { wire: 'AI getutc', accepts: ['2026-10-06T04:12:33Z', '2026:10:06 04:12:33'], rejects: 'Error -3' },
+    captureBurst: { args: [10, 300], wire: 'AI capture 10 300', accepts: 'Captured 10 images.' },
+    aiflash: {
+        args: [50, 500],
+        wire: 'AI flash 50 500',
+        accepts: 'Sleep',
+        rejects: ['Unrecognised command', 'Must supply brightness in range 0-100'],
+    },
     txfile: { args: ['AAF67400.JPG'], wire: 'AI txfile AAF67400.JPG', accepts: '251568 bytes in 34 packets' },
     // `Unrecognised` is the RP3 build's answer, bench 4 September 2026 (Seeed #211).
     md: {
@@ -167,6 +204,48 @@ describe('commandRegistry golden wire format', () => {
             }
         })
     }
+
+    it('sends both clocks whole seconds, given a time with or without milliseconds', () => {
+        // Cutting the string at the `.` sent `...54ZZ` for one without.
+        for (const time of ['2026-09-20T05:17:54.123Z', '2026-09-20T05:17:54Z']) {
+            expect(commandRegistry.setutc(time).build()).toBe('setutc 2026-09-20T05:17:54Z')
+            expect(commandRegistry.aiSetutc(time).build()).toBe('AI setutc 2026-09-20T05:17:54Z')
+        }
+        // And now, when no time is given.
+        expect(commandRegistry.aiSetutc().build()).toMatch(/^AI setutc \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/)
+    })
+
+    it('reads each ping reply as what the nRF did, and nothing else as a reply', () => {
+        // Until #348 the Signal Test waited for `Pong` and timed out on every
+        // answer, while Start Monitoring passed on `Not joined yet.`
+        const read = (line: string) => {
+            const cmd = commandRegistry.ping()
+            cmd.collect(line)
+            return cmd.parser()
+        }
+        expect(read('OK')).toBe('sent')
+        expect(read('Not joined yet.')).toBe('not_joined')
+        expect(read('Busy')).toBe('busy')
+        // The nRF's unprompted LoRaWAN lines, and what the app used to wait for
+        for (const line of ['Joined.', 'Already joined', 'Unconfirmed uplink message sent.', 'Pong', 'Not Joined']) {
+            expect(commandRegistry.ping().match(line)).toBe(false)
+        }
+    })
+
+    it('names each firmware update error code for the step xip_manager.c returns it from', () => {
+        // The table ran one off from -2 until #374: -2 is the erase, not an SD read
+        const failure = (code: number) => {
+            const cmd = commandRegistry.aifirmware('OUTPUT.IMG', '0x1A2B')
+            cmd.collect(`Firmware update FAILED (error ${code}). Existing firmware unchanged.`)
+            return () => cmd.parser()
+        }
+        expect(failure(-1)).toThrow('Firmware update failed: firmware file not found on SD card, or the slot selector could not be read')
+        expect(failure(-2)).toThrow('Firmware update failed: flash erase failed')
+        expect(failure(-3)).toThrow('Firmware update failed: flash write failed')
+        expect(failure(-4)).toThrow('Firmware update failed: flash verify mismatch, the data written does not match the file')
+        expect(failure(-5)).toThrow('Firmware update failed: slot selector write failed')
+        expect(failure(-6)).toThrow('Firmware update failed: unknown error (-6)')
+    })
 
     it('has a golden row for every command in the registry', () => {
         // A new command with no row is the only way to reintroduce #315.

@@ -16,7 +16,7 @@ import { scanStop } from "../redux/slices/scanningSlice"
 import { useBleActions } from "../providers/BleEngineProvider"
 import { isOurDevice } from "../utils/helpers"
 import { ImageReassembler } from "../utils/ImageReassembler"
-import { imageReassemblerEmitter, readlineParserEmitter } from "../ble/emitters"
+import { imageReassemblerEmitter } from "../ble/emitters"
 import { rxRouter } from "../ble/protocol/rxRouter"
 import { bleEventBus, BleEvent } from "../ble/protocol/eventBus"
 import { bleTransport } from "../ble/protocol/bleTransportController"
@@ -30,8 +30,6 @@ export const getBleManagerEmitter = () => {
 	}
 	return _bleManagerEmitter
 }
-
-export { readlineParserEmitter }
 
 export type UpdateValueEventType = {
 	characteristic: string
@@ -284,17 +282,17 @@ export const useBleListeners = () => {
 
 		dispatch(scanStop())
 	}, [dispatch, pingsPause])
-	const setupSubscriptions = useCallback(() => {
-		return [
-			getBleManagerEmitter().addListener("BleManagerDiscoverPeripheral", discoveredPeripheralEvent),
-			getBleManagerEmitter().addListener("BleManagerStopScan", scanStoppedEvent),
-			getBleManagerEmitter().addListener("BleManagerDisconnectPeripheral", deviceDisconnectedEvent),
-			getBleManagerEmitter().addListener("BleManagerDidUpdateValueForCharacteristic", readlineParser),
-		]
-	}, [discoveredPeripheralEvent, scanStoppedEvent, deviceDisconnectedEvent, readlineParser])
-
+	// Subscribed once, on mount, and the subscriptions are removed by the same
+	// effect: the handlers read the latest state through refs, so they are not
+	// in the dependency list.
 	useEffect(() => {
-		const subs = setupSubscriptions()
+		const emitter = getBleManagerEmitter()
+		const subs = [
+			emitter.addListener("BleManagerDiscoverPeripheral", discoveredPeripheralEvent),
+			emitter.addListener("BleManagerStopScan", scanStoppedEvent),
+			emitter.addListener("BleManagerDisconnectPeripheral", deviceDisconnectedEvent),
+			emitter.addListener("BleManagerDidUpdateValueForCharacteristic", readlineParser),
+		]
 		return () => {
 			subs.forEach(sub => sub.remove())
 		}

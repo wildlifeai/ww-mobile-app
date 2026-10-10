@@ -8,6 +8,7 @@ import { commandRegistry, isMdRefusal } from '../../../ble/protocol/commandRegis
 import { bleTransport } from '../../../ble/protocol/bleTransportController'
 import { createBleSession } from '../../../ble/session/createBleSession'
 import { flashHold } from '../../../ble/session/flashHold'
+import { flashLedHold } from '../../../ble/session/flashLedHold'
 import { keepAwake } from '../../../ble/session/keepAwake'
 import { mdIntervalHold } from '../../../ble/session/mdIntervalHold'
 import { OP_PARAMETER } from '../../../hooks/useDeviceSettings'
@@ -33,7 +34,7 @@ const INACTIVE_CHAR = '·'
 const EMPTY_GRID = Array(16).fill(INACTIVE_CHAR.repeat(16)).join('\n')
 
 /**
- * Undo what a test run set up: op18 back to 0, then the op11, op8 and flash
+ * Undo what a test run set up: op18 back to 0, then the op11, flash and op8
  * holds. Each step runs whether or not the one before it landed, and a hold
  * that cannot be written back stays owed in its module for the next flow on
  * that device (#271, #320). Every way out of a test ends here.
@@ -41,19 +42,31 @@ const EMPTY_GRID = Array(16).fill(INACTIVE_CHAR.repeat(16)).join('\n')
  * op11 goes first of the holds, and an op11 restore left owed by a dropped
  * link or a lost reply is paid here too: raised on a stopped camera, op11
  * turns motion capture back on in the field (#274).
+ *
+ * The flash is next, op13 and op9 then op34, and what a dropped test left
+ * owed on them is paid here too, whether or not this test used the flash.
+ * The firmware arms the STROBE for the sleep after this wake from op13 and
+ * the flash mode this wake started with, so a test that left op13 at its LED
+ * kept a camera flashing on every motion frame after the link was gone (#383).
+ * op8 goes last: if the link drops part way, it is the one that costs least.
  */
-const cleanUpAfterTest = (device: ExtendedPeripheral, why: string): Promise<void> => {
+const cleanUpAfterTest = async (device: ExtendedPeripheral, why: string): Promise<void> => {
     const session = createBleSession(device)
-    return session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TEST_MODE_BITS, value: 0 }))
-        .then(
-            () => log(`[MotionDetectionStream] TEST_MODE_BITS reset to 0 (${why})`),
-            (e: any) => logWarn(`[MotionDetectionStream] Failed to reset test mode bits (${why}):`, e)
-        )
-        .then(() => mdIntervalHold.release(session, device.id))
-        .then(() => mdIntervalHold.restorePending(session, device.id))
-        .then(() => keepAwake.release(session, device.id))
-        .then(() => flashHold.release(session, device.id))
-        .catch((e: any) => logWarn(`[MotionDetectionStream] Failed to release the test holds (${why}):`, e))
+    const steps: [string, () => Promise<unknown>][] = [
+        ['reset the test mode bits', () => session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TEST_MODE_BITS, value: 0 }))
+            .then(() => log(`[MotionDetectionStream] TEST_MODE_BITS reset to 0 (${why})`))],
+        ['release the op11 hold', () => mdIntervalHold.release(session, device.id)],
+        ['pay an owed op11 restore', () => mdIntervalHold.restorePending(session, device.id)],
+        ['release the op13 and op9 hold', () => flashLedHold.release(session, device.id)],
+        ['pay an owed op13 and op9 restore', () => flashLedHold.restorePending(session, device.id)],
+        ['release the op34 hold', () => flashHold.release(session, device.id)],
+        ['pay an owed op34 restore', () => flashHold.restorePending(session, device.id)],
+        ['release the op8 hold', () => keepAwake.release(session, device.id)],
+    ]
+    for (const [what, run] of steps) {
+        await Promise.resolve().then(run)
+            .catch((e: unknown) => logWarn(`[MotionDetectionStream] Could not ${what} (${why}):`, e))
+    }
 }
 
 /** A snapshot of one frame's motion detection grid. */
@@ -66,10 +79,10 @@ export interface FrameSnapshot {
 
 /**
  * What became of the sensitivity a test asked for, when the card should say
- * so. `refused`: the camera build rejected `AI md`, so every level detects the
- * same on it. `unconfirmed`: no answer came, so the level may or may not have
- * taken. Nothing to say when op17 already held the level or the camera
- * confirmed it (#272).
+ * so. `refused`: the camera build rejected `AI md`, the colour camera's, so
+ * every level detects the same on it. `unconfirmed`: the op17 write was not
+ * acknowledged, so the level may or may not have taken. Nothing to say when
+ * op17 already held the level or the camera confirmed the write (#272, #385).
  */
 export type SensitivityNote = { kind: 'refused' | 'unconfirmed'; message: string } | null
 
@@ -137,8 +150,10 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
 
             if (/About to capture\s+\d+\s+images/i.test(msg)) captureStartedRef.current = true
 
-            // Detect Wake (MD) — HM0360 internal threshold exceeded
-            if (/Wake \(MD\)/i.test(msg) || /^MD \d{4}-/i.test(msg.trim())) {
+            // The motion wake, HM0360 threshold exceeded: `Wake (MD)` and
+            // `MD <time>`, or `Wake (Motion)` and `Motion <time>` from the
+            // firmware of ww-hardware #60 and Seeed #260 (#412)
+            if (/Wake \((MD|Motion)\)/i.test(msg) || /^(MD|Motion) \d{4}-/i.test(msg.trim())) {
                 log('[MotionDetectionStream] Motion threshold exceeded!')
                 setMotionDetected(true)
                 if (motionTimeoutRef.current) clearTimeout(motionTimeoutRef.current)
@@ -272,6 +287,10 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
         bleEventBus.on('textLine', messageListener)
         return () => {
             bleEventBus.removeListener('textLine', messageListener)
+            if (motionTimeoutRef.current) {
+                clearTimeout(motionTimeoutRef.current)
+                motionTimeoutRef.current = null
+            }
         }
     }, [device])
 
@@ -280,7 +299,7 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
     // and op11 holds would stay behind with nothing left to clean them up
     // (#271, #274).
     const deviceRef = useRef(device)
-    deviceRef.current = device
+    useEffect(() => { deviceRef.current = device }, [device])
     useEffect(() => () => {
         if (activeRef.current && deviceRef.current) {
             activeRef.current = false
@@ -316,10 +335,9 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
     /**
      * Start the motion detection test.
      *
-     * Configures device OPs (test bits, flash, brightness) via session,
-     * holds op8 and op11 for the run, sets MD sensitivity when op17 differs,
-     * lets the device sleep so the HM0360 takes the test's rate, then fires a
-     * capture command.
+     * Sets the test bits, holds the flash (op13, op9, op34), op8 and op11 for
+     * the run, writes the MD sensitivity when op17 differs, lets the device
+     * sleep so the HM0360 takes the test's rate, then fires a capture command.
      * The device captures `captureCount` frames at `intervalMs` intervals,
      * streaming MD grid data over BLE. No JPEG files are saved
      * (TEST_BIT_SKIP_FILE_CREATION is enabled).
@@ -377,8 +395,6 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
             }
 
             const currentTestBits = currentOps ? parseInt(currentOps[OP_PARAMETER.TEST_MODE_BITS] ?? '0', 10) : -1
-            const currentFlashLed = currentOps ? parseInt(currentOps[OP_PARAMETER.FLASH_LED] ?? '0', 10) : -1
-            const currentBrightness = currentOps ? parseInt(currentOps[OP_PARAMETER.LED_BRIGHTNESS] ?? '0', 10) : -1
 
             // 1a. Enable TEST_BIT_SKIP_FILE_CREATION — only if not already set.
             setStatusMessage('Configuring test mode…')
@@ -392,19 +408,20 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                 log('[MotionDetectionStream] Test mode bits already set — skipping')
             }
 
-            // 1b. Set LED brightness if flash is enabled and value differs.
-            if (flashLed > 0 && currentBrightness !== ledBrightness) {
-                log(`[MotionDetectionStream] Setting LED brightness=${ledBrightness} (was ${currentBrightness})`)
-                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.LED_BRIGHTNESS, value: ledBrightness }))
+            // 1b. The flash LED and its brightness for the run, op13 and op9.
+            // Held, not just written: both are CONFIG.TXT settings the
+            // camera's own photos use, and a plain setop left them changed
+            // after the test (#387). flashLedHold keeps the originals on disk,
+            // so a dropped link or a killed app (#383) is paid back by the
+            // next test on the camera. It reads them from the op cache the
+            // getops above just filled; without that read nothing is written.
+            if (flashLed > 0 && currentOps) {
+                await flashLedHold.acquire(session, device.id, { led: flashLed, brightness: ledBrightness })
+            } else if (flashLed > 0) {
+                logWarn('[MotionDetectionStream] Parameters unreadable, so the flash LED and brightness are left as they are')
             }
 
-            // 1c. Set flash LED if enabled and value differs.
-            if (flashLed > 0 && currentFlashLed !== flashLed) {
-                log(`[MotionDetectionStream] Setting flash LED=${flashLed} (was ${currentFlashLed})`)
-                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_LED, value: flashLed }))
-            }
-
-            // 1c-ii. Arm the flash for the run. op13 alone does not light
+            // 1c. Arm the flash for the run. op13 alone does not light
             // anything: the firmware's ledFlashIsActive() also asks the flash
             // mode, and in the shipped AE mode a lit bench keeps it off. Held
             // at always-on for the test and put back when the test ends, the
@@ -450,38 +467,53 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                 return
             }
 
-            // 2. Set MD sensitivity via session.
-            //    Only when op17 does not already hold it: the level is saved on
-            //    the card, so a repeat run has nothing to write, and today no
-            //    `md` is ever acknowledged (the nRF drops the HM0360 build's
-            //    reply, ww-hardware #52; the RP3 build refuses it, Seeed #211).
-            //    A refusal or a lost reply is shown on the card, not swallowed:
-            //    the grid is read as evidence for the level (#272).
+            // 2. Set the MD sensitivity, op17, when it does not already hold
+            //    the level: it is saved on the card, so a repeat run has
+            //    nothing to write. Written with `setop`, the way a deployment
+            //    writes it: the camera acknowledges it, and the HM0360 build
+            //    applies op17 on the way into the sleep below and at the
+            //    capture's wake. `md` alone was never acknowledged, because the
+            //    nRF drops the HM0360 build's reply (ww-hardware #52), so Med
+            //    and High, which a reset camera does not hold, always ended in
+            //    "may not have taken" (#385). `md` is still sent, to learn
+            //    whether this build applies a level at all: the colour build
+            //    refuses it (Seeed #211). A refusal is shown on the card, not
+            //    swallowed, and op17 goes back to what it was (#272).
             if (sensitivityLevel !== undefined && sensitivityLevel > 0) {
                 const currentSensitivity = currentOps ? parseInt(currentOps[OP_PARAMETER.MD_SENSITIVITY] ?? '', 10) : NaN
                 if (currentSensitivity === sensitivityLevel) {
-                    log(`[MotionDetectionStream] MD sensitivity already ${sensitivityLevel}, not sending md`)
+                    log(`[MotionDetectionStream] MD sensitivity already ${sensitivityLevel}, not sending it`)
                 } else {
                     const levelName = SENSITIVITY_NAMES[sensitivityLevel] ?? String(sensitivityLevel)
                     setStatusMessage(`Setting sensitivity to ${levelName}…`)
                     log(`[MotionDetectionStream] Setting MD sensitivity to ${sensitivityLevel} (op17 was ${isNaN(currentSensitivity) ? 'unknown' : currentSensitivity})`)
-                    await session.execute(() => commandRegistry.md(sensitivityLevel))
-                        .catch((e: unknown) => {
-                            const reason = e instanceof Error ? e.message : String(e)
-                            if (isMdRefusal(e)) {
-                                logWarn(`[MotionDetectionStream] md refused by this camera build: ${reason}`)
-                                setSensitivityNote({
-                                    kind: 'refused',
-                                    message: 'This camera build does not take a sensitivity: Low, Med and High detect the same on it.',
-                                })
-                            } else {
-                                log(`[MotionDetectionStream] md not confirmed (non-critical): ${reason}`)
-                                setSensitivityNote({
-                                    kind: 'unconfirmed',
-                                    message: `The camera did not confirm sensitivity ${levelName}, so it may not have taken.`,
-                                })
-                            }
+                    const stored = await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.MD_SENSITIVITY, value: sensitivityLevel }))
+                        .then(() => true, (e: unknown) => {
+                            log(`[MotionDetectionStream] setop 17 not confirmed: ${e instanceof Error ? e.message : String(e)}`)
+                            return false
                         })
+                    const refusal = await session.execute(() => commandRegistry.md(sensitivityLevel))
+                        .then(() => null, (e: unknown) => e)
+                    if (refusal !== null && isMdRefusal(refusal)) {
+                        logWarn(`[MotionDetectionStream] md refused by this camera build: ${(refusal as Error).message}`)
+                        setSensitivityNote({
+                            kind: 'refused',
+                            message: 'The colour camera ignores the sensitivity, so Low, Med and High detect the same on it. The black & white camera applies it.',
+                        })
+                        // The level means nothing to this build, so the card
+                        // keeps the one it had, and the next visit asks again.
+                        if (stored && !isNaN(currentSensitivity)) {
+                            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.MD_SENSITIVITY, value: currentSensitivity }))
+                                .catch((e: unknown) => logWarn('[MotionDetectionStream] Could not put op17 back after the refusal:', e))
+                        }
+                    } else if (!stored) {
+                        setSensitivityNote({
+                            kind: 'unconfirmed',
+                            message: `The camera did not confirm sensitivity ${levelName}, so it may not have taken.`,
+                        })
+                    } else if (refusal !== null) {
+                        log(`[MotionDetectionStream] md unanswered (${refusal instanceof Error ? refusal.message : String(refusal)}); op17 is confirmed, so the level holds`)
+                    }
                 }
             }
 

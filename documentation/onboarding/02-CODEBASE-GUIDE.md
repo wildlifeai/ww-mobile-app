@@ -35,7 +35,7 @@ src/
 ├── database/               # WatermelonDB schema and models
 ├── types/                  # TypeScript type definitions
 ├── hooks/                  # Custom React hooks (BLE, sync, auth)
-├── utils/                  # Utility functions (incl. cameraVariant.ts, firmwareWords.ts, flashCameraMatch.ts, networkErrors.ts)
+├── utils/                  # Utility functions (incl. cameraVariant.ts, firmwareWords.ts, himaxFirmwareState.ts, flashCameraMatch.ts, networkErrors.ts)
 ├── providers/              # React context providers
 ├── ble/                    # BLE protocol engine (protocol/, session/, command registry)
 ├── features/               # Feature-specific modules (maps)
@@ -84,8 +84,6 @@ components/
 ├── form/                  # Form-specific components
 ├── sync/                  # Sync status indicators
 ├── ProjectCard.tsx        # Project list item
-├── DeploymentCard.tsx     # Deployment list item
-├── DeviceItem.tsx         # Device list item
 ├── EngineerConnectDialog.tsx # Side-drawer quick BLE connect for engineer console
 ├── NavigationBar.tsx      # Header bar
 ├── AppDrawer.tsx          # Side drawer menu
@@ -114,9 +112,8 @@ screens/                                  navigation/screens/
 │       └── useDeploymentMonitor.ts
 ├── Devices/
 │   ├── DeviceDiscoveryScreen / EngineerConsoleScreen
-│   ├── DevDeploymentTestScreen / DeviceResetScreen
+│   ├── DevDeploymentTestScreen / DeviceResetScreen / DeviceCheckScreen
 │   ├── DfuScreen / FirmwareUpdateScreen / FirmwareStatusScreen
-│   ├── AiModelTransferScreen  (defined and routed, but absent from the Flows modal)
 │   ├── FileTransferTestScreen / ModelValidationTestScreen
 │   ├── CapturePictureScreen / LightSensorScreen
 │   ├── StandaloneMotionDetectionScreen
@@ -128,7 +125,8 @@ screens/                                  navigation/screens/
 │       ├── useDeviceDiscovery.ts         # Scanner auto-connect + routing
 │       ├── useAutoConnectStateMachine.ts
 │       ├── useFirmwareUpdate.ts          # Himax update orchestration
-│       └── useMotionDetectionStream.ts
+│       ├── useMotionDetectionStream.ts
+│       └── useDeviceCheck.ts             # Screen state for the ship check
 ├── Projects/
 ```
 
@@ -171,26 +169,24 @@ services/
 ├── ProjectService.ts          # Project CRUD + outbox
 ├── DeploymentService.ts       # Deployment lifecycle
 ├── DeviceService.ts           # Device record management
+├── serverDevices.ts           # A camera's server row: read by Bluetooth id, written to the phone (#451)
 ├── UserRoleService.ts         # User role management
+├── roleAccess.ts              # What the roles let a user see, and do with a deployment
+├── deploymentAccess.ts        # May this account start or end a deployment, from the phone's roles (#450)
 ├── InvitationService.ts       # Member invitations
 ├── AiModelService.ts          # AI model metadata, the model file cache
 ├── ReferenceDataService.ts    # Downloaded reference data (capture methods, etc.)
 ├── FirmwareService.ts         # Firmware blob management, the firmware file cache
+├── himaxUpdateRecord.ts       # This phone's record of an AI pair update, to finish one that stopped (#374)
+├── himaxStatus.ts             # Whether a camera's AI firmware is current, for Firmware Status and the connect check (#464)
 ├── OfflinePrefetchService.ts  # Fills both caches after a sync, for the field (#333)
 ├── DfuService.ts              # Firmware updates (Nordic DFU)
-├── MockLoRaWANService.ts      # LoRaWAN mocking
 ├── DeploymentPhotoService.ts  # Deployment photo capture + upload
 ├── SupabaseSyncService.ts     # Bidirectional WatermelonDB ↔ Supabase sync
 ├── OutboxService.ts           # Queues offline operations for sync
 ├── SyncStateService.ts        # Sync state tracking
-├── SyncTriggerService.ts      # Sync coordination
-├── SyncBarrier.ts             # Event-driven initial-sync readiness barrier
-└── offline/
-    └── OfflineService.ts      # Connectivity monitoring; never initialised, the reconnect sync is connectivityWatch.ts + reconnectSync.ts
+└── SyncBarrier.ts             # Event-driven initial-sync readiness barrier
 ```
-
-> [!NOTE]
-> The sync services live at the top level of `src/services/`, **not** under `offline/`. `offline/` holds only `OfflineService.ts`.
 
 **Service Pattern**, all data services write to WatermelonDB first:
 ```typescript
@@ -235,9 +231,7 @@ hooks/
 ├── useCameraSwitch.ts         # Camera variant switching
 ├── useLightSensor.ts          # Light readings: AI light, the AE register block, op23/24/25, and the flash mode op34
 ├── useCameraReadiness.ts      # Is the camera usable: self-test bits + op10
-├── useOfflineSync.ts          # Offline sync triggers
 ├── useOfflineFiles.ts         # Is the project's model / the firmware image on this phone
-├── useOptimisticUpdate.ts     # UI responses before outbox confirms
 ├── useSupabaseAuth.ts         # Supabase auth hook
 ├── useSupabaseClient.ts       # Supabase client hook
 ├── useUserOrganisations.ts    # Org management
@@ -282,14 +276,18 @@ ble/
 ├── session/                    # Deterministic workflow API
 │   ├── createBleSession.ts     # Session factory
 │   ├── keepAwake.ts            # Hold a device awake for a screen visit (op8 raised, restored on exit or next connection)
-│   ├── flashHold.ts            # Hold the capture flash armed for a screen visit (op34 always-on, restored the same way)
+│   ├── flashHold.ts            # Hold the capture flash armed for a screen visit (op34 always-on, restored the same way; a deployment drops it)
+│   ├── flashLedHold.ts         # Hold a motion test's flash LED and brightness (op13, op9, restored the same way; a deployment drops it)
 │   ├── mdIntervalHold.ts       # Hold the HM0360 motion rate at a motion test's interval (op11, restored the same way; a deployment drops it)
 │   └── endDeploymentSession.ts # Ending a deployment: one probe, skip the camera after its first timeout, 20 s cap, `dis` exempt
 └── workflows/                  # Reusable BLE workflow functions
     ├── deploymentPipeline.ts   # Shared deployment pipeline
     ├── resetToDefaults.ts      # executeResetToDefaults, shared OP factory reset
     ├── configVerification.ts   # Post-firmware-update CONFIG.TXT handshake
-    └── checkSdCard.ts          # SD card health validation
+    ├── checkSdCard.ts          # SD card health validation
+    ├── deviceCheck.ts          # The ship check's steps (rules in utils/deviceCheck/)
+    ├── downloadPhoto.ts        # One photo off the SD card, outside a screen
+    └── lorawanPing.ts          # LoRaWAN test uplink: sent, not joined, busy, off (op32 0) or no answer, and its words
 ```
 
 ### `src/providers/`: Context Providers
@@ -320,25 +318,22 @@ database/
 
 ```text
 types/
-├── index.ts               # Central export for all type definitions (API, DB, BLE, Offline, etc.)
 ├── database.types.ts      # Auto-generated from Supabase schema
-├── api.types.ts           # Shared API types
 ├── device.ts              # Device-specific types
 ├── project.ts             # Project-specific types
-├── userProfile.ts         # User profile types
-└── offline.ts             # Offline operation types
+├── UserProfile.ts         # User profile types
+├── expo-constants.d.ts    # Typing for the app config extras
+└── expo-updates.d.ts      # Typing for expo-updates
 ```
 
-**Type Import Pattern:**
-To reduce the bundle size and prevent circular dependencies, **always import types from the central index** (`src/types/index.ts` or `src/types`) rather than individual files or the massive `database.types.ts` file. All conflicts are aliased safely.
+**Type Import Pattern:** import a type from the file that defines it, and take anything from
+`database.types.ts` with `import type`, which Babel removes, so the generated file never reaches
+the bundle or Jest. There is no central type index: the old `types/index.ts` was imported by
+nothing and went with the dead-code cleanup of #393.
 
 ```typescript
-// ✅ CORRECT: Import from central index
-import { OfflineUser, ProjectWithDetails } from "../../types"
-
-// ❌ WRONG: Don't import from specific files
-import { ProjectWithDetails } from "../../types/project"
-import { Database } from "../../types/database.types"
+import type { ProjectWithDetails } from "../../types/project"
+import type { Database } from "../../types/database.types"
 ```
 
 **Regenerate types after backend changes:**
@@ -440,8 +435,8 @@ const syncSlice = createSlice({
 | Components | PascalCase | `ProjectCard.tsx` |
 | Screens | PascalCase + `Screen` | `ProjectDetailsScreen.tsx` |
 | Services | PascalCase + `Service` | `ProjectService.ts` |
-| Hooks | camelCase + `use` prefix | `useOfflineSync.ts` |
-| Types | camelCase | `offline.ts` |
+| Hooks | camelCase + `use` prefix | `useScanLoop.ts` |
+| Types | camelCase | `project.ts` |
 | Redux slices | camelCase + `Slice` suffix | `authSlice.ts` |
 
 ---

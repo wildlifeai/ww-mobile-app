@@ -10,7 +10,7 @@ import { OP_PARAMETER } from '../../../../hooks/useDeviceSettings'
 jest.mock('../../../../utils/logger', () => ({ log: jest.fn(), logWarn: jest.fn(), logError: jest.fn() }))
 jest.mock('../../../../ble/session/createBleSession', () => ({ createBleSession: jest.fn() }))
 jest.mock('../../../../ble/session/keepAwake', () => ({ keepAwake: { acquire: jest.fn(async () => true), release: jest.fn(async () => {}) } }))
-jest.mock('../../../../ble/session/flashHold', () => ({ flashHold: { acquire: jest.fn(async () => true), release: jest.fn(async () => {}) } }))
+jest.mock('../../../../ble/session/flashHold', () => ({ flashHold: { acquire: jest.fn(async () => true), release: jest.fn(async () => {}), restorePending: jest.fn(async () => {}) } }))
 jest.mock('../../../../ble/protocol/bleTransportController', () => ({ bleTransport: { clearAll: jest.fn() } }))
 // The owed restore lives on disk, so the store has to keep what it is given
 // across steps; `restoreMocks: true` empties the global mock between them.
@@ -326,6 +326,27 @@ describe('useMotionDetectionStream op11 hold', () => {
         expect(camera.lines.filter(line => line.startsWith(`AI setop ${MD_INTERVAL} `))).toEqual([])
         expect(camera.op11()).toBe('1000')
     })
+
+    // BLE firmware with ww-hardware #60 renames the wake; cameras run both (#412)
+    it.each(['Wake (MD)', 'Wake (Motion)', 'MD 2026-10-08T05:51:02Z', 'Motion 2026-10-08T05:51:02Z'])(
+        'shows motion for %s, and not for the reply to md',
+        async (wake) => {
+            const camera = makeCamera('0')
+            const rendered = await startAcknowledged(camera)
+
+            await act(async () => {
+                emit(camera.device.id, 'MD sensitivity set to 2')
+                await settle()
+            })
+            expect(rendered.result.current.motionDetected).toBe(false)
+
+            await act(async () => {
+                emit(camera.device.id, wake)
+                await settle()
+            })
+            expect(rendered.result.current.motionDetected).toBe(true)
+        },
+    )
 
     it('captures without waiting when op11 cannot be read', async () => {
         const camera = makeCamera('0')

@@ -38,7 +38,17 @@ BEGIN
   -- =============================================================================
   -- VALIDATION: Authorization Check
   -- =============================================================================
-  -- Only project admins can remove members from their projects
+  -- Only project admins can remove members from their projects.
+  --
+  -- And the remover is the caller. p_removed_by is an argument the caller
+  -- chooses, so authorising it as supplied let anyone evict members, the real
+  -- admin included, by passing that admin's id (test 21). A service-role call
+  -- has no auth.uid() and is refused too; nothing server-side calls this.
+
+  IF p_removed_by IS DISTINCT FROM (SELECT auth.uid()) THEN
+    RAISE EXCEPTION 'Unauthorized: p_removed_by must be the calling user'
+      USING ERRCODE = '42501';
+  END IF;
 
   IF NOT public.has_project_role(p_removed_by, p_project_id, 'project_admin') THEN
     RAISE EXCEPTION 'Unauthorized: Only project admins can remove members'

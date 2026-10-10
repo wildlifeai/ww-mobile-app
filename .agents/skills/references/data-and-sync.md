@@ -25,8 +25,17 @@ version for humans is
   check treated the creator as a stranger to their own project until a sync.
   `ProjectService.createProject` now writes that role row in the same batch as the project. It
   is never queued (the server makes its own, and `user_roles` writes from the app are refused
-  by RLS), and `syncUserRoles` later updates it in place, because it matches roles by user and
-  scope, not by id. Keep that matching, or the pull will duplicate the row.
+  by RLS), and `syncUserRoles` later updates it in place, because it matches a role by id and
+  then by role and scope. Keep that matching, or the pull will duplicate the row.
+- **The role pull reads all of this account's live roles on every sync (#375).** The select
+  policy hides soft-deleted rows, so a role taken away, or the lower of two roles in one scope
+  that ww-backend #248 soft-deleted, never shows in `updated_at > watermark`; it only shows as
+  absence. So `syncUserRoles` has no watermark: it matches each server row by id, then by role
+  plus scope, with a system role's NULL scope matching NULL, and removes this account's other
+  local roles. The old lookup asked for `scope_id = ''` and left out the role, so every full
+  pull added a copy of a system role and two roles in one scope shared a row. It keeps the
+  creator's role while the project's `CREATE` is queued, keeps everything when the server lists
+  no roles, and never touches another account's rows (the member cache, an earlier sign-in).
 - **Server-only actions say so offline, they are not queued.** Invitations are made by
   `send_project_invitation`, so the Invite card tells the user it needs a connection instead of
   calling. Role changes and removals are the same (#335): `UserRoleService` asks
@@ -73,6 +82,14 @@ version for humans is
   is `connectivityWatch.ts` and `reconnectSync.ts`, wired in `AppSetupProvider`: 3 s of connection,
   a valid session, one sync. Redux `network.isOnline` stays false throughout, so read NetInfo, as
   `SupabaseSyncService.sync()` does.
+- **A sync asked for while one runs is not dropped** (8 October 2026). `sync()` used to return
+  and forget it, and the running sync had read the outbox before the change was queued, so a
+  deployment started then waited for the next trigger. It now sets `syncAgain` and the running
+  sync runs once more as it ends; `resetSyncState` does the same for a sync turned away at
+  start-up by the in-progress flag of a killed run. A write the website needs while the app is
+  open calls `requestSync()` (fire and forget, never throws, nothing offline), as
+  `DeploymentService` does on start and end. The full list of triggers is in
+  [03-DATA-AND-SYNC.md](../../../documentation/onboarding/03-DATA-AND-SYNC.md#when-the-outbox-is-pushed).
 - **Offline is not an error.** The "Offline Mode" banner, rendered once by `OfflineAwareRoot`, is
   the only sign. Cloud calls that fail for network reasons log with `logCloudFailure`, not
   `logError`, and skip themselves when NetInfo reports no connection. supabase-js prints its own
@@ -85,22 +102,32 @@ version for humans is
   in the cache, before anything is written. Ask "is it here" with
   `AiModelService.isDownloaded` or `FirmwareService.isFirmwareDownloaded`, the same checks the
   downloads make, and hold `FirmwareService.holdCache()` for the whole of anything that reads
-  an image, or the pre-download may remove it as an older version. The two triggers, at the
-  end of `SupabaseSyncService.sync` and `ReferenceDataService.syncReferenceData`, are lazy
-  `require`s: Jest here rejects a dynamic `import()` (no VM modules flag), so a trigger written
-  that way type-checks and never runs under test.
+  an image, or the pre-download may remove it as an older version. The two triggers, in
+  `SupabaseSyncService.sync` once the pull is in and at the end of
+  `ReferenceDataService.syncReferenceData`, are lazy `require`s: Jest here rejects a dynamic
+  `import()` (no VM modules flag), so a trigger written that way type-checks and never runs
+  under test. The site photo upload's did exactly that until #449.
 - **A site photo is uploaded, then its local file goes.** `DeploymentPhotoService` swaps each
   local path on the deployment for its bucket path after the upload, and runs one pass per
   deployment at a time, merged against the record at write time. A pull no longer puts the
   older row back over a record whose change is still in the outbox (#349), and a local path
-  whose file is gone is still looked up in the bucket before it is dropped (#347).
-- **A deployment must carry its device with it.** The push order, `projects`, `devices`,
-  `deployments`, is a foreign-key order, and `DeploymentService.createDeployment` queues an
-  idempotent device CREATE alongside the deployment, since the server's devices insert is
-  `ON CONFLICT DO NOTHING`, so the device row always reaches the server first. Without it the
-  first push fails `23503` and only a self-healing retry recovers it a cycle later, which the
-  operator sees as a sync error (#294). A bare "touch" to trigger reactivity is not a sync
-  operation.
+  whose file is gone is still looked up in the bucket before it is dropped (#347). Each sync
+  retries them, and the pre-download runs, after the pull and before the push error is thrown
+  (#449): thrown first, one refused change stopped both on every sync.
+  Only an account that may change the deployment uploads its photos (`mayChangeDeployment`,
+  #467): storage lets any member upload, but the path swap is a deployment UPDATE, and refused
+  it left the photo in the bucket with nothing pointing at it and the local file gone.
+- **A camera has one id, the server's (#451).** `devices.bluetooth_id` is unique on the server
+  and the devices insert is `ON CONFLICT (id)` only, so a second local id for one camera fails
+  `23505`. The scanner asks the server before it registers a camera the phone lacks
+  (`DeviceService.adoptFromServer`), and the push settles a `23505` on `bluetooth_id`
+  (`settleTakenBluetoothId`) and a `42501` on a device the server already shows
+  (`settleDeviceAlreadyOnServer`); the cases are in
+  [03-DATA-AND-SYNC.md](../../../documentation/onboarding/03-DATA-AND-SYNC.md#a-camera-the-server-already-has).
+  Do not queue a device `CREATE` with a deployment again: the one `createDeployment` queued
+  from 5 September 2026 was refused `42501` for any camera of another organisation, and showed
+  in Settings as a refused "New camera" once per deployment. A device whose `CREATE` is truly
+  missing is healed by the `23503` path a sync later (#294).
 - **A refused table must not stop the others (#287).** `uploadOutbox` pushes each table in
   that order but never breaks the chain: a refused multi-record call is retried record by
   record, and only a deployment whose parent the server does not have waits. Every
@@ -109,27 +136,53 @@ version for humans is
   table in `syncing`, which nothing re-read, so those changes were stranded for good; `syncing`
   at the start of a push now means "cut short" and is resumed. A push error no longer skips the
   pull.
+- **A change the server refuses for good is kept, never sent again (#449).** ww-backend keeps
+  failing the whole call on a refused insert (#319, not planned), so the classification
+  happens where a call carries one record: the record-by-record retry, or a table with one
+  record to send. There, `42501` (RLS or a trigger) and `23P01` (a second open deployment on
+  one camera, ww-backend #324) mark that record's operations `refused`, with the SQLSTATE and
+  message in `error_message`. So does `not_applied` on an `UPDATE` or `DELETE`, unless the
+  same call carried that record's `CREATE`: the reply names rows, so the entry may be the
+  CREATE's, and the change goes again alone. Everything else stays `failed` and is retried
+  every sync: no code (network, gateway), any other code (`23503`, a timeout, `PGRST303`), and
+  `42501` with HTTP 401, which is PostgREST's answer to a call with no signed-in user. A device
+  `CREATE` refused `23505` follows the camera rule above. Where the code asks "is there work
+  not yet uploaded" (the project reconcile, server deletions, the creator's role), `refused`
+  counts, so nothing is destroyed; it holds no pull back. Settings
+  shows the count under Data Synchronization (`RefusedChangesItem`, from
+  `OutboxService.observeRefusedOperations`), with each reason on a tap. Nothing re-queues a
+  refused operation, except that a later project or deployment deletion may turn it
+  `orphaned`.
 - **Incremental pulls never see a row disappear (#330).** A project deleted on the website,
   wiped by a Dev reset or taken away by removing the account from it never appears in
   `updated_at > watermark`, so `reconcileProjects`, run after a `syncProjects` that completed,
   compares the phone with the full list of project ids the server gives this account. A
-  project missing there, with no `CREATE` queued or in flight, loses its row, its synced
+  project missing there, with no `CREATE` queued, in flight or refused, loses its row, its synced
   deployments and its roles. Anything not uploaded stays: a deployment with an unsynced change
   or a local photo keeps its row, and this account's queued operations become `orphaned`,
   never retried, with the project named in `error_message` (`OutboxService.getOrphanedOperations`,
   `getStatistics().orphaned`). Another account's held operations are not touched. It does
   nothing on a failed read, on a list shorter than its own count, or when it would remove every
   project on the phone. Orphaned operations go back to `pending` if the project reappears, and a
-  server project the phone lacks clears the project, role and deployment watermarks for a full
+  server project the phone lacks clears the project and deployment watermarks for a full
   pull. There is still no screen for orphaned work.
 - **A project edit sends only the fields it changed (#330).** The edit form passes every field,
   and a full record from a stale phone overwrote newer website values (Sinbad's model and GPS,
   29 September). `ProjectService.updateProject` diffs the record before and after and queues
   only the changed columns; `push_changes` keeps any column the payload leaves out. Deployment
-  updates are still full records.
+  updates do the same since #411, through `prepareDeploymentUpdate`: ending a deployment or
+  swapping in a photo path used to put a stale phone's location back over a website edit. A
+  `CREATE` is still the whole record. The outbox never merges two changes to one row: each goes
+  up as its own row, oldest first.
+- **A deployment or device the server deletes or takes away leaves the phone (#411)**, from the
+  `deleted` lists of `pull_changes` (`applyServerDeletions`), unless it holds work not yet
+  uploaded: then it stays, marked `GONE_FROM_SERVER`, and nothing more is uploaded for it. A
+  deployment whose device is not on the phone fetches it by id (`pullMissingDevices`). The
+  rules are in [03-DATA-AND-SYNC.md](../../../documentation/onboarding/03-DATA-AND-SYNC.md#pull).
 - **`push_changes` returns `conflicts` as an array of `{id, reason: 'not_applied'}`**, not a
   count. For an `UPDATE` or `DELETE` it means the change did not land (row missing, or RLS
-  said no) and the operation stays `failed`; for a `CREATE` it means the row already exists.
+  said no) and the operation is `refused` (#449); for a `CREATE` it means the row already
+  exists, and it is marked `synced`. Never change that last part.
   Until #287 the app read `data.conflicts > 0` and `conflict_details`, neither of which exists,
   and marked refused updates `synced`.
 - **One phone, several accounts (#267).** Pull watermarks are one set per phone, owned by
@@ -168,5 +221,17 @@ a number, and any version below about 402 in an older document means nothing.
 ## The schema is generated, not written
 
 `src/database/schema.ts` comes from `npm run schema:generate`, and schema changes originate in
-`wildlife-watcher-backend`. `src/types/database.types.ts` comes from `types:cloud-dev`. Neither
+`wildlifeai/ww-backend`. `src/types/database.types.ts` comes from `types:cloud-dev`. Neither
 is hand-edited.
+
+**A model `@date` needs a `number` column.** `@date` writes epoch milliseconds, and WatermelonDB
+fits each value to its column's type, so on a `string` column it keeps null (`''` when
+required) and reads back null, with no error. Supabase types every timestamp as a string, so
+the generator turns each one the models read with `@date` into a number by name, and the
+validator lists the same columns; both lists are in
+[scripts/README.md](../../../scripts/README.md#validate-watermelon-schemajs), "Timestamps".
+Until schema 407 every role on every phone lost `granted_at` and `expires_at` this way (#425).
+`src/database/__tests__/dateColumns.test.ts` fails on a `@date` over a non-number column. The
+fake database in `tests/setup/helpers/fakeDatabase.ts` keeps whatever it is given, so a test of
+what the phone stores needs the real one: `src/services/__tests__/storedDates.test.ts` runs
+WatermelonDB on LokiJS with the generated schema.

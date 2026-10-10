@@ -13,16 +13,17 @@ quickstart.
 ## Run it
 
 ```bash
-npm install                                   # macOS/Linux
-npm install --ignore-scripts && npx patch-package   # Windows (see note)
+npm install
 npm run android:doctor   # JDK 17, Android SDK, adb device, Supabase env
 npm run android          # preflight, types, schema sync, build, launch
 npm run android:local    # skips the two network steps (fast iteration loop)
 ```
 
 `postinstall` applies `patches/` via patch-package, and skipping it breaks the native build.
-On Windows plain `npm install` aborts on the `maestro` package's shell postinstall, so run
-`patch-package` by hand as above.
+Plain `npm install` works on Windows since October 2026, when the npm package `maestro` (an
+unrelated AWS tool whose shell postinstall aborted the install) left `devDependencies`; if an
+install still dies in a postinstall, `npm install --ignore-scripts && npx patch-package` reaches
+the same state. Mobile Maestro is a separate CLI, see the Testing Guide.
 
 Needs a `.env.development`, copied from `.env.example` with the Dev anon key pasted in. The
 app cannot reach Supabase without it. iOS builds require macOS; there is no tracked `ios/`
@@ -46,14 +47,22 @@ npm run type-check       # tsc --noEmit
 npm run lint             # ESLint
 npm run version:check    # the 5 files carrying the app version agree
 npm run docs:validate    # every path/link in documentation/ resolves
-npm run test:maestro:smoke   # the one E2E flow CI requires: install, launch, screenshot
+npx --yes knip@6.39.0    # dead code: unused files, exports, dependencies (Testing Guide)
+npm run test:maestro:smoke   # the E2E flow every PR runs, advisory: install, launch, the login screen renders
 ```
 
 All of these run in CI on each pull request; the smoke flow runs after the native build,
-which a docs-only PR skips. Every check that can be required also runs on `merge_group`,
+which a docs-only PR skips. CI builds the release-type `e2e` EAS profile for it, because a
+development client carries no JavaScript and only ever showed Expo's launcher. The fuller
+flows (`E2E Full`, on the `full-e2e` label) sign in as a seeded cloud-dev user from two
+secrets; what each proves is in the Testing Guide. Every check that can be required also runs on `merge_group`,
 so `dev` can sit behind a merge queue without touching the workflows. PR-Agent is the one
 that cannot: it triggers on open and on comments, so it stays advisory.
 The coverage floor is a ratchet at 20%: it only moves up, by hand.
+Four checks are required on `dev`: `Cloud Type Validation Summary`, `commitlint`, `quality-gates (22.x)`
+and `quality-gates (24.x)`. Everything else is advisory, E2E Smoke, Expo Doctor, React Doctor, Dead Code
+and the WatermelonDB schema check included: they can show red but do not stop a merge. iOS builds once
+a week. The Testing Guide's CI/CD table lists every workflow, what it proves and whether it blocks.
 
 ## Non-negotiables
 
@@ -113,8 +122,10 @@ The coverage floor is a ratchet at 20%: it only moves up, by hand.
 | BLE engine | `src/ble/`, meaning protocol/, session/ and workflows/; deep dive in `documentation/resources/BLE_Architecture.md` |
 | Day/night light sensor | `documentation/resources/Light-Sensor.md`: op23 to op26, `AI light`, why op25 reads stale, and the flash mode op34 that decides whether any of it reaches the LED |
 | Capture Picture | `documentation/resources/Capture-Picture.md`: the capture in order, the 3 s hold, what applies at wake, and the flash hold that arms the LED for the visit |
+| Device Check | `documentation/resources/Device-Check.md`: the ship check's steps and pass rules, why sharpness is the JPEG's size, and what it changes and puts back |
 | Device flows | `documentation/onboarding/05-DEVICE-FLOWS.md`, `06-BLE-CONNECTIONS.md` |
 | Offline/sync | `documentation/onboarding/03-DATA-AND-SYNC.md` |
 | Sign-in, sessions, Google sign-in and its setup | `documentation/resources/Authentication-Implementation-Guide.md` |
+| E2E flows, the EAS profile CI builds and why, how to read a failed run | `documentation/resources/Testing-Guide.md`, "Maestro E2E Testing" |
 | Developer settings, Dev Build Info, first-run tutorial | `documentation/resources/Developer-Settings.md` |
 | How the code got this way | `documentation/development reports/` |

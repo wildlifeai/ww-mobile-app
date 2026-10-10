@@ -28,14 +28,6 @@ import { Q } from '@nozbe/watermelondb'
 
 export type ProjectRole = "project_admin" | "project_member" | "viewer"
 
-export interface OrganizationUser {
-	id: string
-	name: string
-	email: string
-	roles: any
-	is_in_project: boolean
-}
-
 export interface ProjectMember {
 	id: string // User ID
 	name: string

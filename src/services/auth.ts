@@ -293,6 +293,20 @@ export const readStoredSession = async (): Promise<Session | null> => {
 }
 
 /**
+ * Removes the session `readStoredSession` reads, from the same storage under
+ * the same key, without asking the server: the half of a sign-out that needs
+ * no network (#360). auth-js's other keys are its own `signOut`'s to clear.
+ */
+const removeStoredSession = async (): Promise<void> => {
+	const auth = supabase().auth as unknown as {
+		storageKey?: string
+		storage?: { removeItem: (key: string) => Promise<void> | void }
+	}
+	if (!auth.storageKey || !auth.storage) return
+	await auth.storage.removeItem(auth.storageKey)
+}
+
+/**
  * Whether auth-js will refresh this session before handing it out, using the
  * same 90 s margin it does (EXPIRY_MARGIN_MS).
  */
@@ -562,17 +576,38 @@ export const register = async (
 }
 
 /**
- * Logout current user
+ * Sign out of this phone, with or without a connection (#360).
+ *
+ * auth-js's `signOut` asks the server first and removes the stored session
+ * only once the server has answered, so offline it kept it and the next launch
+ * opened from it (`setupAuthListener`). So the stored session goes first, which
+ * needs no network. `signOut` then finds none to send: it clears auth-js's
+ * other keys and announces SIGNED_OUT. It can wait behind a token refresh,
+ * half a minute offline, so nothing waits for it.
+ *
+ * The server hears last, when there is a connection, so this session's refresh
+ * token is refused from then on. `local` scope ends this phone's session only,
+ * not the same account on the website or another phone. An access token that
+ * has already expired is refused (401), and the session then ends on the phone
+ * only.
  */
 export const logout = async (): Promise<void> => {
-	try {
-		const { error } = await supabase().auth.signOut()
-		if (error) {
-			throw new Error(error.message)
-		}
-	} catch (error) {
-		logError("Logout error:", error)
-		throw error
+	const auth = supabase().auth
+	const stored = await readStoredSession()
+	await removeStoredSession()
+
+	auth.signOut({ scope: "local" })
+		.then(({ error }) => {
+			if (error) logWarn("auth-js sign-out after removing the stored session:", error)
+		})
+		.catch((error) => logWarn("auth-js sign-out after removing the stored session:", error))
+
+	if (stored?.access_token && !(await isKnownOffline())) {
+		auth.admin.signOut(stored.access_token, "local")
+			.then(({ error }) => {
+				if (error) logCloudFailure("Could not end the session on the server:", error, error.status)
+			})
+			.catch((error) => logCloudFailure("Could not end the session on the server:", error))
 	}
 }
 

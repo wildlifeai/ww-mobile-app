@@ -120,10 +120,10 @@ window) and always-on was the default; firmware `d9d9d253` on 5 July 2026 remove
 and made op13 light-driven only. The app's Off / White / IR selector was written for the earlier
 meaning.
 
-**How the bench screens arm it.** Capture Picture and the Motion Detection preview hold op34 at
-2 (always on) for as long as they are open and write the previous mode back on the way out,
-through [`flashHold.ts`](../../src/ble/session/flashHold.ts). A flash chosen on those screens
-therefore fires whatever the room, which is what choosing it there means, and the project's mode
+**How the bench screens arm it.** Capture Picture holds op34 at 2 (always on) for as long as it
+is open, and the Motion Detection preview for each test that asks for a flash, and both write the
+previous mode back on the way out, through [`flashHold.ts`](../../src/ble/session/flashHold.ts).
+A flash chosen on those screens therefore fires whatever the room, which is what choosing it there means, and the project's mode
 is back on the device before the next deployment. The hold is remembered on disk, so a dropped
 link or a killed app restores it on the next visit. On firmware without op34 the older op25 = 1
 write still applies, on Capture Picture only. The screens themselves are described in

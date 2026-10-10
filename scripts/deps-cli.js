@@ -10,7 +10,7 @@
  *   npm run deps manage            - Full interactive manager
  */
 
-const { execSync } = require("child_process")
+const { execFileSync } = require("child_process")
 const path = require("path")
 
 const command = process.argv[2]
@@ -56,9 +56,9 @@ function runInteractiveManager(action = null) {
 	try {
 		if (action) {
 			// Future enhancement: pass action to manager
-			execSync(`node ${managerScript}`, { stdio: "inherit" })
+			execFileSync(process.execPath, [managerScript], { stdio: "inherit" })
 		} else {
-			execSync(`node ${managerScript}`, { stdio: "inherit" })
+			execFileSync(process.execPath, [managerScript], { stdio: "inherit" })
 		}
 	} catch (error) {
 		console.error("❌ Failed to run dependency manager:", error.message)

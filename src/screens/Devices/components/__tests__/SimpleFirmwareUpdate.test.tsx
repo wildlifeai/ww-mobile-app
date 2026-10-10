@@ -130,6 +130,19 @@ describe("SimpleFirmwareUpdate", () => {
 		expect(onStart).toHaveBeenCalled()
 	})
 
+	// #374: an update cut short between its images reads as one to finish, never as up to date
+	it("says where an unfinished update stopped and offers Finish update instead of Update", () => {
+		const onStart = jest.fn()
+		const line = "The last update stopped after image 1 of 2. Finishing installs the night-IR image, the 30 Sep build, and puts the camera back on the night-IR camera."
+		view({ unfinished: line, onStart })
+
+		expect(screen.getByText(line)).toBeTruthy()
+		expect(screen.queryByText(/^Update from|Up to date/)).toBeNull()
+		expect(screen.queryByText("Update")).toBeNull()
+		fireEvent.press(screen.getByText("Finish update"))
+		expect(onStart).toHaveBeenCalled()
+	})
+
 	it("ends on one result line and Done", () => {
 		const onDone = jest.fn()
 		view({ isComplete: true, newVersion: "WW500_C02 20:26:50 Sep 30 2026", onDone })

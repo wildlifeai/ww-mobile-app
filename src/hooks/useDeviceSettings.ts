@@ -55,8 +55,13 @@ export const OP_PARAMETER = {
     CAM_AE_TARGET: 30,
     /** RP camera white balance: 0 = off, 1 = auto (grey-world per frame), 2 = manual op27/op28 */
     CAM_WB_MODE: 31,
-    /** Reserved (was CAM_RESOLUTION hi-res until ae_review, Sep 2026; the firmware dropped it) */
-    RFU_1: 32,
+    /**
+     * LoRaWAN ping period in minutes; 0 = never try to join the network
+     * (Charles Palmer, 6 October 2026, was RFU_1). On firmware before
+     * ae_review (September 2026) this index was CAM_RESOLUTION, the hi-res
+     * switch, so nothing writes it to a camera without the flash mode (op34).
+     */
+    LORAWAN_PING_MINUTES: 32,
     /** Reserved (was MD_BLOCK_NUM_MAX until ae_review, Sep 2026; the firmware dropped it) */
     RFU_2: 33,
     /** Capture flash mode: 0 = off, 1 = AE (light sensor decides), 2 = always on, 3 = time of day. See firmware flash_led_modes_proposal.md */
@@ -66,6 +71,12 @@ export const OP_PARAMETER = {
     /** FLASH_MODE time of day: minutes the flash stays on, wrapping past midnight */
     FLASH_TOD_DURATION: 36,
 } as const
+
+/**
+ * op32 when LoRaWAN is on: the 12-hour ping the BLE processor has always used
+ * ("Ping timer set to 43200s"), and the factory default.
+ */
+export const LORAWAN_PING_DEFAULT_MINUTES = 720
 
 /**
  * op13 FLASH_LED, by index: `FLASH_LED_LABELS[value]` names one.
@@ -87,6 +98,10 @@ export const FLASH_MODE_OP_LABELS = ['Off', 'Light sensor', 'Always on', 'Time o
 /**
  * Test mode bitmask flags for OP_PARAMETER.TEST_MODE_BITS.
  * These control diagnostic capture behaviour on the Himax firmware.
+ *
+ * Nothing uses it since the Save BMP option was retired on 21 September 2026; it stays
+ * until that is final (see useStartDeployment.ts), and the tag keeps knip quiet until then.
+ * @public
  */
 // eslint-disable-next-line no-bitwise
 export const TEST_BIT_SAVE_BMP = 1 << 1  // bit 1 = 2, alternates between JPG and BMP files
@@ -161,7 +176,9 @@ export const FACTORY_DEFAULTS: Record<number, number> = {
     [OP_PARAMETER.CAM_AE_ENABLE]: 1,
     [OP_PARAMETER.CAM_AE_TARGET]: 110,
     [OP_PARAMETER.CAM_WB_MODE]: 1,
-    [OP_PARAMETER.RFU_1]: 0,
+    // LoRaWAN on by default, as before op32 had a meaning; a deployment then
+    // writes 0 for a project that does not require it (see configureLorawan)
+    [OP_PARAMETER.LORAWAN_PING_MINUTES]: LORAWAN_PING_DEFAULT_MINUTES,
     [OP_PARAMETER.RFU_2]: 0,
     [OP_PARAMETER.FLASH_MODE]: 0,
     [OP_PARAMETER.FLASH_TOD_START]: 0,
@@ -208,12 +225,6 @@ export interface DeviceSettings {
     aeCheckInterval?: number           // Index 24 - Minutes between periodic AE light checks, 0=off (default: 15)
     wbRedGain?: number                 // Index 27 - Software WB red gain, Q8.8 (256=1.0x, 0=off). RP3 only (default: 286)
     wbBlueGain?: number                // Index 28 - Software WB blue gain, Q8.8 (256=1.0x, 0=off). RP3 only (default: 326)
-}
-
-export interface UseDeviceSettingsOptions {
-    device: ExtendedPeripheral | null
-    onSettingsUpdated?: () => void
-    onError?: (error: Error) => void
 }
 
 export interface QuiesceOptions {

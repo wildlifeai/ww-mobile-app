@@ -7,6 +7,7 @@ import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { createBleSession } from '../ble/session/createBleSession'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
 import { keepAwake } from '../ble/session/keepAwake'
+import { requestFastInterval, releaseFastInterval } from '../ble/protocol/connectionPriority'
 import { log, logError, logWarn } from '../utils/logger'
 
 
@@ -55,6 +56,13 @@ export const useCapturePreview = ({
     // Refs for state that shouldn't trigger re-renders or needs to be accessed in callbacks
     const downloadRequested = useRef(false)
     const downloadTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    // The device a transfer asked the fast interval for (Android,
+    // connectionPriority.ts), so whichever way the transfer ends gives it back once.
+    const fastIntervalFor = useRef<string | null>(null)
+    const releaseInterval = useCallback(() => {
+        if (fastIntervalFor.current) releaseFastInterval(fastIntervalFor.current)
+        fastIntervalFor.current = null
+    }, [])
 
     // False once the screen using this hook is gone. The capture is a chain of
     // awaits, and without this a Back press in the middle let the chain keep
@@ -64,8 +72,11 @@ export const useCapturePreview = ({
     const mountedRef = useRef(true)
     useEffect(() => {
         mountedRef.current = true
-        return () => { mountedRef.current = false }
-    }, [])
+        return () => {
+            mountedRef.current = false
+            releaseInterval()
+        }
+    }, [releaseInterval])
 
     // Clear timeout helper
     const clearDownloadTimeout = useCallback(() => {
@@ -98,6 +109,7 @@ export const useCapturePreview = ({
             }
             log('[useCapturePreview] Image download complete, URI:', fileUri)
             clearDownloadTimeout()
+            releaseInterval()
             
             setIsCapturing(false)
             setCaptureStage('')
@@ -123,6 +135,7 @@ export const useCapturePreview = ({
             if (!downloadRequested.current) return
             logError('[useCapturePreview] Image transfer error:', errorMessage)
             clearDownloadTimeout()
+            releaseInterval()
 
             setIsCapturing(false)
             setCaptureStage('')
@@ -144,13 +157,20 @@ export const useCapturePreview = ({
             imageReassemblerEmitter.off('onImageError', handleImageError)
             clearDownloadTimeout()
         }
-    }, [onImageReceived, onError, clearDownloadTimeout, resetDownloadTimeout])
+    }, [onImageReceived, onError, clearDownloadTimeout, resetDownloadTimeout, releaseInterval])
 
     // Listen for "Finished sending" message
     useEffect(() => {
+        let graceTimer: ReturnType<typeof setTimeout> | null = null
         const messageListener = (event: BleEvent & { type: 'TEXT_LINE' }) => {
             if (!device || event.deviceId !== device.id) return;
             const msg = event.line;
+            // The camera's reply to txfile follows its own interval request: ask
+            // again so ours is the one Android applies last
+            if (downloadRequested.current && /^\d+ bytes in \S+/.test(msg.trim())) {
+                fastIntervalFor.current = device.id
+                requestFastInterval(device.id)
+            }
             // Check if we are expecting a download and receive the finish signal
             if (downloadRequested.current && msg.includes('Finished sending')) {
                 const match = msg.match(/sending (\d+) bytes/)
@@ -159,9 +179,11 @@ export const useCapturePreview = ({
                 log(`[useCapturePreview] "Finished sending" detected (expected ${expectedBytes} bytes). Waiting 500ms grace period for last packets...`)
                 
                 // Grace period to ensure last chunks are processed from the BLE queue
-                setTimeout(() => {
-                     log('[useCapturePreview] Grace period ended. Triggering force_finalize.')
-                     imageReassemblerEmitter.emit('force_finalize')
+                if (graceTimer) clearTimeout(graceTimer)
+                graceTimer = setTimeout(() => {
+                    graceTimer = null
+                    log('[useCapturePreview] Grace period ended. Triggering force_finalize.')
+                    imageReassemblerEmitter.emit('force_finalize')
                 }, 500)
             }
         }
@@ -170,6 +192,7 @@ export const useCapturePreview = ({
 
         return () => {
             bleEventBus.removeListener('textLine', messageListener)
+            if (graceTimer) clearTimeout(graceTimer)
         }
     }, [device])
 
@@ -215,7 +238,7 @@ export const useCapturePreview = ({
 
         try {
             setIsCapturing(true)
-            setCaptureStage('Initializing…')
+            setCaptureStage('Initialising…')
             setCapturedImageUri(null)
             setCaptureProgress(0)
             downloadRequested.current = false
@@ -259,7 +282,11 @@ export const useCapturePreview = ({
             if (screenLeft('the capture')) return
 
             // ── Phase 2: CAPTURE ────────────────────────────────────────
-            setCaptureStage(`Capturing ${captureCount} image(s)…`)
+            setCaptureStage(`Capturing ${captureCount} ${captureCount === 1 ? 'image' : 'images'}…`)
+            // Asked before the capture, so 15 ms is in place when txfile goes,
+            // and again on the camera's reply to txfile (connectionPriority.ts)
+            fastIntervalFor.current = device.id
+            await requestFastInterval(device.id)
             log(`[useCapturePreview] Phase 2: Capture — sending AI capture ${captureCount} ${captureInterval}`)
             const captureResult = await session.execute(() => commandRegistry.capture(captureCount, captureInterval))
             const capturedFilename = typeof captureResult === 'string' ? captureResult : '.'
@@ -297,11 +324,12 @@ export const useCapturePreview = ({
             downloadRequested.current = false
             setCaptureProgress(0)
             clearDownloadTimeout()
+            releaseInterval()
 
             if (onError) onError(err)
             else Alert.alert('Error', `Capture failed: ${err.message}`)
         }
-    }, [device, onCaptureStart, onError, clearDownloadTimeout, resetDownloadTimeout])
+    }, [device, onCaptureStart, onError, clearDownloadTimeout, resetDownloadTimeout, releaseInterval])
 
     // Clear captured image
     const clearImage = useCallback(() => {
@@ -310,7 +338,8 @@ export const useCapturePreview = ({
         downloadRequested.current = false
         setCaptureProgress(0)
         clearDownloadTimeout()
-    }, [clearDownloadTimeout])
+        releaseInterval()
+    }, [clearDownloadTimeout, releaseInterval])
 
     return {
         capturedImageUri,

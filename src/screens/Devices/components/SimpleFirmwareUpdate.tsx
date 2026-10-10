@@ -4,7 +4,7 @@ import { Button, Checkbox, ProgressBar } from 'react-native-paper'
 import { useExtendedTheme } from '../../../theme'
 import { WWText } from '../../../components/ui/WWText'
 import type { FirmwareTarget, UpdatePhase } from '../hooks/useFirmwareUpdate'
-import { transferLine, updateResult, updateStep, updateSummary } from '../../../utils/firmwareWords'
+import { missingFirmware, transferLine, updateResult, updateStep, updateSummary } from '../../../utils/firmwareWords'
 
 export interface SimpleFirmwareUpdateProps {
     target: FirmwareTarget
@@ -14,6 +14,14 @@ export interface SimpleFirmwareUpdateProps {
     isPreflightDone: boolean
     /** Whether there is an image to install, on the SD card, the phone or in the cloud */
     canStart: boolean
+    /** AI only: the camera whose build the catalogue lacks, which stops the pair update (#437) */
+    missingVariant?: 'RP3' | 'HM0360' | null
+    /**
+     * AI only: where an update this phone left unfinished stopped and what
+     * finishing does (#374), said instead of the update line; Update then
+     * reads Finish update
+     */
+    unfinished?: string | null
     batteryLevel: number | null
     isBatteryLow: boolean
     externalPowerConfirmed: boolean
@@ -47,6 +55,8 @@ export const SimpleFirmwareUpdate = ({
     upToDate,
     isPreflightDone,
     canStart,
+    missingVariant,
+    unfinished,
     batteryLevel,
     isBatteryLow,
     externalPowerConfirmed,
@@ -74,12 +84,16 @@ export const SimpleFirmwareUpdate = ({
             {ready && (
                 <>
                     <WWText variant="bodyLarge">
-                        {isPreflightDone ? updateSummary(currentVersion, latestVersion, upToDate) : 'Checking the camera…'}
+                        {isPreflightDone
+                            ? unfinished ?? updateSummary(currentVersion, latestVersion, upToDate)
+                            : 'Checking the camera…'}
                     </WWText>
 
                     {isPreflightDone && !upToDate && !canStart && (
                         <WWText style={{ color: colors.error }}>
-                            The new firmware is not on this phone yet. Connect to the internet, then open this screen again.
+                            {missingVariant
+                                ? `${missingFirmware(missingVariant)}. Try again later.`
+                                : 'The new firmware is not on this phone yet. Connect to the internet, then open this screen again.'}
                         </WWText>
                     )}
 
@@ -107,7 +121,7 @@ export const SimpleFirmwareUpdate = ({
                             loading={!isPreflightDone}
                             disabled={!isPreflightDone || !canStart || batteryBlocks}
                         >
-                            Update
+                            {unfinished ? 'Finish update' : 'Update'}
                         </Button>
                     )}
                 </>

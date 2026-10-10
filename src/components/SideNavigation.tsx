@@ -1,10 +1,9 @@
 import { useState, useEffect, useMemo, Dispatch, SetStateAction } from "react"
-import { StyleSheet, View } from "react-native"
+import { ScrollView, StyleSheet, View } from "react-native"
 import { Button, Divider, Badge, Text } from "react-native-paper"
 import { useAppNavigation } from "../hooks/useAppNavigation"
 import { useExtendedTheme } from "../theme"
-import { useAppDispatch } from "../redux"
-import { logout } from "../redux/slices/authSlice"
+import { useSupabaseAuth } from "../hooks/useSupabaseAuth"
 import { OrgSwitcher } from "./OrgSwitcher"
 import { useUserOrganisations } from "../hooks/useUserOrganisations"
 import InvitationService from "../services/InvitationService"
@@ -19,7 +18,7 @@ type Props = {
 
 export const SideNavigation = ({ drawerControls }: Props) => {
 	const navigation = useAppNavigation()
-	const dispatch = useAppDispatch()
+	const { logout } = useSupabaseAuth()
 	const { spacing, colors, appPadding } = useExtendedTheme()
 
 	const dynamicStyles = useMemo(() => ({
@@ -79,13 +78,24 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 		drawerControls(false)
 	}
 
+	// Ends the Supabase session as well as the app's state, offline too: a
+	// session left in storage signed the same account back in at the next
+	// launch (#360)
 	const onLogout = () => {
-		dispatch(logout())
+		logout()
 		drawerControls(false)
 	}
 
+	// The links scroll above the drawer's version footer: the list is taller
+	// than a 640 dp screen leaves it, and without scrolling the footer sat
+	// over "Sign out" (#379).
 	return (
-		<View style={[styles.list, dynamicStyles.container]}>
+		<>
+		<ScrollView
+			style={[styles.list, dynamicStyles.container]}
+			contentContainerStyle={styles.listContent}
+			keyboardShouldPersistTaps="handled"
+		>
 			{/* Organisation Switcher (WW Admin or multi-org users only) */}
 			{canSwitchOrganisations && (
 				<>
@@ -144,6 +154,7 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 				style={[dynamicStyles.link, styles.link]}
 				icon="logout"
 				onPress={onLogout}
+				testID="sign-out-button"
 			>
 				<Text>Sign out</Text>
 			</Button>
@@ -170,22 +181,25 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 					</Button>
 				</>
 			)}
+		</ScrollView>
 
-			<EngineerConnectDialog
-				visible={dialogState !== 'idle'}
-				dialogState={dialogState}
-				discoveredDevices={discoveredDevices}
-				connectingDevice={engineerConnectingDevice}
-				onSelectDevice={selectDevice}
-				onDismiss={resetEngineerConnect}
-			/>
-		</View>
+		<EngineerConnectDialog
+			visible={dialogState !== 'idle'}
+			dialogState={dialogState}
+			discoveredDevices={discoveredDevices}
+			connectingDevice={engineerConnectingDevice}
+			onSelectDevice={selectDevice}
+			onDismiss={resetEngineerConnect}
+		/>
+		</>
 	)
 }
 
 const styles = StyleSheet.create({
 	list: {
 		flex: 1,
+	},
+	listContent: {
 		alignItems: "flex-start",
 	},
 	link: {

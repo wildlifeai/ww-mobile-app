@@ -55,6 +55,8 @@ export const useSupabaseAuth = () => {
 		[dispatch],
 	)
 
+	// The app's one sign-out: the side menu and the Auth Test screen both call
+	// it, so the Supabase session ends with the app's state (#360)
 	const handleLogout = useCallback(async (): Promise<void> => {
 		try {
 			await logout()
@@ -130,5 +132,3 @@ export const useSupabaseAuth = () => {
 		updatePassword: handleUpdatePassword,
 	}
 }
-
-export default useSupabaseAuth

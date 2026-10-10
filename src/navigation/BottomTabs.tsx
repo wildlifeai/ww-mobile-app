@@ -11,23 +11,28 @@ import { useExtendedTheme } from "../theme"
 import { useAppNavigation } from "../hooks/useAppNavigation"
 
 const routes = [
+	// testID lands on the tab button (react-native-paper reads route.testID), which
+	// is how the Maestro flows change tab
 	{
 		key: "devices",
 		title: "Scanner",
 		focusedIcon: "bluetooth-connect",
 		unfocusedIcon: "bluetooth",
+		testID: "bottom-tab-scanner",
 	},
 	{
 		key: "maps",
 		title: "Map",
 		focusedIcon: "map-marker",
 		unfocusedIcon: "map-marker-outline",
+		testID: "bottom-tab-map",
 	},
 	{
 		key: "projects",
 		title: "Projects",
 		focusedIcon: "folder",
 		unfocusedIcon: "folder-outline",
+		testID: "bottom-tab-projects",
 	},
 ]
 

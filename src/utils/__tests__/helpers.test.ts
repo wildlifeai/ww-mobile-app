@@ -26,12 +26,6 @@ jest.mock("../logger", () => ({
 	logError: jest.fn(),
 }))
 
-jest.mock("../../ble/emitters", () => ({
-	readlineParserEmitter: {
-		emit: jest.fn(),
-	},
-}))
-
 describe("src/utils/helpers", () => {
 	beforeEach(() => {
 		jest.clearAllMocks()

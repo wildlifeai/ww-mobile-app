@@ -205,16 +205,17 @@ export function parseBleFirmwareVersion(reply: string | null | undefined): BleFi
 }
 
 /**
- * HX6538 firmware update error codes returned by xip_update_firmware_from_sd().
- * Maps numeric codes to human-readable descriptions for field debugging.
+ * HX6538 firmware update error codes returned by xip_update_firmware_from_sd()
+ * in the Seeed repo's ww500_md/xip_manager.c, one per step: -1 before flash is
+ * touched, then erase, write, verify and the slot selector. A failed SD read
+ * while writing is a write failure. Every one leaves the running image alone.
  */
 const FIRMWARE_ERROR_CODES: Record<number, string> = {
-  [-1]: 'firmware file not found on SD card (/MANIFEST/output.img)',
-  [-2]: 'SD card read error',
-  [-3]: 'flash erase failed',
-  [-4]: 'flash write failed',
-  [-5]: 'flash verify mismatch — data written does not match source',
-  [-6]: 'slot selector write failed',
+  [-1]: 'firmware file not found on SD card, or the slot selector could not be read',
+  [-2]: 'flash erase failed',
+  [-3]: 'flash write failed',
+  [-4]: 'flash verify mismatch, the data written does not match the file',
+  [-5]: 'slot selector write failed',
 };
 
 /**
@@ -225,6 +226,31 @@ const FIRMWARE_ERROR_CODES: Record<number, string> = {
 export function isMdRefusal(error: unknown): boolean {
   return error instanceof Error && /^md failed: (?:Unrecogni[sz]ed|Error:)/i.test(error.message);
 }
+
+/**
+ * A time as both processors' `setutc` takes it, whole seconds and `Z`:
+ * `2026-10-06T04:12:33Z`, now when none is given. Formatted from a Date, so a
+ * time with or without milliseconds comes out the same; cutting the string at
+ * the `.` turned one without into `...33ZZ`.
+ */
+const utcSeconds = (isoDateStr?: string): string =>
+  new Date(isoDateStr || Date.now()).toISOString().replace(/\.\d{3}Z$/, 'Z');
+
+/** What the nRF did with a `ping`, the LoRaWAN uplink it sends on request. */
+export type LorawanPingReply = 'sent' | 'not_joined' | 'busy';
+
+/**
+ * The nRF's three answers to `ping`, word for word: processPing() in
+ * ww-hardware MokoTech/Workspace/WildlifeWatcher_1/ble_commands.c, on dev in
+ * October 2026. `OK` means joined and the uplink is scheduled, `Busy` means
+ * joined but the radio is already in use, and nothing is sent for either of
+ * the other two.
+ */
+const LORAWAN_PING_REPLIES: Record<string, LorawanPingReply> = {
+  'OK': 'sent',
+  'Not joined yet.': 'not_joined',
+  'Busy': 'busy',
+};
 
 /**
  * Exported registry of constructed commands.
@@ -287,6 +313,10 @@ export const commandRegistry = {
       idempotent: false,
       isLongRunning: true,
       requiresExclusiveLock: true,
+      // The CRC check before flash is touched (CLI-FATFS-commands.c in the
+      // Seeed repo). Without it a refusal waited out the 120 s, then counted
+      // as a timeout and the pass ran again.
+      failureRegex: /^Error: (?:CRC mismatch .*Flash NOT modified|cannot read '[^']*' for CRC check)/i,
     }
   ),
   aireset: createSingleLineCommand<boolean>(
@@ -295,6 +325,19 @@ export const commandRegistry = {
     /Forcing reset/i,
     () => true,
     { timeoutMs: 8000, retryPolicy: { maxRetries: 0 } }
+  ),
+  /**
+   * Send the AI processor to sleep now instead of when op8 runs out. `AI reset`
+   * only restarts it at its next sleep, so this after it makes the restart
+   * happen at once: about 5 s on a unit whose op8 was 60 s, which otherwise
+   * waited the full minute (bench, 7 October 2026).
+   */
+  aidpd: createSingleLineCommand<boolean>(
+    'aidpd',
+    () => 'AI dpd',
+    /Forcing DPD/i,
+    () => true,
+    { timeoutMs: 8000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Unrecogni[sz]ed/i }
   ),
   version: createSingleLineCommand<string>(
     'version',
@@ -322,11 +365,41 @@ export const commandRegistry = {
     /(Device will reset after disconnecting.)\s*/,
     () => true
   ),
-  ping: createSingleLineCommand<boolean>(
+  /** The BLE chip's own die temperature, in degrees C. */
+  temp: createSingleLineCommand<number>(
+    'temp',
+    () => 'temp',
+    /Temperature: (-?\d+)\.(\d+)C/,
+    (match) => parseFloat(`${match[1]}.${match[2]}`)
+  ),
+  /** The BLE processor's clock, as the ISO time it reports. */
+  getutc: createSingleLineCommand<string>(
+    'getutc',
+    () => 'getutc',
+    /UTC is: (\S+)/i,
+    (match) => match[1]
+  ),
+  /** Flash one of the BLE board's own LEDs: `r`, `g` or `b`, `count` times for `ms` each. */
+  boardLed: createSingleLineCommand<boolean>(
+    'boardLed',
+    (colour: 'r' | 'g' | 'b', count: number, ms: number) => `flash${colour} ${count} ${ms}`,
+    /Flashing\s+\d+ms\s+\d+\s+times/i,
+    () => true,
+    { retryPolicy: { maxRetries: 0 } }
+  ),
+  /**
+   * Ask the nRF for a LoRaWAN uplink now. Every answer resolves, because none
+   * is the command failing: callers go through `workflows/lorawanPing.ts`,
+   * which says what each one means. Until #348 the Signal Test waited for
+   * `Pong`, which the nRF never sends, so every test timed out. Never retried,
+   * because a lost `OK` still sent an uplink.
+   */
+  ping: createSingleLineCommand<LorawanPingReply>(
     'ping',
     () => 'ping',
-    /(Joined|Not Joined)/i,
-    (match) => match[1].toLowerCase() === 'joined'
+    /^(OK|Not joined yet\.|Busy)$/,
+    (match) => LORAWAN_PING_REPLIES[match[1]],
+    { retryPolicy: { maxRetries: 0 } }
   ),
   network: createSingleLineCommand<{ rssi: number; snr: number; joined: boolean }>(
     'network',
@@ -341,10 +414,7 @@ export const commandRegistry = {
   ),
   setutc: createSingleLineCommand<boolean>(
     'setutc',
-    (isoDateStr?: string) => {
-      const stamp = (isoDateStr || new Date().toISOString()).split('.')[0] + 'Z';
-      return `setutc ${stamp}`;
-    },
+    (isoDateStr?: string) => `setutc ${utcSeconds(isoDateStr)}`,
     /(RTC\s+set\s+to|System\s+time\s+set\s+successfully|UTC\s+is:)/i,
     () => true
   ),
@@ -459,6 +529,81 @@ export const commandRegistry = {
     { timeoutMs: 8000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Unrecognised|^Failed to queue light check/i },
   ),
 
+  /**
+   * Light the white LED directly, at `brightness` percent for `ms` (1 to 1000),
+   * whatever op13 and op34 say: the hardware and command path on their own.
+   *
+   * The firmware answers with an empty line once the LED is off again, so
+   * there is nothing to match until the processor sleeps a second later; the
+   * Dev Deployment Test's LED test treats a timeout as sent, not failed. Never retried:
+   * a retry would light it twice. It also writes op12 FLASH_DURATION, which
+   * nothing else reads.
+   */
+  aiflash: createSingleLineCommand<boolean>(
+    'aiflash',
+    (brightness: number, ms: number) => `AI flash ${brightness} ${ms}`,
+    /^Sleep/i,
+    () => true,
+    { timeoutMs: 8000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Unrecogni[sz]ed|^Must supply/i }
+  ),
+
+  /**
+   * Move the RP3's focus lens: 0 (infinity) to 1023 (closest). Only the RP3
+   * image has it; the HM0360 image answers `Unrecognised`. The position holds
+   * while the AI processor stays awake and is lost when it sleeps, because the
+   * camera powers off, so a caller photographing at a position must keep the
+   * device awake between the two commands (bench, 6 October 2026).
+   */
+  vcm: createSingleLineCommand<number>(
+    'vcm',
+    (position: number) => `AI vcm ${position}`,
+    /^VCM position set to (\d+)/i,
+    (match) => parseInt(match[1], 10),
+    { timeoutMs: 8000, failureRegex: /^VCM (?:write failed|not detected)|^Position must be|^Unrecogni[sz]ed/i }
+  ),
+
+  /**
+   * The AI processor's own clock. It answers with the bare time, which
+   * `exif_utc_time_to_utc_string` writes; both the ISO and the EXIF shapes are
+   * accepted, and the parser returns it as epoch milliseconds.
+   */
+  aiGetutc: createSingleLineCommand<number>(
+    'aiGetutc',
+    () => 'AI getutc',
+    /^(\d{4})[-:](\d{2})[-:](\d{2})[T ](\d{2}):(\d{2}):(\d{2})Z?$/,
+    (match) => Date.UTC(+match[1], +match[2] - 1, +match[3], +match[4], +match[5], +match[6]),
+    { timeoutMs: 8000, failureRegex: /^Error -?\d+|^Unrecogni[sz]ed/i }
+  ),
+
+  /**
+   * Set the AI processor's own clock, which photos are stamped with. Its
+   * reply echoes the string it was given, but setting the RTC holds the
+   * processor's interrupts off for about a second and the reply can be lost
+   * while the clock did change (bench, 6 October 2026): read it back with
+   * `aiGetutc` rather than trusting a timeout. Never retried, since a retry
+   * only sets it again.
+   */
+  aiSetutc: createSingleLineCommand<boolean>(
+    'aiSetutc',
+    (isoDateStr?: string) => `AI setutc ${utcSeconds(isoDateStr)}`,
+    /^RTC set to/i,
+    () => true,
+    { timeoutMs: 8000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Error -?\d+/i }
+  ),
+
+  /**
+   * `capture` for a burst whose files may not be kept: with test-mode bit 3
+   * set the firmware writes no file, so its summary carries no `Last is` and
+   * `capture` would wait out its timeout. Resolves on `Captured N images`.
+   */
+  captureBurst: createSingleLineCommand<number>(
+    'captureBurst',
+    (count: number, interval: number) => `AI capture ${count} ${interval}`,
+    /^Captured\s+(\d+)\s+images/i,
+    (match) => parseInt(match[1], 10),
+    { timeoutMs: 45000, retryPolicy: { maxRetries: 0 } }
+  ),
+
   txfile: createSingleLineCommand<boolean>(
     'txfile',
     (filename: string = '.') => `AI txfile ${filename}`,
@@ -473,14 +618,6 @@ export const commandRegistry = {
   ),
 
   // -- LoRaWAN Network Commands --
-  pingToNetwork: createSingleLineCommand<boolean>(
-    'pingToNetwork',
-    () => 'ping',
-    /^Pong|Sent ping/i,
-    () => true,
-    { failureRegex: /^Error|Failed/i }
-  ),
-  
   deveui: createSingleLineCommand<string>(
     'deveui',
     () => 'get deveui',
@@ -508,12 +645,15 @@ export const commandRegistry = {
   // the sensitivity is persisted to CONFIG.TXT regardless of whether
   // the response arrives over BLE.
   //
-  // 2 s, not 5: the Himax answers within 0.2 s, and on the HM0360 build the
-  // nRF takes that answer for its `MD <time>` motion wake and drops it
-  // (ww-hardware #52), so a longer wait only paid for a reply that never
-  // comes (#272, 23 September 2026). The RP3 build has no `md` and answers
+  // 2 s, not 5: the Himax answers within 0.2 s. On the HM0360 build an nRF
+  // from before ww-hardware #60 takes that answer for its `MD <time>` motion
+  // wake and drops it (ww-hardware #52); since #60 the wake is `Motion <time>`
+  // and the reply arrives (BLE 0.30.55, bench 8 October 2026), well inside the
+  // 2 s (#272, #412). The RP3 build has no `md` and answers
   // `Unrecognised` (Seeed #211); that and the firmware's own `Error:` lines
-  // are refusals, told apart from a lost reply by `isMdRefusal`.
+  // are refusals, told apart from a lost reply by `isMdRefusal`. Since #385
+  // the motion test writes the level with `setop 17`, which is acknowledged,
+  // and sends this only to learn whether the build applies a level at all.
   md: createSingleLineCommand<boolean>(
     'md',
     (level: number) => `AI md ${level}`,

@@ -5,6 +5,8 @@ import { OP_PARAMETER } from '../useDeviceSettings'
 import { createBleSession } from '../../ble/session/createBleSession'
 import { mdIntervalHold } from '../../ble/session/mdIntervalHold'
 import { keepAwake, KeepAwakeSession } from '../../ble/session/keepAwake'
+import { flashHold } from '../../ble/session/flashHold'
+import { flashLedHold } from '../../ble/session/flashLedHold'
 
 jest.mock('../../utils/logger', () => ({ log: jest.fn(), logWarn: jest.fn(), logError: jest.fn() }))
 jest.mock('../../ble/session/createBleSession', () => ({ createBleSession: jest.fn() }))
@@ -171,6 +173,37 @@ describe('useDeploymentConfiguration configure and the motion test op11 hold', (
         expect(mdIntervalHold.forget).toHaveBeenCalledWith('dev-1')
         expect(linesAtForget).toBe(0)
         expect(session.lines).toContain(`AI setop ${OP_PARAMETER.MD_INTERVAL} 1000`)
+    })
+})
+
+/**
+ * A motion test with the flash holds op34 (flashHold) and op13 and op9
+ * (flashLedHold), and a dropped test leaves their originals owed for the next
+ * test to pay. The deployment writes op34 and op13 from the project, and the
+ * project's LED can be the one the test held, so a restore owed from before it
+ * would take the project's flash off a deployed camera (#383, #387).
+ */
+describe('useDeploymentConfiguration configure and the motion test flash holds', () => {
+    const opsAfterReset = (): string[] => Array.from({ length: 37 }, () => '0')
+
+    it('drops the flash holds and any owed restore before it writes anything', async () => {
+        const session = makeRecordingSession()
+        ;(createBleSession as jest.Mock).mockReturnValue(session)
+        const linesAtForget: Record<string, number> = {}
+        jest.spyOn(flashHold, 'forget').mockImplementation(async () => { linesAtForget.op34 = session.lines.length })
+        jest.spyOn(flashLedHold, 'forget').mockImplementation(async () => { linesAtForget.op13 = session.lines.length })
+
+        const configure = renderHook(() => useDeploymentConfiguration()).result.current.configure
+        await configure({ id: 'dev-1', connected: true } as any, {
+            deploymentId: 'd',
+            captureMethod: 'activity',
+            flash: { flash_mode: 'always_on', flash_led: 'ir' },
+        }, opsAfterReset())
+
+        expect(flashHold.forget).toHaveBeenCalledWith('dev-1')
+        expect(flashLedHold.forget).toHaveBeenCalledWith('dev-1')
+        expect(linesAtForget).toEqual({ op34: 0, op13: 0 })
+        expect(session.lines).toContain(`AI setop ${OP_PARAMETER.FLASH_LED} 2`)
     })
 })
 
@@ -507,5 +540,52 @@ describe('useDeploymentConfiguration detection threshold', () => {
         }, opsAfterReset('64'))
 
         expect(op16Lines(session.lines)).toEqual([])
+    })
+})
+
+/**
+ * op32, the LoRaWAN ping period (Charles Palmer, 6 October 2026): 0 never
+ * joins, 720 is the default. A deployment writes it from the project's
+ * lorawan_required, after the reset has put the default there.
+ */
+describe('useDeploymentConfiguration configureLorawan', () => {
+    const makeSession = () => {
+        const lines: string[] = []
+        return {
+            lines,
+            execute: jest.fn(async (build: any) => {
+                const command = typeof build === 'function' ? build() : build
+                lines.push(command?.build?.() ?? '')
+                return true
+            }),
+        }
+    }
+    const ops = (length: number, op32: string) =>
+        Array.from({ length }, (_, index) => (index === OP_PARAMETER.LORAWAN_PING_MINUTES ? op32 : '0'))
+    const configureLorawan = () => renderHook(() => useDeploymentConfiguration()).result.current.configureLorawan
+
+    it('turns LoRaWAN off for a project that does not require it', async () => {
+        const session = makeSession()
+        await configureLorawan()(session, false, ops(37, '720'))
+        expect(session.lines).toEqual(['AI setop 32 0'])
+    })
+
+    it('turns it on, at the default ping, for a project that requires it', async () => {
+        const session = makeSession()
+        await configureLorawan()(session, true, ops(37, '0'))
+        expect(session.lines).toEqual(['AI setop 32 720'])
+    })
+
+    it('writes nothing when the device already holds it', async () => {
+        const session = makeSession()
+        await configureLorawan()(session, true, ops(37, '720'))
+        expect(session.lines).toEqual([])
+    })
+
+    it('leaves op32 alone on firmware where it was the hi-res switch', async () => {
+        // Before ae_review the table stopped at op33 and op32 was CAM_RESOLUTION
+        const session = makeSession()
+        await configureLorawan()(session, false, ops(34, '0'))
+        expect(session.lines).toEqual([])
     })
 })

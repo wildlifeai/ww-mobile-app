@@ -1,0 +1,74 @@
+# A real iOS build, weekly. On pull requests native-build-validation.yml builds
+# and runs the Android APK but only proves that `expo prebuild` produces an
+# Xcode project for iOS: a native module that fails to compile for iOS, a
+# CocoaPods resolution failure or an Info.plist problem surfaced at the next
+# EAS build, by hand. macOS runners bill at ten times the Linux rate, so this
+# runs on a schedule and on demand, not per pull request, and fails loudly: a
+# red run here is a Monday morning email rather than a release-day surprise.
+#
+# Simulator build (eas.json, e2e profile, ios.simulator): no signing, no
+# credentials, same JavaScript bundle and native modules as a device build.
+# `--local`, like the Android job: nothing is sent to the EAS build service.
+name: iOS Weekly Build
+
+on:
+  schedule:
+    # Mondays 05:40 UTC, before the working day in New Zealand ends and the
+    # European one starts.
+    - cron: '40 5 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  ios-build:
+    name: iOS Simulator Build (EAS Local)
+    runs-on: macos-latest
+    environment: development
+    # A cold build is 25 to 40 minutes. The CocoaPods cache cuts the later ones.
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          # 22, not 20: eas-cli 20.1.0 needs Node >=22 (see native-build-validation.yml).
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v9
+        with:
+          eas-version: 20.1.0  # pinned alongside native-build-validation.yml
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods
+          key: cocoapods-${{ runner.os }}-${{ hashFiles('package-lock.json', 'app.config.ts', 'eas.json', 'patches/**') }}
+          restore-keys: cocoapods-${{ runner.os }}-
+
+      - name: Build iOS simulator app (EAS Local)
+        run: eas build --local --profile e2e --platform ios --output ./app-ios-simulator.tar.gz --non-interactive
+        env:
+          # The names src/config/environments.ts reads, inlined by Metro.
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL_DEV }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY_DEV }}
+          GOOGLE_MAPS_API_KEY_ANDROID: ${{ secrets.GOOGLE_MAPS_API_KEY_ANDROID }}
+          GOOGLE_MAPS_API_KEY_IOS: ${{ secrets.GOOGLE_MAPS_API_KEY_IOS }}
+
+      - name: Upload simulator build
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-ios-simulator
+          path: ./app-ios-simulator.tar.gz
+          retention-days: 14

@@ -475,6 +475,126 @@ export type Database = {
         }
         Relationships: []
       }
+      api_keys: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          key_hash: string
+          key_prefix: string
+          last_used_at: string | null
+          name: string
+          organisation_id: string
+          revoked_at: string | null
+          scopes: string[]
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          key_hash: string
+          key_prefix: string
+          last_used_at?: string | null
+          name: string
+          organisation_id: string
+          revoked_at?: string | null
+          scopes?: string[]
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          key_hash?: string
+          key_prefix?: string
+          last_used_at?: string | null
+          name?: string
+          organisation_id?: string
+          revoked_at?: string | null
+          scopes?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_keys_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "api_keys_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "api_keys_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_access_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "api_keys_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_roles_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "api_keys_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "api_keys_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "api_keys_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "api_keys_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "api_keys_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "api_keys_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "api_keys_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["organisation_id"]
+          },
+        ]
+      }
       api_logs: {
         Row: {
           api_endpoint: string | null
@@ -957,27 +1077,6 @@ export type Database = {
           },
         ]
       }
-      debug_storage_logs: {
-        Row: {
-          created_at: string | null
-          details: Json | null
-          id: string
-          message: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          details?: Json | null
-          id?: string
-          message?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          details?: Json | null
-          id?: string
-          message?: string | null
-        }
-        Relationships: []
-      }
       deployment_effort: {
         Row: {
           battery_failures: number
@@ -1022,6 +1121,118 @@ export type Database = {
             columns: ["deployment_id"]
             isOneToOne: true
             referencedRelation: "deployments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deployment_moves: {
+        Row: {
+          deployment_id: string
+          from_project_id: string
+          id: string
+          moved_at: string
+          moved_by: string | null
+          to_project_id: string
+        }
+        Insert: {
+          deployment_id: string
+          from_project_id: string
+          id?: string
+          moved_at?: string
+          moved_by?: string | null
+          to_project_id: string
+        }
+        Update: {
+          deployment_id?: string
+          from_project_id?: string
+          id?: string
+          moved_at?: string
+          moved_by?: string | null
+          to_project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deployment_moves_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["deployment_id"]
+          },
+          {
+            foreignKeyName: "deployment_moves_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deployment_moves_from_project_id_fkey"
+            columns: ["from_project_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "deployment_moves_from_project_id_fkey"
+            columns: ["from_project_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "deployment_moves_from_project_id_fkey"
+            columns: ["from_project_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "deployment_moves_from_project_id_fkey"
+            columns: ["from_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deployment_moves_from_project_id_fkey"
+            columns: ["from_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_with_stats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deployment_moves_to_project_id_fkey"
+            columns: ["to_project_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "deployment_moves_to_project_id_fkey"
+            columns: ["to_project_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "deployment_moves_to_project_id_fkey"
+            columns: ["to_project_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "deployment_moves_to_project_id_fkey"
+            columns: ["to_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deployment_moves_to_project_id_fkey"
+            columns: ["to_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_with_stats"
             referencedColumns: ["id"]
           },
         ]
@@ -4150,6 +4361,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      can_delete_deployment: {
+        Args: { p_project_id: string; p_setup_by: string }
+        Returns: boolean
+      }
       can_read_device: {
         Args: { p_device_id: string; p_organisation_id: string }
         Returns: boolean
@@ -4170,7 +4385,6 @@ export type Database = {
         Args: { p_org_id: string; p_user_id: string }
         Returns: boolean
       }
-      debug_get_policies: { Args: never; Returns: Json }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
         | {
@@ -4422,6 +4636,7 @@ export type Database = {
         Args: { required_role?: string; user_id?: string }
         Returns: boolean
       }
+      label_map_problems: { Args: { p_label_map: Json }; Returns: string[] }
       longtransactionsenabled: { Args: never; Returns: boolean }
       match_media_embeddings: {
         Args: {
@@ -4437,6 +4652,10 @@ export type Database = {
           distance: number
           media_id: string
         }[]
+      }
+      move_deployment: {
+        Args: { p_deployment_id: string; p_target_project_id: string }
+        Returns: Json
       }
       my_upload_usage: {
         Args: never
@@ -4501,15 +4720,29 @@ export type Database = {
         Args: { p_accept: boolean; p_invitation_id: string }
         Returns: undefined
       }
+      restore_deployment: {
+        Args: { p_deleted_at: string; p_id: string }
+        Returns: boolean
+      }
+      restore_project: {
+        Args: { p_deleted_at: string; p_id: string }
+        Returns: boolean
+      }
       safe_to_double: { Args: { p_text: string }; Returns: number }
       safe_to_numeric: { Args: { p_text: string }; Returns: number }
       send_project_invitation: {
         Args: { p_invitee_email: string; p_project_id: string; p_role?: string }
         Returns: string
       }
-      soft_delete_deployment: { Args: { p_id: string }; Returns: undefined }
+      soft_delete_deployment: {
+        Args: { p_deleted_at?: string; p_id: string }
+        Returns: undefined
+      }
       soft_delete_device: { Args: { p_device_id: string }; Returns: undefined }
-      soft_delete_project: { Args: { p_id: string }; Returns: undefined }
+      soft_delete_project: {
+        Args: { p_deleted_at?: string; p_id: string }
+        Returns: undefined
+      }
       st_3dclosestpoint: {
         Args: { geom1: unknown; geom2: unknown }
         Returns: unknown

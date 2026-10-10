@@ -6,6 +6,7 @@ import { List, Divider, RadioButton } from "react-native-paper"
 import { WWScreenView } from "../../../components/ui/WWScreenView"
 import { RootStackParamList } from "../../types"
 import { useExtendedTheme } from "../../../theme"
+import { RefusedChangesItem } from "../../../components/RefusedChangesItem"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import * as Application from "expo-application"
 
@@ -65,6 +66,7 @@ export const Settings = () => {
 				
 				<List.Section>
 					<List.Subheader>Data Synchronization</List.Subheader>
+					<RefusedChangesItem />
 					<RadioButton.Group onValueChange={handleSyncModeChange} value={syncMode}>
 						<List.Item
 							title="Automatic sync"

@@ -2,10 +2,14 @@
 
 /**
  * WatermelonDB Schema Validation Script
- * 
+ *
  * Validates that the WatermelonDB schema (src/database/schema.ts) matches
- * the Supabase schema (src/types/supabase.ts) to prevent schema drift.
- * 
+ * the Supabase types (src/types/supabase.ts, or src/types/database.types.ts
+ * while supabase.ts is empty) to prevent schema drift.
+ *
+ * Every deliberate difference is named in the allowlists below, table and
+ * column, never by pattern, and each is explained in scripts/README.md.
+ *
  * Usage:
  *   node scripts/validate-watermelon-schema.js
  *   node scripts/validate-watermelon-schema.js --verbose
@@ -21,6 +25,39 @@ let SUPABASE_TYPES_PATH = path.join(__dirname, '../src/types/supabase.ts');
 if (!fs.existsSync(SUPABASE_TYPES_PATH) || fs.statSync(SUPABASE_TYPES_PATH).size === 0) {
     SUPABASE_TYPES_PATH = path.join(__dirname, '../src/types/database.types.ts');
 }
+
+// Columns on every table that are not compared: WatermelonDB's own, and the sync
+// fields generate-watermelon-schema.js adds to each table (SYNC_FIELDS there).
+const SYSTEM_COLUMNS = ['id', '_status', '_changed', 'last_modified_at', '_version', '_custom_sync_status', 'modified_by', 'deleted_at', 'created_at', 'updated_at'];
+
+// Tables that exist only on the phone. A table not named here that is missing
+// from the Supabase types is an error.
+const LOCAL_ONLY_TABLES = {
+    sync_outbox: 'the queue of changes waiting to upload (models/SyncOutbox.ts)',
+    sync_state: 'sync bookkeeping, such as the pull watermarks (models/SyncState.ts)',
+};
+
+// Columns that exist only on the phone, by table. Exact names: a pattern such as
+// "*_id" could hide a real column dropped upstream. Each entry must still be
+// missing from Supabase, or the validator asks for it to be removed from here.
+const LOCAL_ONLY_COLUMNS = {
+    activity_sensitivity: { server_id: 'the integer Supabase id, since a WatermelonDB id is a string (ReferenceDataService)' },
+    ai_models: { server_id: 'the Supabase uuid, kept beside the local id (ReferenceDataService)' },
+    capture_methods: { server_id: 'the integer Supabase id, since a WatermelonDB id is a string (ReferenceDataService)' },
+    sampling_designs: { server_id: 'the integer Supabase id, since a WatermelonDB id is a string (ReferenceDataService)' },
+    project_invitations: { remote_id: 'the Supabase invitation id; the local row has its own id (InvitationService)' },
+};
+
+// Timestamps the model reads with @date, which stores epoch milliseconds (a
+// number), where Supabase types an ISO string. The pulls convert with new Date().
+// Each must be a number here and a string in Supabase, or it is an error: on a
+// string column @date keeps nothing (#425). The generator's timestampFields
+// makes them numbers.
+const TIMESTAMP_COLUMNS = {
+    deployments: ['deployment_start', 'deployment_end', 'lorawan_last_verified_at'],
+    project_invitations: ['expires_at', 'responded_at'],
+    user_roles: ['granted_at', 'expires_at'],
+};
 
 // Colors for terminal output
 const colors = {
@@ -112,7 +149,11 @@ function parseSupabaseTypes() {
             const isNullable = cleanType.includes('| null');
             let baseType;
 
-            if (cleanType.includes('string')) {
+            if (cleanType.includes('[]')) {
+                // WatermelonDB has no array column, so the generator stores
+                // every array as a JSON string (mapType there)
+                baseType = 'string';
+            } else if (cleanType.includes('string')) {
                 baseType = 'string';
             } else if (cleanType.includes('number')) {
                 baseType = 'number';
@@ -126,6 +167,7 @@ function parseSupabaseTypes() {
 
             columns[columnName] = {
                 type: baseType,
+                raw: cleanType.replace(/\s*\|\s*null/, ''),
                 optional: isNullable,
             };
         }
@@ -156,8 +198,33 @@ function mapWatermelonTypeToSupabase(watermelonType) {
 function validateSchemas(watermelonTables, supabaseTables) {
     const errors = [];
     const warnings = [];
+    const counts = { tables: 0, columns: 0, localOnlyTables: 0, localOnlyColumns: 0 };
 
     log(`\n${colors.cyan}Validating WatermelonDB schema against Supabase types...${colors.reset}\n`);
+
+    // An allowlist entry that matches nothing would skip a column nobody has, and
+    // one that Supabase now has would hide a column that should be compared.
+    for (const tableName of Object.keys(LOCAL_ONLY_TABLES)) {
+        if (!watermelonTables[tableName]) {
+            errors.push(`Table '${tableName}' is allowlisted as local-only but is not in WatermelonDB: remove it from LOCAL_ONLY_TABLES`);
+        } else if (supabaseTables[tableName]) {
+            errors.push(`Table '${tableName}' is allowlisted as local-only but now exists in Supabase types: remove it from LOCAL_ONLY_TABLES`);
+        }
+    }
+    for (const [tableName, columns] of Object.entries(LOCAL_ONLY_COLUMNS)) {
+        for (const columnName of Object.keys(columns)) {
+            if (!watermelonTables[tableName] || !watermelonTables[tableName].columns[columnName]) {
+                errors.push(`Table '${tableName}': Column '${columnName}' is allowlisted as local-only but is not in WatermelonDB: remove it from LOCAL_ONLY_COLUMNS`);
+            }
+        }
+    }
+    for (const [tableName, columns] of Object.entries(TIMESTAMP_COLUMNS)) {
+        for (const columnName of columns) {
+            if (!watermelonTables[tableName] || !watermelonTables[tableName].columns[columnName]) {
+                errors.push(`Table '${tableName}': Column '${columnName}' is listed in TIMESTAMP_COLUMNS but is not in WatermelonDB: remove it`);
+            }
+        }
+    }
 
     // Check each WatermelonDB table
     for (const [tableName, watermelonTable] of Object.entries(watermelonTables)) {
@@ -167,21 +234,40 @@ function validateSchemas(watermelonTables, supabaseTables) {
 
         // Check if table exists in Supabase
         if (!supabaseTables[tableName]) {
-            warnings.push(`Table '${tableName}' exists in WatermelonDB but not in Supabase types`);
+            if (LOCAL_ONLY_TABLES[tableName]) {
+                counts.localOnlyTables++;
+                if (VERBOSE) {
+                    log(`  - local-only table: ${LOCAL_ONLY_TABLES[tableName]}`);
+                }
+            } else {
+                errors.push(`Table '${tableName}' exists in WatermelonDB but not in Supabase types`);
+            }
             continue;
         }
 
         const supabaseTable = supabaseTables[tableName];
+        const localOnlyColumns = LOCAL_ONLY_COLUMNS[tableName] || {};
+        const timestampColumns = TIMESTAMP_COLUMNS[tableName] || [];
+        counts.tables++;
 
         // Check each column
         for (const [columnName, watermelonColumn] of Object.entries(watermelonTable.columns)) {
             // Skip WatermelonDB-specific columns
-            if (['id', '_status', '_changed', 'last_modified_at', '_version', '_custom_sync_status', 'modified_by', 'deleted_at', 'created_at', 'updated_at'].includes(columnName)) {
+            if (SYSTEM_COLUMNS.includes(columnName)) {
                 continue;
             }
 
-            // Map timestamp columns (WatermelonDB stores as number, Supabase as string)
-            const isTimestampColumn = ['created_at', 'updated_at', 'deleted_at', 'deployment_start', 'deployment_end'].includes(columnName);
+            if (localOnlyColumns[columnName]) {
+                if (supabaseTable.columns[columnName]) {
+                    errors.push(`Table '${tableName}': Column '${columnName}' is allowlisted as local-only but now exists in Supabase: remove it from LOCAL_ONLY_COLUMNS`);
+                } else {
+                    counts.localOnlyColumns++;
+                    if (VERBOSE) {
+                        log(`  - ${columnName}: local-only, ${localOnlyColumns[columnName]}`);
+                    }
+                }
+                continue;
+            }
 
             if (!supabaseTable.columns[columnName]) {
                 errors.push(`Table '${tableName}': Column '${columnName}' exists in WatermelonDB but not in Supabase`);
@@ -189,21 +275,23 @@ function validateSchemas(watermelonTables, supabaseTables) {
             }
 
             const supabaseColumn = supabaseTable.columns[columnName];
+            counts.columns++;
 
             // Compare types (with special handling for timestamps)
             const watermelonType = watermelonColumn.type;
             const supabaseType = supabaseColumn.type;
 
-            if (isTimestampColumn) {
+            if (timestampColumns.includes(columnName)) {
                 // Timestamps: WatermelonDB uses 'number' (epoch ms), Supabase uses 'string' (ISO)
-                if (watermelonType !== 'number') {
-                    errors.push(`Table '${tableName}': Column '${columnName}' should be 'number' in WatermelonDB (timestamp), got '${watermelonType}'`);
+                if (watermelonType !== 'number' || supabaseType !== 'string') {
+                    errors.push(`Table '${tableName}': Column '${columnName}' is a timestamp, expected WatermelonDB 'number' and Supabase 'string', got '${watermelonType}' and '${supabaseType}'`);
                 }
             } else {
                 // Regular columns
                 const expectedSupabaseType = mapWatermelonTypeToSupabase(watermelonType);
                 if (supabaseType !== expectedSupabaseType && supabaseType !== 'unknown') {
-                    errors.push(`Table '${tableName}': Column '${columnName}' type mismatch - WatermelonDB: '${watermelonType}', Supabase: '${supabaseType}'`);
+                    const asTyped = supabaseColumn.raw !== supabaseType ? ` (typed ${supabaseColumn.raw})` : '';
+                    errors.push(`Table '${tableName}': Column '${columnName}' type mismatch - WatermelonDB: '${watermelonType}', Supabase: '${supabaseType}'${asTyped}`);
                 }
             }
 
@@ -232,7 +320,7 @@ function validateSchemas(watermelonTables, supabaseTables) {
         }
     }
 
-    return { errors, warnings };
+    return { errors, warnings, counts };
 }
 
 /**
@@ -265,15 +353,21 @@ function main() {
         const watermelonTables = parseWatermelonSchema();
         log(`  Found ${Object.keys(watermelonTables).length} tables\n`);
 
-        log('Parsing Supabase types...');
+        log(`Parsing Supabase types (${path.relative(path.join(__dirname, '..'), SUPABASE_TYPES_PATH).split(path.sep).join('/')})...`);
         const supabaseTables = parseSupabaseTypes();
         log(`  Found ${Object.keys(supabaseTables).length} tables\n`);
 
         // Validate
-        const { errors, warnings } = validateSchemas(watermelonTables, supabaseTables);
+        const { errors, warnings, counts } = validateSchemas(watermelonTables, supabaseTables);
+
+        // A pass that compared nothing is not a pass (5 September 2026, the live validator)
+        if (counts.columns === 0) {
+            errors.push('Compared no columns: a parser found nothing, so this run proves nothing');
+        }
 
         // Report results
         log(`\n${colors.cyan}=== Validation Results ===${colors.reset}\n`);
+        log(`Compared ${counts.columns} columns across ${counts.tables} tables; skipped by name ${counts.localOnlyTables} local-only tables and ${counts.localOnlyColumns} local-only columns\n`);
 
         if (warnings.length > 0) {
             log(`${colors.yellow}Warnings (${warnings.length}):${colors.reset}`);
@@ -286,7 +380,7 @@ function main() {
             errors.forEach(error => log(`  ✗ ${error}`));
             log('');
             log(`${colors.red}Schema validation FAILED!${colors.reset}`);
-            log(`${colors.yellow}Action required: Update src/database/schema.ts to match Supabase schema${colors.reset}\n`);
+            log(`${colors.yellow}Action required: regenerate src/database/schema.ts with npm run schema:generate, or, for a deliberate difference, name it in this script's allowlists and in scripts/README.md${colors.reset}\n`);
             process.exit(1);
         }
 

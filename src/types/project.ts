@@ -8,15 +8,9 @@ import { Database } from "./database.types"
 // Helper type to extract table types from Supabase schema
 type Tables<T extends keyof Database["public"]["Tables"]> =
 	Database["public"]["Tables"][T]["Row"]
-type TablesInsert<T extends keyof Database["public"]["Tables"]> =
-	Database["public"]["Tables"][T]["Insert"]
-type TablesUpdate<T extends keyof Database["public"]["Tables"]> =
-	Database["public"]["Tables"][T]["Update"]
 
 // Base types from Supabase (already generated)
 export type Project = Tables<"projects">
-export type ProjectInsert = TablesInsert<"projects">
-export type ProjectUpdate = TablesUpdate<"projects">
 
 // Note: project_members table removed - using backward-compatible type
 export interface ProjectMember {
@@ -29,14 +23,6 @@ export interface ProjectMember {
 	updated_at: string;
 }
 export type Organisation = Tables<"organisations">
-// Note: user_organisations table removed
-export type UserOrganisation = {
-	id: string
-	user_id: string
-	organisation_id: string
-	role: string
-}
-export type UserRole = Tables<"user_roles">
 
 // User profile type (from public.users extension table)
 export interface UserProfile {
@@ -93,13 +79,4 @@ export interface CreateProjectInput {
 	flash_led?: string
 	flash_window_start_minutes_utc?: number | null
 	flash_window_minutes?: number | null
-}
-
-// LoRaWAN device status (mock for now)
-export interface LoRaWANDeviceStatus {
-	project_id: string
-	device_count: number
-	battery_level: number // Average across devices (0-100)
-	sd_card_usage: number // Average across devices (0-100)
-	last_updated: string
 }

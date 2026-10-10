@@ -64,6 +64,7 @@ Example:
 
 | Thread | Status |
 |---|---|
+| [2026-10-02_e2e-real-screens/](2026-10-02_e2e-real-screens/README.md) | **Closed.** The Maestro flows pass against the real screens on the release-type `e2e` build CI makes; four dispatches, each fixing what the previous hierarchy showed. |
 | [fast_file_transfer_proposal.md](fast_file_transfer_proposal.md) (2026-07-08) | **Partly superseded.** Phases 0–2 shipped; Phase 3 (credit streaming) also shipped despite being labelled future. Its Phase-1 per-transfer `requestConnectionPriority` was **reverted** — see the caution at the top. Kept for the bottleneck analysis, which is still the best record of *why* the design is what it is. |
 | [empty_sd_update_architecture.md](empty_sd_update_architecture.md) (2026-07-10) | **Current**, with corrections. The shipped Himax flow is now documented against the code in [Himax-Firmware-Update.md](../resources/Himax-Firmware-Update.md). §4 QA matrix and §5 firmware asks remain open. |
 | [sliding_window_file_transfer.md](sliding_window_file_transfer.md) (2026-04-29) | **Superseded.** The window=2 design was never shipped; transport is credit streaming (`windowSize ?? 12`). Retained for the `ftx err 7` root-cause analysis, which drove real firmware fixes. |

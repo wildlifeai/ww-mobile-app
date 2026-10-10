@@ -44,12 +44,11 @@ export interface RootStackParamList extends ParamListBase {
 	FirmwareStatusScreen: { deviceId: string; engineer?: boolean }
 	DeviceResetScreen: { deviceId: string }
 	DevDeploymentTestScreen: { deviceId: string; bleDeviceId: string }
+	DeviceCheckScreen: { deviceId: string }
 
 	StartMonitoringDetailsStep: { projectId?: string; deviceId?: string; bleDeviceId?: string; initPayload?: InitPayload }
 	StopMonitoringDetailsStep: { deploymentId: string; deviceId: string; bleDeviceId: string; initPayload?: InitPayload }
 }
-
-export type Routes = keyof RootStackParamList
 
 export type AppParams<T extends keyof RootStackParamList> = RouteProp<
 	RootStackParamList,

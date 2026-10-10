@@ -143,9 +143,9 @@ export const LightSensorScreen = () => {
 
     // Refs for the stream loop, which runs across many renders from one closure.
     const connectedRef = useRef(connected)
-    connectedRef.current = connected
+    useEffect(() => { connectedRef.current = connected }, [connected])
     const measureRef = useRef(measureNow)
-    measureRef.current = measureNow
+    useEffect(() => { measureRef.current = measureNow }, [measureNow])
 
     // The reading and both rules' verdicts on it. Computed during render so the
     // screen and the log row are built from the same numbers. The mean rule
@@ -268,14 +268,13 @@ export const LightSensorScreen = () => {
      */
     const askedCamerasRef = useRef(false)
     const onToggleSettings = useCallback(() => {
-        setSettingsOpen(open => {
-            if (!open && !askedCamerasRef.current && connected) {
-                askedCamerasRef.current = true
-                refreshCameras()
-            }
-            return !open
-        })
-    }, [connected, refreshCameras])
+        const opening = !settingsOpen
+        if (opening && !askedCamerasRef.current && connected) {
+            askedCamerasRef.current = true
+            refreshCameras()
+        }
+        setSettingsOpen(opening)
+    }, [settingsOpen, connected, refreshCameras])
 
     /**
      * Switching camera boots the other firmware slot, so the device reboots and

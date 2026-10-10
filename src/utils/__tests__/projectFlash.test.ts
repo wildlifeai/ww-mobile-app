@@ -7,7 +7,11 @@ import {
     FLASH_MODE_OP_VALUE,
     describeProjectFlash,
     flashColumnsFromFields,
+    flashWindowFromLocal,
+    flashWindowToLocal,
+    formatUtcOffset,
     formatUtcMinutes,
+    localUtcOffsetMinutes,
     resolveProjectFlash,
     resolveProjectFlashOps,
     shortFlashLabel,
@@ -167,6 +171,50 @@ describe('projectFlash', () => {
                 flash_window_start_minutes_utc: 1200,
                 flash_window_minutes: 480,
             })).toBe('IR 20:00')
+        })
+    })
+
+    // Charles Palmer asked for the window in local time (6 October 2026); the
+    // device keeps it in UTC.
+    describe('flash window in local time', () => {
+        const NZDT = 13 * 60
+
+        it('turns a local evening window into UTC start and minutes on', () => {
+            // 19:00 to 07:00 NZDT is 06:00 UTC for 12 hours.
+            expect(flashWindowFromLocal('19:00', '07:00', NZDT)).toEqual({ startUtc: 360, minutes: 720 })
+        })
+
+        it('wraps a start before midnight UTC', () => {
+            // 09:30 NZDT is 20:30 UTC the day before.
+            expect(flashWindowFromLocal('09:30', '10:00', NZDT)).toEqual({ startUtc: 1230, minutes: 30 })
+        })
+
+        it('works west of UTC', () => {
+            // 22:00 to 02:00 at UTC-5 is 03:00 UTC for 4 hours.
+            expect(flashWindowFromLocal('22:00', '02:00', -300)).toEqual({ startUtc: 180, minutes: 240 })
+        })
+
+        it('refuses a window it cannot place', () => {
+            expect(flashWindowFromLocal('19:00', '19:00', NZDT)).toBeNull()
+            expect(flashWindowFromLocal('7pm', '07:00', NZDT)).toBeNull()
+            expect(flashWindowFromLocal('19:00', '24:00', NZDT)).toBeNull()
+        })
+
+        it('shows what the device holds in local time, round trip', () => {
+            expect(flashWindowToLocal(360, 720, NZDT)).toEqual({ start: '19:00', end: '07:00' })
+            const window = flashWindowFromLocal('21:15', '05:45', NZDT)!
+            expect(flashWindowToLocal(window.startUtc, window.minutes, NZDT)).toEqual({ start: '21:15', end: '05:45' })
+        })
+
+        it('names the offset as people read it', () => {
+            expect(formatUtcOffset(NZDT)).toBe('UTC+13:00')
+            expect(formatUtcOffset(-300)).toBe('UTC-05:00')
+            expect(formatUtcOffset(330)).toBe('UTC+05:30')
+        })
+
+        it('reads the offset as minutes east of UTC', () => {
+            const date = new Date()
+            expect(localUtcOffsetMinutes(date)).toBe(-date.getTimezoneOffset())
         })
     })
 })

@@ -5,16 +5,22 @@
  * - Switches to the camera the operator chose before anything else (#301)
  * - Lets the capture method and the capture flash be overridden on screen,
  *   with the project's own fields, and persists the overrides to the project
- * - Writes the LED brightness (op9), which has no project column
+ * - Writes the LED brightness (op9) and the motion-detection light's (op22),
+ *   which have no project column
+ * - Takes the flash's time-of-day window in local time, and can test the white LED
  * - Skips firmware update warnings
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Alert } from 'react-native'
 import { useFocusEffect } from '@react-navigation/native'
 import { useAppSelector } from '../../../redux'
 import { DeploymentService } from '../../../services/DeploymentService'
 import ProjectService from '../../../services/ProjectService'
+import {
+    projectsToDeployInto, startRefusal, endRefusal, START_REFUSED_TITLE, END_REFUSED_TITLE,
+    maySaveProjectSettings, SETTINGS_FOR_THIS_TEST_ONLY,
+} from '../../../services/deploymentAccess'
 import ReferenceDataService from '../../../services/ReferenceDataService'
 import Device from '../../../database/models/Device'
 import Deployment from '../../../database/models/Deployment'
@@ -25,7 +31,7 @@ import { useBleActions } from '../../../providers/BleEngineProvider'
 import { useDeploymentConfiguration } from '../../../hooks/useDeploymentConfiguration'
 import { useBle } from '../../../hooks/useBle'
 import { useGPSLocation } from '../../../hooks/useGPSLocation'
-import { useDeviceSettings, OP_PARAMETER } from '../../../hooks/useDeviceSettings'
+import { useDeviceSettings, OP_PARAMETER, FACTORY_DEFAULTS } from '../../../hooks/useDeviceSettings'
 import { useDeploymentProgress } from '../../../hooks/useDeploymentProgress'
 import { useMonitoringActions, endDeploymentSequence } from '../../../hooks/useMonitoringActions'
 import { useCameraSwitch, CAMERA_VARIANT_LABELS, type CameraVariant } from '../../../hooks/useCameraSwitch'
@@ -35,6 +41,7 @@ import { selfTestCache } from '../../../ble/protocol/selfTestCache'
 import { SelfTestBit, parseSelfTestBits, isBootPreset, formatSelfTestBits, SD_CARD_POWER_CYCLE_HINT } from '../../../utils/deviceSelfTest'
 import {
     resolveProjectFlash, formatUtcMinutes, describeProjectFlash, flashColumnsFromFields,
+    flashWindowFromLocal, flashWindowToLocal, localUtcOffsetMinutes,
     type ProjectFlashMode, type ProjectFlashLed,
 } from '../../../utils/projectFlash'
 import * as pipeline from '../../../ble/workflows/deploymentPipeline'
@@ -55,6 +62,12 @@ export type DeployableCamera = Exclude<CameraVariant, 'unknown'>
  * Picture flow's FlashSelector. The operator can type anything from 0 to 100.
  */
 const DEFAULT_LED_BRIGHTNESS = 50
+
+/** op22 when the screen opens: the factory value, which a reset also writes. */
+const DEFAULT_MD_LIGHT = FACTORY_DEFAULTS[OP_PARAMETER.MD_FLASH_BRIGHTNESS_PERCENT]
+
+/** How long the white LED test lights it */
+const TEST_FLASH_MS = 500
 
 /** op5 when the screen opens. The operator can type anything from 1 up. */
 const DEFAULT_NUM_PICTURES = 3
@@ -128,12 +141,23 @@ export const useDevDeployment = ({
     // form's own choices (#301) and persisted with the rest of the overrides.
     const [flashMode, setFlashMode] = useState<ProjectFlashMode>('off')
     const [flashLed, setFlashLed] = useState<ProjectFlashLed>('ir')
-    const [flashWindowStart, setFlashWindowStart] = useState('')     // HH:MM UTC
-    const [flashWindowMinutes, setFlashWindowMinutes] = useState('')
-    // op9, the one flash setting with no project column. Dev only, written
-    // to the device after configure and never saved to the project.
+    // The time-of-day window as typed, in the phone's local time (Charles
+    // Palmer asked, 6 October 2026). The project and the device keep it in UTC;
+    // flashWindowStart and flashWindowMinutes are what they get.
+    const utcOffset = useMemo(() => localUtcOffsetMinutes(), [])
+    const [flashWindowOn, setFlashWindowOn] = useState('')      // HH:MM local
+    const [flashWindowOff, setFlashWindowOff] = useState('')
+    const flashWindow = flashWindowFromLocal(flashWindowOn, flashWindowOff, utcOffset)
+    const flashWindowStart = flashWindow ? formatUtcMinutes(flashWindow.startUtc) : ''
+    const flashWindowMinutes = flashWindow ? String(flashWindow.minutes) : ''
+    // op9 and op22, the flash settings with no project column. Dev only,
+    // written to the device after configure and never saved to the project.
+    // op22 is the light the camera's motion detection uses at night, lit
+    // from the HM0360's strobe; op9 is the capture flash's.
     const [ledBrightnessText, setLedBrightnessText] = useState(String(DEFAULT_LED_BRIGHTNESS))
     const ledBrightness = Math.min(100, Math.max(0, intFromText(ledBrightnessText, DEFAULT_LED_BRIGHTNESS)))
+    const [mdLightText, setMdLightText] = useState(String(DEFAULT_MD_LIGHT))
+    const mdLight = Math.min(100, Math.max(0, intFromText(mdLightText, DEFAULT_MD_LIGHT)))
 
     // Pictures per trigger (op5). Three when the screen opens, Victor's choice
     // on the bench on 22 September 2026: one frame per trigger too often catches
@@ -155,7 +179,18 @@ export const useDevDeployment = ({
 
     // Project state
     const [project, setProject] = useState<ProjectWithDetails | null>(null)
-    const [availableProjects, setAvailableProjects] = useState<ProjectWithDetails[]>([])
+    const [deployableProjects, setDeployableProjects] = useState<ProjectWithDetails[]>([])
+    // The projects this account may deploy into, as on Start Monitoring
+    // (#450), plus the selected one when it is not one of them
+    const availableProjects = useMemo<ProjectWithDetails[]>(() => (
+        project && !deployableProjects.some(p => p.id === project.id)
+            ? [project, ...deployableProjects]
+            : deployableProjects
+    ), [project, deployableProjects])
+    // Why this account may not start a deployment in the selected project, or null
+    const [startRefusalReason, setStartRefusalReason] = useState<string | null>(null)
+    // Whether this account may save the settings to the project (#466), null until known
+    const [savesToProject, setSavesToProject] = useState<boolean | null>(null)
     const [captureMethodOverride, setCaptureMethodOverride] = useState<number | null>(null)
     // As typed. Empty, or anything that is not a positive number, is no
     // override, and the project's own interval applies.
@@ -202,11 +237,13 @@ export const useDevDeployment = ({
     // control has no dialog to write to. The ref keeps `onStage` stable so
     // the hook's callbacks do not change identity on every render.
     const stageRef = useRef<(stage: string) => void>(() => {})
-    stageRef.current = (stage: string) => {
-        if (!isStartDeploymentInProgress.current) return
-        progress.setFinishStep(stage)
-        progress.addLog(stage)
-    }
+    useEffect(() => {
+        stageRef.current = (stage: string) => {
+            if (!isStartDeploymentInProgress.current) return
+            progress.setFinishStep(stage)
+            progress.addLog(stage)
+        }
+    }, [progress])
     const onCameraStage = useCallback((stage: string) => stageRef.current(stage), [])
     const cameraErrorRef = useRef<Error | null>(null)
     const onCameraError = useCallback((err: Error) => { cameraErrorRef.current = err }, [])
@@ -259,6 +296,13 @@ export const useDevDeployment = ({
     const handleEndActiveDeployment = useCallback(async () => {
         const running = activeDeployment ?? await refreshActiveDeployment()
         if (!running) return
+        // Only its creator while a member, or a project admin, may end it
+        // (#450), so anyone else is told who can before the device is touched
+        const refusal = await endRefusal(user?.id, running)
+        if (refusal) {
+            Alert.alert(END_REFUSED_TITLE, refusal)
+            return
+        }
         if (!bleDevice?.connected) {
             Alert.alert('Device Disconnected', 'Connect to the device first, so the deployment can be cleared from it as well as from the record.')
             return
@@ -303,8 +347,14 @@ export const useDevDeployment = ({
         const flash = resolveProjectFlash(p)
         setFlashMode(flash.mode)
         setFlashLed(flash.led)
-        setFlashWindowStart(typeof p.flash_window_start_minutes_utc === 'number' ? formatUtcMinutes(p.flash_window_start_minutes_utc) : '')
-        setFlashWindowMinutes(p.flash_window_minutes ? String(p.flash_window_minutes) : '')
+        if (typeof p.flash_window_start_minutes_utc === 'number' && p.flash_window_minutes) {
+            const local = flashWindowToLocal(p.flash_window_start_minutes_utc, p.flash_window_minutes, localUtcOffsetMinutes())
+            setFlashWindowOn(local.start)
+            setFlashWindowOff(local.end)
+        } else {
+            setFlashWindowOn('')
+            setFlashWindowOff('')
+        }
     }, [])
 
     // --- Load projects ---
@@ -315,10 +365,14 @@ export const useDevDeployment = ({
                 const projects = withoutArchived(await ProjectService.getProjectsForUserInOrganisation(
                     user.id, currentOrganisation.id
                 ))
-                setAvailableProjects(projects)
-                if (projects.length > 0 && !project) {
-                    setProject(projects[0])
-                    seedFromProject(projects[0])
+                // The first project this account may deploy into, or with
+                // none, the first it can see, which the screen says it cannot use
+                const deployable = await projectsToDeployInto(user.id, projects)
+                setDeployableProjects(deployable)
+                const first = deployable[0] ?? projects[0]
+                if (first && !project) {
+                    setProject(first)
+                    seedFromProject(first)
                 }
             } catch (e) {
                 logError('[DevDeploy] Failed to load projects:', e)
@@ -326,6 +380,23 @@ export const useDevDeployment = ({
         }
         loadProjects()
     }, [user?.id, currentOrganisation?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    // From the phone's roles, so offline too (#450)
+    useEffect(() => {
+        let isMounted = true
+        if (!project?.id) {
+            setStartRefusalReason(null)
+            setSavesToProject(null)
+            return
+        }
+        startRefusal(user?.id, project.id)
+            .then(reason => { if (isMounted) setStartRefusalReason(reason) })
+            .catch(e => logWarn('[DevDeploy] Role check failed:', e))
+        maySaveProjectSettings(user?.id, project.id)
+            .then(may => { if (isMounted) setSavesToProject(may) })
+            .catch(e => logWarn('[DevDeploy] Role check failed:', e))
+        return () => { isMounted = false }
+    }, [project?.id, user?.id])
 
     // --- Load reference data (capture methods, sensitivities, AI models) ---
     useEffect(() => {
@@ -430,8 +501,16 @@ export const useDevDeployment = ({
     }, [availableProjects, seedFromProject])
 
     // --- Persist project settings to DB ---
-    const persistProjectSettings = useCallback(async () => {
-        if (!project) return
+    // Only a project admin may change the project (#466). For anyone else the
+    // server refuses the update, so the settings stay this test's: the camera
+    // is configured from the screen either way. False when not saved for that
+    // reason, asked at the press so a role changed since the screen opened counts.
+    const persistProjectSettings = useCallback(async (): Promise<boolean> => {
+        if (!project) return true
+        if (!(await maySaveProjectSettings(user?.id, project.id))) {
+            log('[DevDeploy] Project settings not saved: only a project admin may change them')
+            return false
+        }
         const updates: any = {}
         if (captureMethodOverride !== null && captureMethodOverride !== project.capture_method_id) {
             updates.capture_method_id = captureMethodOverride
@@ -472,8 +551,9 @@ export const useDevDeployment = ({
                 logWarn('[DevDeploy] Failed to persist project settings:', e)
             }
         }
+        return true
     }, [
-        project, captureMethodOverride, timelapseIntervalOverride, motionSensitivityOverride,
+        project, user?.id, captureMethodOverride, timelapseIntervalOverride, motionSensitivityOverride,
         aiModelIdOverride, lorawanOverride, recordGpsOverride,
         flashMode, flashLed, flashWindowStart, flashWindowMinutes,
     ])
@@ -496,6 +576,15 @@ export const useDevDeployment = ({
             Alert.alert('No SD Card', `The device reports no SD card. Every image and setting a deployment writes goes to the card, so it cannot start without one. ${SD_CARD_POWER_CYCLE_HINT}`)
             return
         }
+        // A viewer's deployment is refused by the server, so it stops here,
+        // before anything touches the device (#450). The button is off for
+        // one already; this is the answer at the moment of the press.
+        const refusal = await startRefusal(user.id, project.id)
+        if (refusal) {
+            setStartRefusalReason(refusal)
+            Alert.alert(START_REFUSED_TITLE, refusal)
+            return
+        }
         // Asked again at the moment of the press, not read from the state the
         // screen was drawn with: another phone may have deployed it since.
         const running = await refreshActiveDeployment()
@@ -508,6 +597,22 @@ export const useDevDeployment = ({
         progress.reset('Starting dev deployment...')
         setSubmitting(true)
         isStartDeploymentInProgress.current = true
+
+        // Then ask the server about an open deployment this phone does not
+        // hold, before the camera switch or anything else touches the device:
+        // the same check as Start Monitoring (#448), which warns and carries
+        // on offline
+        progress.addLog('Checking the server for an open deployment on this camera...')
+        progress.setFinishStep('Checking the server...')
+        const openDeployment = await DeploymentService.checkServerForOpenDeployment(device?.id || '', user.id)
+        if (openDeployment.kind === 'open') {
+            progress.setIsFinishing(false)
+            setSubmitting(false)
+            isStartDeploymentInProgress.current = false
+            Alert.alert('Already Deployed', openDeployment.message)
+            return
+        }
+        if (openDeployment.kind === 'unchecked') progress.addLog(`⚠️ ${openDeployment.message}`)
 
         const cb = {
             addLog: progress.addLog,
@@ -579,16 +684,19 @@ export const useDevDeployment = ({
             // AI model sync must run BEFORE time sync, see useStartDeployment
             // for the rationale. The model is the one chosen on screen, not
             // the project's stored one: the override is what this deployment
-            // is for, and it is persisted to the project two steps below.
+            // is for, and for a project admin it is persisted to the project two
+            // steps below (#466).
             await pipeline.syncAiModel(bleDevice, bleSession, aiModelIdOverride, cb, true, currentOps)
             await pipeline.syncTime(bleSession, cb)
 
-            // 4. Persist project settings (dev-specific)
+            // 4. Persist project settings (dev-specific), a project admin only (#466)
             progress.addLog('Saving project settings...')
             progress.setFinishStep('Saving settings...')
             progress.setFinishProgress(0.25)
-            await persistProjectSettings()
-            progress.addLog('Project settings saved')
+            const saved = await persistProjectSettings()
+            progress.addLog(saved
+                ? 'Project settings saved'
+                : 'Settings used for this test only: only a project admin can change the project\'s')
 
             // 4b. Reset OPs to factory defaults before applying dev config (shared pipeline).
             // The only reset this deployment gets (connecting is read-only, #268).
@@ -653,6 +761,9 @@ export const useDevDeployment = ({
                 // writes it (#342). No field here: the model chosen on this
                 // screen is tried at the threshold the project would deploy it at.
                 detectionThreshold: project,
+                // LoRaWAN on or off (op32) from this screen's switch, the
+                // value it saves to the project
+                lorawanRequired: lorawanOverride,
             }, cb, opsAfterReset)
 
             // 7. Flash brightness, dev only (the LED and the mode went in above).
@@ -665,7 +776,8 @@ export const useDevDeployment = ({
                 progress.setFinishStep('Flash brightness...')
                 progress.setFinishProgress(0.7)
                 await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.LED_BRIGHTNESS, value: ledBrightness }))
-                progress.addLog(`Flash: ${describeProjectFlash(flash)} @ ${ledBrightness}%`)
+                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.MD_FLASH_BRIGHTNESS_PERCENT, value: mdLight }))
+                progress.addLog(`Flash: ${describeProjectFlash(flash)} @ ${ledBrightness}%, motion-detection light ${mdLight}%`)
             }
 
             // 7b. Pictures per trigger. op5 is in RESET_PRESERVED_OPS, so the
@@ -704,13 +816,34 @@ export const useDevDeployment = ({
         startConfigure, progress, persistProjectSettings,
         batteryLevel, gpsLocation, locationName, cameraHeight, notes,
         sdCardStatus, sdCardMissing,
-        flashMode, flashLed, flashWindowStart, flashWindowMinutes, ledBrightness,
+        flashMode, flashLed, flashWindowStart, flashWindowMinutes, ledBrightness, mdLight,
         numPictures, cameraChoice, camera, readSelfTestBits, refreshActiveDeployment,
         sensitivityOptions, motionSensitivityOverride,
-        aiModelIdOverride, recordGpsOverride,
+        aiModelIdOverride, recordGpsOverride, lorawanOverride,
         effectiveCaptureMethod, effectiveTimelapseInterval,
         monitoring
     ])
+
+    // Light the white LED with `AI flash` at the brightness on screen: the
+    // LED, its driver and the command path, whatever op13 and op34 say. The
+    // firmware sends no reply, so a timeout still means it was sent.
+    const [testFlash, setTestFlash] = useState<'idle' | 'sending' | 'failed'>('idle')
+    const testWhiteLed = useCallback(async () => {
+        if (!bleDevice?.connected || !bleSession) return
+        setTestFlash('sending')
+        try {
+            await bleSession.execute(() => commandRegistry.aiflash(ledBrightness, TEST_FLASH_MS))
+            setTestFlash('idle')
+        } catch (e) {
+            const message = e instanceof Error ? e.message : String(e)
+            if (message === 'TIMEOUT') {
+                setTestFlash('idle')
+            } else {
+                logWarn('[DevDeploy] white LED test failed:', e)
+                setTestFlash('failed')
+            }
+        }
+    }, [bleDevice, bleSession, ledBrightness])
 
     // Keep track of start time when deployment is created
     const [deploymentStartTime, setDeploymentStartTime] = useState<Date | null>(null)
@@ -729,6 +862,9 @@ export const useDevDeployment = ({
         // Project
         project,
         availableProjects,
+        startRefusalReason,
+        // Shown when this account may deploy but not change the project (#466)
+        projectSettingsNote: !startRefusalReason && savesToProject === false ? SETTINGS_FOR_THIS_TEST_ONLY : null,
         handleProjectChange,
         // Form
         notes, setNotes,
@@ -749,9 +885,12 @@ export const useDevDeployment = ({
         // Capture flash (the project's columns) and the dev-only brightness
         flashMode, setFlashMode,
         flashLed, setFlashLed,
-        flashWindowStart, setFlashWindowStart,
-        flashWindowMinutes, setFlashWindowMinutes,
+        flashWindowOn, setFlashWindowOn,
+        flashWindowOff, setFlashWindowOff,
+        flashWindow, utcOffset,
         ledBrightnessText, setLedBrightnessText, ledBrightness,
+        mdLightText, setMdLightText, mdLight,
+        testWhiteLed, testFlash,
         // Pictures per trigger
         numPicturesText, setNumPicturesText, numPictures,
         //   testModeBits, setTestModeBits,

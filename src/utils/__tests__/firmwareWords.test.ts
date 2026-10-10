@@ -1,4 +1,6 @@
-import { friendlyVersion, transferLine, updateResult, updateStep, updateSummary } from '../firmwareWords'
+import {
+	finishSummary, friendlyVersion, missingFirmware, transferLine, unfinishedLine, updateResult, updateStep, updateSummary,
+} from '../firmwareWords'
 
 // #344: the operator sees builds and releases in words, never raw build strings
 describe('friendlyVersion', () => {
@@ -36,6 +38,44 @@ describe('updateSummary', () => {
 	it('leaves out a current version it could not read', () => {
 		expect(updateSummary('Unknown', '0.30.52')).toBe('Update to 0.30.52.')
 		expect(updateSummary(null, null)).toBe('Update to the latest firmware.')
+	})
+})
+
+// #437: with one camera's build in the catalogue the update names the camera it waits for
+describe('missingFirmware', () => {
+	it('names the camera the way the update screen names its image', () => {
+		expect(missingFirmware('RP3')).toBe("The colour camera's new firmware is not available yet")
+		expect(missingFirmware('HM0360')).toBe("The night-IR camera's new firmware is not available yet")
+	})
+})
+
+// #374: an AI update that stopped between its two images
+describe('unfinishedLine', () => {
+	it('says how many images went in, when the phone heard some but not all', () => {
+		expect(unfinishedLine(1, 2)).toBe('Update not finished: 1 of 2 images installed')
+		expect(unfinishedLine(0, 2)).toBe('Update not finished')
+		expect(unfinishedLine(2, 2)).toBe('Update not finished')
+	})
+})
+
+describe('finishSummary', () => {
+	const night = { version: 'WW500_C02 10:09:02 Oct  9 2026', cameraVariant: 'HM0360' }
+	const colour = { version: 'WW500_C02 08:30:20 Oct 10 2026', cameraVariant: 'RP3' }
+
+	it('names the one image finishing installs and the camera it ends on', () => {
+		expect(finishSummary(1, 2, 'HM0360', [night])).toBe(
+			'The last update stopped after image 1 of 2. Finishing installs the night-IR image, the 9 Oct build, '
+			+ 'and puts the camera back on the night-IR camera.')
+	})
+
+	it('says both images go in again when they do', () => {
+		expect(finishSummary(1, 2, 'RP3', [{ ...night, version: 'WW500_C02 08:30:12 Oct 10 2026' }, colour])).toBe(
+			'The last update stopped after image 1 of 2. Finishing installs both images, the 10 Oct build, '
+			+ 'and puts the camera back on the colour camera.')
+	})
+
+	it('does not count what the phone did not hear', () => {
+		expect(finishSummary(0, 2, 'HM0360', [night])).toMatch(/^The last update stopped part way\. /)
 	})
 })
 

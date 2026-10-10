@@ -12,11 +12,11 @@ Docker-based development environment that matches the project maintainer's exact
 
 | Tool | Version |
 |------|---------|
-| Node.js | 20.19.4 |
-| npm | 10.8.2 |
+| Node.js | 22.23.2 |
+| npm | the one bundled with that Node |
 | Expo CLI | 0.18.31 |
 | EAS CLI | 16.17.3 |
-| Base image | `node:20.19.4-bullseye` |
+| Base image | `node:22.23.2-bullseye`, the last Node 22 image built on Bullseye |
 | JDK | OpenJDK 17 |
 
 ## Quick Start

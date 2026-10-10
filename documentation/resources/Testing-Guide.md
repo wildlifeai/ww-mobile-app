@@ -8,7 +8,7 @@
 |------|------|----------|---------|
 | Unit | Jest + RNTL | `src/**/__tests__/*.test.ts` | `npm test` |
 | Integration/BDD | Jest + custom helpers | `tests/integration/**/*.bdd.test.tsx` | `npm test -- bdd` |
-| E2E | Maestro | `tests/maestro/smoke/` required in CI, the rest on the `full-e2e` label | `npm run test:maestro:smoke`, `npm run test:maestro` |
+| E2E | Maestro | `tests/maestro/smoke/` on every PR in CI (advisory), the flows in `tests/maestro/config.yaml` on the `full-e2e` label | `npm run test:maestro:smoke`, `npm run test:maestro` |
 
 ## Running Tests
 
@@ -17,8 +17,8 @@ npm test                    # All Jest tests (unit + integration)
 npm test -- --watch         # Watch mode
 npm test -- --coverage      # Coverage report
 npm test -- Login.test.tsx  # Single file
-npm run test:maestro:smoke  # the one E2E flow CI requires (requires device)
-npm run test:maestro        # every E2E flow (requires device)
+npm run test:maestro:smoke  # the E2E flow every PR runs, advisory (requires device)
+npm run test:maestro        # every E2E flow (requires device and -e E2E_TEST_EMAIL/-e E2E_TEST_PASSWORD)
 npm run lint                # ESLint
 npm run type-check          # TypeScript
 ```
@@ -71,14 +71,25 @@ useLoginMutation.mockReturnValue([
 
 ### WatermelonDB
 
-Use `LokiJSAdapter` for in-memory testing:
+Most service tests mock `src/database` with `tests/setup/helpers/fakeDatabase.ts`, which keeps
+whatever it is given. A test of what the phone actually stores, where WatermelonDB fits each
+value to the column's type, needs the real one in memory, as
+`src/services/__tests__/storedDates.test.ts` builds it inside its `jest.mock` factory:
 
 ```typescript
 import LokiJSAdapter from '@nozbe/watermelondb/adapters/lokijs'
 
-const adapter = new LokiJSAdapter({ schema, useWebWorker: false })
+const adapter = new LokiJSAdapter({
+  schema,
+  useWebWorker: false,
+  useIncrementalIndexedDB: false,
+  extraLokiOptions: { autosave: false }, // Loki's 500 ms autosave keeps Jest from exiting
+})
 export const testDatabase = new Database({ adapter, modelClasses: [...] })
 ```
+
+Without `autosave: false`, `database.unsafeResetDatabase()` also never returns once the
+database has held rows.
 
 ---
 
@@ -104,60 +115,135 @@ Helpers: `tests/setup/helpers/bdd.ts`
 
 ## Maestro E2E Testing
 
-[Maestro](https://maestro.mobile.dev/) provides declarative YAML-based E2E testing against a real device or emulator.
+[Maestro](https://maestro.mobile.dev/) runs declarative YAML flows against a real device or
+emulator. The flows live in `tests/maestro/`.
 
-**Version**: `maestro` v2.1.1 (devDependency)
-**Requires**: Java 17+, ADB, connected Android device or emulator
+**Install**: the Maestro CLI is not an npm package. `bash scripts/install-maestro.sh` installs the
+version CI pins (2.11.0) into `~/.maestro`, after checking the release zip's SHA-256, and both E2E
+jobs run it; `./scripts/install-maestro-wsl2.sh` adds the JDK on WSL2 and calls it. Bumping Maestro
+is a deliberate change to the two lines at the top of that script, as its header describes. The npm
+package called `maestro` is an unrelated AWS Step Functions tool (`maestro-framework`). It sat in
+`devDependencies` until October 2026, where it shadowed the real CLI on every `npm run test:maestro*`
+and its shell postinstall aborted `npm install` on Windows.
+
+**Requires**: Java 17+, `adb`, a connected Android device or emulator, and for every flow but the
+smoke an account on the Supabase instance the build talks to (below).
 
 ### Quick Start
 
 ```bash
-adb devices                 # 1. Verify device connected
-npm run test:maestro:smoke  # 2. What CI requires: install, launch, screenshot
-npm run test:maestro        # 3. Every flow
-npm run test:maestro:auth   # 4. Auth flow only
-maestro studio tests/maestro/auth-workflow.yaml  # 5. Interactive debug
+adb devices                   # 1. A device is connected
+npm run test:maestro:smoke    # 2. What every PR runs: install, launch, the login screen renders
+npm run test:maestro -- -e E2E_TEST_EMAIL=... -e E2E_TEST_PASSWORD=...   # 3. Every flow
+npm run test:maestro:auth -- -e E2E_TEST_EMAIL=... -e E2E_TEST_PASSWORD=...
+maestro studio                # 4. Browse the live screen's ids and texts
 ```
 
-### What CI runs, and why the split
+The npm scripts pass `APP_ID=com.wildlife.wildlifewatcher.expo`, the package of a local debug
+build. Against a release-type build (an EAS `preview`, `staging` or `e2e` APK) run `maestro test`
+yourself with `-e APP_ID=com.wildlife.wildlifewatcher`.
 
-`E2E Smoke` runs after every native build and is a required check. It is one flow,
-[`smoke/app-startup.yaml`](../../tests/maestro/smoke/app-startup.yaml): install the APK the
-same run built, launch it, take a screenshot. It asserts no screen content on purpose, because
-a required check must not fail for a test id nobody has verified.
+### The account the flows use
 
-`E2E Full` runs every flow, only when the PR carries the `full-e2e` label or the workflow is
-dispatched by hand, and is advisory. Both jobs write a junit report and **fail if it holds no
-test cases**. That guard exists because until 21 September 2026 the E2E job reported success on
-every run while Maestro ran nothing: four of the five flows named a package that was never
-installed, `auth-workflow.yaml` had no `appId` at all, and run 35493842313 shows an empty
-`~/.maestro/tests/` under a green tick. The flows are now pointed at the real debug package,
-`com.wildlife.wildlifewatcher.expo`, but the four fuller ones have never passed against real
-screens and stay advisory until one does. The smoke flow takes its package from the run instead:
-a PR into main builds the release-type `staging` profile, which installs as
-`com.wildlife.wildlifewatcher`, so the job passes that, and the debug package otherwise;
-`npm run test:maestro:smoke` passes the debug one.
+Every flow but the smoke signs in as `E2E_TEST_EMAIL` / `E2E_TEST_PASSWORD`, passed with `-e`.
+Cloud-dev is wiped and reseeded by every ww-backend dev deploy, so the account has to be one the
+backend seed creates ([Role-Based Test Accounts](#role-based-test-accounts)) and may create
+projects in its organisation. CI uses `tama@ww.org` (October 2026), an organisation manager of
+General. The seed also gives Tama `organisation_member` there (ww-backend #248, app side #375),
+so no flow asserts a role: a role assertion would test the seed, not the app. In CI the two values are the `E2E_TEST_EMAIL` and
+`E2E_TEST_PASSWORD` secrets of the `development` GitHub environment. Never write the password
+into a flow, a commit or an issue; `scripts/ci-maestro-output.sh` redacts it from the artifact,
+because Maestro writes each `inputText`'s resolved text into its command log and the artifact of
+a public repository is downloadable by anyone signed in to GitHub.
+
+### What CI runs, and why
+
+The `native-build-validation.yml` workflow builds the APK the flows run against **locally on the
+runner** with `eas build --local`, from the `e2e` profile in `eas.json` on a pull request into
+`dev` or a `workflow_dispatch`, and from `staging` on a pull request into `main`. Both are
+release-type: the APK carries its JavaScript bundle and installs as
+`com.wildlife.wildlifewatcher`. Until October 2026 the dev build was the `ci` profile, a
+**development client**, which carries no bundle: with no Metro server on the runner every run
+stopped at Expo's "Development servers" launcher (run 36836146016), so the required check only
+proved that the native launcher opened. The `e2e` profile is `preview` with `buildType: apk`,
+and reads `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` from the workflow's
+`development` environment secrets, the names `src/config/environments.ts` reads. It also sets
+`ORG_GRADLE_PROJECT_reactNativeArchitectures=x86_64`, a Gradle project property that overrides
+the four-ABI list in `android/gradle.properties`: the emulator is x86_64 and nothing else runs
+this APK, so the three other native builds and their packaging were pure cost. That packaging
+is where a full four-ABI build ran out of Gradle heap twice (run 36956363192), which is also
+why `org.gradle.jvmargs` carries a 4 GB heap now. The `staging` profile keeps every ABI.
+
+The APK is cached by profile, Expo fingerprint, a hash of `package-lock.json`, `app.config.ts`,
+`eas.json` and `patches/`, and a hash of what the JavaScript bundle is built from: `src/` without
+its tests, `assets/`, `index.js` and the Babel, Metro and TypeScript configs. A run that changes
+only flows, scripts, tests, docs or the workflow restores it instead of building for 25 to 30
+minutes; any app code change rebuilds. Until 10 October 2026 the key had no bundle hash, so a push
+that changed only `src/` reran the flows on the PR's first build (run 37981018306 logged schema
+version 405 on a commit that declares 406). The fingerprint covers `package.json` whole: a commit
+that changed only an npm script rebuilt (run 36929311218). Caches are scoped per ref. Check the
+"Restore cached APK" step rather than assuming.
+
+Two jobs run the flows on an API 33 x86_64 emulator with the Pixel 6 profile (the default AVD
+is 320x640 at 160 dpi, where the drawer's version footer sat over its sign-out button, #379),
+through `scripts/ci-maestro.sh`. That script also turns Bluetooth on, which the app insists on
+before the login screen, disables the Pixel Launcher, whose "isn't responding" dialog covered the
+app in 4 of 24 smoke runs on busy runners (9 and 10 October 2026), and runs the offline scenario
+through `scripts/maestro-offline.sh` after the other flows:
+
+- `E2E Smoke`, advisory: every PR runs it and a failure shows red, but no branch protection
+  requires it, so it does not stop a merge. One flow, [`smoke/app-startup.yaml`](../../tests/maestro/smoke/app-startup.yaml):
+  install, launch, and the login screen's `email-input` and `login-button` render within 90 s.
+  It asserts no more than that so that it never fails for an unverified id.
+- `E2E Full`, advisory. Every flow [`config.yaml`](../../tests/maestro/config.yaml) lists, signed
+  in as the E2E account, then the three offline phases. Runs on the `full-e2e` label or by hand
+  (`gh workflow run native-build-validation.yml --ref <branch>`); never in the merge queue,
+  which has no labels.
+
+Both write a junit report and **fail if it holds no test cases**, because until 21 September
+2026 the E2E job reported success on every run while Maestro ran nothing (run 35493842313: an
+empty `~/.maestro/tests/` under a green tick). Both then print Maestro's output into the job log
+(`scripts/ci-maestro-output.sh`): the report, a compact view of every screen hierarchy (resource
+id, text, accessibility text, bounds), the tail of each command log, and the app's logcat. Read
+the hierarchy there to find a real id before changing a selector; the `maestro-smoke` and
+`maestro-full` artifacts hold the same files plus the screenshots.
+
+iOS gets a real build once a week, not per pull request: `ios-weekly-build.yml` runs
+`eas build --local --profile e2e --platform ios` on `macos-latest` every Monday and on
+`workflow_dispatch`, for a check before a release. The `e2e` profile sets `ios.simulator: true`,
+so the build needs no signing and no Apple credentials, and the result is uploaded as the
+`app-ios-simulator` artifact for two weeks. On pull requests only `iOS Prebuild Sanity Check`
+runs, which proves that `expo prebuild` produces an Xcode project and nothing more; a native
+module that fails to compile for iOS or a CocoaPods resolution failure shows up here, as a red
+scheduled run, rather than at the next release build by hand. macOS runners bill at ten times
+the Linux rate, which is why it is weekly: a cold build is 25 to 40 minutes, the CocoaPods cache
+cuts the later ones (#394).
 
 ### Existing Test Flows
 
-| File | Purpose | Status |
-|------|---------|--------|
-| `tests/maestro/smoke/app-startup.yaml` | Install, launch, screenshot. **The required CI check** | ✅ Passes |
-| `tests/maestro/auth-workflow.yaml` | RBAC login flows for all 3 roles + multi-org switching | ⚠️ Never executed before 21 Sep 2026 (had no `appId`); some assertions commented out; advisory |
-| `tests/maestro/project-crud-workflow.yaml` | Create, read, update, delete project flow | ⚠️ Never executed (wrong `appId` until 21 Sep 2026); uses text selectors; advisory |
-| `tests/maestro/offline/complete-offline-workflow.yaml` | Full offline sync workflow | ⚠️ Never executed (wrong `appId` until 21 Sep 2026); advisory |
-| `tests/maestro/offline/database-operations.yaml` | Offline database CRUD operations | ⚠️ Never executed (wrong `appId` until 21 Sep 2026); advisory |
-| `tests/maestro/offline/setup-test-user.yaml` | Test user provisioning for offline tests | ⚠️ Never executed (wrong `appId` until 21 Sep 2026); advisory |
+| File | Proves | Status |
+|------|--------|--------|
+| `tests/maestro/smoke/app-startup.yaml` | The APK installs, launches, and the bundle renders the login screen. **The required check** | Passes, run 36934636431 (1 October 2026) |
+| `tests/maestro/auth-workflow.yaml` | A wrong password is refused with "Login Failed"; the right one reaches the home screen and the project list; sign out returns to the login screen | Passes, same run. Advisory, E2E Full |
+| `tests/maestro/project-crud-workflow.yaml` | Create a project with a unique name, see it listed, rename it, archive it (the app's delete), see it gone | Passes, same run. Advisory, E2E Full |
+| `tests/maestro/offline/sign-in-online.yaml` | Phase 1 of the offline scenario: sign in online and reach the project list | Passes, same run. Advisory, E2E Full, via `scripts/maestro-offline.sh` |
+| `tests/maestro/offline/complete-offline-workflow.yaml` | Phase 2, in airplane mode: a cold start stays signed in (#310), shows the offline indicator, lists projects from the local database, and a project created offline is listed at once | Passes, same run. Advisory, via the script |
+| `tests/maestro/offline/database-operations.yaml` | Phase 3, back online: the indicator goes, the outbox pushes the offline project and a pull keeps it; then archives it | Passes, same run. Advisory, via the script |
+| `tests/maestro/subflows/*.yaml` | Subflows: sign in, open the New Project form, archive a project by name. Not flows | Run via `runFlow` only |
+
+The run of each dispatch and what its screens showed is in the development report that landed
+them, [`2026-10-02_e2e-real-screens`](../development%20reports/2026-10-02_e2e-real-screens/README.md).
 
 ### npm Scripts
 
 ```json
 {
-  "test:maestro": "maestro test tests/maestro/",
-  "test:maestro:smoke": "maestro test tests/maestro/smoke/",
-  "test:maestro:full": "maestro test tests/maestro/",
-  "test:maestro:auth": "maestro test tests/maestro/auth-workflow.yaml",
-  "test:maestro:offline": "maestro test tests/maestro/offline/complete-offline-workflow.yaml"
+  "test:maestro": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/",
+  "test:maestro:smoke": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/smoke/",
+  "test:maestro:full": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/",
+  "test:maestro:auth": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/auth-workflow.yaml",
+  "test:maestro:crud": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/project-crud-workflow.yaml",
+  "test:maestro:offline": "bash scripts/maestro-offline.sh -e APP_ID=com.wildlife.wildlifewatcher.expo"
 }
 ```
 
@@ -166,7 +252,7 @@ a PR into main builds the release-type `staging` profile, which installs as
 **Option A: Direct Device (Simplest)**
 ```bash
 adb devices   # Should show your device
-npm run test:maestro:auth
+npm run test:maestro:smoke
 ```
 
 **Option B: Android Emulator**
@@ -189,55 +275,40 @@ adb devices
 
 ### Writing E2E Tests
 
-**Use testIDs (not text selectors):**
-```yaml
-# ❌ Fragile — breaks with text changes
-- tapOn: "Login"
-
-# ✅ Stable — tied to component testID prop
-- tapOn:
-    id: "login-button"
-```
-
-Add `testID` props in components:
-```tsx
-<TextInput testID="email-input" />
-<Pressable testID="login-button" />
-```
-
-**Wait for elements:**
-```yaml
-- waitForVisible: "Submit"
-- tapOn: "Submit"
-```
-
-**Clean state between tests:**
-```yaml
-- launchApp:
-    clearState: true
-```
-
-**Environment variables:**
-```bash
-maestro test --env TEST_USER_EMAIL=admin@example.com tests/maestro/
-```
-```yaml
-- inputText: ${TEST_USER_EMAIL}
-```
-
-### Maestro Installation
-
-Maestro is already in `devDependencies`. For the CLI tool:
-
-```bash
-curl -Ls "https://get.maestro.mobile.dev" | bash
-```
-
-Or use the project's WSL2 install script: `./scripts/install-maestro-wsl2.sh`
+- **Name the package as `appId: ${APP_ID}`**, never a fixed one. CI installs the release package,
+  a local debug build the `.expo` one; a fixed `.expo` failed the release PR #366.
+- **Select by `testID`, not text.** `grep -rn 'testID=' src` lists what exists; add one in `src/`
+  when a screen has none. Text changes, ids do not, and a text match is exact.
+  ```yaml
+  - tapOn:
+      id: "login-button"
+  ```
+- **Start from `subflows/sign-in.yaml`** (`launchApp` with `clearState` and every permission
+  granted, sign in, skip the tutorial, wait for the bottom tabs). `AndroidPermissionsProvider`
+  renders nothing else until Bluetooth and location are granted, and an explicit sign-in opens
+  the tutorial before the home screen.
+- **Wait, do not assert, after anything asynchronous.** `extendedWaitUntil` with a generous
+  `timeout`: a cold start on a CI emulator takes tens of seconds, and the list screens wait on
+  the first sync.
+- **Create what you need with a unique name and archive it at the end**, as the CRUD flow does
+  with `evalScript: ${output.projectName = 'E2E ' + Date.now()}`, so a failed run does not
+  collide with the next one and cloud-dev stays clean until the next reseed.
+- **A new top-level flow runs by itself; a new subfolder or subflow needs `config.yaml`.**
+  Maestro ignores subfolders unless the config's `flows:` globs name them, and a subflow is any
+  file no glob matches.
+- **Maestro cannot shell out.** `runScript` runs JavaScript in Maestro's own sandbox with no
+  `adb`, no `Android.shell`. Maestro has `setAirplaneMode`, but on Android it takes the
+  Bluetooth radio down and this app stops at "Please enable Bluetooth" (taking `bluetooth` out
+  of `airplane_mode_radios` did not help, run 36926971767). So the offline scenario is three
+  flows that share one app state, and `scripts/maestro-offline.sh` switches airplane mode and
+  turns Bluetooth back on with `adb` between them. Anything else outside the app belongs in a
+  script around Maestro, the same way.
+- **Scroll to a button near the bottom of a form** with `scrollUntilVisible` before tapping it;
+  `hideKeyboard` after typing, or the keyboard covers it.
 
 ### Maestro Cloud (Optional)
 
-100 free tests/month — useful for CI/CD without device setup:
+100 free tests a month, useful for CI/CD without device setup:
 ```bash
 maestro login
 maestro cloud tests/maestro/auth-workflow.yaml
@@ -251,14 +322,17 @@ maestro cloud tests/maestro/auth-workflow.yaml
 | Maestro can't find device | Verify `adb devices` first; try `maestro test --device <id>` |
 | `maestro: command not found` | `source ~/.bashrc` or reinstall via curl |
 | Java version error | Install Java 17+: `sudo apt install -y openjdk-17-jdk` |
-| "Element not found" | Add `waitForVisible` before `tapOn`; use testID instead of text |
-| Flaky tests | Use `launchApp: clearState: true`; disable animations |
+| "Element not found" | Read the hierarchy (`maestro studio`, or the CI log's compact view); `extendedWaitUntil` before `tapOn`; use a testID |
+| Stuck on "Please enable Bluetooth" | The app refuses to run with the adapter off: `adb shell svc bluetooth enable`, which `scripts/ci-maestro.sh` does, and `scripts/maestro-offline.sh` again after switching airplane mode on |
+| Login never happens | `E2E_TEST_EMAIL` / `E2E_TEST_PASSWORD` not passed, or not a seeded user since the last cloud-dev reseed |
+| Flaky tests | `launchApp` with `clearState: true`; disable animations |
 
 ---
 
 ## Testing offline by hand (Android)
 
-The Maestro offline flows have never run, so offline behaviour is checked on a phone, with a
+The Maestro offline scenario (`npm run test:maestro:offline`) covers a cold start in airplane
+mode, one offline write and its sync. Everything else offline is checked on a phone, with a
 debug build over USB. Four things decide whether the test means anything:
 
 1. **Airplane mode is not offline.** Android turns Wi-Fi back on near a remembered network. Turn
@@ -275,25 +349,96 @@ debug build over USB. Four things decide whether the test means anything:
 
 Check the queue, not the screen: the app's WatermelonDB file is readable with
 `adb exec-out run-as com.wildlife.wildlifewatcher.expo cat watermelon.db` (and
-`watermelon.db-wal`), and `sync_outbox` holds every queued change with its status.
+`watermelon.db-wal`), and `sync_outbox` holds every queued change with its status. This needs
+a debug build: a `preview`, `staging` or store build writes no app log to logcat and refuses
+`run-as`, so its queue cannot be read this way. Reproduce on a debug build, or check the server
+side. On 8 October 2026 a deployment started from the 0.0.70 preview build could not be traced
+on the phone for that reason.
 
 ---
 
 ## CI/CD
 
-The `quality-gate-validation.yml` GitHub Action runs on all PRs:
-- TypeScript compilation (`npm run type-check`)
-- ESLint (`npm run lint`)
-- Tests with coverage (`npm test -- --coverage`)
-- Console.log pollution check
-- Type system size validation
+Every workflow in `.github/workflows/`, what it proves and whether it can stop a merge. A gate
+is a check `dev`'s branch protection requires: while it fails, the pull request cannot merge.
+Four are required today: `Cloud Type Validation Summary`, `commitlint`, `quality-gates (22.x)` and
+`quality-gates (24.x)`. Every other check is advisory: some show red when they fail, some print a
+warning annotation and stay green, and none stops a merge. The agent guide (`AGENTS.md`, "Check
+it") has the local commands for the gates.
 
-The `react-doctor.yml` GitHub Action also runs on all PRs (informational):
-- Scans for 60+ React / React Native best-practice rules
-- Outputs a 0–100 health score in the job summary
-- Can also be triggered manually from the **Actions** tab
-- Config: `doctor.config.json` (suppresses React Native false positives)
-- See [React-Doctor-Guide.md](React-Doctor-Guide.md) for details
+| Workflow | Runs on | Proves | Gate? |
+|---|---|---|---|
+| Quality Gate Validation | every PR, merge queue | `type-check`, `lint`, `version:check`, `docs:validate`, the type system is not empty, no `console.log` outside the logger, Jest with coverage at or above the 20% floor | gate: `quality-gates (22.x)` and `(24.x)` |
+| Native Build Validation | every PR, merge queue | an Android EAS local build of the `e2e` profile, `E2E Smoke` on an emulator, `expo prebuild` for iOS; `E2E Full` on the `full-e2e` label. A `changes` job skips the expensive steps on a docs-only PR while every check still reports | advisory: a failure shows red, but none of its checks is required on `dev` |
+| Commitlint | every PR, merge queue | conventional commit subjects | gate: `commitlint` |
+| Type Synchronization Validation, Cloud Type Validation | PRs, pushes | `src/types/database.types.ts` matches what `supabase gen types` produces from cloud-dev (PRs into `dev`) or production (PRs into `main`) | gate on `dev`: `Cloud Type Validation Summary`. Nothing is required on `main` |
+| React Doctor Review | every PR, merge queue | 60+ React and React Native rules. An error-severity finding fails the PR; warnings go to a sticky comment with a 0 to 100 score. Config in `doctor.config.json`, detail in [React-Doctor-Guide.md](React-Doctor-Guide.md) | advisory: an error shows red, but the check is not required |
+| PR-Agent code review | PR open, comments | an AI review comment. It triggers on comments, so it can never be required | advisory |
+| Op Index Drift | PRs touching `useDeviceSettings.ts`; Mondays | `OP_PARAMETER` matches the firmware enum on Seeed `dev` (`scripts/check-op-indices.js`); the firmware may legitimately lead by one PR | advisory |
+| Self-Test Bit Drift | PRs touching `utils/deviceSelfTest.ts`; Mondays | `SelfTestBit` matches `selfTest_type_t` on Seeed `dev` (`scripts/check-selftest-bits.js`): every bit number on both sides, none at 16 or above; the firmware may legitimately lead by one PR | advisory |
+| Expo Doctor | PRs touching `package.json`, the lockfile, `app.config.ts`, `eas.json` or `android/` | `npx expo-doctor` and `npx expo install --check`: package versions against the SDK, the app config schema, the native folders, the React Native Directory. Both read the Expo API, which is why they are not in the offline quality gate. What they are told to skip is below | advisory: a failure shows red, but the check is not required |
+| CodeQL | PRs, pushes to `dev`, Mondays | GitHub's JavaScript and TypeScript security queries; findings are code scanning alerts in the Security tab, and the `CodeQL` check fails a PR that adds one at or above the repository's failure threshold. `archive/`, `android/`, `supabase/`, `patches/` and the tests are left out | advisory until `CodeQL` is required (#392) |
+| Schema Mirror Drift | PRs touching `supabase/`, the schema files or the sync scripts; Mondays | `supabase/schemas` still matches ww-backend's `dev` (`scripts/check-schema-mirror.js`, with the read-only token); the fix for that drift is `npm run db:sync-schema` and a commit. A second job runs `validate-watermelon-schema.js`: `src/database/schema.ts` matches the Supabase types, with every accepted difference named in `scripts/README.md` | advisory: the mirror job stays green with a warning; the WatermelonDB job shows red on a mismatch, but neither is required |
+| Dead Code | every PR, merge queue, Mondays | knip: files nothing imports, exports and types nothing uses, dependencies nothing imports, imports of packages `package.json` does not list. What `knip.json` tells it is below | advisory: a finding shows red (#393), but `knip` is not required |
+| Dependency Audit | PRs touching `package.json` or the lockfile; Mondays | `npm audit --omit=dev --audit-level=high`, read from the lockfile with no install. Dependabot (`.github/dependabot.yml`) opens the bump PRs: one grouped PR a week for everything outside the Expo SDK set, which moves together through `npx expo install` | advisory on PRs; the Monday run fails, so an advisory published against an unchanged lockfile is still seen |
+| iOS Weekly Build | Mondays, by hand | `eas build --local --profile e2e --platform ios` on `macos-latest`, no signing because the profile sets `ios.simulator: true`; the `app-ios-simulator` artifact stays two weeks. Weekly because macOS runners bill at ten times the Linux rate and a cold build is 25 to 40 minutes (#394) | a red scheduled run |
+| EAS Build & Submit | `v*` tags, by hand | the release pipeline, and the only workflow a `v*` tag starts (#373): the Expo-EAS Guide and the publishing guide | not a check |
+
+### What Expo Doctor is told to skip, and why
+
+`package.json`, under `expo.doctor` and `expo.install`:
+
+- `appConfigFieldsNotSyncedCheck` is off: the `android/` folder is committed on purpose and
+  prebuild runs before a build, so "EAS will not sync app.config.ts into the native folders"
+  describes the setup, not a problem (see the Expo-EAS Guide).
+- The React Native Directory check does not list packages the directory has no entry for
+  (`@getquip/expo-nordic-dfu`, `react-native-document-picker`, `react-native-vector-icons`,
+  `@nozbe/simdjson`) and excludes `@nozbe/watermelondb` (untested on the New Architecture, the
+  app's database all the same) and `@react-native-community/geolocation` (unmaintained; replacing
+  it is a decision, not a CI fix).
+- `expo install` ignores `typescript`, pinned at 5.3.3 for React Native (see the Dependency
+  Validation System guide), and `react-native-keyboard-controller` and `react-native-worklets`,
+  installed newer than the SDK 54 list expects; the builds pass with them and a downgrade is a
+  separate decision.
+
+Everything else the version check reports is a real drift: fix it with `npx expo install --fix`
+in the pull request, as the first run of the workflow did for eight `expo-*` patch versions.
+
+### What knip is told, and why
+
+The entry points are the ones `knip.json` names (the Expo config plugins in `plugins/` and
+`scripts/`) plus what knip's Expo, Metro, Babel and Jest plugins find on their own: `index.js`,
+`app.config.ts`, the Jest setup files.
+
+Every finding fails the check: an unused file, export, exported type, enum member or duplicate
+export, a dependency nothing imports, or an import of a package `package.json` does not list.
+Delete the dead code or list the package. A false positive is excluded in `knip.json` with its
+reason added below, never deleted; for one export, a `@public` JSDoc tag with a one-line reason
+above it is the narrower form (`TEST_BIT_SAVE_BMP` in `useDeviceSettings.ts`).
+
+- `buffer` is ignored as a dependency: knip takes it for the Node built-in, the app needs the
+  npm polyfill.
+- `@babel/runtime` is ignored as a dependency: Babel's runtime transform, on in
+  `babel-preset-expo`, writes imports of its helpers into the compiled app, where knip cannot
+  see them.
+- `expo-keep-awake` is ignored as an unlisted dependency: the file transfer and the firmware
+  update import it, and only `expo` installs it. It has native code, so listing it is a decision
+  for the maintainer, not a CI fix.
+- `@react-native-community/geolocation` and `@morrowdigital/watermelondb-expo-plugin` are ignored
+  as unused dependencies: nothing imports either, but one is a native module and the other an
+  Expo config plugin, so removing them is a native-build decision.
+- `maestro` is ignored as a binary: it is a separate CLI the `test:maestro*` scripts call, not an
+  npm package (see "Maestro E2E Testing").
+- `src/types/database.types.ts` is generated and not inspected. `src/types/supabase.ts` is empty
+  and imported by nothing, and stays: `npm run types:local` writes there, and
+  `scripts/validate-watermelon-schema.js` reads it before `database.types.ts`.
+- Revisit after #411, which changes both files: `src/services/DeploymentPhotoService.ts` is left
+  out of the export checks (its default export duplicates the named one and nothing uses it), and
+  so is `tests/setup/helpers/fakeDatabase.ts`, whose `fakeDatabase` the tests reach through
+  `require()` inside a `jest.mock` factory, which knip cannot follow.
+
+React Doctor's own dead-code pass stays off in `doctor.config.json` (`deadCode: false`): it could
+not see the Expo entry points and flagged every screen.
 
 ---
 
@@ -428,7 +573,7 @@ bash scripts/seed-local.sh
 
 ## Best Practices
 
-- **Type Imports**: Always import types from `src/types/index.ts` (the central export) instead of specific files like `database.types.ts`. This significantly reduces memory usage and Jest crash risks during test runs by avoiding parsing huge auto-generated backend schemas.
+- **Type Imports**: take anything from `database.types.ts` with `import type`. Babel removes a type-only import, so Jest never parses the generated backend schema. There is no central type index to import from (see the Codebase Guide).
 - **Async assertions**: Always use `waitFor` for UI changes after promises
 - **TestIDs**: Use `testID` props for robust selection (Jest and Maestro)
 - **State reset**: Clear mocks and reset store in `beforeEach`
@@ -436,7 +581,7 @@ bash scripts/seed-local.sh
 
 ## Known Issues
 
-- **Legacy BLE Command Manager**: `src/ble/commandManager.ts` survives only as a trap file that throws on import. Its tests have been removed. Current BLE tests live in `src/ble/__tests__/` (messageClassifier, transport), `src/ble/protocol/__tests__/` (simulatedTransport) and `src/ble/protocol/fileTransfer/__tests__/` (ackMatcher, crc16ccitt, filenameValidator, fileTransferPackets). There is no `src/ble/session/__tests__/`.
+- **BLE tests** live in `src/ble/__tests__/` (messageClassifier, transport), `src/ble/protocol/__tests__/` (simulatedTransport) and `src/ble/protocol/fileTransfer/__tests__/` (ackMatcher, crc16ccitt, filenameValidator, fileTransferPackets). There is no `src/ble/session/__tests__/`.
 
 ---
 

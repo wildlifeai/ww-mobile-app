@@ -208,28 +208,6 @@ export function isAiNackError(message: string): boolean {
   return /^AI NACK$/i.test(message.trim())
 }
 
-/**
- * Extract an Operational Parameter value from a Sleep status message
- * Sleep messages can contain 28+ space-separated stats values.
- * Ops 20-27 are at indices 20-27 in the stats payload.
- */
-export function extractOpParamFromSleep(message: string, opIndex: number): string | null {
-  const trimmed = message.trim()
-  if (!/^Sleep\s+/i.test(trimmed)) return null
-
-  // Extract the stats part (everything after "Sleep")
-  const statsPart = trimmed.replace(/^Sleep\s+/i, '')
-  const stats = statsPart.split(/\s+/)
-
-  // Ops 20-27 are directly mapped to indices 20-27 in the array
-  if (opIndex >= 20 && opIndex <= 27) {
-    const value = stats[opIndex]
-    return value || null
-  }
-
-  return null
-}
-
 export type MonitorCategory = 'motion' | 'timelapse' | 'capture' | 'nn_positive' | 'nn_negative' | 'sleep' | 'wake' | 'selftest_ok' | 'selftest_warn' | 'info'
 
 export interface MonitorEvent {
@@ -259,8 +237,13 @@ export function classifyForMonitor(rawMessage: string): MonitorEvent | null {
   // and listing it instead left the log empty: with one picture per trigger
   // the HM0360 reports 0 blocks on every wake, because the first frame has no
   // reference, so no wake was ever listed (bench, 29 Sep 2026).
-  if (/^Wake\s*\(MD\)/i.test(content)) return { category: 'motion', label: 'Motion detected', icon: 'run', details: content }
-  if (/^MD[\s.]/i.test(content)) return { category: 'motion', label: 'Motion detected', icon: 'run', details: content }
+  //
+  // The wake is `Wake (Motion)` from BLE firmware with ww-hardware #60 and
+  // `Wake (MD)` before it; both stay while cameras run either (#412). `MD`
+  // alone counts only before `...` or a time: that firmware also passes on
+  // `MD sensitivity set to N`, the reply to `md`, which is not motion.
+  if (/^Wake\s*\((MD|Motion)\)/i.test(content)) return { category: 'motion', label: 'Motion detected', icon: 'run', details: content }
+  if (/^MD(\.\.\.|\s+\d)/i.test(content)) return { category: 'motion', label: 'Motion detected', icon: 'run', details: content }
 
   // Himax WW500 hardware outputs block counts dynamically
   const motionMatch = content.match(/^HM0360 motion in (\d+) blocks:/i)

@@ -35,7 +35,9 @@ shell boundary, and none of them reproduced in a Linux container.
   genuinely lack them upstream, and 3 were legacy columns already labelled `// Legacy fields`
   in `models/Deployment.ts`. Query the live database for the real column list rather than
   reasoning from the generated types, and check whether the code still uses the field, before
-  proposing a fix.
+  proposing a fix. A difference that proves deliberate goes in a named allowlist, never a
+  pattern, as in `validate-watermelon-schema.js` since #399: an entry fails the run once it
+  stops matching, and `scripts/README.md` says why each one is there.
 - **Absence of a tool is not proof your check works.** The JDK bug survived a container test
   because, with no JDK present, the wrong code path produced the right answer. If a check can
   only pass or fail for the same reason, it has not been tested.
@@ -46,7 +48,19 @@ shell boundary, and none of them reproduced in a Linux container.
   named a package that was never installed, and run 35493842313 on 20 September 2026 shows
   an empty `~/.maestro/tests/` under a green tick. The job now writes a junit report and
   fails if it holds no `<testcase>`. Apply the same guard to any runner you add: count what
-  ran, not whether the command exited.
+  ran, not whether the command exited. A Maestro flow names its package as `appId: ${APP_ID}`,
+  never a fixed one: CI installs the release package, a local debug build the `.expo` one.
+- **A development client proves nothing in CI.** It carries no JavaScript, so without a Metro
+  server every flow stops at Expo's "Development servers" launcher, and a smoke that only
+  launches reads green (run 36836146016, 1 October 2026). CI builds the release-type `e2e`
+  profile for the flows; a flow asserts a real first screen. Three more Maestro facts that each
+  cost a run: Maestro only runs the top-level files of a directory unless `config.yaml` lists the
+  subfolders; `runScript` cannot shell out (`Android.shell` is not an API, airplane mode is the
+  `setAirplaneMode` command); and the npm package `maestro` is an AWS tool, not Maestro, which
+  installs with `scripts/install-maestro.sh`, pinned to a version and its SHA-256 so an upstream
+  release cannot change the flows without a commit. Read a failed run from the job
+  log, where `scripts/ci-maestro-output.sh` prints every screen hierarchy, before touching a
+  selector.
 - **A required check that never triggers blocks the merge forever, and the obvious fix is a
   trap.** A workflow with `paths:` produces no check run at all for a PR it does not match, so
   a docs-only PR can never satisfy it. The tempting answer, a mirror workflow with
@@ -59,6 +73,19 @@ shell boundary, and none of them reproduced in a Linux container.
   The shape that works: **no path filter, every job always runs and reports**, and a first
   `changes` job diffs the PR against its base and sets an output the expensive steps guard on
   with `if:`. One check name, produced once, by the workflow that owns it.
+  An advisory workflow may filter on `paths`, since nothing waits for it; the day it becomes
+  required, drop the filter and use the `changes` job.
+- **An advisory check is `continue-on-error` on the step, never on the job.** On the job, the
+  check still shows as failed. On the step that runs the tool, a follow-up step reads
+  `steps.<id>.outcome` and prints `::warning::` with the finding, so the run stays green and the
+  finding is still on the pull request (Schema Mirror Drift, the website's Lighthouse).
+- **A space and a hash inside a `run:` string is a YAML comment.** `echo "advisory, see #225"`
+  ends at the hash and leaves the quote open, and the parser names the file, not the line. Write
+  "issue 225".
+- **`schedule` and `workflow_dispatch` register only from the default branch.** A new workflow
+  with a cron cannot be run by hand or by its schedule until it has merged to `dev`; give it a
+  `pull_request` trigger so the pull request itself exercises it, and expect the first scheduled
+  run after the merge.
 - **The `console.log` gate is a grep, and it reads comments.** `quality-gate-validation`
   fails on the text `console.log` anywhere in `src/` outside `__tests__/` and `logger.ts`, so a
   comment that names it fails CI exactly like a call. #337's first run failed on a comment in
@@ -69,11 +96,21 @@ shell boundary, and none of them reproduced in a Linux container.
   out on a real `requestAnimationFrame` and fires after teardown. The tests pass, but the line
   is noise. Unmount in the test's own `afterEach` (`screen.unmount()`, then
   `jest.runOnlyPendingTimers()`), as `GoogleSignIn.integration.test.tsx` does (1 October 2026).
+- **A render test's first render can take longer than the 15 s test limit.** React Native loads
+  its components lazily, so the first render in a test file pays for loading them: 16 s for
+  `SideNavigation` on a cold run, 0.2 s for the next test (#416, 8 October 2026). Render once in
+  a `beforeAll` with its own limit and unmount, as `SideNavigation.signOut.test.tsx` does, rather
+  than raising the test timeout.
 - **The coverage floor is a ratchet, not a target.** `quality-gate-validation` fails below
   20% statements, set just under the 21.29% measured on 21 September 2026. Until then the
   awk checked `< 10` while the message claimed 70. Raise the floor by hand when coverage
   has genuinely climbed; never lower it to make a PR pass.
 - `scripts/check-op-indices.js` diffs `OP_PARAMETER` against the firmware enum on Seeed
-  `dev`. It runs on any PR touching `useDeviceSettings.ts` and is advisory, because the
-  firmware may legitimately lead the app by one PR. Pass it a local header path to run
-  offline.
+  `dev`, and `scripts/check-selftest-bits.js` diffs `SelfTestBit` against `selfTest_type_t`
+  there. Each runs on PRs touching its app file and on Mondays, and is advisory, because the
+  firmware may legitimately lead the app by one PR. Pass either a local header path to run
+  offline. What fails and what only warns is in `scripts/README.md`.
+- **`process.exit()` straight after a `fetch` crashes Node on Windows.** The self-test check
+  printed its result and then died on a libuv assertion (`UV_HANDLE_CLOSING`, `async.c`), exit
+  code -1073740791 instead of 1, every time on Node 24 (9 October 2026). Both check scripts set
+  `process.exitCode` and let the script end; do the same in any script that fetches.

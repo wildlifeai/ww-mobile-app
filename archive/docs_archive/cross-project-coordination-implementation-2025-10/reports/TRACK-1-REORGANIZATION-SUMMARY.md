@@ -381,7 +381,7 @@ root/
 
 ```
 commit 7fa30beb89058adabad75599339e75b9f2fb771f
-Author: adarshlal <adarsh@wildlife.ai>
+Author: adarshlal
 Date:   Tue Oct 28 16:52:41 2025 +1300
 
 46 files changed, 5249 insertions(+), 3 deletions(-)

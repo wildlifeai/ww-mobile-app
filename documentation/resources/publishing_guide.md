@@ -8,10 +8,10 @@ The app uses **EAS (Expo Application Services)** for building and submitting to 
 
 | EAS Profile | Purpose | `EXPO_PUBLIC_SUPABASE_ENV` | Trigger |
 |-------------|---------|---------------------------|---------|
-| `ci` | CI smoke builds | *(unset)* | CI workflows |
+| `e2e` | CI builds for the Maestro flows (release-type, built locally on the runner) | `cloud-dev` | CI workflows |
 | `development` | Dev client builds | *(unset — local `.env`)* | Manual: `eas build` |
 | `staging` | Pre-production validation | `cloud-staging` | Manual: `eas build` |
-| `preview` | Internal testing | `cloud-dev` | Push to `main` (via GitHub Action) |
+| `preview` | Internal testing | `cloud-dev` | Manual dispatch of EAS Build & Submit, or `eas build` |
 | `production` | Store submission | `cloud-staging` | Git tag `v*` (via GitHub Action) |
 
 > Authoritative source: [`eas.json`](../../eas.json). See [Expo-EAS-Guide.md](Expo-EAS-Guide.md#eas-build-profiles) for how the env name resolves to a Supabase instance.
@@ -59,11 +59,12 @@ eas submit --profile production --platform all
 
 ### Automated (GitHub Actions)
 
-The `eas-build.yml` workflow handles this:
+The `eas-build.yml` workflow handles this, and it is the only workflow a `v*` tag starts (#373):
 
-- **Push to `main`** → builds `preview` profile (both platforms)
 - **Git tag `v*`** → builds `production` profile → submits to stores
-- **Manual dispatch** → choose profile + platform
+- **Manual dispatch** → choose profile + platform, the way to get a `preview` build
+
+A push to `main` builds nothing, so a release costs the two production builds and not two preview builds as well.
 
 ### Release Process
 

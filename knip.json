@@ -1,0 +1,26 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": ["plugins/**/*.js", "scripts/**/*.js"],
+  "project": [
+    "src/**/*.{ts,tsx,js}",
+    "tests/**/*.{ts,tsx,js}",
+    "__tests__/**/*.{ts,tsx,js}",
+    "scripts/**/*.js",
+    "plugins/**/*.js"
+  ],
+  "ignore": ["src/types/database.types.ts"],
+  "ignoreFiles": ["src/types/supabase.ts"],
+  "ignoreDependencies": [
+    "buffer",
+    "@babel/runtime",
+    "expo-keep-awake",
+    "@react-native-community/geolocation",
+    "@morrowdigital/watermelondb-expo-plugin"
+  ],
+  "ignoreBinaries": ["maestro"],
+  "ignoreExportsUsedInFile": true,
+  "ignoreIssues": {
+    "src/services/DeploymentPhotoService.ts": ["exports", "duplicates"],
+    "tests/setup/helpers/fakeDatabase.ts": ["exports"]
+  }
+}

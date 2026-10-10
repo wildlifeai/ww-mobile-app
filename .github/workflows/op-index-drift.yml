@@ -3,12 +3,14 @@
 # OP_PARAMETER in the app mirrors OP_PARAMETERS_E in the Seeed firmware by hand,
 # and AGENTS.md says never to renumber unilaterally. This job fetches the
 # firmware header from the Seeed fork's dev branch and diffs the index table,
-# so a renumbering on either side shows up on the PR that made it.
+# so a renumbering on either side shows up on the PR that made it, and the
+# Monday run catches a firmware change made while nobody touched the app's enum.
 #
 # Advisory because the firmware may legitimately lead the app by one pull
-# request, and this must not block that. A red run here is a conversation,
-# not a merge block. See scripts/check-op-indices.js for what counts as a
-# mismatch (indices and count) versus a warning (names).
+# request, and this must not block that. The step fails, the next one turns
+# that into a warning, and the run stays green: a conversation, not a merge
+# block. See scripts/check-op-indices.js for what counts as a mismatch
+# (indices and count) versus a warning (names).
 name: Op Index Drift
 
 on:
@@ -17,6 +19,8 @@ on:
       - 'src/hooks/useDeviceSettings.ts'
       - 'scripts/check-op-indices.js'
       - '.github/workflows/op-index-drift.yml'
+  schedule:
+    - cron: '35 6 * * 1'
   workflow_dispatch:
 
 concurrency:
@@ -34,7 +38,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Compare OP_PARAMETER against Seeed dev OP_PARAMETERS_E
+        id: ops
+        continue-on-error: true
         run: node scripts/check-op-indices.js
+
+      - name: Warn on drift
+        if: steps.ops.outcome == 'failure'
+        run: echo "::warning::The app OP_PARAMETER indices differ from OP_PARAMETERS_E on Seeed dev, or the header could not be read (advisory). The step above names each index. Never renumber unilaterally."

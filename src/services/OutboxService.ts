@@ -1,4 +1,5 @@
 import { Q } from '@nozbe/watermelondb'
+import type { Observable } from 'rxjs'
 // import * as Crypto from 'expo-crypto' // Removed to use standardized helper
 import database from '../database'
 import SyncOutbox from '../database/models/SyncOutbox'
@@ -15,7 +16,8 @@ import { log, logError, logWarn } from '../utils/logger'
  * - Record all CRUD operations for sync
  * - Generate operation IDs for idempotency
  * - Use Lamport clock for operation ordering
- * - Track operation status (pending, syncing, synced, failed)
+ * - Track operation status (pending, syncing, synced, failed; refused and
+ *   orphaned are kept and never sent again)
  * - Support retry logic for failed operations
  */
 
@@ -320,6 +322,17 @@ class OutboxService {
     }
 
     /**
+     * Watch the operations the server refused for good (#449): 42501, 23P01, or
+     * an update or delete it did not apply. They are kept, never sent again,
+     * and error_message holds the server's reason. Settings lists them.
+     */
+    observeRefusedOperations(): Observable<SyncOutbox[]> {
+        return database.get<SyncOutbox>('sync_outbox')
+            .query(Q.where('status', 'refused'), Q.sortBy('lamport_clock', Q.asc))
+            .observe()
+    }
+
+    /**
      * Clean up synced operations older than specified days
      * Keeps database size manageable
      */
@@ -357,6 +370,7 @@ class OutboxService {
         synced: number
         failed: number
         conflict: number
+        refused: number
         orphaned: number
         total: number
     }> {
@@ -369,6 +383,7 @@ class OutboxService {
                 synced: all.filter(op => op.status === 'synced').length,
                 failed: all.filter(op => op.status === 'failed').length,
                 conflict: all.filter(op => op.status === 'conflict').length,
+                refused: all.filter(op => op.status === 'refused').length,
                 orphaned: all.filter(op => op.status === 'orphaned').length,
                 total: all.length,
             }
@@ -382,6 +397,7 @@ class OutboxService {
                 synced: 0,
                 failed: 0,
                 conflict: 0,
+                refused: 0,
                 orphaned: 0,
                 total: 0,
             }

@@ -19,7 +19,8 @@ User-facing device workflows covering the full deployment lifecycle: connect →
 ```mermaid
 flowchart TD
     A["Scanner auto-discovers BLE device"] --> B["Auto-connect to first device"]
-    B --> C{"Active Deployment?"}
+    B --> R["Find the camera: this phone, the server, or register it"]
+    R --> C{"Active Deployment?"}
     C -- Yes --> D{"User has project access?"}
     D -- Yes --> E["Route → End Deployment"]
     D -- No --> F["Show 'Access Denied' dialog"]
@@ -29,6 +30,27 @@ flowchart TD
     G -- Yes --> J["Look up last project used"]
     J --> L["Route → Start Deployment"]
 ```
+
+### A camera this phone has not met
+
+The scanner looks the camera up by its Bluetooth id, on the phone first
+(`DeviceService.getDeviceByBluetoothId`). When the phone has no device for it:
+
+1. **No one signed in:** "Not signed in", and the scanner disconnects.
+2. **It asks the server** (`DeviceService.adoptFromServer`, #451), unless NetInfo says the
+   phone is offline, and waits up to 5 s. A row this account may read is written to the phone
+   under the server's id, with nothing queued, and the flow carries on with it. Nothing found
+   means nothing this account may read, not an unregistered camera.
+3. **Otherwise it registers the camera** in the current organisation (`DeviceService.createDevice`),
+   which queues its `CREATE`.
+4. **With no current organisation it cannot**, since only a member of an organisation may
+   register a camera, and a project invitation makes no one a member. The scanner says so,
+   "Cannot register this camera", and disconnects.
+
+Who may read or register a camera is in [the
+contract](../../.agents/skills/references/cross-repo-contracts.md). A camera registered here that
+the server already has under another id is settled by the push
+([03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md#a-camera-the-server-already-has)).
 
 ### ScannerRoutingDialog States
 
@@ -63,7 +85,7 @@ flowchart TD
     H -- Yes --> I["Show warning banner (optional update)"]
     I --> G
     H -- No --> J{"Tap 'Start Monitoring'"}
-    J --> K["Pipeline: Time Sync → AI Model → Snapshot → DB Record → Reset OPs → Configure"]
+    J --> K["Pipeline: Role check → Server check → Time Sync → AI Model → Snapshot → DB Record → Reset OPs → Configure"]
     K --> L["Live Monitor (DeploymentMonitorView)"]
     L --> M["User taps 'Disconnect'"]
     M --> N["Navigate to Home"]
@@ -90,7 +112,8 @@ BLE initialization happens **upstream** in the Scanner connection flow, and the 
 > [!NOTE]
 > **A deployed device never reaches any of this.** `useDeviceDiscovery` checks
 > `getActiveDeploymentForDeviceId` first and routes an active deployment straight to Stop
-> Monitoring.
+> Monitoring. That is the phone's own record; an open deployment the phone does not hold is
+> asked of the server when the user taps Start Monitoring (#448, below).
 
 **The factory reset happens once, in the Start Monitoring pipeline** (`pipeline.resetOps`, step 5 below), after the user has decided to deploy. It is the guarantee that nothing leaks from a previous deployment or an Engineer Console session (test-mode bits, extended inactivity timeout, flash overrides, intervals). A refused write there aborts the deployment; it is not a warning. The reset writes `FACTORY_DEFAULTS`, which since #304 holds `SLOT_SWITCH` (OP 26) = 0 and `AE_CHECK_INTERVAL` (OP 24) = 0, so **a deployment stays on the camera it started on** and schedules no periodic light wake. It was the other way round until then, and every camera the app had touched switched images on the light verdict. Choosing the camera for a site is manual until that becomes a project setting. See [Light-Sensor.md](../resources/Light-Sensor.md).
 
@@ -111,7 +134,7 @@ through a subtitle under the title: the standing descriptions were removed on 22
 
 | Element | Notes |
 |---------|-------|
-| Project Selector (`WWSelect`) | Dropdown to pick or switch the attached project. Dynamically recalculates capture method, sensitivity, and feature icons. |
+| Project Selector (`WWSelect`) | Dropdown to pick or switch the attached project. Dynamically recalculates capture method, sensitivity, and feature icons. It offers only the projects this account [may deploy into](./03-DATA-AND-SYNC.md#key-tables) (#450). When the scanner opened the screen on a project it may not deploy into, that project stays selected with the reason under the field, and Start says it again. |
 | Feature Icons Row | Visual indicators: 🔄 Activity Detection, ⏱ Timelapse, 📡 LoRaWAN, 🛰 GPS in images, 🧠 AI Model |
 | Model readiness line | Only when the project has a model: "Model ready on this phone", or "Model not downloaded: connect to download". Offline, a start with a model the phone lacks stops unless the camera already carries it (#333). Refreshes when the pre-download lands the files. |
 
@@ -119,7 +142,7 @@ through a subtitle under the title: the standing descriptions were removed on 22
 
 | Element | Notes |
 |---------|-------|
-| LoRaWAN connectivity check | Auto-pings network on project selection. Shows pass/fail status. |
+| LoRaWAN Signal Test | Test Connectivity sends `ping`, and the card says Sent, Not joined yet, Busy, LoRaWAN is off or No answer. Off is the app's reading of `Not joined yet.` on a camera whose OP 32 is 0. The screen also pings once the project is chosen and the camera is connected, and warns unless the answer is Sent or Busy. Both read `src/ble/workflows/lorawanPing.ts` (#348); the nRF's replies are in the [console guide](04-ENGINEER-CONSOLE.md). A ping answered `OK` sends a real uplink. |
 
 **3. Notes** (always visible)
 
@@ -140,7 +163,7 @@ camera before naming the site.
 
 | Element | Notes |
 |---------|-------|
-| Camera View Image | Live preview via `CameraViewSection` |
+| Camera View Image | One test photo via `CameraViewSection`, to aim the camera |
 | Site Name | Dropdown of nearby past deployment locations (auto-selected closest), or free-text input for new sites. Used as both `name` and `locationName` for the deployment record. |
 | Camera Height (cm) | Numeric input for height from ground |
 | Motion Detection Test | Collapsible 16×16 grid via `DeploymentMotionDetectionSection` (Activity Detection projects only) |
@@ -160,9 +183,13 @@ Project settings (capture method, sensitivity, timelapse interval, GPS image tag
 
 When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeployment.ts` executes a multi-step pipeline. Steps 1–2 and 5–6 are shared with the [Dev Deployment](../resources/Dev-Deployment-Guide.md) flow via `deploymentPipeline.ts`.
 
+**First it asks the phone's roles** whether this account may deploy into the project (`startRefusal` in `deploymentAccess.ts`, #450, [the rule](./03-DATA-AND-SYNC.md#key-tables)). A viewer, an organisation manager with no role in the project, or a phone with no roles synced yet **stops the start** with "Cannot Start Monitoring" and the reason, before the server is asked or anything is written to the camera. It needs no connection.
+
+**Then, before step 1, it asks the server about the camera** (`DeploymentService.checkServerForOpenDeployment`, #448). The server allows one open deployment per camera ([the contract](../../.agents/skills/references/cross-repo-contracts.md)), and the scanner only knows the phone's own. An open deployment on the server that this phone does not hold, or holds and has not ended, **stops the start** with "Already Deployed", naming its project, who started it when the server will say, and when; nothing has been written to the camera. The check sees only what this account may read (deployments in its projects, in an organisation it manages, or everywhere for a `ww_admin`): **an open deployment in any other project is invisible to it**, and only the refused push shows it. Offline, on a failed read or after 10 s without an answer, it says so in the progress log and carries on.
+
 | Step | Action | Detail |
 |------|--------|--------|
-| 1 | AI Model Sync | Checks SD card (`dir`) for existing model files before downloading. Only transfers missing files via BLE. Always issues `erasemodel` → `loadmodel` if OPs mismatch. Retries reference data sync if model not found locally, and **stops the deployment** if the project's model is still missing or has no firmware IDs (#290), or if it is on neither the camera (op14/op15) nor the card and its files cannot be had from the phone's cache or a download (#333), or if the transfer is refused because the camera's BLE firmware is below the [transfer floor](../resources/File-Transfer-Protocol.md#the-ble-firmware-floor) (#289). All three stops come before the deployment is created or anything is written to the device. A failed transfer or `loadmodel` once the files are in hand stays a warning. The files are normally already on the phone: the [offline pre-download](./03-DATA-AND-SYNC.md#files-for-the-field) fetches them after each sync. Runs **before** time sync to stay within the firmware's 1000ms IMAGE task inactivity window. |
+| 1 | AI Model Sync | Checks SD card (`dir`) for existing model files before downloading. Only transfers missing files via BLE. Issues `loadmodel` if OPs mismatch, never `erasemodel` first. Retries reference data sync if model not found locally, and **stops the deployment** if the project's model is still missing or has no firmware IDs (#290), or if it is on neither the camera (op14/op15) nor the card and its files cannot be had from the phone's cache or a download (#333), or if the transfer is refused because the camera's BLE firmware is below the [transfer floor](../resources/File-Transfer-Protocol.md#the-ble-firmware-floor) (#289), or if the phone's copy of the model is not a TFLite model, bytes 4 to 7 not `TFL3` (#428). Those four stops come before the deployment is created or anything is written to the device. It also stops when the camera never answers `loadmodel`, after the transfer, because a file the Himax cannot parse halts it (Seeed #241, #428). A failed transfer, or a `loadmodel` the camera refuses, stays a warning. The files are normally already on the phone: the [offline pre-download](./03-DATA-AND-SYNC.md#files-for-the-field) fetches them after each sync. Runs **before** time sync to stay within the firmware's 1000ms IMAGE task inactivity window. |
 | 2 | Time Sync | `setutc`, see [BLE Command Reference](./04-ENGINEER-CONSOLE.md#ble-command-reference). Handled by BLE module (not AI processor). |
 | 3 | Snapshot Data | Reads `battery`, `network` (if LoRaWAN required), `ver` for deployment record metadata |
 | 4 | Create DB Record | `DeploymentService.createDeployment()` → `OutboxService` → `SupabaseSyncService` |
@@ -247,6 +274,12 @@ op34 = 0, which is why step 6 must diff against the post-reset table: against
 the older snapshot, a device that already held the project's flash before the
 reset would have had both writes skipped and stayed dark.
 
+Before writing, `configure()` calls `flashHold.forget` and `flashLedHold.forget`.
+The Engineer Console's motion test holds op34, op13 and op9 when it tests with a
+flash, and a test that dropped its link leaves their originals owed for the next
+test to pay. The project's LED can be the one that test held, so without the
+`forget` a later motion test would take the project's flash off a deployed camera.
+
 **D. Configure Pictures per Trigger:** the project's two burst columns, for motion
 and timelapse alike, and the OP 8 they need (#317):
 
@@ -300,6 +333,19 @@ next deployment. It is written whatever the model; with none on the device the
 firmware never reads it. The Dev Deployment Test screen writes the selected project's
 threshold the same way.
 
+**F. Configure LoRaWAN:** the project's `lorawan_required`, as the LoRaWAN ping period
+(OP 32, `LORAWAN_PING_MINUTES`, agreed with Charles Palmer on 6 October 2026):
+
+```
+AI setop 32 720   (LoRaWAN required: ping every 12 hours, the factory default)
+AI setop 32 0     (not required: never try to join, so no join failures without a gateway)
+```
+
+The reset (step 5) has just written 720, so a project that requires LoRaWAN writes
+nothing here. The Dev Deployment Test screen writes its own LoRaWAN switch the same way.
+Firmware without the flash mode (OP 34) is left alone: before ae_review OP 32 was
+`CAM_RESOLUTION`, the hi-res switch, and the reset skips it there too.
+
 ---
 
 ## Part 3: Ending a Deployment
@@ -330,6 +376,17 @@ flowchart TD
     I --> P["Update DB only, skip BLE"]
     P --> O
 ```
+
+### Who may end it
+
+Before the sequence, and before Force End is offered, the phone's roles are asked whether this
+account may end the deployment (`endRefusal` in `deploymentAccess.ts`, #450,
+[the rule](./03-DATA-AND-SYNC.md#key-tables)). A viewer, or a member ending someone else's,
+gets "Cannot End This Deployment" naming who can, and the camera is not touched. The monitor view says it when Stop Monitoring is pressed,
+before the notes, and the disconnected view shows it in place of the Force End text. The
+scanner still routes such a user here (it checks only that the project is on the phone), and
+"Disconnect & Continue Monitoring" still works. Stop Monitoring on the live monitor after a
+start, and the Dev Deployment Test's End deployment, ask the same.
 
 ### End Deployment Sequence
 
@@ -368,6 +425,7 @@ If the device is not connected, the user can "Force End (Database Only)":
 |-------|-------|-----|
 | Dialog not appearing | Device timeout | Clear app data or re-connect |
 | "No Projects Found" | User has no projects in current org | Create a project first |
+| "Cannot register this camera" | The camera is neither on this phone nor one this account may read on the server, and the account has no organisation ([above](#a-camera-this-phone-has-not-met)) | An organisation manager adds the user to the organisation, or registers the camera. If the phone was offline, try again with a connection |
 | Infinite connect loop | Navigation guard not reset | Fixed via `hasNavigatedRef` in `useEngineerConnect` |
 
 ### Start Deployment
@@ -379,10 +437,15 @@ If the device is not connected, the user can "Force End (Database Only)":
 | "Failed to Set Deployment ID" | BLE write error or AI NACK | Keep phone within 1m; app falls back to GPS-only |
 | "No SD Card Detected" | Stale selftest bits (false positive) | App now masks stale AI bits (8-15) before AI processor is woken. If warning persists after reconnection, the SD card is genuinely missing, or was put in while the camera was on (next row). |
 | "No SD Card" stays after the card is put back | A card inserted into a powered camera is never mounted: the warm boot fails FatFS `disk_initialize` with `FR_NOT_READY`, and bit 11 stays set on every wake | Power cycle the camera (unplug it or remove the battery), then reconnect. Checking again cannot clear it. Every message that reports bit 11 says so since #325. |
-| "AI model update FAILED" | The files were on the phone but the transfer to the card or the `loadmodel` failed. The deployment carries on and records without classifying | Reconnect with the phone close to the camera and run the deployment again. |
+| "AI model update FAILED" | The files were on the phone but the transfer to the card failed, or the camera refused the `loadmodel`. The deployment carries on and records without classifying | Reconnect with the phone close to the camera and run the deployment again. |
+| "This project's AI model "..." is not a TFLite model" | The model's file in storage is something else, such as a ZIP archive (the dev backend's model `d0000000-...-0000000000a1` on 8 October 2026). Loading it would halt the camera (Seeed #241) | Replace the model's file with the TFLite model itself. Nothing was written to the camera, and downloading again brings the same file. |
+| "The camera did not confirm it loaded this project's AI model" | `loadmodel` went unanswered. The usual cause is a model file the Himax could not parse, which halts it: it answers commands but never captures or sleeps (Seeed #241) | Power cycle the camera (unplug it or remove the battery), reconnect and start again. No deployment was created. |
 | "This project's AI model ... is not on this phone" | The model did not come down with the reference data: phone offline, or the model is not `validated` or `deployed` | Get the phone online and start again, which syncs first. If it persists, check the model's status on the website. |
 | "This camera's BLE firmware is ..., and sending files to it needs ... or later" | The model has to be sent to the card and the camera's BLE firmware predates the relay FIFO the transfer needs ([the floor](../resources/File-Transfer-Protocol.md#the-ble-firmware-floor)) | Update the BLE firmware, then start again. Nothing was written to the camera. |
 | "This project's AI model "..." could not be downloaded" | The model is not on the camera or its card, and the phone could not download its files. Offline, it was assigned after the phone's last sync or the pre-download had not finished; online, the download itself failed | Check the connection, wait for the sync (the Start Monitoring screen then says "Model ready on this phone"), and start again. Nothing was written to the camera. |
+| "Cannot Start Monitoring": "You are a viewer in ..." or "You are not a member of ..." | This account may not deploy into the project: a viewer, or an organisation manager with no role in it (#450). The server would refuse the deployment | A project admin makes you a member, or pick a project you are a member of. Nothing was written to the camera. |
+| "Cannot Start Monitoring": "Your roles have not reached this phone yet ..." | No role of this account is on the phone, so it cannot tell | Connect so the app syncs, then start again. |
+| "Already Deployed": "This camera is still deployed in ..." | The server has an open deployment on this camera that this phone does not hold: another user's, or one started on another phone and not pulled yet (#448) | Whoever runs that deployment ends it. If it is yours, sync, then reconnect: the scanner sends the camera to End Deployment. Nothing was written to the camera. |
 
 ### End Deployment
 
@@ -391,6 +454,7 @@ If the device is not connected, the user can "Force End (Database Only)":
 | "No Active Deployment" | Device not deployed or already ended | Verify correct device; check deployment list |
 | "Failed to Clear Deployment ID" | BLE write failure after 3 retries | Use "Force End"; manually reset via [Engineer Console](./04-ENGINEER-CONSOLE.md) |
 | "Connection Lost" before end | Device out of range or battery dead | Use "Force End (Database Only)" |
+| "Cannot End This Deployment" | This account [may not end it](./03-DATA-AND-SYNC.md#key-tables) (#450): a viewer, a member ending someone else's, or its creator made a viewer since. The server would refuse the end | The person named, or a project admin, ends it. The camera was not touched. |
 | "Camera not answering" | The Himax did not answer the probe, usually asleep in its motion loop; the record is ended but the camera keeps capturing | Wake the camera with its button, reconnect, and clear it from the [Engineer Console](./04-ENGINEER-CONSOLE.md) |
 
 ---

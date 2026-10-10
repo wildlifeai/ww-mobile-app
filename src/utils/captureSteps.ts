@@ -8,7 +8,7 @@ import { parseLightCheck } from '../ble/protocol/lightCheck'
  *
  * The device narrates a capture unprompted, in this order: `About to capture`,
  * `AE light check: ... -> DARK|BRIGHT`, `Captured 1 images. Last is X.JPG`,
- * `N bytes in X.JPG`, one binary packet every 200 ms or so, `Finished sending`.
+ * `N bytes in X.JPG`, the binary packets, `Finished sending`.
  * Each of those is a step changing state. Nothing here sends a command; the
  * rule is to use what the device already broadcasts rather than poll it.
  */
@@ -42,10 +42,13 @@ export interface CaptureStepsState {
 
 /**
  * Bytes per second to assume until enough of the image has arrived to measure.
- * Four transfers on 3 September 2026 ran between 1.03 and 1.2 KB/s, bounded by
- * the nRF's console output per packet rather than by BLE.
+ * On the bench on 10 October 2026 (WILD-DJZQ, BLE 0.30.57, Pixel 7), photos of
+ * 19 to 23 KB came at about 9.7 KB/s on the 15 ms interval the app asks Android
+ * for, and at 5.1 to 6.1 KB/s on the 30 ms it gives the camera's own request.
+ * This is the slower of the two, so the first estimate is about right or a
+ * little long.
  */
-export const NOMINAL_RATE_BPS = 1100
+export const NOMINAL_RATE_BPS = 6000
 
 /** Below this many bytes the measured rate is too noisy to beat the nominal one */
 const MEASURE_AFTER_BYTES = 2048

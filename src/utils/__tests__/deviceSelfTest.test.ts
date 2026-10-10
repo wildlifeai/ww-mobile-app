@@ -70,8 +70,39 @@ describe('deviceSelfTest', () => {
         ])
     })
 
+    // Seeed PR #240 added bit 14 on 29 September 2026 and the app called it
+    // "Unknown" until ww-hardware issue 56. The nRF clears it with its first
+    // command, so it is not expected over BLE; if it arrives, it is named and
+    // it never blocks a deployment.
+    it('names bit 14, the AI processor missing the BLE processor at boot, as a warning only', () => {
+        expect(SelfTestBit.AI_NO_BLE).toBe(14)
+
+        const issues = decodeSelfTest(0x4000)
+        expect(issues).toHaveLength(1)
+        expect(issues[0].bit).toBe(14)
+        expect(issues[0].severity).toBe('warning')
+        expect(issues[0].title).toMatch(/Camera processor could not reach the Bluetooth chip at start-up/)
+
+        expect(CRITICAL_AI_MASK & 0x4000).toBe(0)
+        expect(selfTestWarnings(0x4000)).toEqual(['AI processor lost contact with the BLE processor at boot (Bit 14)'])
+    })
+
+    // The numbers are checked against the firmware by scripts/check-selftest-bits.js;
+    // this keeps the app's own tables agreeing with its enum.
+    it('has exactly one issue row and one banner line for every bit it names', () => {
+        const bits = Object.values(SelfTestBit).filter((v): v is number => typeof v === 'number')
+        expect(bits.length).toBeGreaterThan(0)
+        for (const bit of bits) {
+            expect(decodeSelfTest(1 << bit).map(i => i.bit)).toEqual([bit])
+            const warnings = selfTestWarnings(1 << bit)
+            expect(warnings).toHaveLength(1)
+            expect(warnings[0]).not.toMatch(/^Unknown/)
+        }
+        expect(KNOWN_BITS_MASK).toBe(bits.reduce((mask, bit) => mask | (1 << bit), 0))
+    })
+
     it('keeps the masks in step with the table', () => {
-        expect(KNOWN_BITS_MASK).toBe(0x3f1f)
+        expect(KNOWN_BITS_MASK).toBe(0x7f1f)
         // Camera, HM0360, NN and, since #303, the SD card: 0x0800
         expect(CRITICAL_AI_MASK).toBe(0x2b00)
         expect(decodeSelfTest(CRITICAL_AI_MASK).every(i => i.severity !== undefined)).toBe(true)

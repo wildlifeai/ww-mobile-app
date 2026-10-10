@@ -1,4 +1,5 @@
 CREATE TABLE taxa (
+  -- Columns stay in the order the migrations created them; add new ones at the end (#220, MIGRATIONS.md).
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   scientific_name text UNIQUE NOT NULL,
   common_name text,
@@ -15,11 +16,11 @@ CREATE TABLE taxa (
   nzor_id text,
   conservation_status text,
   invasive_status boolean DEFAULT false,
+  created_at timestamptz DEFAULT now(),
   -- Lifecycle for novel-species discovery: provisional 'candidate' taxa are created from
   -- unassigned outlier clusters and promoted to 'confirmed' (or 'rejected') by an expert.
   status text NOT NULL DEFAULT 'confirmed'
-    CHECK (status IN ('confirmed', 'candidate', 'rejected')),
-  created_at timestamptz DEFAULT now()
+    CHECK (status IN ('confirmed', 'candidate', 'rejected'))
 );
 
 COMMENT ON TABLE taxa IS 'Taxonomy reference table for resolving scientific and common names of observed species.';

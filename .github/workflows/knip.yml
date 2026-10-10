@@ -1,0 +1,54 @@
+# Dead code: files nothing imports, exports nothing uses, dependencies nothing
+# imports, and imports of packages package.json does not list. knip starts from
+# the entry points in knip.json plus what its Expo, Metro, Babel and Jest plugins
+# find on their own. React Doctor's own dead-code pass is off in doctor.config.json
+# because it could not see the Expo entry points; this is the replacement.
+#
+# Blocking: any finding fails the run, on pull requests, the merge queue and the
+# weekly run alike, so a new unused file, export or dependency fails the pull
+# request that adds it. The first report was worked through in issue 393. No path
+# filter, so the `knip` check reports on every pull request and can be required;
+# the whole job takes under a minute. The reasons for every exclusion in knip.json
+# are in documentation/resources/Testing-Guide.md.
+name: Dead Code
+
+on:
+  pull_request:
+  merge_group:
+  schedule:
+    - cron: '20 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  # One run per PR (refs/pull/N/merge) and a fresh push cancels the stale run.
+  # A merge-queue entry has its own unique ref, so queue runs never cancel each other.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  knip:
+    name: knip
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      # No postinstall: patch-package only matters to the native build.
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: knip
+        run: |
+          set -o pipefail
+          npx --yes knip@6.39.0 --no-progress --reporter markdown 2>&1 | tee knip-report.md
+
+      - name: Report
+        if: always()
+        run: |
+          echo "## knip" >> "$GITHUB_STEP_SUMMARY"
+          cat knip-report.md >> "$GITHUB_STEP_SUMMARY"

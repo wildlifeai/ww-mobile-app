@@ -17,6 +17,14 @@ file is the list of things that look like an app bug and are not, and the revers
   `selftest` after waking the AI processor. The two are not duplicates, and neither is
   removable. Anything reading bits 8 or 9, the main camera and the HM0360, must reject the
   all-bits-set pattern or it will report five hardware failures on a healthy device.
+- **Self-test bit 14 is named but never arrives, so nothing should wait for it.** The Himax sets
+  it (`SELF_TEST_AI_NO_BLE`, Seeed PR #240) when the nRF has not read its first message within
+  300 ms of boot, then sends the nRF nothing until the nRF's next command, which clears it before
+  anything is answered: on the bench on 30 September 2026 the AI console showed `selfTest 4000`
+  for two minutes while the nRF reported `0000` (Seeed #246). What a Himax that lost the nRF at
+  boot leaves for the app to see is the preset above, still standing after the AI processor
+  should have reported, because its own report never reached the nRF to replace it. The app
+  names the bit (ww-hardware #56) only so a reading that does carry it is not shown as unknown.
 - **The device is woken only by a command, so nothing may wait for a Wake it will not cause.**
   The transport queue paused on Sleep and resumed only on Wake; when a Sleep landed while a
   slow JavaScript thread was still completing `slots`, during a screen mounting eight gallery
@@ -39,6 +47,19 @@ file is the list of things that look like an app bug and are not, and the revers
   dev deployment reads the post-boot self-test after the switch, and bit 8 switches back and
   aborts. Any other flow that switches slots needs the same check, and a warm wake reports
   0x0000 for a sensor that was missing at boot, so the check has to read the boot's own line.
+- **`Firmware update OK. Executes at next reset.` means the next boot of any kind, a wake from
+  sleep included.** `firmware` moves the boot selector and schedules nothing (`switchslot` schedules
+  a reset, `firmware` does not), and leaving Deep Power Down runs the bootloader, which reads the
+  selector. On WILD-DJZQ, 9 October 2026, an update stopped after image 1's OK and before the app's
+  `AI reset` came up on image 1 at the camera's next wake (#374). That boot is warm, so the slot
+  stays labelled `unknown`. Two things follow. An update cut short between its two images leaves
+  the camera on the other camera, and nothing on the camera says so: `AI slots` labels name a
+  camera, not a build. And a second `AI firmware` in the same wake as the first writes the slot
+  the camera is running from, because `firmware` targets the slot opposite the selector, which has
+  already moved. `AI slots`' "Active slot" is that selector, the slot that boots next. The pair
+  update restarts the camera after each image and checks `AI slots` before each write, and the
+  phone that ran it keeps a record so it can be finished; see
+  [Himax-Firmware-Update.md](../../../documentation/resources/Himax-Firmware-Update.md#an-update-that-stopped-between-images).
 - **A selected flash does not mean a flash.** op13 only chooses the LED; the firmware fires it
   on a capture only when its last light decision, op25, was DARK, and the check after every
   capture rewrites op25. In a lit room the LED never fires whatever the app selected, and that
@@ -53,6 +74,22 @@ file is the list of things that look like an app bug and are not, and the revers
   proposed from index 32, which this app already uses for `CAM_RESOLUTION` and 33 for
   `MD_BLOCK_NUM_MAX`. Agree the index before either side ships, Seeed #209, then replace the
   op25 write with the new parameter.
+- **A sleeping camera whose LED blinks at the motion rate is its STROBE, armed by settings, not a
+  fault.** On the way into Deep Power Down the firmware arms the HM0360's STROBE when op11 is
+  non-zero, op21 names an LED and the flash is armed with op13 set, and from then on op21's LED
+  lights every motion frame, op11 ms apart, with or without a link. #383 reported a camera that
+  kept flashing after the app crashed during a motion test with the flash on, and in the code a
+  test that dies before its cleanup leaves op34 at always-on, op13 at its LED and op11 at its
+  interval. `AI getop -1` shows all four; the motion test now holds and restores them, see
+  [ble.md](ble.md). Read from the code on 8 October 2026, not yet seen on the bench.
+- **A camera that answers commands but never captures or sleeps after a `loadmodel` has halted on
+  a model file it could not parse.** The Himax copies the file to flash, then prints `No valid
+  TFLite model in flash`, `TFLM: model = NULL` and `HALTED` (Seeed #241), and the reply the app
+  waits for never comes. On WILD-DJZQ, 8 October 2026, the file was a ZIP archive stored as the
+  dev backend's model, and the live monitor showed 0 photos and 0 motion while people waved at
+  the camera, which reads as a motion fault. The tell is `read /MANIFEST/7V1.TFL` on the Himax
+  console printing `PK`; only a reset brings it back. Since #428 the deployment checks the
+  phone's copy for `TFL3` before sending it and stops on a `loadmodel` that goes unanswered.
 - **A multi-image capture with a gap above op8 is cut short by the device** (Seeed #208).
   Images after the first never come, `Captured` is never sent, and the app receives `Sleep`
   instead. Keep any `capture N interval` below op8, and treat a `Sleep` during a capture as the
@@ -87,17 +124,23 @@ file is the list of things that look like an app bug and are not, and the revers
   cell, so a low reading there is not a reason to stop, charge anything or doubt a result.
   Raising it as a risk mid-run has wasted time more than once. On the bench, only treat the
   battery as real when the unit is deliberately running from a cell.
-- **`AI md N` never answers over BLE, and the wait the app then pays is the nRF, not the
-  Himax.** The Himax replies `MD sensitivity set to N` within 0.2 s, but the nRF's prefix table
+- **`AI md N` never answers over BLE before ww-hardware #60, and the wait the app then pays is
+  the nRF, not the Himax.** BLE firmware with #60 (0.30.55) renames the motion wake to
+  `Motion <time>`, announced as `Wake (Motion)`, and passes the reply on (bench, 8 October
+  2026); the app accepts both wake names while cameras run either (#412). The Himax replies `MD sensitivity set to N` within 0.2 s, but the nRF's prefix table
   of Himax-originated messages matches it against `"MD "`, the motion-wake announcement, raises
   `Wake (MD)` while it is still waiting for that very reply, logs `UNHANDLED event Wake (MD) in
   PROCESSING` and drops it (ww-hardware #52; nRF 0.30.51, 23 September 2026). On the RP3 slot
   the command is refused with `Unrecognised` instead (Seeed #211), and that reply gets through.
-  The level is persisted in op17 either way, so since #272 the motion test skips `md` when the
-  op table it has just read already holds the level, waits 2 s rather than 5 when it does send,
-  and shows a refusal (`isMdRefusal`) or a lost reply on the card instead of swallowing it. A
-  lost reply on the HM0360 build usually means the level did land; the next run's `getop -1`
-  shows it.
+  On the HM0360 build the level lands in op17 all the same, so since #272 the motion test skips
+  the write when the op table it has just read already holds the level, and waits 2 s rather
+  than 5 for `md`. That made Med and High, which a reset camera does not hold, the only levels
+  that ever sent it, and every one ended in "may not have taken" on the HM0360 build or the
+  refusal, in red, on the RP3 build; #385 reported an error on exactly those two levels. The
+  test now writes the level with `setop 17`, which is acknowledged and which the HM0360 build
+  applies at the next sleep and wake, and sends `md` only to learn whether the build applies a
+  level at all: a lost reply is expected and not shown, and a refusal (`isMdRefusal`) is shown
+  in the neutral colour and puts op17 back.
 - **op19 is not the number of images on the card.** It counts the files in the current
   `IMAGES.NNN` folder, and the firmware starts a new folder at the first boot after it passes
   100 (`directory_manager.c`, `generateImageDirName`), setting op19 back to 0. The live
@@ -176,13 +219,11 @@ file is the list of things that look like an app bug and are not, and the revers
   drops the echo unless an image stream is open, ww-hardware #36, so thirty timeouts in a row
   is the firmware, not the phone or the link. The 500 KB upload on the same screen is the
   working link measurement: 5.2 KB/s on 4 September 2026.
-- **Image transfer runs at about 1.1 KB/s and the app is not the reason.** `AI txfile` on its
-  own measures the same as inside the capture flow. The nRF hex-dumps every 241-byte packet to
-  its 115200 baud console and flushes the log before each BLE send, so the transfer runs at the
-  speed of the debug UART. A 12 KB image is 10 s; do not spend app time on it. Filed as
-  ww-hardware #34 with the proof: the nRF already gates that logging off for uploads, and the
-  same 241-byte packets went five times faster that way on the same device. The app's 1.1 KB/s
-  countdown model stands until the gate covers downloads.
+- **An image transfer at about 1.1 KB/s is the camera's BLE firmware, not the app.** Before
+  BLE 0.30.55 the nRF hex-dumped every 241-byte packet to its 115200 baud console and flushed
+  the log before each BLE send, so a 12 KB image took 10 s whatever the link (ww-hardware #34).
+  Since then the connection interval sets the rate, five to nine times that; the figures are in
+  [Capture-Picture.md](../../../documentation/resources/Capture-Picture.md).
 - **The transfer window only works on nRF firmware 0.30.47 and later, and the app refuses
   anything older.** On pre-FIFO firmware (0.23.x on ww-hardware `main`) the surplus packets are
   dropped with a log-only warning, an in-flight-ack race resets the AI state machine to SLEEP,
@@ -239,15 +280,23 @@ file is the list of things that look like an app bug and are not, and the revers
   Starting `MainActivity` first and sending the link a moment later crashed the dev launcher in
   September 2026. In Git Bash, prefix `adb shell` commands that carry a path or a URL with
   `MSYS_NO_PATHCONV=1`, or MSYS rewrites them.
+- **A file changed under a running dev build does not always reach it.** Metro serves the
+  checkout it runs in and usually pushes an edit with Fast Refresh, but on 8 October 2026 a file
+  copied into that checkout never arrived and a bench run used the old code. Before trusting a
+  result, check the run's log for a line only the new code writes. To force the new code, open
+  the developer menu (`adb shell input keyevent 82`) and tap Reload; that restarts the JS and
+  drops the Bluetooth link, so the camera has to be found again. Sending the dev-client link to
+  an app that is already open only brings it to the front, it does not reload.
 - **A new native library is missing from every binary built before it.** Metro serves the new
   JS to an old dev client all the same. `@react-native-google-signin/google-signin` looks up its
   native module as it loads (`TurboModuleRegistry.getEnforcing`), so importing it at the top of
   a file would crash such a build at launch. `signInWithGoogle` requires it at the tap and treats
   a failure as "not set up in this build" (#350, 1 October 2026). Do the same for the next
   native library, until every build in use carries it.
-- **Installing on Windows** is in AGENTS.md: `npm install --ignore-scripts` then
-  `npx patch-package`, because `maestro`'s postinstall aborts a plain install, and skipping
-  `postinstall` alone leaves `patches/` unapplied, which breaks the native build later.
+- **Installing on Windows**: plain `npm install` works since October 2026, when the npm package
+  `maestro` (an AWS tool, not mobile Maestro) and its shell postinstall left the project. If an
+  install still aborts in a postinstall, `npm install --ignore-scripts` then `npx patch-package`:
+  skipping `postinstall` alone leaves `patches/` unapplied, which breaks the native build later.
 - **Publishing traps live in `documentation/resources/publishing_guide.md`**, not here: Play
   Store installs blocked invisibly by device checks, the five `eas.json` profiles and the one
   that also submits, a failed submission that shows nothing in the web console until re-run
@@ -298,4 +347,6 @@ file is the list of things that look like an app bug and are not, and the revers
 - **A worktree's `node_modules` is usually a junction to the main checkout's.** Unlink it on its
   own (`cmd /c rmdir <worktree>\node_modules`) before `git worktree remove`. A recursive delete,
   such as PowerShell 5.1's `Remove-Item -Recurse`, can follow the junction and empty the real
-  one.
+  one. Inside an isolated agent worktree `cmd /c mklink /J` is refused, and PowerShell's
+  `New-Item -ItemType Junction` works. Point the junction at an install whose
+  `package-lock.json` matches the branch's: the main checkout is not always on a current branch.

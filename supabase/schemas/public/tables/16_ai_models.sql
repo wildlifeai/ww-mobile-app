@@ -1,5 +1,6 @@
 -- AI Models table for managing machine learning models per organisation
 CREATE TABLE ai_models (
+  -- Columns stay in the order the migrations created them; add new ones at the end (#220, MIGRATIONS.md).
   id uuid PRIMARY KEY NOT NULL DEFAULT (gen_random_uuid()),
   created_at timestamptz DEFAULT (now()),
   updated_at timestamptz DEFAULT (now()),
@@ -10,8 +11,6 @@ CREATE TABLE ai_models (
   description text,
   organisation_id uuid NOT NULL REFERENCES organisations (id),
   uploaded_by uuid REFERENCES auth.users (id) ON DELETE SET NULL,
-  model_path text UNIQUE,
-  labels_path text UNIQUE,
   file_size_bytes bigint,
   file_type text,
   detection_capabilities text [],
@@ -22,17 +21,28 @@ CREATE TABLE ai_models (
   compiled_format text,
   error_message text,
   processing_log jsonb DEFAULT '[]' CHECK (jsonb_typeof(processing_log) = 'array'),
+  model_path text UNIQUE,
+  labels_path text UNIQUE,
   -- Per-label interpretation set by the uploader after validation: which output
   -- classes are target species (mapped to a taxon) vs background/negative classes.
   -- Shape: { "<label>": { "role": "target"|"background",
+  --                        "predicts": "taxon"|"type" (absent means taxon),
   --                        "taxon_id": uuid|null, "scientific_name": text|null,
+  --                        "observation_type": "animal"|"human"|"vehicle" (for type),
   --                        "vernacular_name": text|null, "threshold": int|null } }
+  -- LM-10 (ai_models_label_map_lm10, below) refuses a class that asserts nothing.
   -- Lets the website reflect on-device predictions as real taxa and skip negatives.
   label_map jsonb DEFAULT '{}' CHECK (jsonb_typeof(label_map) = 'object')
 );
 
 -- Unique constraint for version within a family
 ALTER TABLE ai_models ADD CONSTRAINT uq_family_version UNIQUE (model_family_id, version_number);
+
+-- LM-10 (#292): every class in label_map asserts something edge reflection can write,
+-- whoever writes the row; the rule is in functions/16_label_map_problems.sql. A violation
+-- raises 23514, which ww-website maps to the same 422 as its own check.
+ALTER TABLE ai_models ADD CONSTRAINT ai_models_label_map_lm10
+CHECK (pg_catalog.cardinality(public.label_map_problems(label_map)) = 0);
 
 
 -- Unique index for org/name/version combination (excluding soft-deleted)

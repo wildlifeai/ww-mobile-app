@@ -24,7 +24,6 @@ export const SYNC_STATE_KEYS = {
     LAST_SYNC_ERROR: 'last_sync_error',
     TOTAL_SYNCS: 'total_syncs',
     LAMPORT_CLOCK: 'lamport_clock',
-    USER_ROLES_LAST_PULLED_AT: 'user_roles_last_pulled_at',
     DEVICES_LAST_PULLED_AT: 'devices_last_pulled_at',
     PROJECTS_LAST_PULLED_AT: 'projects_last_pulled_at',
     DEVICE_PREP_LAST_PULLED_AT: 'device_prep_last_pulled_at',
@@ -41,7 +40,6 @@ export type SyncStateKey = typeof SYNC_STATE_KEYS[keyof typeof SYNC_STATE_KEYS]
  */
 export const PULL_WATERMARK_KEYS: SyncStateKey[] = [
     SYNC_STATE_KEYS.LAST_PULL_TIMESTAMP,
-    SYNC_STATE_KEYS.USER_ROLES_LAST_PULLED_AT,
     SYNC_STATE_KEYS.PROJECTS_LAST_PULLED_AT,
     SYNC_STATE_KEYS.DEVICES_LAST_PULLED_AT,
     SYNC_STATE_KEYS.DEVICE_PREP_LAST_PULLED_AT,

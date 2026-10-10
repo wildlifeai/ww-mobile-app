@@ -1,0 +1,52 @@
+# Advisory, never a required check.
+#
+# SelfTestBit in src/utils/deviceSelfTest.ts mirrors selfTest_type_t in the Seeed
+# firmware's ww500_md/selfTest.h by hand, and AGENTS.md lists the bit numbers as
+# a cross-repo contract. Nothing compared them, so the firmware's bit 14 (Seeed
+# PR #240) reached the app as "Unknown hardware issue" until ww-hardware #56.
+# This job fetches the header from the Seeed fork's dev branch, which is public,
+# and diffs the bit numbers. The Monday run catches a firmware change made while
+# nobody touched the app's enum.
+#
+# Advisory for the same reason as op-index-drift.yml: the firmware may
+# legitimately lead the app by a pull request. The step fails, the next one
+# turns that into a warning, and the run stays green. See
+# scripts/check-selftest-bits.js for what fails (bit numbers) and what only
+# warns (names).
+name: Self-Test Bit Drift
+
+on:
+  pull_request:
+    paths:
+      - 'src/utils/deviceSelfTest.ts'
+      - 'scripts/check-selftest-bits.js'
+      - '.github/workflows/selftest-bit-drift.yml'
+  schedule:
+    - cron: '35 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  selftest-bit-drift:
+    name: Self-test bits match the firmware
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Compare SelfTestBit against Seeed dev selfTest_type_t
+        id: bits
+        continue-on-error: true
+        run: node scripts/check-selftest-bits.js
+
+      - name: Warn on drift
+        if: steps.bits.outcome == 'failure'
+        run: echo "::warning::The app self-test bits differ from selfTest_type_t on Seeed dev, or the header could not be read (advisory, ww-hardware issue 56). The step above names each bit. Never renumber unilaterally."

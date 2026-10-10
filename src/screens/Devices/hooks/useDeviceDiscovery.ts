@@ -7,7 +7,7 @@ import { useBleActions } from '../../../providers/BleEngineProvider'
 import { useDevicePreDeploymentChecks } from '../../../hooks/useDevicePreDeploymentChecks'
 import { useAppSelector } from '../../../redux'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
-import { DeviceService } from '../../../services/DeviceService'
+import { DeviceService, ServerDeviceLookup } from '../../../services/DeviceService'
 import { selectCurrentOrganisation } from '../../../redux/slices/authSlice'
 import { DeploymentService } from '../../../services/DeploymentService'
 import ProjectService from '../../../services/ProjectService'
@@ -39,6 +39,19 @@ type UseDeviceDiscoveryOptions = {
  * 'idle' and 'expired' require a fresh start with cache flush.
  */
 export type ScanSessionState = 'idle' | 'active' | 'expired'
+
+/**
+ * Why a camera neither on this phone nor readable on the server cannot be
+ * registered by an account with no organisation. The server lets only a member
+ * of the device's organisation insert it, and a project invitation grants no
+ * organisation role.
+ */
+const describeNoOrganisation = (lookup: ServerDeviceLookup['kind']): string => {
+    const rule = 'Only a member of an organisation can register a new camera, and this account is not a member of one. Ask the organisation\'s manager to add you, or to register the camera.'
+    return lookup === 'unchecked'
+        ? `This phone could not ask the server about this camera. If it is already registered, try again with a connection. ${rule}`
+        : rule
+}
 
 export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     const isDrawerOpen = options?.isDrawerOpen ?? false
@@ -92,6 +105,10 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
 
     const SCAN_DURATION_SECONDS = 15
     const [scanSecondsRemaining, setScanSecondsRemaining] = useState(SCAN_DURATION_SECONDS)
+    // The countdown's interval reads the latest value here, so the tick that
+    // ends the session can stop the scan outside the state updater.
+    const scanSecondsRemainingRef = useRef(scanSecondsRemaining)
+    useEffect(() => { scanSecondsRemainingRef.current = scanSecondsRemaining }, [scanSecondsRemaining])
     const [scanSessionId, setScanSessionId] = useState(0)
 
     // Wall-clock start of the current scan session. Auto-connect only trusts
@@ -115,16 +132,14 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     }, [])
     const [routingIsProcessing] = useState(false)
 
-    // We use a ref so effects can read the latest values without re-running
-    const isReadyToScanRef = useRef(!isBleConnecting && !processing && !connectingDevice)
-    isReadyToScanRef.current = !isBleConnecting && !processing && !connectingDevice
+    const isReadyToScan = !isBleConnecting && !processing && !connectingDevice
 
     const isFocused = useIsFocused()
 
     // True when screen is visible AND scan session is active
     const isActuallyFocused = isFocused && !isDrawerOpen && isActiveTab
     const scanLoopActive = isActuallyFocused
-        && isReadyToScanRef.current
+        && isReadyToScan
         && scanSessionStateRef.current === 'active'
         && !isEngineerConsoleActive
 
@@ -174,17 +189,17 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
         }
 
         const interval = setInterval(() => {
-            setScanSecondsRemaining(prev => {
-                if (prev <= 1) {
-                    // Session expired
-                    clearInterval(interval)
-                    updateScanSessionState('expired')
-                    stopScan()
-                    log('[Scanner] Scan session expired — no device found')
-                    return 0
-                }
-                return prev - 1
-            })
+            const next = scanSecondsRemainingRef.current - 1
+            if (next <= 0) {
+                // Session expired
+                clearInterval(interval)
+                setScanSecondsRemaining(0)
+                updateScanSessionState('expired')
+                stopScan()
+                log('[Scanner] Scan session expired — no device found')
+                return
+            }
+            setScanSecondsRemaining(next)
         }, 1000)
 
         return () => clearInterval(interval)
@@ -245,7 +260,30 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                     }
 
                     if (!dbDevice) {
-                        if (currentOrganisation?.id && user?.id) {
+                        if (!user?.id) {
+                            log('Not signed in, cannot look up or register this camera')
+                            Alert.alert('Not signed in', 'Sign in to use a camera this phone has not met before.')
+                            await disconnectDevice(device)
+                            return
+                        }
+
+                        // A camera the server already has keeps its id (#451): a
+                        // second one is refused on every sync. Asked before the
+                        // organisation check, so an account with no organisation
+                        // can still use a camera it may read.
+                        await addLog('Looking for this camera on the server...')
+                        const onServer = await DeviceService.adoptFromServer(device.id)
+                        log(`Server lookup for ${device.id}: ${onServer.kind}`)
+
+                        if (isCancelled()) {
+                            log('[handleDeviceSelect] Operation cancelled after server lookup, aborting')
+                            await disconnectDevice(device)
+                            return
+                        }
+
+                        if (onServer.kind === 'found') {
+                            dbDevice = onServer.device
+                        } else if (currentOrganisation?.id) {
                             log(`Creating device in DB for org ${currentOrganisation.id}...`)
                             try {
                                 dbDevice = await DeviceService.createDevice(
@@ -260,8 +298,8 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                                 dbDevice = await DeviceService.getDeviceByBluetoothId(device.id)
                             }
                         } else {
-                            log('No organisation or user selected')
-                            Alert.alert('Error', 'No organisation selected or user not logged in. Cannot create device.')
+                            log(`No organisation, cannot register camera ${device.id}`)
+                            Alert.alert('Cannot register this camera', describeNoOrganisation(onServer.kind))
                             await disconnectDevice(device)
                             return
                         }

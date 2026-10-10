@@ -2,9 +2,15 @@
  * Decoder for the WW500 self-test bitmask ("selftest" BLE command,
  * response "Error bits = 0xNNNN").
  *
- * The bit assignments MUST mirror the firmware's selfTest.h
- * (Seeed_Grove_Vision_AI_Module_V2 → ww500_md/selfTest.h):
- * bits 0-7 are BLE-processor errors, bits 8-15 are AI-processor errors.
+ * The bit numbers MUST mirror `selfTest_type_t` in the firmware: Seeed
+ * `EPII_CM55M_APP_S/app/ww_projects/ww500_md/selfTest.h`, and the copy in
+ * ww-hardware `MokoTech/Workspace/WildlifeWatcher_1/selfTest.h`. Bits 0-7 are
+ * BLE-processor errors, which the nRF sets itself; bits 8-15 are AI-processor
+ * errors, which the nRF passes through from the Himax as one block, so a new
+ * Himax bit needs no nRF change to reach the app. The numbers are the contract,
+ * and `scripts/check-selftest-bits.js` diffs them against Seeed `dev` in CI.
+ * Three names differ, knowingly: the firmware's AI_PROC, AI_NO_CAM and AI_NO_MD
+ * are AI_PROC_NOT_RESPONDING, AI_NO_MAIN_CAMERA and AI_NO_HM0360 here.
  */
 
 export enum SelfTestBit {
@@ -21,6 +27,12 @@ export enum SelfTestBit {
     AI_NO_SD_CARD = 11,
     AI_PDM_ERROR = 12,
     AI_NN_ERROR = 13,
+    // The Himax sets this when the nRF has not read its first message within
+    // 300 ms of boot, sends the nRF nothing while it is set, and clears it at
+    // the nRF's next command (Seeed PR #240, 29 September 2026). So it is not
+    // expected to arrive over BLE (Seeed issue #246). It is named so that a
+    // reading which does carry it is not shown as an unknown fault.
+    AI_NO_BLE = 14,
 }
 
 export interface SelfTestIssue {
@@ -107,6 +119,13 @@ const ISSUE_TABLE: Array<Omit<SelfTestIssue, never>> = [
         title: '🧠 Neural network error',
         hint: 'The on-device AI model failed to load, so species detection is off. Re-run "Prepare SD Card" or transfer a model.',
     },
+    {
+        // A warning that never blocks a deployment: the reading arrived, so the link works now.
+        bit: SelfTestBit.AI_NO_BLE,
+        severity: 'warning',
+        title: '🔗 Camera processor could not reach the Bluetooth chip at start-up',
+        hint: 'When the camera processor last started, the Bluetooth processor did not collect its first message, so it stopped sending to it until contacted again. This reading arrived, so the link works now. If it keeps appearing, power cycle the camera and report it with both firmware versions.',
+    },
 ]
 
 /** Extract the numeric bitmask from the "Error bits = 0xNNNN" response (or a bare hex string). */
@@ -183,6 +202,7 @@ const WARNING_TEXT: Record<SelfTestBit, string> = {
     [SelfTestBit.AI_NO_SD_CARD]: 'Device has no SD card detected (Bit 11). Power cycle the camera after inserting or reseating a card',
     [SelfTestBit.AI_PDM_ERROR]: 'PDM Microphone Failure (Bit 12)',
     [SelfTestBit.AI_NN_ERROR]: 'Neural Network Error (Bit 13)',
+    [SelfTestBit.AI_NO_BLE]: 'AI processor lost contact with the BLE processor at boot (Bit 14)',
 }
 
 export function selfTestWarnings(bits: number): string[] {

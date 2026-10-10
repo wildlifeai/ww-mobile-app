@@ -1,4 +1,5 @@
 import { DeploymentPhotoService } from '../DeploymentPhotoService'
+import { GONE_FROM_SERVER } from '../goneFromServer'
 import { resetFakeDatabase, seedRows } from '../../../tests/setup/helpers/fakeDatabase'
 
 jest.mock('../../database', () => ({
@@ -22,6 +23,23 @@ describe('DeploymentPhotoService.uploadAllPending', () => {
 		seedRows('deployments', [
 			{ id: 'on-live', projectId: 'live-project', cameraLocationImagePaths: ['file:///photos/a.jpg'] },
 			{ id: 'on-gone', projectId: 'gone-project', cameraLocationImagePaths: ['file:///photos/b.jpg'] },
+		])
+		const upload = jest.spyOn(DeploymentPhotoService, 'uploadPendingPhotos').mockResolvedValue()
+
+		await DeploymentPhotoService.uploadAllPending('user-1')
+
+		expect(upload).toHaveBeenCalledTimes(1)
+		expect(upload).toHaveBeenCalledWith('on-live', 'user-1')
+	})
+
+	// #411: kept for its photos after the server deleted it or moved it away;
+	// an upload would queue a change the server can only refuse
+	it('leaves the photos of a deployment the server no longer has on the phone', async () => {
+		resetFakeDatabase()
+		seedRows('projects', [{ id: 'live-project' }])
+		seedRows('deployments', [
+			{ id: 'on-live', projectId: 'live-project', cameraLocationImagePaths: ['file:///photos/a.jpg'] },
+			{ id: 'gone', projectId: 'live-project', customSyncStatus: GONE_FROM_SERVER, cameraLocationImagePaths: ['file:///photos/b.jpg'] },
 		])
 		const upload = jest.spyOn(DeploymentPhotoService, 'uploadPendingPhotos').mockResolvedValue()
 

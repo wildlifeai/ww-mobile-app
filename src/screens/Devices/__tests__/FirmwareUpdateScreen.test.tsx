@@ -16,17 +16,20 @@ const mockStartUpdate = jest.fn()
 const build = (id: string, variant: "RP3" | "HM0360") => ({
 	id, version: "WW500_C02 20:26:50 Sep 30 2026", buildDate: "2026-09-30", cameraVariant: variant, name: id,
 })
+// What a test changes in the hook's answer, over the defaults below
+const mockHook: { current: Record<string, unknown> } = { current: {} }
 jest.mock("../hooks/useFirmwareUpdate", () => ({
 	firmware83Filename: (_v: string, _d: string, variant: string) => `${variant === "RP3" ? "R" : "H"}6930K26.IMG`,
 	useFirmwareUpdate: () => ({
 		progress: 0, statusLabel: "", isUpdating: false, isComplete: false, isFailed: false, progressLogs: [],
-		errorMsg: null, downloadState: null, downloadProgress: null, fileTransferProgress: null, phase: "idle",
+		errorMsg: null, downloadState: null, downloadProgress: null, fileTransferProgress: null, passImage: null, phase: "idle",
 		batteryLevel: 80, isBatteryLow: false, isLikelyExternalPower: false,
 		previousVersion: "WW500_C02 04:18:11 Sep 23 2026", newVersion: null, latestFirmware: null,
 		isPreflightDone: true, sdCardFiles: [],
 		availableDbFirmwares: [build("fw-rp3", "RP3"), build("fw-hm", "HM0360")],
 		runningVariant: "HM0360", pairProgress: null,
 		startUpdate: mockStartUpdate, cancelUpdate: jest.fn(),
+		...mockHook.current,
 	}),
 }))
 jest.mock("../../../hooks/useOfflineFiles", () => ({ useFirmwareOnPhone: () => null }))
@@ -38,7 +41,11 @@ jest.mock("../../../theme", () => ({
 	useExtendedTheme: () => ({ colors: { error: "red", primary: "green", surfaceVariant: "#222", onSurfaceVariant: "#ccc" }, spacing: 16 }),
 }))
 jest.mock("../../../components/ui/WWSelect", () => ({ WWSelect: () => null }))
-jest.mock("../../../components/FileTransferProgressCard", () => ({ FileTransferProgressCard: () => null }))
+jest.mock("../../../components/FileTransferProgressCard", () => {
+	const React = require("react")
+	const RN = require("react-native")
+	return { FileTransferProgressCard: ({ title, filename }: any) => React.createElement(RN.Text, null, `${title}: ${filename}`) }
+})
 jest.mock("react-native-paper", () => {
 	const React = require("react")
 	const RN = require("react-native")
@@ -46,7 +53,8 @@ jest.mock("react-native-paper", () => {
 	const nothing = () => null
 	return {
 		Text: text,
-		Button: ({ children, onPress, disabled }: any) => React.createElement(RN.Text, { onPress: disabled ? undefined : onPress }, children),
+		Button: ({ children, onPress, disabled }: any) =>
+			React.createElement(RN.Text, { onPress: disabled ? undefined : onPress, accessibilityState: { disabled: !!disabled } }, children),
 		ActivityIndicator: nothing,
 		ProgressBar: nothing,
 		IconButton: nothing,
@@ -64,6 +72,7 @@ describe("FirmwareUpdateScreen", () => {
 	beforeEach(() => {
 		mockStartUpdate.mockClear()
 		mockSetOptions.mockClear()
+		mockHook.current = {}
 	})
 
 	it("gives an operator one version line and one button, updating both images from the cloud", () => {
@@ -85,5 +94,91 @@ describe("FirmwareUpdateScreen", () => {
 		expect(screen.getByText(/Advanced: flash a specific image/)).toBeTruthy()
 		expect(screen.queryByText(/^Update from/)).toBeNull()
 		expect(mockSetOptions).not.toHaveBeenCalled()
+	})
+
+	// #436: the card named the build picked under Advanced, R6930K26.IMG here,
+	// while the pair update sent the night image
+	it("names the file the update is sending on the transfer card", () => {
+		mockParams.current = { deviceId: "dev-1", target: "himax", engineer: true }
+		mockHook.current = {
+			isUpdating: true, phase: "transferring", pairProgress: { total: 2, done: 0 },
+			fileTransferProgress: { percentage: 40, bytesSent: 200000, totalBytes: 500000, elapsedMs: 25000, estimatedRemainingMs: 30000, phase: "transferring" },
+			passImage: { filename: "H6930K26.IMG", locationPath: "himax/hm0360.img" },
+		}
+		render(<FirmwareUpdateScreen />)
+
+		expect(screen.getByText("Transferring to Device: H6930K26.IMG")).toBeTruthy()
+		expect(screen.queryByText(/R6930K26/)).toBeNull()
+	})
+
+	// #437: with one camera's build in the catalogue the pair cannot start, and
+	// the screen said "No firmware images available" and suggested a sync
+	describe("with only the night-IR build in the catalogue", () => {
+		beforeEach(() => {
+			mockHook.current = { availableDbFirmwares: [build("fw-hm", "HM0360")] }
+		})
+
+		it("names the missing camera to an operator and does not start", () => {
+			mockParams.current = { deviceId: "dev-1", target: "himax" }
+			render(<FirmwareUpdateScreen />)
+
+			expect(screen.getByText("The colour camera's new firmware is not available yet. Try again later.")).toBeTruthy()
+			expect(screen.queryByText(/Connect to the internet/)).toBeNull()
+			expect(screen.getByText("Update")).toBeDisabled()
+		})
+
+		it("names the missing build in the Engineer Console's view, without suggesting a sync", () => {
+			mockParams.current = { deviceId: "dev-1", target: "himax", engineer: true }
+			render(<FirmwareUpdateScreen />)
+
+			expect(screen.getByText(/^No 🎨 Colour \(RP3\) build in the firmware catalogue, and both cameras update together\./)).toBeTruthy()
+			expect(screen.queryByText(/No firmware images available|sync the app/)).toBeNull()
+			expect(screen.getByText("Update both cameras")).toBeDisabled()
+		})
+	})
+
+	// #374: the camera ran the colour image at its latest build, the night
+	// slot kept an older one, and this screen said "Up to date."
+	describe("after an update that stopped between its images", () => {
+		const FINISH = "The last update stopped after image 1 of 2. Finishing installs the night-IR image, "
+			+ "the 30 Sep build, and puts the camera back on the night-IR camera."
+
+		beforeEach(() => {
+			mockHook.current = {
+				previousVersion: "WW500_C02 20:26:50 Sep 30 2026",
+				runningVariant: "RP3",
+				cameraSlots: { activeSlot: 0, running: "RP3 (day/colour)", slotA: "RP3 (day/colour)", slotB: "HM0360 (night/IR)", autoSwitch: false },
+				updateRecord: {
+					startedAt: "2026-10-09T10:49:00.000Z", endVariant: "HM0360", startActiveSlot: 1,
+					startVersion: "WW500_C02 04:18:11 Sep 23 2026",
+					images: [
+						{ variant: "RP3", version: "WW500_C02 20:26:50 Sep 30 2026", filename: "R6930K26.IMG" },
+						{ variant: "HM0360", version: "WW500_C02 20:26:50 Sep 30 2026", filename: "H6930K26.IMG" },
+					],
+					sent: 1, flashed: 1,
+				},
+			}
+		})
+
+		it("tells an operator what finishing does, and finishes it", () => {
+			mockParams.current = { deviceId: "dev-1", target: "himax" }
+			render(<FirmwareUpdateScreen />)
+
+			expect(screen.getByText(FINISH)).toBeTruthy()
+			expect(screen.queryByText(/Up to date/)).toBeNull()
+			fireEvent.press(screen.getByText("Finish update"))
+			expect(mockStartUpdate).toHaveBeenCalledWith({ himaxSource: "download" })
+		})
+
+		it("says the same in the Engineer Console's view", () => {
+			mockParams.current = { deviceId: "dev-1", target: "himax", engineer: true }
+			render(<FirmwareUpdateScreen />)
+
+			expect(screen.getByText(FINISH)).toBeTruthy()
+			expect(screen.getByText("Finish update")).toBeTruthy()
+			expect(screen.queryByText(/up to date/)).toBeNull()
+			// The general description would say two passes ending on the camera in use
+			expect(screen.queryByText(/finishes on the camera it is using now/)).toBeNull()
+		})
 	})
 })

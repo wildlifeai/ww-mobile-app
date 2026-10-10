@@ -31,9 +31,9 @@ fi
 echo "📋 Verifying Java installation..."
 java -version
 
-# Step 2: Install Maestro using official installation script
+# Step 2: Install the Maestro version CI pins, checksum-verified
 echo "🚀 Installing Maestro CLI..."
-curl -Ls "https://get.maestro.mobile.dev" | bash
+bash "$(dirname "$0")/install-maestro.sh"
 
 # Step 3: Add to PATH (the script should handle this, but let's be explicit)
 echo "🔧 Setting up PATH..."
@@ -61,9 +61,9 @@ echo "3. 🔧 May need to configure ADB connection between WSL2 and Windows"
 echo "4. 📱 For physical devices, USB forwarding to WSL2 may be required"
 echo ""
 echo "🧪 Next steps:"
-echo "1. Start an Android emulator or connect a device"
-echo "2. Run: maestro test tests/maestro/auth-workflow.yaml"
-echo "3. Check our Wildlife Watcher auth flow!"
+echo "1. Start an Android emulator or connect a device, with a debug build installed"
+echo "2. Run: npm run test:maestro:smoke"
+echo "3. The signed-in flows need -e E2E_TEST_EMAIL=... -e E2E_TEST_PASSWORD=..., see documentation/resources/Testing-Guide.md"
 
 echo "🎯 Installation complete! Restart your terminal or run:"
 echo "source ~/.bashrc"

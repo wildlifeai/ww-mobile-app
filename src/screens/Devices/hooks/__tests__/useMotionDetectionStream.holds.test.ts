@@ -10,7 +10,7 @@ import { OP_PARAMETER } from '../../../../hooks/useDeviceSettings'
 jest.mock('../../../../utils/logger', () => ({ log: jest.fn(), logWarn: jest.fn(), logError: jest.fn() }))
 jest.mock('../../../../ble/session/createBleSession', () => ({ createBleSession: jest.fn() }))
 jest.mock('../../../../ble/session/keepAwake', () => ({ keepAwake: { acquire: jest.fn(), release: jest.fn() } }))
-jest.mock('../../../../ble/session/flashHold', () => ({ flashHold: { acquire: jest.fn(), release: jest.fn() } }))
+jest.mock('../../../../ble/session/flashHold', () => ({ flashHold: { acquire: jest.fn(), release: jest.fn(), restorePending: jest.fn() } }))
 jest.mock('../../../../ble/protocol/bleTransportController', () => ({ bleTransport: { clearAll: jest.fn() } }))
 
 /**
@@ -32,7 +32,7 @@ describe('useMotionDetectionStream op8 hold', () => {
 
     /** Let the async setup run as far as it can without the timers moving. */
     const settle = async () => {
-        for (let i = 0; i < 20; i++) await Promise.resolve()
+        for (let i = 0; i < 100; i++) await Promise.resolve()
     }
 
     beforeEach(() => {
@@ -41,6 +41,7 @@ describe('useMotionDetectionStream op8 hold', () => {
         ;(keepAwake.acquire as jest.Mock).mockResolvedValue(true)
         ;(keepAwake.release as jest.Mock).mockResolvedValue(undefined)
         ;(flashHold.release as jest.Mock).mockResolvedValue(undefined)
+        ;(flashHold.restorePending as jest.Mock).mockResolvedValue(undefined)
         ;(createBleSession as jest.Mock).mockImplementation(() => ({
             execute: jest.fn(async (build: any) => {
                 const line: string = build().build()

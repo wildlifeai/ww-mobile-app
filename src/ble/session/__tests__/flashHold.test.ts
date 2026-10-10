@@ -147,6 +147,32 @@ describe('flashHold', () => {
         expect(writes).toEqual(['AI setop 34 2', 'AI setop 34 3'])
     })
 
+    // The motion test's cleanup pays what is owed whether or not it used the
+    // flash (#383), so a deployment, which writes op34 from the project, has
+    // to drop anything owed from before it.
+    it('forget drops an owed restore, so a deployed mode is left alone', async () => {
+        const { session } = fakeSession('0')
+        await flashHold.acquire(session, DEVICE)
+        disconnect(DEVICE)
+
+        await flashHold.forget(DEVICE)
+
+        const { session: deployed, writes } = fakeSession('2')
+        await flashHold.restorePending(deployed, DEVICE)
+        expect(writes).toEqual([])
+    })
+
+    it('forget makes the release of a hold still open a no-op', async () => {
+        const { session, writes } = fakeSession('1')
+        await flashHold.acquire(session, DEVICE)
+
+        await flashHold.forget(DEVICE)
+        await flashHold.release(session, DEVICE)
+
+        expect(writes).toEqual(['AI setop 34 2'])
+        expect(flashHold.holds(DEVICE)).toBe(false)
+    })
+
     it('release without a hold does nothing', async () => {
         const { session, writes } = fakeSession('1')
 

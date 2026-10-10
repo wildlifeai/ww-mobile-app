@@ -276,7 +276,8 @@ class ProjectService {
 					// so every role check treated the creator as a stranger to their own
 					// project until a sync. This row is local only and never queued:
 					// the server makes its own, and syncUserRoles later updates this
-					// row in place, since it matches roles by user and scope, not id.
+					// row in place, since it matches a role by its role and scope when
+					// the ids differ, and keeps it while the project's CREATE is queued.
 					const creatorRole = database.collections.get<UserRole>('user_roles').prepareCreate(role => {
 						role.userId = currentUserId
 						role.role = 'project_admin'

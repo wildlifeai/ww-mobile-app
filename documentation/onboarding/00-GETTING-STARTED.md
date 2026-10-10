@@ -80,12 +80,12 @@ This folder contains six onboarding guides:
 > [!WARNING]
 > `postinstall` is where `patch-package` applies everything in `patches/` — skipping it produces native build failures that look unrelated to the install step. So don't reach for `--ignore-scripts` casually.
 >
-> **On Windows you have to, though:** the `maestro` devDependency's postinstall runs `./bin/welcome-message.sh`, which `cmd.exe` cannot execute, and npm aborts the whole install. Use `npm install --ignore-scripts` followed by `npx patch-package` — that reaches the same state without the broken script.
+> On Windows plain `npm install` works since October 2026, when the npm package `maestro` (an unrelated AWS tool whose shell postinstall `cmd.exe` could not run) left `devDependencies`. If an install still aborts in a postinstall, `npm install --ignore-scripts` followed by `npx patch-package` reaches the same state without the broken script.
 
 ### 💻 Option B: Native Setup
-1. **Install Node.js 20** (LTS or higher):
-   - Use `nvm install 20 && nvm use 20`.
-   - Verify: `node -v` should show `v20.x.x`.
+1. **Install Node.js 22** (LTS or higher):
+   - Use `nvm install 22 && nvm use 22`.
+   - Verify: `node -v` should show `v22.x.x`.
 2. **Install CLI Tools**:
    - `npm install -g eas-cli@latest`.
 3. **Setup Android Debug Bridge (ADB)**:

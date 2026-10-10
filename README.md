@@ -95,7 +95,7 @@ This app uses **Expo SDK 54** with a managed workflow (prebuild enabled). Ensure
     npx patch-package
     npm run validate:deps
     ```
-    *Note: `npm install --ignore-scripts` is recommended on Windows to avoid script execution failures in certain native packages like `maestro`.*
+    *Note: `npm install --ignore-scripts` then `npx patch-package` is the fallback on Windows if a package's shell postinstall aborts the install.*
 
 3. **Set up Environment**:
     Create a `.env` file in the root directory:
@@ -183,8 +183,8 @@ For detailed EAS configuration, see the [EAS Guide](./documentation/resources/Ex
 ```bash
 npm test                   # Unit tests (Jest)
 npm run test:integration   # Integration tests
-npm run test:maestro:smoke # the one E2E flow CI requires (install, launch, screenshot)
-npm run test:maestro       # every E2E flow; CI runs these on the full-e2e label
+npm run test:maestro:smoke # the E2E flow every PR runs, advisory (install, launch, login screen renders)
+npm run test:maestro       # every E2E flow, with -e E2E_TEST_EMAIL/-e E2E_TEST_PASSWORD; CI runs these on the full-e2e label
 ```
 
 For detailed testing patterns, see the [Testing Guide](./documentation/resources/Testing-Guide.md).

@@ -1,17 +1,28 @@
-# Smoke: the CI APK installs, launches, and the JS bundle comes up.
+# Smoke, the E2E check every PR runs (advisory): the CI APK installs, launches, and its
+# JavaScript bundle renders the first real screen, the login screen.
 #
-# Deliberately minimal. `launchApp` fails if the process crashes on start,
-# which is the whole claim this flow makes. It asserts no screen content,
-# because a required check must not fail for a test id nobody verified.
-# The fuller flows under tests/maestro/ run on the `full-e2e` label.
+# Until October 2026 this flow only launched and took a screenshot, because the
+# CI build was a development client with no bundle inside: every run stopped at
+# Expo's launcher (run 36836146016), so there was no screen to assert. CI now
+# builds the release-type `e2e` profile, and this flow fails if the bundle does
+# not come up. Permissions are granted up front because
+# AndroidPermissionsProvider shows nothing else until they are.
 #
-# appId comes from the run (`-e APP_ID=...`). A PR into main builds the
-# `staging` EAS profile, a release build that installs as
-# com.wildlife.wildlifewatcher; every other run builds `ci`, a development
-# client, which build.gradle gives the debug `.expo` suffix. A fixed `.expo`
+# appId comes from the run (`-e APP_ID=...`). Both CI profiles install as
+# com.wildlife.wildlifewatcher; a local debug build (`npm run android`) is
+# com.wildlife.wildlifewatcher.expo, which the npm scripts pass. A fixed `.expo`
 # failed the release PR #366 on 1 October 2026: "Package
 # com.wildlife.wildlifewatcher.expo is not installed".
 appId: ${APP_ID}
 ---
-- launchApp
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+- extendedWaitUntil:
+    visible:
+      id: "email-input"
+    timeout: 90000
+- assertVisible:
+    id: "login-button"
 - takeScreenshot: startup

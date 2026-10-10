@@ -1,0 +1,48 @@
+# Known vulnerabilities in the app's production dependencies. Dependabot proposes
+# version bumps; this is the check that says whether what is installed today
+# carries a published advisory, which no other job does (GitGuardian scans for
+# secrets, not advisories).
+#
+# Advisory on a pull request: the step fails, the job turns the failure into a
+# warning, and the run stays green. The weekly run fails outright, so an
+# advisory published against an unchanged lockfile still gets seen. Make the
+# pull-request run blocking too (drop the continue-on-error expression) once
+# the findings it reports today are cleared.
+name: Dependency Audit
+
+on:
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/dependency-audit.yml'
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  npm-audit:
+    name: npm audit (production dependencies)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      # Reads package-lock.json; no install needed. Dev dependencies are left
+      # out: they never ship in the APK.
+      - name: npm audit
+        id: audit
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Warn when the audit found something
+        if: steps.audit.outcome == 'failure'
+        run: echo "::warning::npm audit found high or critical advisories in production dependencies (advisory on pull requests). The step above lists them."

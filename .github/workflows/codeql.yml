@@ -1,0 +1,55 @@
+# Static analysis for the classes nothing else here looks for: injection
+# through untrusted input, unsafe regular expressions, prototype pollution,
+# insecure randomness. GitGuardian scans for secrets and React Doctor for
+# React patterns; this is the third leg (#392).
+#
+# Findings go to the Security tab as code scanning alerts. This job passes
+# whatever it finds; the separate `CodeQL` check that code scanning adds to a
+# pull request fails when the PR brings a new alert at or above the
+# repository's failure threshold, so that is the check to require.
+name: CodeQL
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev]
+  schedule:
+    - cron: '41 5 * * 1'
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: CodeQL (JavaScript and TypeScript)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+          # Generated or vendored code, the SQL mirror, and archive/ (old tools
+          # that are not run, also skipped by ESLint) would only add noise.
+          config: |
+            paths-ignore:
+              - archive
+              - android
+              - supabase
+              - patches
+              - '**/__tests__'
+              - '**/__mocks__'
+              - '**/*.test.ts'
+              - '**/*.test.tsx'
+
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:javascript-typescript

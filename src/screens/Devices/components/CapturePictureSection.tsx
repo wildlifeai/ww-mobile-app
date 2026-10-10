@@ -26,7 +26,6 @@ export const CapturePictureSection = ({ device }: Props) => {
         updateCameraParam,
         applyAndCapture,
         isApplying,
-        applyStage,
         // aeData (the live value) is deliberately not read: the standing AE panel
         // was replaced by the picture itself. The per-image copy is still shown,
         // as `selectedImage.aeData` in the preview modal below, where the numbers
@@ -99,15 +98,12 @@ export const CapturePictureSection = ({ device }: Props) => {
 
 
             {/* What the camera is doing, step by step, ticked on its own messages.
-                The app's stage text sits underneath for the waits the device is
-                silent through (sleeping before the capture, mostly). */}
-            {(isApplying || capturePreview.isCapturing) && (
+                It stays up once the run ends, done or failed, so the file name,
+                the light verdict and the transfer's size and time, or the reason
+                it failed, can still be read; the next capture replaces it. */}
+            {captureSteps.state.steps.some(step => step.status !== 'pending') && (
                 <View style={styles.progressContainer}>
-                    <CaptureSteps
-                        state={captureSteps.state}
-                        now={captureSteps.now}
-                        stage={applyStage || capturePreview.captureStage}
-                    />
+                    <CaptureSteps state={captureSteps.state} now={captureSteps.now} />
                 </View>
             )}
 
