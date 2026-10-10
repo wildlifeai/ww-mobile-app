@@ -537,6 +537,22 @@ export const useDevDeployment = ({
         setSubmitting(true)
         isStartDeploymentInProgress.current = true
 
+        // Then ask the server about an open deployment this phone does not
+        // hold, before the camera switch or anything else touches the device:
+        // the same check as Start Monitoring (#448), which warns and carries
+        // on offline
+        progress.addLog('Checking the server for an open deployment on this camera...')
+        progress.setFinishStep('Checking the server...')
+        const openDeployment = await DeploymentService.checkServerForOpenDeployment(device?.id || '', user.id)
+        if (openDeployment.kind === 'open') {
+            progress.setIsFinishing(false)
+            setSubmitting(false)
+            isStartDeploymentInProgress.current = false
+            Alert.alert('Already Deployed', openDeployment.message)
+            return
+        }
+        if (openDeployment.kind === 'unchecked') progress.addLog(`⚠️ ${openDeployment.message}`)
+
         const cb = {
             addLog: progress.addLog,
             setStep: progress.setFinishStep,

@@ -7,8 +7,11 @@ import SyncOutbox from '../database/models/SyncOutbox'
 import OutboxService from './OutboxService'
 import SupabaseSyncService from './SupabaseSyncService'
 import ProjectService from './ProjectService'
+import { getSupabaseClient } from './supabase'
+import { isKnownOffline } from './connectivityWatch'
 import { seesEverything, seesOrganisation } from './roleAccess'
 import { log, logError, logWarn } from '../utils/logger'
+import { logCloudFailure } from '../utils/networkErrors'
 
 
 // Deployment Status IDs based on backend deployment_statuses lookup table
@@ -18,6 +21,25 @@ export const DEPLOYMENT_STATUS = {
     STARTED: 2,
     ENDED: 3
 }
+
+/**
+ * What the server said, before a start, about another open deployment on the
+ * camera (#448). `message` is for the operator: the reason to stop when one is
+ * open, the warning when the server could not be asked.
+ */
+export type OpenDeploymentCheck =
+    | { kind: 'none' }
+    | { kind: 'open'; message: string }
+    | { kind: 'unchecked'; message: string }
+
+/**
+ * How long a start waits for the answer before carrying on unchecked. The
+ * client's own limit on a read is 30 s (supabaseFetch.ts), too long to hold an
+ * operator at the camera for a check that never blocks offline anyway.
+ */
+const OPEN_DEPLOYMENT_CHECK_MS = 10_000
+
+const UNCHECKED_WARNING = 'Could not ask the server whether this camera is still deployed elsewhere. If it is, the server will refuse this deployment.'
 
 export const DeploymentService = {
     /**
@@ -334,6 +356,50 @@ export const DeploymentService = {
     },
 
     /**
+     * Ask the server whether a camera has an open deployment this phone does
+     * not hold, before a start writes anything to it (#448).
+     *
+     * A camera has at most one open deployment (ww-backend #324,
+     * `deployments_one_open_per_device`), and a push that creates the next one
+     * while another is open is refused with 23P01. The scanner already sends a
+     * camera with an open deployment on this phone to End Deployment; this
+     * covers one started by someone else, or on another phone and not pulled.
+     *
+     * It sees only what this account may read: deployments in projects where
+     * it holds a role, an organisation it manages, or everything for a
+     * ww_admin. "none" means none of those. A deployment in any other project
+     * is invisible here, and the server's refusal is then the only word on it.
+     *
+     * Never blocks on the network: offline, failed or slower than
+     * OPEN_DEPLOYMENT_CHECK_MS, the answer is "unchecked" with a warning.
+     */
+    checkServerForOpenDeployment: async (deviceId: string, userId: string): Promise<OpenDeploymentCheck> => {
+        if (!deviceId || await isKnownOffline()) return { kind: 'unchecked', message: UNCHECKED_WARNING }
+
+        let timer: ReturnType<typeof setTimeout> | undefined
+        const timedOut = new Promise<never>((_, reject) => {
+            timer = setTimeout(
+                () => reject(new TypeError(`Network request timed out after ${OPEN_DEPLOYMENT_CHECK_MS / 1000} s`)),
+                OPEN_DEPLOYMENT_CHECK_MS,
+            )
+        })
+        try {
+            const message = await Promise.race([describeOpenDeploymentElsewhere(deviceId, userId), timedOut])
+            if (!message) {
+                log('[DeploymentService] No open deployment this account can see on device', deviceId)
+                return { kind: 'none' }
+            }
+            log('[DeploymentService] Open deployment on the server for device', deviceId)
+            return { kind: 'open', message }
+        } catch (error) {
+            logCloudFailure('[DeploymentService] Could not ask the server about open deployments on this camera:', error)
+            return { kind: 'unchecked', message: UNCHECKED_WARNING }
+        } finally {
+            clearTimeout(timer)
+        }
+    },
+
+    /**
      * Observe all deployments (sorted by creation date)
      */
     observeDeployments: () => {
@@ -418,6 +484,50 @@ export const DeploymentService = {
             Q.sortBy('created_at', Q.desc)
         ).fetch()
     }
+}
+
+/**
+ * The operator's message for an open deployment on the server that this phone
+ * does not hold, or holds and has not ended, or null when there is none this
+ * account can see. A failed read throws.
+ */
+async function describeOpenDeploymentElsewhere(deviceId: string, userId: string): Promise<string | null> {
+    const client = getSupabaseClient()
+    const { data, error } = await client
+        .from('deployments')
+        .select('id, project_id, setup_by, deployment_start')
+        .eq('device_id', deviceId)
+        .is('deployment_end', null)
+        .is('deleted_at', null)
+    if (error) throw error
+    if (!data || data.length === 0) return null
+
+    // One this phone has ended, the end not uploaded yet, is not in the way:
+    // the outbox sends the end before the new deployment or in the same
+    // push_changes call, and the constraint is checked at commit.
+    const here = await database.get<Deployment>('deployments')
+        .query(Q.where('id', Q.oneOf(data.map(row => row.id))))
+        .fetch()
+    const endedHere = new Set(here.filter(d => d.deploymentStatusId === DEPLOYMENT_STATUS.ENDED).map(d => d.id))
+    const open = data.find(row => !endedHere.has(row.id))
+    if (!open) return null
+
+    // Whoever can read a deployment can read its project. Another person's
+    // name comes only from get_project_members, which answers a member of
+    // the project and no one else, so it may be missing.
+    const { data: project } = await client.from('projects').select('name').eq('id', open.project_id).maybeSingle()
+    let startedBy: string | null = null
+    if (open.setup_by === userId) {
+        startedBy = 'you'
+    } else if (open.setup_by) {
+        const { data: members } = await client.rpc('get_project_members', { p_project_id: open.project_id })
+        startedBy = members?.find(member => member.id === open.setup_by)?.name?.trim() || null
+    }
+
+    const where = project?.name ? `"${project.name}"` : 'another project'
+    const by = startedBy ? ` by ${startedBy}` : ''
+    const on = open.deployment_start ? ` on ${new Date(open.deployment_start).toLocaleDateString()}` : ''
+    return `This camera is still deployed in ${where}, started${by}${on}. That deployment has to be ended before the camera can be deployed again.`
 }
 
 /**
