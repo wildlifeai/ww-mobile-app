@@ -195,3 +195,15 @@ a number, and any version below about 402 in an older document means nothing.
 `src/database/schema.ts` comes from `npm run schema:generate`, and schema changes originate in
 `wildlife-watcher-backend`. `src/types/database.types.ts` comes from `types:cloud-dev`. Neither
 is hand-edited.
+
+**A model `@date` needs a `number` column.** `@date` writes epoch milliseconds, and WatermelonDB
+fits each value to its column's type, so on a `string` column it keeps null (`''` when
+required) and reads back null, with no error. Supabase types every timestamp as a string, so
+the generator turns each one the models read with `@date` into a number by name, and the
+validator lists the same columns; both lists are in
+[scripts/README.md](../../../scripts/README.md#validate-watermelon-schemajs), "Timestamps".
+Until schema 407 every role on every phone lost `granted_at` and `expires_at` this way (#425).
+`src/database/__tests__/dateColumns.test.ts` fails on a `@date` over a non-number column. The
+fake database in `tests/setup/helpers/fakeDatabase.ts` keeps whatever it is given, so a test of
+what the phone stores needs the real one: `src/services/__tests__/storedDates.test.ts` runs
+WatermelonDB on LokiJS with the generated schema.

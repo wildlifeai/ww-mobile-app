@@ -71,14 +71,25 @@ useLoginMutation.mockReturnValue([
 
 ### WatermelonDB
 
-Use `LokiJSAdapter` for in-memory testing:
+Most service tests mock `src/database` with `tests/setup/helpers/fakeDatabase.ts`, which keeps
+whatever it is given. A test of what the phone actually stores, where WatermelonDB fits each
+value to the column's type, needs the real one in memory, as
+`src/services/__tests__/storedDates.test.ts` builds it inside its `jest.mock` factory:
 
 ```typescript
 import LokiJSAdapter from '@nozbe/watermelondb/adapters/lokijs'
 
-const adapter = new LokiJSAdapter({ schema, useWebWorker: false })
+const adapter = new LokiJSAdapter({
+  schema,
+  useWebWorker: false,
+  useIncrementalIndexedDB: false,
+  extraLokiOptions: { autosave: false }, // Loki's 500 ms autosave keeps Jest from exiting
+})
 export const testDatabase = new Database({ adapter, modelClasses: [...] })
 ```
+
+Without `autosave: false`, `database.unsafeResetDatabase()` also never returns once the
+database has held rows.
 
 ---
 

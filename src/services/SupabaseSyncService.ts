@@ -1377,10 +1377,13 @@ class SupabaseSyncService {
                     added++
                 } else if (mine.role !== row.role || mine.isActive !== row.is_active
                     || (row.updated_at && Number(mine.updatedAt) !== updatedAt.getTime())) {
-                    // A promotion changes the role on the same server row (#248)
+                    // A promotion changes the role on the same server row (#248),
+                    // and an expiry set later arrives the same way
                     operations.push(mine.prepareUpdate((rec) => {
                         rec.role = row.role
                         rec.isActive = row.is_active
+                        if (row.granted_at) rec.grantedAt = new Date(row.granted_at)
+                        rec.expiresAt = row.expires_at ? new Date(row.expires_at) : undefined
                         rec.modifiedBy = row.modified_by
                         rec.updatedAt = updatedAt
                     }))

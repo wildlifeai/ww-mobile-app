@@ -57,10 +57,6 @@ export default class Deployment extends Model {
     @text('start_deployment_comments') startDeploymentComments?: string
     @text('end_deployment_comments') endDeploymentComments?: string
 
-    // Legacy fields - kept to avoid breakages if used elsewhere, but marked
-    @text('deployment_comments') deploymentComments?: string
-    @text('camera_location_description') cameraLocationDescription?: string
-    @text('camera_location_image_path') cameraLocationImagePath?: string
     @json('deployment_photos', (raw: any) => raw) deploymentPhotos: any
 
     @field('modified_by') modifiedBy!: string
