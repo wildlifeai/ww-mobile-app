@@ -63,7 +63,7 @@ flowchart TD
     H -- Yes --> I["Show warning banner (optional update)"]
     I --> G
     H -- No --> J{"Tap 'Start Monitoring'"}
-    J --> K["Pipeline: Time Sync → AI Model → Snapshot → DB Record → Reset OPs → Configure"]
+    J --> K["Pipeline: Server check → Time Sync → AI Model → Snapshot → DB Record → Reset OPs → Configure"]
     K --> L["Live Monitor (DeploymentMonitorView)"]
     L --> M["User taps 'Disconnect'"]
     M --> N["Navigate to Home"]
@@ -90,7 +90,8 @@ BLE initialization happens **upstream** in the Scanner connection flow, and the 
 > [!NOTE]
 > **A deployed device never reaches any of this.** `useDeviceDiscovery` checks
 > `getActiveDeploymentForDeviceId` first and routes an active deployment straight to Stop
-> Monitoring.
+> Monitoring. That is the phone's own record; an open deployment the phone does not hold is
+> asked of the server when the user taps Start Monitoring (#448, below).
 
 **The factory reset happens once, in the Start Monitoring pipeline** (`pipeline.resetOps`, step 5 below), after the user has decided to deploy. It is the guarantee that nothing leaks from a previous deployment or an Engineer Console session (test-mode bits, extended inactivity timeout, flash overrides, intervals). A refused write there aborts the deployment; it is not a warning. The reset writes `FACTORY_DEFAULTS`, which since #304 holds `SLOT_SWITCH` (OP 26) = 0 and `AE_CHECK_INTERVAL` (OP 24) = 0, so **a deployment stays on the camera it started on** and schedules no periodic light wake. It was the other way round until then, and every camera the app had touched switched images on the light verdict. Choosing the camera for a site is manual until that becomes a project setting. See [Light-Sensor.md](../resources/Light-Sensor.md).
 
@@ -159,6 +160,8 @@ Project settings (capture method, sensitivity, timelapse interval, GPS image tag
 ### Start Deployment Sequence
 
 When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeployment.ts` executes a multi-step pipeline. Steps 1–2 and 5–6 are shared with the [Dev Deployment](../resources/Dev-Deployment-Guide.md) flow via `deploymentPipeline.ts`.
+
+**Before step 1 it asks the server about the camera** (`DeploymentService.checkServerForOpenDeployment`, #448). The server allows one open deployment per camera ([the contract](../../.agents/skills/references/cross-repo-contracts.md)), and the scanner only knows the phone's own. An open deployment on the server that this phone does not hold, or holds and has not ended, **stops the start** with "Already Deployed", naming its project, who started it when the server will say, and when; nothing has been written to the camera. The check sees only what this account may read (deployments in its projects, in an organisation it manages, or everywhere for a `ww_admin`): **an open deployment in any other project is invisible to it**, and only the refused push shows it. Offline, on a failed read or after 10 s without an answer, it says so in the progress log and carries on.
 
 | Step | Action | Detail |
 |------|--------|--------|
@@ -404,6 +407,7 @@ If the device is not connected, the user can "Force End (Database Only)":
 | "This project's AI model ... is not on this phone" | The model did not come down with the reference data: phone offline, or the model is not `validated` or `deployed` | Get the phone online and start again, which syncs first. If it persists, check the model's status on the website. |
 | "This camera's BLE firmware is ..., and sending files to it needs ... or later" | The model has to be sent to the card and the camera's BLE firmware predates the relay FIFO the transfer needs ([the floor](../resources/File-Transfer-Protocol.md#the-ble-firmware-floor)) | Update the BLE firmware, then start again. Nothing was written to the camera. |
 | "This project's AI model "..." could not be downloaded" | The model is not on the camera or its card, and the phone could not download its files. Offline, it was assigned after the phone's last sync or the pre-download had not finished; online, the download itself failed | Check the connection, wait for the sync (the Start Monitoring screen then says "Model ready on this phone"), and start again. Nothing was written to the camera. |
+| "Already Deployed": "This camera is still deployed in ..." | The server has an open deployment on this camera that this phone does not hold: another user's, or one started on another phone and not pulled yet (#448) | Whoever runs that deployment ends it. If it is yours, sync, then reconnect: the scanner sends the camera to End Deployment. Nothing was written to the camera. |
 
 ### End Deployment
 

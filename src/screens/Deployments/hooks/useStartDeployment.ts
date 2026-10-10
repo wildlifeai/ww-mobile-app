@@ -451,6 +451,23 @@ export const useStartDeployment = ({
         setSubmitting(true)
         isStartDeploymentInProgress.current = true
 
+        // 0. A camera has one open deployment at a time, and the server refuses
+        // a second (ww-backend #324). The scanner sent one open on this phone to
+        // End Deployment; this asks the server about one the phone does not
+        // hold (#448), before anything is written to the camera. Offline, or
+        // when the server cannot be asked, it warns and carries on.
+        progress.addLog('Checking the server for an open deployment on this camera...')
+        progress.setFinishStep('Checking the server...')
+        const openDeployment = await DeploymentService.checkServerForOpenDeployment(deviceId || '', user.id)
+        if (openDeployment.kind === 'open') {
+            progress.setIsFinishing(false)
+            setSubmitting(false)
+            isStartDeploymentInProgress.current = false
+            Alert.alert('Already Deployed', openDeployment.message)
+            return
+        }
+        if (openDeployment.kind === 'unchecked') progress.addLog(`⚠️ ${openDeployment.message}`)
+
         const cb = {
             addLog: progress.addLog,
             setStep: progress.setFinishStep,
