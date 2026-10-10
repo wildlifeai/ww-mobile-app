@@ -1,4 +1,4 @@
-# Smoke, the required E2E check: the CI APK installs, launches, and its
+# Smoke, the E2E check every PR runs (advisory): the CI APK installs, launches, and its
 # JavaScript bundle renders the first real screen, the login screen.
 #
 # Until October 2026 this flow only launched and took a screenshot, because the

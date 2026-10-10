@@ -26,6 +26,12 @@ adb install -r ./app-debug.apk
 adb shell svc bluetooth enable || true
 # A system "isn't responding" dialog (Pixel Launcher, on 5 Oct 2026) sat over the app while
 # the first assertion ran, and a flow that cannot see the screen fails for nothing.
+# hide_error_dialogs did not stop it: on 9 and 10 Oct it failed 4 of 24 smoke runs, each
+# started while four or five PR builds ran at once (runs 37983176738, 38022379168). The
+# flows start the app themselves and never use the home screen, so the launcher is
+# disabled and there is nothing left to stop responding. The setting stays for any other
+# app's dialog. Harmless on an image with another launcher: the command just fails.
+adb shell pm disable-user --user 0 com.google.android.apps.nexuslauncher || true
 adb shell settings put global hide_error_dialogs 1 || true
 echo "bluetooth_on=$(adb shell settings get global bluetooth_on 2>/dev/null)"
 

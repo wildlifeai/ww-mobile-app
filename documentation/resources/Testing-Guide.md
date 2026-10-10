@@ -8,7 +8,7 @@
 |------|------|----------|---------|
 | Unit | Jest + RNTL | `src/**/__tests__/*.test.ts` | `npm test` |
 | Integration/BDD | Jest + custom helpers | `tests/integration/**/*.bdd.test.tsx` | `npm test -- bdd` |
-| E2E | Maestro | `tests/maestro/smoke/` required in CI, the flows in `tests/maestro/config.yaml` on the `full-e2e` label | `npm run test:maestro:smoke`, `npm run test:maestro` |
+| E2E | Maestro | `tests/maestro/smoke/` on every PR in CI (advisory), the flows in `tests/maestro/config.yaml` on the `full-e2e` label | `npm run test:maestro:smoke`, `npm run test:maestro` |
 
 ## Running Tests
 
@@ -17,7 +17,7 @@ npm test                    # All Jest tests (unit + integration)
 npm test -- --watch         # Watch mode
 npm test -- --coverage      # Coverage report
 npm test -- Login.test.tsx  # Single file
-npm run test:maestro:smoke  # the one E2E flow CI requires (requires device)
+npm run test:maestro:smoke  # the E2E flow every PR runs, advisory (requires device)
 npm run test:maestro        # every E2E flow (requires device and -e E2E_TEST_EMAIL/-e E2E_TEST_PASSWORD)
 npm run lint                # ESLint
 npm run type-check          # TypeScript
@@ -133,7 +133,7 @@ smoke an account on the Supabase instance the build talks to (below).
 
 ```bash
 adb devices                   # 1. A device is connected
-npm run test:maestro:smoke    # 2. What CI requires: install, launch, the login screen renders
+npm run test:maestro:smoke    # 2. What every PR runs: install, launch, the login screen renders
 npm run test:maestro -- -e E2E_TEST_EMAIL=... -e E2E_TEST_PASSWORD=...   # 3. Every flow
 npm run test:maestro:auth -- -e E2E_TEST_EMAIL=... -e E2E_TEST_PASSWORD=...
 maestro studio                # 4. Browse the live screen's ids and texts
@@ -187,12 +187,14 @@ that changed only an npm script rebuilt (run 36929311218). Caches are scoped per
 Two jobs run the flows on an API 33 x86_64 emulator with the Pixel 6 profile (the default AVD
 is 320x640 at 160 dpi, where the drawer's version footer sat over its sign-out button, #379),
 through `scripts/ci-maestro.sh`. That script also turns Bluetooth on, which the app insists on
-before the login screen, and runs the offline scenario through `scripts/maestro-offline.sh`
-after the other flows:
+before the login screen, disables the Pixel Launcher, whose "isn't responding" dialog covered the
+app in 4 of 24 smoke runs on busy runners (9 and 10 October 2026), and runs the offline scenario
+through `scripts/maestro-offline.sh` after the other flows:
 
-- `E2E Smoke`, **required**. One flow, [`smoke/app-startup.yaml`](../../tests/maestro/smoke/app-startup.yaml):
+- `E2E Smoke`, advisory: every PR runs it and a failure shows red, but no branch protection
+  requires it, so it does not stop a merge. One flow, [`smoke/app-startup.yaml`](../../tests/maestro/smoke/app-startup.yaml):
   install, launch, and the login screen's `email-input` and `login-button` render within 90 s.
-  It asserts no more than that so that a required check never fails for an unverified id.
+  It asserts no more than that so that it never fails for an unverified id.
 - `E2E Full`, advisory. Every flow [`config.yaml`](../../tests/maestro/config.yaml) lists, signed
   in as the E2E account, then the three offline phases. Runs on the `full-e2e` label or by hand
   (`gh workflow run native-build-validation.yml --ref <branch>`); never in the merge queue,
@@ -358,23 +360,26 @@ on the phone for that reason.
 ## CI/CD
 
 Every workflow in `.github/workflows/`, what it proves and whether it can stop a merge. A gate
-fails the pull request. An advisory check prints a warning annotation and its report, and stays
-green. The agent guide (`AGENTS.md`, "Check it") has the local commands for the gates.
+is a check `dev`'s branch protection requires: while it fails, the pull request cannot merge.
+Four are required today: `Cloud Type Validation Summary`, `commitlint`, `quality-gates (22.x)` and
+`quality-gates (24.x)`. Every other check is advisory: some show red when they fail, some print a
+warning annotation and stay green, and none stops a merge. The agent guide (`AGENTS.md`, "Check
+it") has the local commands for the gates.
 
 | Workflow | Runs on | Proves | Gate? |
 |---|---|---|---|
-| Quality Gate Validation | every PR, merge queue | `type-check`, `lint`, `version:check`, `docs:validate`, the type system is not empty, no `console.log` outside the logger, Jest with coverage at or above the 20% floor | gate |
-| Native Build Validation | every PR, merge queue | an Android EAS local build of the `e2e` profile, `E2E Smoke` on an emulator, `expo prebuild` for iOS; `E2E Full` on the `full-e2e` label. A `changes` job skips the expensive steps on a docs-only PR while every check still reports | gate |
-| Commitlint | every PR, merge queue | conventional commit subjects | gate |
-| Type Synchronization Validation, Cloud Type Validation | PRs, pushes | `src/types/supabase.ts` matches what `supabase gen types` produces from cloud-dev | gate |
-| React Doctor Review | every PR, merge queue | 60+ React and React Native rules. An error-severity finding fails the PR; warnings go to a sticky comment with a 0 to 100 score. Config in `doctor.config.json`, detail in [React-Doctor-Guide.md](React-Doctor-Guide.md) | gate on errors |
+| Quality Gate Validation | every PR, merge queue | `type-check`, `lint`, `version:check`, `docs:validate`, the type system is not empty, no `console.log` outside the logger, Jest with coverage at or above the 20% floor | gate: `quality-gates (22.x)` and `(24.x)` |
+| Native Build Validation | every PR, merge queue | an Android EAS local build of the `e2e` profile, `E2E Smoke` on an emulator, `expo prebuild` for iOS; `E2E Full` on the `full-e2e` label. A `changes` job skips the expensive steps on a docs-only PR while every check still reports | advisory: a failure shows red, but none of its checks is required on `dev` |
+| Commitlint | every PR, merge queue | conventional commit subjects | gate: `commitlint` |
+| Type Synchronization Validation, Cloud Type Validation | PRs, pushes | `src/types/database.types.ts` matches what `supabase gen types` produces from cloud-dev (PRs into `dev`) or production (PRs into `main`) | gate on `dev`: `Cloud Type Validation Summary`. Nothing is required on `main` |
+| React Doctor Review | every PR, merge queue | 60+ React and React Native rules. An error-severity finding fails the PR; warnings go to a sticky comment with a 0 to 100 score. Config in `doctor.config.json`, detail in [React-Doctor-Guide.md](React-Doctor-Guide.md) | advisory: an error shows red, but the check is not required |
 | PR-Agent code review | PR open, comments | an AI review comment. It triggers on comments, so it can never be required | advisory |
 | Op Index Drift | PRs touching `useDeviceSettings.ts`; Mondays | `OP_PARAMETER` matches the firmware enum on Seeed `dev` (`scripts/check-op-indices.js`); the firmware may legitimately lead by one PR | advisory |
 | Self-Test Bit Drift | PRs touching `utils/deviceSelfTest.ts`; Mondays | `SelfTestBit` matches `selfTest_type_t` on Seeed `dev` (`scripts/check-selftest-bits.js`): every bit number on both sides, none at 16 or above; the firmware may legitimately lead by one PR | advisory |
-| Expo Doctor | PRs touching `package.json`, the lockfile, `app.config.ts`, `eas.json` or `android/` | `npx expo-doctor` and `npx expo install --check`: package versions against the SDK, the app config schema, the native folders, the React Native Directory. Both read the Expo API, which is why they are not in the offline quality gate. What they are told to skip is below | gate |
-| CodeQL | PRs, pushes to `dev`, Mondays | GitHub's JavaScript and TypeScript security queries; findings are code scanning alerts in the Security tab, and the `CodeQL` check fails a PR that adds one at or above the repository's failure threshold. `archive/`, `android/`, `supabase/`, `patches/` and the tests are left out | gate once `CodeQL` is required (#392) |
-| Schema Mirror Drift | PRs touching `supabase/`, the schema files or the sync scripts; Mondays | `supabase/schemas` still matches ww-backend's `dev` (`scripts/check-schema-mirror.js`, with the read-only token); the fix for that drift is `npm run db:sync-schema` and a commit. A second job runs `validate-watermelon-schema.js`: `src/database/schema.ts` matches the Supabase types, with every accepted difference named in `scripts/README.md` | advisory for the mirror; gate for the WatermelonDB job |
-| Dead Code | every PR, merge queue, Mondays | knip: files nothing imports, exports and types nothing uses, dependencies nothing imports, imports of packages `package.json` does not list. What `knip.json` tells it is below | gate (#393) |
+| Expo Doctor | PRs touching `package.json`, the lockfile, `app.config.ts`, `eas.json` or `android/` | `npx expo-doctor` and `npx expo install --check`: package versions against the SDK, the app config schema, the native folders, the React Native Directory. Both read the Expo API, which is why they are not in the offline quality gate. What they are told to skip is below | advisory: a failure shows red, but the check is not required |
+| CodeQL | PRs, pushes to `dev`, Mondays | GitHub's JavaScript and TypeScript security queries; findings are code scanning alerts in the Security tab, and the `CodeQL` check fails a PR that adds one at or above the repository's failure threshold. `archive/`, `android/`, `supabase/`, `patches/` and the tests are left out | advisory until `CodeQL` is required (#392) |
+| Schema Mirror Drift | PRs touching `supabase/`, the schema files or the sync scripts; Mondays | `supabase/schemas` still matches ww-backend's `dev` (`scripts/check-schema-mirror.js`, with the read-only token); the fix for that drift is `npm run db:sync-schema` and a commit. A second job runs `validate-watermelon-schema.js`: `src/database/schema.ts` matches the Supabase types, with every accepted difference named in `scripts/README.md` | advisory: the mirror job stays green with a warning; the WatermelonDB job shows red on a mismatch, but neither is required |
+| Dead Code | every PR, merge queue, Mondays | knip: files nothing imports, exports and types nothing uses, dependencies nothing imports, imports of packages `package.json` does not list. What `knip.json` tells it is below | advisory: a finding shows red (#393), but `knip` is not required |
 | Dependency Audit | PRs touching `package.json` or the lockfile; Mondays | `npm audit --omit=dev --audit-level=high`, read from the lockfile with no install. Dependabot (`.github/dependabot.yml`) opens the bump PRs: one grouped PR a week for everything outside the Expo SDK set, which moves together through `npx expo install` | advisory on PRs; the Monday run fails, so an advisory published against an unchanged lockfile is still seen |
 | iOS Weekly Build | Mondays, by hand | `eas build --local --profile e2e --platform ios` on `macos-latest`, no signing because the profile sets `ios.simulator: true`; the `app-ios-simulator` artifact stays two weeks. Weekly because macOS runners bill at ten times the Linux rate and a cold build is 25 to 40 minutes (#394) | a red scheduled run |
 | EAS Build & Submit, Semantic Release & Publish | pushes, by hand | the release pipeline: the Expo-EAS Guide and the publishing guide | not a check |
