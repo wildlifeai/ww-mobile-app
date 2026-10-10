@@ -74,7 +74,7 @@ The backend team has **successfully fixed** the member access issue that was blo
 
 ### Test Scenario 2: WW Admin
 
-**Account**: `adarsh@wildlife.ai` / `tr1bb13!`
+**Account**: a `ww_admin` test account (credentials removed)
 
 **Steps**:
 1. Log in as WW Admin
