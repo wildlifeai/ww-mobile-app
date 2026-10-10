@@ -186,7 +186,7 @@ The commit correctly included:
 ### Commit Details
 ```
 Commit: 7fa30beb89058adabad75599339e75b9f2fb771f
-Author: adarshlal <adarsh@wildlife.ai>
+Author: adarshlal
 Date: Tue Oct 28 16:52:41 2025 +1300
 Message: docs(coordination): reorganize 73 cross-project coordination files into standardized structure
 Files Changed: 46 (stated 73 in message, 4 unrelated)
