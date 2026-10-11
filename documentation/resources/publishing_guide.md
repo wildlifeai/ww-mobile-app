@@ -36,6 +36,7 @@ The app uses **EAS (Expo Application Services)** for building and submitting to 
 |--------|--------------|
 | `EXPO_TOKEN` | [expo.dev](https://expo.dev) → Account Settings → Access Tokens |
 | `SUPABASE_ACCESS_TOKEN` | Supabase dashboard → Account → Access Tokens |
+| `PLAY_SERVICE_ACCOUNT_KEY` | The contents of the Play key file above. The release run writes it to the path in `eas.json`; iOS needs no secret, its App Store Connect key is stored on EAS |
 
 Google Maps keys and Supabase publishable keys are in `eas.json` (safe to commit).
 
@@ -65,6 +66,8 @@ The `eas-build.yml` workflow handles this, and it is the only workflow a `v*` ta
 - **Manual dispatch** → choose profile + platform, the way to get a `preview` build
 
 A push to `main` builds nothing, so a release costs the two production builds and not two preview builds as well.
+
+If the submit step fails, the builds are still there. Submit each one from a checkout of the tag (Android needs the key file in it): `eas submit --profile production --platform android --id <buildId>`, then the same with `ios`.
 
 ### Release Process
 

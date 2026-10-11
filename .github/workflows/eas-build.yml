@@ -69,39 +69,59 @@ jobs:
       - name: EAS Build
         id: build
         run: |
-          # --json so the build IDs can be handed to the submit step below.
-          # It also silences the progress spinner, so the EAS build page is the
-          # place to watch a run in flight.
+          # --json so each build's platform and ID can be handed to the submit
+          # step below. It also silences the progress spinner, so the EAS build
+          # page is the place to watch a run in flight.
           eas build \
             --profile ${{ steps.config.outputs.profile }} \
             --platform ${{ steps.config.outputs.platform }} \
             --non-interactive \
             --json > eas-build-result.json
 
-          ids=$(node -e "
+          builds=$(node -e "
             const b = require('./eas-build-result.json');
             const list = Array.isArray(b) ? b : [b];
             if (!list.length) { console.error('no builds returned'); process.exit(1); }
-            console.log(list.map(x => x.id).join(' '));
+            console.log(list.map(x => x.platform.toLowerCase() + ':' + x.id).join(' '));
           ")
-          echo "Built: $ids"
-          echo "ids=$ids" >> "$GITHUB_OUTPUT"
+          echo "Built: $builds"
+          echo "builds=$builds" >> "$GITHUB_OUTPUT"
 
       - name: Submit to stores
         if: steps.config.outputs.submit == 'true'
+        env:
+          PLAY_SERVICE_ACCOUNT_KEY: ${{ secrets.PLAY_SERVICE_ACCOUNT_KEY }}
         run: |
           # Submit the exact artifacts this run produced.
           #
-          # `eas submit --non-interactive` fails outright without an archive
-          # source ("You need to specify the archive source when running in
-          # non-interactive mode") — which is why every automated submission
-          # silently failed until Aug 2026 and releases were made by hand.
+          # `eas submit --non-interactive` needs both the build (--id) and its
+          # --platform, and refuses without either. Missing the first failed
+          # every automated submission until Aug 2026, missing the second failed
+          # v0.0.70, so releases were submitted by hand until then.
           #
           # --id rather than --latest deliberately: this workflow has no
           # concurrency guard, so a preview build dispatched while a tag runs
           # could be the latest. With --latest it would be submitted to the
           # stores, a cloud-dev configured binary shipped to users.
-          for id in ${{ steps.build.outputs.ids }}; do
-            echo "Submitting build $id"
-            eas submit --profile production --id "$id" --non-interactive
+          #
+          # eas.json reads the Play key from a gitignored file, so it is written
+          # here from a secret. iOS needs nothing: its App Store Connect key is
+          # stored on EAS. Every build is tried even when one fails, so one
+          # store's problem does not hold back the other.
+          failed=0
+          for build in ${{ steps.build.outputs.builds }}; do
+            platform="${build%%:*}"
+            id="${build#*:}"
+            if [[ "$platform" == "android" ]]; then
+              if [[ -z "$PLAY_SERVICE_ACCOUNT_KEY" ]]; then
+                echo "::error::Android build $id not submitted: the PLAY_SERVICE_ACCOUNT_KEY secret is not set"
+                failed=1
+                continue
+              fi
+              key_path=$(node -p "require('./eas.json').submit.production.android.serviceAccountKeyPath")
+              printf '%s' "$PLAY_SERVICE_ACCOUNT_KEY" > "$key_path"
+            fi
+            echo "Submitting $platform build $id"
+            eas submit --profile production --platform "$platform" --id "$id" --non-interactive || failed=1
           done
+          exit $failed
