@@ -623,4 +623,11 @@ describe('describeSelfTest', () => {
         expect(state.status).toBe('fail')
         expect(state.summary).toMatch(/^0x8100: the colour camera \(RP3\) did not answer, unknown self-test code 0x8000\./)
     })
+
+    it('says to power cycle before checking the ribbons when the HM0360 did not answer (#477)', () => {
+        const state = describeSelfTest(0x0200, 'RP3')
+
+        expect(state.status).toBe('fail')
+        expect(state.summary).toBe('0x0200: the HM0360 sensor did not answer. Power cycle the unit and run again. If it fails again, check the camera ribbon cables.')
+    })
 })

@@ -202,7 +202,10 @@ export const describeSelfTest = (bits: number, running: CameraVariant): CheckSte
     const failed = cameraFault || others.some(i => i.severity === 'error')
     return {
         status: failed ? 'fail' : 'warn',
-        summary: `${code}: ${parts.join(', ')}.${cameraFault ? ' Check the camera ribbon cables, power cycle the unit and run again.' : ''}`,
+        // The power cycle first: it is what clears an HM0360 that did not
+        // start at power-on, the usual cause of bit 9 on the bench (#477),
+        // and it costs nothing before the ribbons are checked
+        summary: `${code}: ${parts.join(', ')}.${cameraFault ? ' Power cycle the unit and run again. If it fails again, check the camera ribbon cables.' : ''}`,
     }
 }
 
