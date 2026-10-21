@@ -18,6 +18,10 @@ permissions:
 
 jobs:
   review:
+    # A run Dependabot triggers gets Dependabot's secrets, not these, so the key
+    # is empty and the review fails on every bump. A /review comment on a
+    # Dependabot PR still runs: its actor is whoever commented.
+    if: github.actor != 'dependabot[bot]'
     uses: wildlifeai/.github/.github/workflows/pr-agent.yml@main
     secrets:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
