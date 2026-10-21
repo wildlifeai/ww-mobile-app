@@ -24,6 +24,8 @@ The Dev Deployment flow is a **developer-facing** alternative to the standard St
 
 The Dev Deployment screen is only accessible from the Engineer Console's Flows menu. It is **not** available to regular users.
 
+The console connects without the scanner, which is what registers a camera on the phone. Start registers one the phone has no device for the same way, before anything touches the camera ([A camera this phone has not met](../onboarding/05-DEVICE-FLOWS.md#a-camera-this-phone-has-not-met), #480).
+
 ---
 
 ## How It Differs From Standard Deployment

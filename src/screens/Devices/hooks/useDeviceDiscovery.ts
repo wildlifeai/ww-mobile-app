@@ -7,7 +7,8 @@ import { useBleActions } from '../../../providers/BleEngineProvider'
 import { useDevicePreDeploymentChecks } from '../../../hooks/useDevicePreDeploymentChecks'
 import { useAppSelector } from '../../../redux'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
-import { DeviceService, ServerDeviceLookup } from '../../../services/DeviceService'
+import { DeviceService } from '../../../services/DeviceService'
+import { registerCamera, CANNOT_REGISTER_TITLE } from '../../../services/cameraRegistration'
 import { selectCurrentOrganisation } from '../../../redux/slices/authSlice'
 import { DeploymentService } from '../../../services/DeploymentService'
 import ProjectService from '../../../services/ProjectService'
@@ -39,19 +40,6 @@ type UseDeviceDiscoveryOptions = {
  * 'idle' and 'expired' require a fresh start with cache flush.
  */
 export type ScanSessionState = 'idle' | 'active' | 'expired'
-
-/**
- * Why a camera neither on this phone nor readable on the server cannot be
- * registered by an account with no organisation. The server lets only a member
- * of the device's organisation insert it, and a project invitation grants no
- * organisation role.
- */
-const describeNoOrganisation = (lookup: ServerDeviceLookup['kind']): string => {
-    const rule = 'Only a member of an organisation can register a new camera, and this account is not a member of one. Ask the organisation\'s manager to add you, or to register the camera.'
-    return lookup === 'unchecked'
-        ? `This phone could not ask the server about this camera. If it is already registered, try again with a connection. ${rule}`
-        : rule
-}
 
 export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     const isDrawerOpen = options?.isDrawerOpen ?? false
@@ -267,42 +255,28 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                             return
                         }
 
-                        // A camera the server already has keeps its id (#451): a
-                        // second one is refused on every sync. Asked before the
-                        // organisation check, so an account with no organisation
-                        // can still use a camera it may read.
-                        await addLog('Looking for this camera on the server...')
-                        const onServer = await DeviceService.adoptFromServer(device.id)
-                        log(`Server lookup for ${device.id}: ${onServer.kind}`)
+                        // The server's row when this account may read it, else a
+                        // new one in the current organisation (#451)
+                        const registration = await registerCamera({
+                            bluetoothId: device.id,
+                            name: device.name || 'Unknown Device',
+                            organisationId: currentOrganisation?.id,
+                            userId: user.id,
+                            isCancelled,
+                            onStep: addLog,
+                        })
 
-                        if (isCancelled()) {
+                        if (registration.kind === 'cancelled') {
                             log('[handleDeviceSelect] Operation cancelled after server lookup, aborting')
                             await disconnectDevice(device)
                             return
                         }
-
-                        if (onServer.kind === 'found') {
-                            dbDevice = onServer.device
-                        } else if (currentOrganisation?.id) {
-                            log(`Creating device in DB for org ${currentOrganisation.id}...`)
-                            try {
-                                dbDevice = await DeviceService.createDevice(
-                                    device.id,
-                                    device.name || 'Unknown Device',
-                                    currentOrganisation.id,
-                                    user.id
-                                )
-                                log(`Device created: ${dbDevice?.id}`)
-                            } catch (error) {
-                                logError('Error creating device in DB:', error)
-                                dbDevice = await DeviceService.getDeviceByBluetoothId(device.id)
-                            }
-                        } else {
-                            log(`No organisation, cannot register camera ${device.id}`)
-                            Alert.alert('Cannot register this camera', describeNoOrganisation(onServer.kind))
+                        if (registration.kind === 'no_organisation') {
+                            Alert.alert(CANNOT_REGISTER_TITLE, registration.message)
                             await disconnectDevice(device)
                             return
                         }
+                        if (registration.kind === 'registered') dbDevice = registration.device
                     }
 
                     if (mode === 'auto') {

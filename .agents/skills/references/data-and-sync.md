@@ -119,8 +119,11 @@ version for humans is
   it left the photo in the bucket with nothing pointing at it and the local file gone.
 - **A camera has one id, the server's (#451).** `devices.bluetooth_id` is unique on the server
   and the devices insert is `ON CONFLICT (id)` only, so a second local id for one camera fails
-  `23505`. The scanner asks the server before it registers a camera the phone lacks
-  (`DeviceService.adoptFromServer`), and the push settles a `23505` on `bluetooth_id`
+  `23505`. Registering a camera the phone lacks asks the server first (`registerCamera` in
+  `cameraRegistration.ts`, then `DeviceService.adoptFromServer`). The scanner and the Dev
+  Deployment Test both register through it; the Engineer Console's connect registers nothing,
+  so a flow opened from the console must do it before it writes a deployment (#480). The push
+  settles a `23505` on `bluetooth_id`
   (`settleTakenBluetoothId`) and a `42501` on a device the server already shows
   (`settleDeviceAlreadyOnServer`); the cases are in
   [03-DATA-AND-SYNC.md](../../../documentation/onboarding/03-DATA-AND-SYNC.md#a-camera-the-server-already-has).

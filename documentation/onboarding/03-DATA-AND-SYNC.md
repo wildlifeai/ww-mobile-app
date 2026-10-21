@@ -333,9 +333,11 @@ private async uploadOutbox() {
 
 The outbox is uploaded in a fixed foreign-key order, `projects`, then `devices`, then
 `deployments`, so a parent row always lands before the child that references it. A camera's
-device row is queued once, when the scanner first registers it (`DeviceService.createDevice`),
-and not at all when the scanner takes the server's row instead ([A camera the server already
-has](#a-camera-the-server-already-has)). A deployment start queues no device `CREATE` (#451):
+device row is queued once, when the scanner or a Dev Deployment Test first registers it
+(`registerCamera`, then `DeviceService.createDevice`), and not at all when it takes the server's
+row instead ([A camera the server already has](#a-camera-the-server-already-has)).
+`createDeployment` refuses a deployment without a camera or a project, which the server could
+never take (#480). A deployment start queues no device `CREATE` (#451):
 until then it queued one with every deployment, which the server refused with `42501` for a
 camera of another organisation. A deployment whose device the server has never seen fails
 `23503` (foreign key), and the self-healing path in `SupabaseSyncService` then queues the
