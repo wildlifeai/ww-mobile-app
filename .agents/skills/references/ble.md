@@ -194,6 +194,16 @@ day are in [traps.md](traps.md).
   is the one exception: it takes about 25 photos and keeps four, so it captures through the
   registry inside one keepAwake hold and downloads with `workflows/downloadPhoto.ts`. Anything
   else capturing that way needs the same op10/op18 pre-flight and the hold.
+- **A capture can fail or be refused, and the command layer says so (#476).** AI firmware from
+  Seeed PR #275 on abandons a capture with `Capture failed after N of M images: <reason>` and
+  no `Captured`; `capture` and `captureBurst` fail on it (`CAPTURE_FAILED_LINE`) with the
+  camera's line as the error message, never retried. Between a cold boot and the first sleep the
+  same firmware answers `AI capture` and `AI light` with
+  `Error: no captures until after the first sleep.` (`FIRST_SLEEP_REFUSAL`), and
+  `runCommandPipeline` waits for the next Sleep and sends the command once more, so no flow
+  handles it again. A new command that captures adds both to its `failureRegex`, and a flow
+  that follows the text stream instead, as the motion test does, ends on the failure line
+  itself.
 - **The focus lens forgets its position when the AI processor sleeps.** `AI vcm` only holds
   while the processor is awake, because the camera powers off with it, so a photo at a lens
   position must follow its `vcm` inside one keepAwake hold. Below about 256 the lens does not

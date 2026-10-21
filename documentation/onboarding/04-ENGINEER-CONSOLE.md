@@ -152,6 +152,8 @@ so rather than the button failing:
 | No reply at all | The device is stuck awake (Seeed #205) and the nRF drops every command | Power cycle; see [traps.md](../../.agents/skills/references/traps.md) |
 | No flash | The LED fires only when the device armed it: op13 chooses the LED, op34 the mode, and in AE mode the stored light decision op25. Capture Picture holds op34 at always-on for its visit; this button does not | Use Capture Picture for a flash photo, or see the three commands in [Light-Sensor.md](../resources/Light-Sensor.md) |
 | `Captured 1 images. Last is` with an old name or none, and no new file | op18 bit 3, `TEST_BIT_SKIP_FILE_CREATION`, was left set by a motion test that did not finish | `AI setop 18 0` |
+| `Capture failed after N of M images: <reason>` | AI firmware from Seeed PR #275 on abandons a capture after a camera datapath fault (`EDM WDT2 timeout`, `No frame`) and no longer retries by itself. N photos were saved | Tap again. The app's own flows show this line instead of waiting out a timeout (#476) |
+| `Error: no captures until after the first sleep.` | The same firmware takes no capture or light check between a cold boot (power-on, RESET, `AI reset`, `AI switchslot`, a firmware update, a reset after a fault) and its first sleep | Wait for `Sleep`, then tap again. The app's own flows do this by themselves (#476) |
 
 It is a real capture in every other way: it counts toward op19, runs the AI model if one is
 loaded, and when automatic camera switching (op26) is on, its light check can schedule a slot

@@ -61,12 +61,36 @@ export interface CommandDefinitionOptions {
        delayMs?: number;
    };
    failureRegex?: RegExp;
+   /** The error message for a line `failureRegex` matched; `<name> failed: <line>` by default */
+   failureMessage?: (line: string) => string;
    responseMode?: 'single_line' | 'multi_line' | 'fire_and_forget' | 'stream';
    idempotent?: boolean;
    safeDuringStreaming?: boolean;
    isLongRunning?: boolean;
    requiresExclusiveLock?: boolean;
 }
+
+/**
+ * A capture the AI processor abandoned, from the firmware of Seeed PR #275:
+ * `Capture failed after N of M images: <reason>`, about 5 s after the photo
+ * was due, and no `Captured`. N photos were saved, and the reason is a
+ * datapath event such as `EDM WDT2 timeout` or `No frame`. That firmware no
+ * longer retries by itself. Older firmware never sends it (#476).
+ */
+export const CAPTURE_FAILED_LINE = /^Capture failed after \d+ of \d+ images/i;
+
+/**
+ * The reply of `AI capture` and `AI light` between a cold boot and the first
+ * sleep, from the same firmware. A cold boot follows power-on, RESET,
+ * `AI reset`, `AI switchslot`, a firmware update, and the AI processor
+ * resetting itself after a fault. The command has woken the processor, so the
+ * same command sent after its next Sleep works: runCommandPipeline waits for
+ * that Sleep and sends it once more, so no screen has to (#476).
+ */
+export const FIRST_SLEEP_REFUSAL = /^Error: no captures until after the first sleep/i;
+
+/** Either of the two, for the commands that capture. */
+const CAPTURE_REFUSED = new RegExp(`${CAPTURE_FAILED_LINE.source}|${FIRST_SLEEP_REFUSAL.source}`, 'i');
 
 /**
  * Helper to create a simple single-line matching command.
@@ -105,7 +129,7 @@ export function createSingleLineCommand<T>(
       },
       isComplete: () => matchedString !== null || failedString !== null,
       parser: () => {
-        if (failedString) throw new Error(`${name} failed: ${failedString}`);
+        if (failedString) throw new Error(options?.failureMessage?.(failedString) ?? `${name} failed: ${failedString}`);
         if (!matchedString) throw new Error(`${name}: Result accessed before complete`);
         const match = matchedString.match(regex);
         if (!match) throw new Error(`${name}: Parse failure on getResult`);
@@ -159,7 +183,7 @@ export function createMultiLineCommand<T>(
       },
       isComplete: () => isDone,
       parser: () => {
-        if (failedString) throw new Error(`${name} failed: ${failedString}`);
+        if (failedString) throw new Error(options?.failureMessage?.(failedString) ?? `${name} failed: ${failedString}`);
         if (!isDone) throw new Error(`${name}: Result accessed before complete`);
         return parseResult(lines);
       },
@@ -495,7 +519,9 @@ export const commandRegistry = {
     (count: number, interval: number) => `AI capture ${count} ${interval}`,
     /Captured.*?Last is ([\w.]+)/i,
     (match) => match[1] || true,
-    { timeoutMs: 30000, retryPolicy: { maxRetries: 0 } }
+    // A failed capture ends the command with the camera's own words, which
+    // name the reason, rather than 30 s later with TIMEOUT (#476)
+    { timeoutMs: 30000, retryPolicy: { maxRetries: 0 }, failureRegex: CAPTURE_REFUSED, failureMessage: (line) => line.trim() }
   ),
 
   /**
@@ -526,7 +552,11 @@ export const commandRegistry = {
     // 16s, which is longer than the caller's own 15s budget for the whole
     // measurement: observed on hardware, where the retry landed 8s late and the
     // wait expired before the second attempt could answer.
-    { timeoutMs: 8000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Unrecognised|^Failed to queue light check/i },
+    //
+    // The cold-boot refusal (#476) is a failure too, so it ends the command at
+    // once and runCommandPipeline sends it again after the next Sleep. It is
+    // never `Unrecognised`, so it cannot reach the fall-back-to-a-capture path.
+    { timeoutMs: 8000, retryPolicy: { maxRetries: 0 }, failureRegex: new RegExp(`^Unrecognised|^Failed to queue light check|${FIRST_SLEEP_REFUSAL.source}`, 'i') },
   ),
 
   /**
@@ -601,7 +631,7 @@ export const commandRegistry = {
     (count: number, interval: number) => `AI capture ${count} ${interval}`,
     /^Captured\s+(\d+)\s+images/i,
     (match) => parseInt(match[1], 10),
-    { timeoutMs: 45000, retryPolicy: { maxRetries: 0 } }
+    { timeoutMs: 45000, retryPolicy: { maxRetries: 0 }, failureRegex: CAPTURE_REFUSED, failureMessage: (line) => line.trim() }
   ),
 
   txfile: createSingleLineCommand<boolean>(
