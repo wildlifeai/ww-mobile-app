@@ -9,6 +9,7 @@
 
 import { parseLightCheck, summariseLightCheck } from './protocol/lightCheck'
 import { BLE_PROTOCOL_TIMINGS } from './protocol/protocolConstants'
+import { CAPTURE_FAILED_LINE } from './protocol/commandRegistry'
 
 export enum MessageType {
   RESPONSE = 'RESPONSE',
@@ -208,7 +209,7 @@ export function isAiNackError(message: string): boolean {
   return /^AI NACK$/i.test(message.trim())
 }
 
-export type MonitorCategory = 'motion' | 'timelapse' | 'capture' | 'nn_positive' | 'nn_negative' | 'sleep' | 'wake' | 'selftest_ok' | 'selftest_warn' | 'info'
+export type MonitorCategory = 'motion' | 'timelapse' | 'capture' | 'capture_failed' | 'nn_positive' | 'nn_negative' | 'sleep' | 'wake' | 'selftest_ok' | 'selftest_warn' | 'info'
 
 export interface MonitorEvent {
   category: MonitorCategory
@@ -262,6 +263,11 @@ export function classifyForMonitor(rawMessage: string): MonitorEvent | null {
 
 
   // --- CAPTURE EVENTS ---
+  // A capture the camera abandoned, motion and timelapse ones included, from
+  // the firmware of Seeed PR #275; shown, not hidden, since nothing else on
+  // the monitor says a photo was lost (#476)
+  if (CAPTURE_FAILED_LINE.test(content)) return { category: 'capture_failed', label: 'Photo failed', icon: 'camera-off', details: content }
+
   const captureMatch = content.match(/^Captured\s+(\d+)\s+images/i)
   if (captureMatch) {
     const fileMatch = content.match(/Last is\s+(.+)$/i)

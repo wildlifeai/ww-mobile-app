@@ -4,7 +4,7 @@ import { unstable_batchedUpdates } from 'react-native'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { log, logError, logWarn } from '../../../utils/logger'
 import { bleEventBus, BleEvent } from '../../../ble/protocol/eventBus'
-import { commandRegistry, isMdRefusal } from '../../../ble/protocol/commandRegistry'
+import { commandRegistry, isMdRefusal, CAPTURE_FAILED_LINE } from '../../../ble/protocol/commandRegistry'
 import { bleTransport } from '../../../ble/protocol/bleTransportController'
 import { createBleSession } from '../../../ble/session/createBleSession'
 import { flashHold } from '../../../ble/session/flashHold'
@@ -201,6 +201,26 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                 // to whoever stopped it, so it is done here: no "Captured" will
                 // come, and the holds would otherwise stay on the device (#274).
                 if (device) cleanUpAfterTest(device, 'camera not enabled')
+                return
+            }
+            // A capture the camera abandoned: `Capture failed after N of M
+            // images: <reason>`, and no `Captured` (#476). Without this the
+            // test ran on and its holds stayed on the device. Ignored before
+            // this test's capture started, as `Captured` is: a motion wake's
+            // own capture can fail during the setup sleep.
+            if (CAPTURE_FAILED_LINE.test(msg)) {
+                if (!captureStartedRef.current) {
+                    log(`[MotionDetectionStream] Ignored "${msg.trim()}": it came before this test's capture started`)
+                    return
+                }
+                log(`[MotionDetectionStream] Capture failed: ${msg.trim()}`)
+                activeRef.current = false
+                pendingFramesRef.current = []
+                setIsTesting(false)
+                setStatusMessage('')
+                setErrorMessage(msg.trim())
+                bleTransport.clearAll()
+                if (device) cleanUpAfterTest(device, 'capture failed')
                 return
             }
             if (/No model found/i.test(msg) && /NN/i.test(msg)) {

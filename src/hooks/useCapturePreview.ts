@@ -5,7 +5,7 @@ import { imageReassemblerEmitter } from '../ble/emitters'
 import { bleEventBus, BleEvent } from '../ble/protocol/eventBus'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { createBleSession } from '../ble/session/createBleSession'
-import { commandRegistry } from '../ble/protocol/commandRegistry'
+import { commandRegistry, CAPTURE_FAILED_LINE } from '../ble/protocol/commandRegistry'
 import { keepAwake } from '../ble/session/keepAwake'
 import { requestFastInterval, releaseFastInterval } from '../ble/protocol/connectionPriority'
 import { log, logError, logWarn } from '../utils/logger'
@@ -326,8 +326,10 @@ export const useCapturePreview = ({
             clearDownloadTimeout()
             releaseInterval()
 
+            // A camera that abandoned the capture says so itself, starting
+            // "Capture failed after" (#476), so it is shown as it came
             if (onError) onError(err)
-            else Alert.alert('Error', `Capture failed: ${err.message}`)
+            else Alert.alert('Error', CAPTURE_FAILED_LINE.test(err.message) ? err.message : `Capture failed: ${err.message}`)
         }
     }, [device, onCaptureStart, onError, clearDownloadTimeout, resetDownloadTimeout, releaseInterval])
 

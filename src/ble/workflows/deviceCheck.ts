@@ -25,7 +25,7 @@
  * and the camera that was running when the check started.
  */
 import type { CommandContext } from '../protocol/commandRegistry'
-import { commandRegistry } from '../protocol/commandRegistry'
+import { commandRegistry, CAPTURE_FAILED_LINE } from '../protocol/commandRegistry'
 import { bleEventBus, BleEvent } from '../protocol/eventBus'
 import { awaitAeRegisters } from '../protocol/awaitAeRegisters'
 import { selfTestCache } from '../protocol/selfTestCache'
@@ -347,7 +347,12 @@ export const runDeviceCheck = async (deps: DeviceCheckDeps): Promise<void> => {
             if (acked) {
                 // The registry resolves on any `Captured N images`; a capture of
                 // the camera's own could end it early, so wait for this count.
-                const count = await burst.catch(() => 0)
+                // A burst the camera abandoned says why, and no `Captured` will
+                // come, so that stops the step with its words (#476).
+                const count = await burst.catch((e) => {
+                    if (CAPTURE_FAILED_LINE.test(messageOf(e))) throw new StepFailure(messageOf(e))
+                    return 0
+                })
                 if (count !== MOTION_FRAMES) await Promise.race([done.seen, pause(BURST_DONE_MS)])
                 done.cancel()
                 return

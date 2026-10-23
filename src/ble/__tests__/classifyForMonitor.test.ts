@@ -6,6 +6,13 @@ import { classifyForMonitor } from '../messageClassifier'
  * blocks:" and "Captured ...", in that order.
  */
 describe('classifyForMonitor', () => {
+  // From the firmware of Seeed PR #275; motion and timelapse captures can fail too (#476)
+  it('lists a failed capture with its reason, and does not count it as a photo', () => {
+    const event = classifyForMonitor('Capture failed after 1 of 3 images: EDM WDT2 timeout')
+    expect(event).toMatchObject({ category: 'capture_failed', label: 'Photo failed', details: 'Capture failed after 1 of 3 images: EDM WDT2 timeout' })
+    expect(event?.isHidden).toBeUndefined()
+  })
+
   it('counts the motion wake and lists it', () => {
     const event = classifyForMonitor('Wake (MD)')
     expect(event).toMatchObject({ category: 'motion', label: 'Motion detected' })
