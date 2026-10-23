@@ -25,6 +25,7 @@ import ReferenceDataService from '../../../services/ReferenceDataService'
 import Device from '../../../database/models/Device'
 import Deployment from '../../../database/models/Deployment'
 import { DeviceService } from '../../../services/DeviceService'
+import { registerCamera, CANNOT_REGISTER_TITLE } from '../../../services/cameraRegistration'
 import { useBleSession } from '../../../hooks/useBleSession'
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { useBleActions } from '../../../providers/BleEngineProvider'
@@ -269,10 +270,12 @@ export const useDevDeployment = ({
     // the summary after ending it clears the block, and after this screen's
     // own Stop Monitoring.
     const [activeDeployment, setActiveDeployment] = useState<Deployment | null>(null)
-    const refreshActiveDeployment = useCallback(async (): Promise<Deployment | null> => {
-        if (!device?.id) return null
+    // A camera row registered at the press is not in `device` until the next
+    // render, so the press passes its id
+    const refreshActiveDeployment = useCallback(async (deviceRowId = device?.id): Promise<Deployment | null> => {
+        if (!deviceRowId) return null
         try {
-            const found = await DeploymentService.getActiveDeploymentForDeviceId(device.id)
+            const found = await DeploymentService.getActiveDeploymentForDeviceId(deviceRowId)
             setActiveDeployment(found ?? null)
             return found ?? null
         } catch (e) {
@@ -585,9 +588,34 @@ export const useDevDeployment = ({
             Alert.alert(START_REFUSED_TITLE, refusal)
             return
         }
+        // The camera's row on this phone. The Engineer Console connects
+        // without the scanner, which is what registers a camera, so one met
+        // only through the console has none, and its deployment used to be
+        // saved with no camera: never uploaded, and never found again (#480).
+        // This writes the phone's database only, never the camera.
+        let cameraRow = device
+        if (!cameraRow) {
+            setSubmitting(true)
+            const registration = await registerCamera({
+                bluetoothId: bleDevice.id,
+                name: bleDevice.name || 'Unknown Device',
+                organisationId: currentOrganisation?.id,
+                userId: user.id,
+            })
+            setSubmitting(false)
+            if (registration.kind !== 'registered') {
+                Alert.alert(CANNOT_REGISTER_TITLE, registration.kind === 'no_organisation'
+                    ? registration.message
+                    : 'This phone could not save a record of this camera, so nothing was started. Connect to it from the scanner, then try again.')
+                return
+            }
+            cameraRow = registration.device
+            setDevice(cameraRow)
+        }
+
         // Asked again at the moment of the press, not read from the state the
         // screen was drawn with: another phone may have deployed it since.
-        const running = await refreshActiveDeployment()
+        const running = await refreshActiveDeployment(cameraRow.id)
         if (running) {
             Alert.alert('Already Deployed', `This device is already deployed at ${running.locationName || running.name || 'another site'}. Finish that deployment before starting another.`)
             return
@@ -604,7 +632,7 @@ export const useDevDeployment = ({
         // on offline
         progress.addLog('Checking the server for an open deployment on this camera...')
         progress.setFinishStep('Checking the server...')
-        const openDeployment = await DeploymentService.checkServerForOpenDeployment(device?.id || '', user.id)
+        const openDeployment = await DeploymentService.checkServerForOpenDeployment(cameraRow.id, user.id)
         if (openDeployment.kind === 'open') {
             progress.setIsFinishing(false)
             setSubmitting(false)
@@ -719,7 +747,7 @@ export const useDevDeployment = ({
             const newDeployment = await DeploymentService.createDeployment({
                 name: locationName || 'Dev Deployment Test',
                 projectId: project.id,
-                deviceId: device?.id || '',
+                deviceId: cameraRow.id,
                 setupBy: user.id,
                 locationName: locationName || 'Dev Deployment Test',
                 cameraHeight: cameraHeight ? parseFloat(cameraHeight) : undefined,
@@ -729,7 +757,7 @@ export const useDevDeployment = ({
                 accuracy: gpsLocation?.accuracy === null ? undefined : gpsLocation?.accuracy,
                 captureMethodId: effectiveCaptureMethod,
                 aiModelId: aiModelIdOverride || undefined,
-                deviceEui: device?.deviceEui,
+                deviceEui: cameraRow.deviceEui,
                 batteryLevelAtStart: batteryLevel ?? undefined,
                 sdCardTotalKbAtStart: sdCardStatus?.total,
                 sdCardAvailableKbAtStart: sdCardStatus?.free,
@@ -812,7 +840,7 @@ export const useDevDeployment = ({
             isStartDeploymentInProgress.current = false
         }
     }, [
-        bleDevice, bleSession, project, user, device,
+        bleDevice, bleSession, project, user, device, currentOrganisation?.id,
         startConfigure, progress, persistProjectSettings,
         batteryLevel, gpsLocation, locationName, cameraHeight, notes,
         sdCardStatus, sdCardMissing,

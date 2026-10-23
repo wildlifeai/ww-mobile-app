@@ -34,7 +34,8 @@ flowchart TD
 ### A camera this phone has not met
 
 The scanner looks the camera up by its Bluetooth id, on the phone first
-(`DeviceService.getDeviceByBluetoothId`). When the phone has no device for it:
+(`DeviceService.getDeviceByBluetoothId`). When the phone has no device for it,
+`registerCamera` (`cameraRegistration.ts`) gives it one:
 
 1. **No one signed in:** "Not signed in", and the scanner disconnects.
 2. **It asks the server** (`DeviceService.adoptFromServer`, #451), unless NetInfo says the
@@ -46,6 +47,12 @@ The scanner looks the camera up by its Bluetooth id, on the phone first
 4. **With no current organisation it cannot**, since only a member of an organisation may
    register a camera, and a project invitation makes no one a member. The scanner says so,
    "Cannot register this camera", and disconnects.
+
+The Engineer Console connects without any of this, so a camera met only through it has no
+device on the phone. The Dev Deployment Test runs the same steps 2 to 4 when Start is pressed on
+such a camera, and starts nothing if they give it no device (#480). Until then its deployment
+was saved with no camera: never uploaded, and never found again by the scanner or the test's
+Stop.
 
 Who may read or register a camera is in [the
 contract](../../.agents/skills/references/cross-repo-contracts.md). A camera registered here that
@@ -425,7 +432,7 @@ If the device is not connected, the user can "Force End (Database Only)":
 |-------|-------|-----|
 | Dialog not appearing | Device timeout | Clear app data or re-connect |
 | "No Projects Found" | User has no projects in current org | Create a project first |
-| "Cannot register this camera" | The camera is neither on this phone nor one this account may read on the server, and the account has no organisation ([above](#a-camera-this-phone-has-not-met)) | An organisation manager adds the user to the organisation, or registers the camera. If the phone was offline, try again with a connection |
+| "Cannot register this camera" | The camera is neither on this phone nor one this account may read on the server, and the account has no organisation ([above](#a-camera-this-phone-has-not-met)). From the Dev Deployment Test's Start, it can also mean the phone could not save the camera's row | An organisation manager adds the user to the organisation, or registers the camera. If the phone was offline, try again with a connection. From the Dev Deployment Test, connect once from the scanner |
 | Infinite connect loop | Navigation guard not reset | Fixed via `hasNavigatedRef` in `useEngineerConnect` |
 
 ### Start Deployment

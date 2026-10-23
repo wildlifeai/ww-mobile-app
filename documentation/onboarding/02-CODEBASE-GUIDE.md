@@ -170,6 +170,7 @@ services/
 ├── DeploymentService.ts       # Deployment lifecycle
 ├── DeviceService.ts           # Device record management
 ├── serverDevices.ts           # A camera's server row: read by Bluetooth id, written to the phone (#451)
+├── cameraRegistration.ts      # A row for a camera the phone lacks, for the scanner and the Dev Deployment Test (#480)
 ├── UserRoleService.ts         # User role management
 ├── roleAccess.ts              # What the roles let a user see, and do with a deployment
 ├── deploymentAccess.ts        # May this account start or end a deployment, from the phone's roles (#450)
