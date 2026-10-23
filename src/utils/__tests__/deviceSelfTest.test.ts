@@ -8,6 +8,8 @@ import {
     CRITICAL_AI_MASK,
     KNOWN_BITS_MASK,
     SD_CARD_POWER_CYCLE_HINT,
+    HM0360_POWER_CYCLE_HINT,
+    NIGHT_SENSOR_WARNING,
     SelfTestBit,
 } from '../deviceSelfTest'
 
@@ -60,6 +62,25 @@ describe('deviceSelfTest', () => {
         expect(warning).toMatch(/power cycle/i)
         // Start Monitoring picks its "No SD Card" blocker by these words.
         expect(warning).toMatch(/no sd card/i)
+    })
+
+    // An HM0360 that did not start at power-on is cleared by a power cycle,
+    // not by the cable every message used to point at first (#477).
+    it('says to power cycle before checking the ribbon wherever it reports bit 9 (#477)', () => {
+        const powerCycleFirst = (text: string) => {
+            expect(text).toMatch(/power cycle the camera/i)
+            expect(text.search(/power cycle/i)).toBeLessThan(text.search(/ribbon/i))
+        }
+        powerCycleFirst(HM0360_POWER_CYCLE_HINT)
+
+        const [issue] = decodeSelfTest(1 << SelfTestBit.AI_NO_HM0360)
+        powerCycleFirst(issue.hint)
+
+        const [warning] = selfTestWarnings(1 << SelfTestBit.AI_NO_HM0360)
+        powerCycleFirst(warning)
+        expect(warning).toBe(NIGHT_SENSOR_WARNING)
+        // Start Monitoring picks its camera blocker by these words.
+        expect(warning).toContain('Camera Error')
     })
 
     it('reports a bit it does not know as an unknown issue, alongside the known ones', () => {

@@ -19,7 +19,7 @@ import { checkSdCard } from '../../../ble/workflows/checkSdCard'
 import { pingLorawan, lorawanRequiredWarning, LORAWAN_REQUIRED_WARNING } from '../../../ble/workflows/lorawanPing'
 import { sleep } from '../../../utils/helpers'
 import { selfTestCache } from '../../../ble/protocol/selfTestCache'
-import { parseSelfTestBits, SelfTestBit, SD_CARD_POWER_CYCLE_HINT } from '../../../utils/deviceSelfTest'
+import { parseSelfTestBits, SelfTestBit, SD_CARD_POWER_CYCLE_HINT, HM0360_POWER_CYCLE_HINT, NIGHT_SENSOR_WARNING } from '../../../utils/deviceSelfTest'
 import { useBleActions } from '../../../providers/BleEngineProvider'
 import { useDeploymentConfiguration } from '../../../hooks/useDeploymentConfiguration'
 import { useBle } from '../../../hooks/useBle'
@@ -460,12 +460,14 @@ export const useStartDeployment = ({
             // card and not about the camera.
             const hasSdCardError = health.some(w => /no sd card/i.test(w))
             const hasCameraError = health.some(w => w.includes('Camera Error') || w.includes('Camera system not enabled') || w.includes('Neural Network Error'))
+            // A night sensor that did not start usually needs a power cycle, not a cable (#477)
+            const hasNightSensorError = health.includes(NIGHT_SENSOR_WARNING)
             Alert.alert(
                 hasSdCardError ? 'No SD Card' : hasCameraError ? 'Critical AI Processor Error' : 'AI Processor Not Responding',
                 hasSdCardError
                     ? `The device reports no SD card. Every image and setting a deployment writes goes to the card, so monitoring cannot start without one. ${SD_CARD_POWER_CYCLE_HINT}`
                     : hasCameraError
-                        ? 'The AI processor has reported a critical camera or hardware error. Starting monitoring is blocked. Please check the camera module connections or hardware configuration.'
+                        ? `The AI processor has reported a critical camera or hardware error. Starting monitoring is blocked. ${hasNightSensorError ? HM0360_POWER_CYCLE_HINT : 'Please check the camera module connections or hardware configuration.'}`
                         : 'The AI processor did not wake up during pre-deployment checks. The device cannot start monitoring. Please try reconnecting or check the hardware.',
                 [{ text: 'OK' }]
             )
