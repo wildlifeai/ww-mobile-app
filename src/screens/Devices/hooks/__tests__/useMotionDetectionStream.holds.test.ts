@@ -124,6 +124,42 @@ describe('useMotionDetectionStream op8 hold', () => {
         expect(keepAwake.release).toHaveBeenCalledWith(expect.anything(), device.id)
     })
 
+    // The firmware of Seeed PR #275 abandons a capture with a reason and sends
+    // no "Captured", so the test used to run on with its holds on (#476)
+    it('ends on a failed capture, shows its reason and releases the hold', async () => {
+        const { result } = renderHook(() => useMotionDetectionStream({ device }))
+
+        await act(async () => {
+            const started = result.current.startTest(undefined, 1000, 3)
+            await settle()
+            emit('About to capture 3 images')
+            await started
+        })
+        await act(async () => {
+            emit('Capture failed after 1 of 3 images: EDM WDT2 timeout')
+            await settle()
+        })
+
+        expect(result.current.isTesting).toBe(false)
+        expect(result.current.errorMessage).toBe('Capture failed after 1 of 3 images: EDM WDT2 timeout')
+        expect(lines).toContain(`AI setop ${OP_PARAMETER.TEST_MODE_BITS} 0`)
+        expect(keepAwake.release).toHaveBeenCalledWith(expect.anything(), device.id)
+    })
+
+    it('ignores a failed capture from before the test\'s own started', async () => {
+        const { result } = renderHook(() => useMotionDetectionStream({ device }))
+
+        await act(async () => {
+            result.current.startTest(undefined, 1000, 3)
+            await settle()
+            emit('Capture failed after 0 of 1 images: No frame')
+            await settle()
+        })
+
+        expect(result.current.errorMessage).toBe('')
+        expect(keepAwake.release).not.toHaveBeenCalled()
+    })
+
     it('releases the hold and clears op18 when the capture is never acknowledged', async () => {
         const { result } = renderHook(() => useMotionDetectionStream({ device }))
 

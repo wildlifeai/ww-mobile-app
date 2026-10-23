@@ -26,7 +26,7 @@ import { useFirmwareStatus } from '../Devices/hooks/useFirmwareStatus'
 import { useModelOnPhone } from '../../hooks/useOfflineFiles'
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
 import { resolveProjectFlash, shortFlashLabel } from '../../utils/projectFlash'
-import { SD_CARD_POWER_CYCLE_HINT } from '../../utils/deviceSelfTest'
+import { SD_CARD_POWER_CYCLE_HINT, HM0360_POWER_CYCLE_HINT, NIGHT_SENSOR_WARNING } from '../../utils/deviceSelfTest'
 import { shortBurstLabel } from '../../utils/projectBurst'
 
 
@@ -156,6 +156,12 @@ export const StartMonitoringDetailsStep = () => {
         return warnings.some(w => w.includes('Camera Error') || w.includes('Camera system not enabled') || w.includes('Neural Network Error'))
     }, [initErrors.deviceHealth])
 
+    // A night sensor that did not start usually needs a power cycle, not a cable (#477)
+    const hasNightSensorError = useMemo(
+        () => (initErrors.deviceHealth || []).includes(NIGHT_SENSOR_WARNING),
+        [initErrors.deviceHealth],
+    )
+
     // A missing card blocks on its own since #303, and the blocker below says
     // so instead of blaming the camera.
     const hasSdCardError = useMemo(() => {
@@ -241,7 +247,7 @@ export const StartMonitoringDetailsStep = () => {
                             {hasSdCardError
                                 ? `The device reports no SD card. Every image and setting a deployment writes goes to the card, so monitoring cannot start without one. ${SD_CARD_POWER_CYCLE_HINT}`
                                 : hasCameraError
-                                    ? 'The AI processor has reported a critical camera or hardware error. Starting monitoring is blocked. Please check the camera module connections or hardware configuration.'
+                                    ? `The AI processor has reported a critical camera or hardware error. Starting monitoring is blocked. ${hasNightSensorError ? HM0360_POWER_CYCLE_HINT : 'Please check the camera module connections or hardware configuration.'}`
                                     : 'The AI processor (camera module) did not wake up after multiple attempts. The device cannot start monitoring without it. Please go back and try reconnecting to the device.'}
                         </Text>
                         <Button

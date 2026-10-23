@@ -34,7 +34,8 @@ flowchart TD
 ### A camera this phone has not met
 
 The scanner looks the camera up by its Bluetooth id, on the phone first
-(`DeviceService.getDeviceByBluetoothId`). When the phone has no device for it:
+(`DeviceService.getDeviceByBluetoothId`). When the phone has no device for it,
+`registerCamera` (`cameraRegistration.ts`) gives it one:
 
 1. **No one signed in:** "Not signed in", and the scanner disconnects.
 2. **It asks the server** (`DeviceService.adoptFromServer`, #451), unless NetInfo says the
@@ -46,6 +47,12 @@ The scanner looks the camera up by its Bluetooth id, on the phone first
 4. **With no current organisation it cannot**, since only a member of an organisation may
    register a camera, and a project invitation makes no one a member. The scanner says so,
    "Cannot register this camera", and disconnects.
+
+The Engineer Console connects without any of this, so a camera met only through it has no
+device on the phone. The Dev Deployment Test runs the same steps 2 to 4 when Start is pressed on
+such a camera, and starts nothing if they give it no device (#480). Until then its deployment
+was saved with no camera: never uploaded, and never found again by the scanner or the test's
+Stop.
 
 Who may read or register a camera is in [the
 contract](../../.agents/skills/references/cross-repo-contracts.md). A camera registered here that
@@ -425,7 +432,7 @@ If the device is not connected, the user can "Force End (Database Only)":
 |-------|-------|-----|
 | Dialog not appearing | Device timeout | Clear app data or re-connect |
 | "No Projects Found" | User has no projects in current org | Create a project first |
-| "Cannot register this camera" | The camera is neither on this phone nor one this account may read on the server, and the account has no organisation ([above](#a-camera-this-phone-has-not-met)) | An organisation manager adds the user to the organisation, or registers the camera. If the phone was offline, try again with a connection |
+| "Cannot register this camera" | The camera is neither on this phone nor one this account may read on the server, and the account has no organisation ([above](#a-camera-this-phone-has-not-met)). From the Dev Deployment Test's Start, it can also mean the phone could not save the camera's row | An organisation manager adds the user to the organisation, or registers the camera. If the phone was offline, try again with a connection. From the Dev Deployment Test, connect once from the scanner |
 | Infinite connect loop | Navigation guard not reset | Fixed via `hasNavigatedRef` in `useEngineerConnect` |
 
 ### Start Deployment
@@ -437,6 +444,7 @@ If the device is not connected, the user can "Force End (Database Only)":
 | "Failed to Set Deployment ID" | BLE write error or AI NACK | Keep phone within 1m; app falls back to GPS-only |
 | "No SD Card Detected" | Stale selftest bits (false positive) | App now masks stale AI bits (8-15) before AI processor is woken. If warning persists after reconnection, the SD card is genuinely missing, or was put in while the camera was on (next row). |
 | "No SD Card" stays after the card is put back | A card inserted into a powered camera is never mounted: the warm boot fails FatFS `disk_initialize` with `FR_NOT_READY`, and bit 11 stays set on every wake | Power cycle the camera (unplug it or remove the battery), then reconnect. Checking again cannot clear it. Every message that reports bit 11 says so since #325. |
+| "Motion Detector Camera Error (Bit 9)", "Night-IR sensor (HM0360) not responding" | The HM0360 did not answer at boot. On the bench the usual cause was it not starting at power-on (Seeed #57, 6 of 22 runs on 14 October 2026). Restarting the AI processor does not clear it, because the HM0360 stays powered | Power cycle the camera, then reconnect. If it stays, check the HM0360 ribbon with the camera off. Every message that reports bit 9 says so since #477. |
 | "AI model update FAILED" | The files were on the phone but the transfer to the card failed, or the camera refused the `loadmodel`. The deployment carries on and records without classifying | Reconnect with the phone close to the camera and run the deployment again. |
 | "This project's AI model "..." is not a TFLite model" | The model's file in storage is something else, such as a ZIP archive (the dev backend's model `d0000000-...-0000000000a1` on 8 October 2026). Loading it would halt the camera (Seeed #241) | Replace the model's file with the TFLite model itself. Nothing was written to the camera, and downloading again brings the same file. |
 | "The camera did not confirm it loaded this project's AI model" | `loadmodel` went unanswered. The usual cause is a model file the Himax could not parse, which halts it: it answers commands but never captures or sleeps (Seeed #241) | Power cycle the camera (unplug it or remove the battery), reconnect and start again. No deployment was created. |

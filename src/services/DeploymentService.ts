@@ -79,6 +79,18 @@ export const DeploymentService = {
     ): Promise<Deployment> => {
         log('[DeploymentService] Creating deployment:', data.name)
 
+        // Both are uuids on the server, so a deployment without either is
+        // never uploaded, and one without its camera is never found again by
+        // the camera's id: the scanner and the Dev Deployment Test both look
+        // it up that way. The Dev Deployment Test saved such deployments for a
+        // camera the phone had no row for (#480).
+        if (!data.deviceId) {
+            throw new Error('This phone has no record of the camera, so nothing was saved. Connect to it from the scanner, then try again.')
+        }
+        if (!data.projectId) {
+            throw new Error('No project was chosen, so nothing was saved.')
+        }
+
         // Fetch Project Settings for Snapshot
         const project = await ProjectService.getProjectById(data.projectId)
         const sensitivityId = project?.activity_detection_sensitivity_id

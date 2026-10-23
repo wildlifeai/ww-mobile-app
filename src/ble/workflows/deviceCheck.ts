@@ -25,7 +25,7 @@
  * and the camera that was running when the check started.
  */
 import type { CommandContext } from '../protocol/commandRegistry'
-import { commandRegistry } from '../protocol/commandRegistry'
+import { commandRegistry, CAPTURE_FAILED_LINE } from '../protocol/commandRegistry'
 import { bleEventBus, BleEvent } from '../protocol/eventBus'
 import { awaitAeRegisters } from '../protocol/awaitAeRegisters'
 import { selfTestCache } from '../protocol/selfTestCache'
@@ -202,7 +202,10 @@ export const describeSelfTest = (bits: number, running: CameraVariant): CheckSte
     const failed = cameraFault || others.some(i => i.severity === 'error')
     return {
         status: failed ? 'fail' : 'warn',
-        summary: `${code}: ${parts.join(', ')}.${cameraFault ? ' Check the camera ribbon cables, power cycle the unit and run again.' : ''}`,
+        // The power cycle first: it is what clears an HM0360 that did not
+        // start at power-on, the usual cause of bit 9 on the bench (#477),
+        // and it costs nothing before the ribbons are checked
+        summary: `${code}: ${parts.join(', ')}.${cameraFault ? ' Power cycle the unit and run again. If it fails again, check the camera ribbon cables.' : ''}`,
     }
 }
 
@@ -344,7 +347,12 @@ export const runDeviceCheck = async (deps: DeviceCheckDeps): Promise<void> => {
             if (acked) {
                 // The registry resolves on any `Captured N images`; a capture of
                 // the camera's own could end it early, so wait for this count.
-                const count = await burst.catch(() => 0)
+                // A burst the camera abandoned says why, and no `Captured` will
+                // come, so that stops the step with its words (#476).
+                const count = await burst.catch((e) => {
+                    if (CAPTURE_FAILED_LINE.test(messageOf(e))) throw new StepFailure(messageOf(e))
+                    return 0
+                })
                 if (count !== MOTION_FRAMES) await Promise.race([done.seen, pause(BURST_DONE_MS)])
                 done.cancel()
                 return
