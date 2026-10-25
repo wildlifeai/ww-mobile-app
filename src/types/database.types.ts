@@ -2502,7 +2502,7 @@ export type Database = {
           {
             foreignKeyName: "fk_media_embeddings_media"
             columns: ["media_id", "deployment_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "media"
             referencedColumns: ["id", "deployment_id"]
           },
