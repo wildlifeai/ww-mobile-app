@@ -1095,7 +1095,12 @@ class SupabaseSyncService {
         const deployments = await database.get<Deployment>('deployments')
             .query(Q.where('device_id', localId))
             .fetch()
-        const localDevice = await database.get<Device>('devices').find(localId).catch(() => undefined)
+        let localDevice: Device | undefined
+        try {
+            localDevice = await database.get<Device>('devices').find(localId)
+        } catch {
+            localDevice = undefined
+        }
         const replaced = `replaced: the server already has this camera as ${serverId} (${refusal}), and its row took the place of this one`
 
         await database.write(async () => {

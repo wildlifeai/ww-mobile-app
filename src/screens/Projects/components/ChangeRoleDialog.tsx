@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from "react"
+import { useState, useCallback, useMemo } from "react"
 import { Alert, View, StyleSheet } from "react-native"
 import { Portal, Dialog, Button, Text, Chip, IconButton, useTheme } from "react-native-paper"
 import { updateProjectMemberRole, ProjectMember, ProjectRole } from "../../../services/UserRoleService"
@@ -43,11 +43,16 @@ export const ChangeRoleDialog = ({ projectId, visible, member, user, onDismiss, 
 	const [selectedRole, setSelectedRole] = useState<ProjectRole>("project_member")
 	const [loading, setLoading] = useState(false)
 
-	useEffect(() => {
+	// Each opening starts from the other role. Adjusted during render rather
+	// than in an effect, so the first frame already shows it.
+	const openKey = member && visible ? `${member.id}:${member.role}` : null
+	const [prevOpenKey, setPrevOpenKey] = useState<string | null>(null)
+	if (openKey !== prevOpenKey) {
+		setPrevOpenKey(openKey)
 		if (member && visible) {
 			setSelectedRole(member.role === "project_admin" ? "project_member" : "project_admin")
 		}
-	}, [member, visible])
+	}
 
 	const handleChangeRole = useCallback(async () => {
 		if (!member || !user) return
