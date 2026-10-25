@@ -4,10 +4,4 @@ module.exports = {
 	env: {
 		jest: true,
 	},
-	globals: {
-		device: "readonly",
-		element: "readonly",
-		by: "readonly",
-		waitFor: "readonly",
-	},
 }

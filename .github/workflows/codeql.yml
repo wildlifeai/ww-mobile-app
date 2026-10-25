@@ -37,11 +37,10 @@ jobs:
       - uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
-          # Generated or vendored code, the SQL mirror, and archive/ (old tools
-          # that are not run, also skipped by ESLint) would only add noise.
+          # Generated or vendored code, the SQL mirror and the tests would only
+          # add noise.
           config: |
             paths-ignore:
-              - archive
               - android
               - supabase
               - patches
