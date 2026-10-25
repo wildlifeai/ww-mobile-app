@@ -3356,6 +3356,7 @@ export type Database = {
           flash_mode: string
           flash_window_minutes: number | null
           flash_window_start_minutes_utc: number | null
+          gbif_dataset_key: string | null
           id: string
           is_active: boolean
           is_archived: boolean
@@ -3387,6 +3388,7 @@ export type Database = {
           flash_mode?: string
           flash_window_minutes?: number | null
           flash_window_start_minutes_utc?: number | null
+          gbif_dataset_key?: string | null
           id?: string
           is_active?: boolean
           is_archived?: boolean
@@ -3418,6 +3420,7 @@ export type Database = {
           flash_mode?: string
           flash_window_minutes?: number | null
           flash_window_start_minutes_utc?: number | null
+          gbif_dataset_key?: string | null
           id?: string
           is_active?: boolean
           is_archived?: boolean
@@ -3778,6 +3781,30 @@ export type Database = {
       }
     }
     Views: {
+      deployment_latest_lorawan: {
+        Row: {
+          battery_level: number | null
+          deployment_id: string | null
+          received_at: string | null
+          sd_card_used_capacity: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lorawan_messages_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["deployment_id"]
+          },
+          {
+            foreignKeyName: "lorawan_messages_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deployment_overview: {
         Row: {
           accuracy: number | null
@@ -3947,6 +3974,59 @@ export type Database = {
         }
         Relationships: []
       }
+      project_species: {
+        Row: {
+          project_id: string | null
+          scientific_name: string | null
+          taxon_id: string | null
+          uses: number | null
+          vernacular_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deployments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "deployments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "deployments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "deployments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deployments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_with_stats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "observations_taxon_id_fkey"
+            columns: ["taxon_id"]
+            isOneToOne: false
+            referencedRelation: "taxa"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_summary: {
         Row: {
           active_deployment_count: number | null
@@ -3988,6 +4068,7 @@ export type Database = {
           flash_mode: string | null
           flash_window_minutes: number | null
           flash_window_start_minutes_utc: number | null
+          gbif_dataset_key: string | null
           id: string | null
           is_active: boolean | null
           is_archived: boolean | null
@@ -4024,6 +4105,7 @@ export type Database = {
           flash_mode?: string | null
           flash_window_minutes?: number | null
           flash_window_start_minutes_utc?: number | null
+          gbif_dataset_key?: string | null
           id?: string | null
           is_active?: boolean | null
           is_archived?: boolean | null
@@ -4060,6 +4142,7 @@ export type Database = {
           flash_mode?: string | null
           flash_window_minutes?: number | null
           flash_window_start_minutes_utc?: number | null
+          gbif_dataset_key?: string | null
           id?: string | null
           is_active?: boolean | null
           is_archived?: boolean | null
@@ -4385,6 +4468,19 @@ export type Database = {
         Args: { p_org_id: string; p_user_id: string }
         Returns: boolean
       }
+      deployment_daily_counts: {
+        Args: {
+          p_deployment_ids: string[]
+          p_fallback_tz?: string
+          p_species?: string[]
+        }
+        Returns: {
+          day: string
+          deployment_id: string
+          n: number
+          scientific_name: string
+        }[]
+      }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
         | {
@@ -4620,6 +4716,14 @@ export type Database = {
         Returns: string
       }
       gettransactionid: { Args: never; Returns: unknown }
+      grid_facets: {
+        Args: { p_deployment_ids: string[] }
+        Returns: {
+          facet: string
+          n: number
+          value: string
+        }[]
+      }
       has_organisation_role: {
         Args: {
           organisation_id?: string
@@ -4635,6 +4739,15 @@ export type Database = {
       has_system_role: {
         Args: { required_role?: string; user_id?: string }
         Returns: boolean
+      }
+      insights_observation_counts: {
+        Args: { p_deployment_ids?: string[]; p_project_ids: string[] }
+        Returns: {
+          deployment_id: string
+          n: number
+          observation_type: string
+          scientific_name: string
+        }[]
       }
       label_map_problems: { Args: { p_label_map: Json }; Returns: string[] }
       longtransactionsenabled: { Args: never; Returns: boolean }
