@@ -12,7 +12,7 @@ Wildlife Watcher is a React Native mobile app that communicates with wildlife ca
 |-----------|---------|--------|
 | React Native | 0.81.5 | [package.json](../../package.json) |
 | React | 19.1.0 | |
-| TypeScript | 5.3.3 | |
+| TypeScript | ~5.9.2 | |
 | Expo SDK | ~54.0.32 | Prebuild ("bare") workflow — `android/` is tracked in git |
 | Node.js | ≥20 | |
 
@@ -408,7 +408,7 @@ Monitors network state to trigger sync when transitioning from offline → onlin
 |------|---------|
 | ESLint 8 | Linting |
 | Prettier 2.8.8 | Code formatting |
-| TypeScript 5.3.3 | Static type checking |
+| TypeScript 5.9 | Static type checking |
 | `tsc --noEmit` | Type-check without emitting (`npm run type-check`) |
 
 ### Build, Deploy & Version Control

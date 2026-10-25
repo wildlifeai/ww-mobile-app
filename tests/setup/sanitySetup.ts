@@ -1,5 +1,9 @@
 // Sanity setup loaded
 
+// Registers the built-in matchers (toBeOnTheScreen, toBeDisabled, ...) for Jest and,
+// because tsc compiles this file, their types for every test.
+import "@testing-library/react-native/extend-expect"
+
 // Setup fake timers and handle resetMocks: true
 beforeEach(() => {
     jest.useFakeTimers();

@@ -393,10 +393,8 @@ it") has the local commands for the gates.
 - The React Native Directory check does not list packages the directory has no entry for
   (`@getquip/expo-nordic-dfu`, `react-native-document-picker`, `react-native-vector-icons`,
   `@nozbe/simdjson`) and excludes `@nozbe/watermelondb` (untested on the New Architecture, the
-  app's database all the same) and `@react-native-community/geolocation` (unmaintained; replacing
-  it is a decision, not a CI fix).
-- `expo install` ignores `typescript`, pinned at 5.3.3 for React Native (see the Dependency
-  Validation System guide), and `react-native-keyboard-controller` and `react-native-worklets`,
+  app's database all the same).
+- `expo install` ignores `react-native-keyboard-controller` and `react-native-worklets`,
   installed newer than the SDK 54 list expects; the builds pass with them and a downgrade is a
   separate decision.
 
@@ -420,12 +418,6 @@ above it is the narrower form (`TEST_BIT_SAVE_BMP` in `useDeviceSettings.ts`).
 - `@babel/runtime` is ignored as a dependency: Babel's runtime transform, on in
   `babel-preset-expo`, writes imports of its helpers into the compiled app, where knip cannot
   see them.
-- `expo-keep-awake` is ignored as an unlisted dependency: the file transfer and the firmware
-  update import it, and only `expo` installs it. It has native code, so listing it is a decision
-  for the maintainer, not a CI fix.
-- `@react-native-community/geolocation` and `@morrowdigital/watermelondb-expo-plugin` are ignored
-  as unused dependencies: nothing imports either, but one is a native module and the other an
-  Expo config plugin, so removing them is a native-build decision.
 - `maestro` is ignored as a binary: it is a separate CLI the `test:maestro*` scripts call, not an
   npm package (see "Maestro E2E Testing").
 - `src/types/database.types.ts` is generated and not inspected.
