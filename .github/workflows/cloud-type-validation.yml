@@ -216,7 +216,7 @@ jobs:
             echo "❌ ERROR: Types are out of sync with staging (cloud-prod)"
             echo ""
             echo "To fix this issue, run:"
-            echo "  npm run types:cloud-prod"
+            echo "  EXPO_PUBLIC_SUPABASE_URL=https://nuhwmubvygxyddkycmpa.supabase.co npm run types:cloud-dev"
             echo ""
             echo "Then commit the updated types:"
             echo "  git add src/types/database.types.ts"

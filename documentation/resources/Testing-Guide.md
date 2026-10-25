@@ -240,7 +240,6 @@ them, [`2026-10-02_e2e-real-screens`](../development%20reports/2026-10-02_e2e-re
 {
   "test:maestro": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/",
   "test:maestro:smoke": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/smoke/",
-  "test:maestro:full": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/",
   "test:maestro:auth": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/auth-workflow.yaml",
   "test:maestro:crud": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/project-crud-workflow.yaml",
   "test:maestro:offline": "bash scripts/maestro-offline.sh -e APP_ID=com.wildlife.wildlifewatcher.expo"
@@ -429,9 +428,7 @@ above it is the narrower form (`TEST_BIT_SAVE_BMP` in `useDeviceSettings.ts`).
   Expo config plugin, so removing them is a native-build decision.
 - `maestro` is ignored as a binary: it is a separate CLI the `test:maestro*` scripts call, not an
   npm package (see "Maestro E2E Testing").
-- `src/types/database.types.ts` is generated and not inspected. `src/types/supabase.ts` is empty
-  and imported by nothing, and stays: `npm run types:local` writes there, and
-  `scripts/validate-watermelon-schema.js` reads it before `database.types.ts`.
+- `src/types/database.types.ts` is generated and not inspected.
 - Revisit after #411, which changes both files: `src/services/DeploymentPhotoService.ts` is left
   out of the export checks (its default export duplicates the named one and nothing uses it), and
   so is `tests/setup/helpers/fakeDatabase.ts`, whose `fakeDatabase` the tests reach through
@@ -553,18 +550,10 @@ After login, new users see the tutorial carousel before reaching the main app. V
 - assertVisible: { id: "bottom-tab-scanner" }    # Main app loaded
 ```
 
-### Local Seeding
+### Seeding the accounts
 
-To use these accounts locally:
-
-```bash
-# 1. Reset the local Supabase database
-cd ../ww-backend
-supabase db reset
-
-# 2. Run the seed script (requires SEED_USER_PASSWORD in .env.test)
-bash scripts/seed-local.sh
-```
+The seed users live in ww-backend. How to load them into a Supabase project is in that repo's
+[CLOUD_SEEDING guide](https://github.com/wildlifeai/ww-backend/blob/dev/documentation/resources/CLOUD_SEEDING.md).
 
 > [!TIP]
 > When writing new features that depend on user roles, always test with at least three accounts: `alice@ww.org` (admin), `laura@ww.org` (org manager), and `mark@ww.org` (member) to catch permission regressions.
