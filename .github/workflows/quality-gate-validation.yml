@@ -70,11 +70,11 @@ jobs:
       - name: Check test coverage threshold
         run: |
           # A ratchet, not a target. Set just under the measured figure so it can
-          # only move up: 21.29% statements on 21 September 2026, floor 20. Raise
-          # the floor by hand when coverage has genuinely climbed. Until this
-          # commit the awk checked "< 10" while the message claimed 70.
-          FLOOR=20
-          ACTUAL=$(npm test -- --coverage --silent | grep "All files" | awk '{print $4+0}')
+          # only move up: 56.17% statements on 23 October 2026, floor 50. Raise
+          # the floor by hand when coverage has genuinely climbed. The figure is
+          # read from the json-summary of the run above, not from a second run.
+          FLOOR=50
+          ACTUAL=$(node -p "require('./coverage/coverage-summary.json').total.statements.pct")
           echo "statement coverage: ${ACTUAL}% (floor ${FLOOR}%)"
           awk -v a="$ACTUAL" -v f="$FLOOR" 'BEGIN { exit (a < f) }' || {
             echo "❌ Statement coverage ${ACTUAL}% is below the ${FLOOR}% floor"

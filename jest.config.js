@@ -46,7 +46,7 @@ module.exports = {
 		"!src/**/*.stories.{ts,tsx}",
 		"!src/**/*.mock.{ts,tsx}",
 	],
-	coverageReporters: ["text", "lcov", "html"],
+	coverageReporters: ["text", "lcov", "html", "json-summary"],
 	coverageDirectory: "<rootDir>/coverage",
 	clearMocks: true,
 	resetMocks: false,

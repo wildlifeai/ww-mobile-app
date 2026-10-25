@@ -367,7 +367,7 @@ it") has the local commands for the gates.
 
 | Workflow | Runs on | Proves | Gate? |
 |---|---|---|---|
-| Quality Gate Validation | every PR, merge queue | `type-check`, `lint`, `version:check`, `docs:validate`, the type system is not empty, no `console.log` outside the logger, Jest with coverage at or above the 20% floor | gate: `quality-gates (22.x)` and `(24.x)` |
+| Quality Gate Validation | every PR, merge queue | `type-check`, `lint`, `version:check`, `docs:validate`, the type system is not empty, no `console.log` outside the logger, Jest with coverage at or above the 50% floor | gate: `quality-gates (22.x)` and `(24.x)` |
 | Native Build Validation | every PR, merge queue | an Android EAS local build of the `e2e` profile, `E2E Smoke` on an emulator, `expo prebuild` for iOS; `E2E Full` on the `full-e2e` label. A `changes` job skips the expensive steps on a docs-only PR while every check still reports | advisory: a failure shows red, but none of its checks is required on `dev` |
 | Commitlint | every PR, merge queue | conventional commit subjects | gate: `commitlint` |
 | Type Synchronization Validation, Cloud Type Validation | PRs, pushes | `src/types/database.types.ts` matches what `supabase gen types` produces from cloud-dev (PRs into `dev`) or production (PRs into `main`) | gate on `dev`: `Cloud Type Validation Summary`. Nothing is required on `main` |
