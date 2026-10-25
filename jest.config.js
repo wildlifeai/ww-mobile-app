@@ -3,7 +3,6 @@ module.exports = {
 	setupFiles: ["<rootDir>/jest.setup.js"],
 	setupFilesAfterEnv: [
 		"<rootDir>/tests/setup/sanitySetup.ts",
-		"@testing-library/react-native/extend-expect",
 	],
 	testEnvironment: "node",
 	transform: {

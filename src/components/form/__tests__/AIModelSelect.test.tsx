@@ -8,7 +8,6 @@
  * Coverage Target: 80%+ (all states, validation, testIDs)
  */
 
-import "@testing-library/jest-native/extend-expect"
 import React from "react"
 import { render, screen } from "@testing-library/react-native"
 import { useForm } from "react-hook-form"
