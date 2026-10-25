@@ -37,10 +37,12 @@ export const Login = () => {
 
 	// Load saved credentials on component mount
 	useEffect(() => {
+		let cancelled = false
 		const loadSavedCredentials = async () => {
 			try {
 				const savedEmail = await SecureStore.getItemAsync("rememberedEmail")
 				const savedRememberMe = await SecureStore.getItemAsync("rememberMe")
+				if (cancelled) return
 
 				if (savedEmail && savedRememberMe === "true") {
 					setValue("email", savedEmail)
@@ -52,6 +54,9 @@ export const Login = () => {
 		}
 
 		loadSavedCredentials()
+		return () => {
+			cancelled = true
+		}
 	}, [setValue])
 
 	const onSubmit = async (data: FormData) => {

@@ -1,12 +1,12 @@
 
 import { List, Text } from 'react-native-paper'
 
-const ListItemIcon = (iconName: string) => (props: any) => <List.Icon {...props} icon={iconName} />
+const listItemIcon = (iconName: string) => (props: any) => <List.Icon {...props} icon={iconName} />
 
 const Icons = {
-    checkCircle: ListItemIcon("check-circle"),
-    cloudCheck: ListItemIcon("cloud-check"),
-    checkAll: ListItemIcon("check-all"),
+    checkCircle: listItemIcon("check-circle"),
+    cloudCheck: listItemIcon("cloud-check"),
+    checkAll: listItemIcon("check-all"),
 }
 
 export const MigrationStatusSection = () => {

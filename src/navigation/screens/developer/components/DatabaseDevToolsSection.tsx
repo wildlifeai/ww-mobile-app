@@ -4,11 +4,11 @@ import { List, Button, Text } from 'react-native-paper'
 import { WWText } from '../../../../components/ui/WWText'
 import { resetDatabaseForDev, clearDatabaseDataForDev } from '../../../../utils/devDatabaseReset'
 
-const ListItemIcon = (iconName: string) => (props: any) => <List.Icon {...props} icon={iconName} />
+const listItemIcon = (iconName: string) => (props: any) => <List.Icon {...props} icon={iconName} />
 
 const Icons = {
-    database: ListItemIcon("database"),
-    cloud: ListItemIcon("cloud"),
+    database: listItemIcon("database"),
+    cloud: listItemIcon("cloud"),
 }
 
 interface DatabaseDevToolsSectionProps {

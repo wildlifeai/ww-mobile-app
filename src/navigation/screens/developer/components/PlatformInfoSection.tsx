@@ -2,12 +2,12 @@
 import { Platform } from 'react-native'
 import { List, Text } from 'react-native-paper'
 
-const ListItemIcon = (iconName: string) => (props: any) => <List.Icon {...props} icon={iconName} />
+const listItemIcon = (iconName: string) => (props: any) => <List.Icon {...props} icon={iconName} />
 
 const Icons = {
-    cellphone: ListItemIcon("cellphone"),
-    infoOutline: ListItemIcon("information-outline"),
-    react: ListItemIcon("react"),
+    cellphone: listItemIcon("cellphone"),
+    infoOutline: listItemIcon("information-outline"),
+    react: listItemIcon("react"),
 }
 
 export const PlatformInfoSection = () => {

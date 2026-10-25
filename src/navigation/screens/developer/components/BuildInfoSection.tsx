@@ -3,13 +3,13 @@ import { List, Text } from 'react-native-paper'
 import * as Application from 'expo-application'
 
 // Reusing icon helper
-const ListItemIcon = (iconName: string) => (props: any) => <List.Icon {...props} icon={iconName} />
+const listItemIcon = (iconName: string) => (props: any) => <List.Icon {...props} icon={iconName} />
 
 const Icons = {
-    wrench: ListItemIcon("wrench"),
-    package: ListItemIcon("package-variant"),
-    tag: ListItemIcon("tag"),
-    info: ListItemIcon("information"),
+    wrench: listItemIcon("wrench"),
+    package: listItemIcon("package-variant"),
+    tag: listItemIcon("tag"),
+    info: listItemIcon("information"),
 }
 
 export const BuildInfoSection = () => {

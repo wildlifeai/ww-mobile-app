@@ -362,6 +362,7 @@ export const useDevDeployment = ({
 
     // --- Load projects ---
     useEffect(() => {
+        let cancelled = false
         const loadProjects = async () => {
             if (!user?.id || !currentOrganisation?.id) return
             try {
@@ -371,6 +372,7 @@ export const useDevDeployment = ({
                 // The first project this account may deploy into, or with
                 // none, the first it can see, which the screen says it cannot use
                 const deployable = await projectsToDeployInto(user.id, projects)
+                if (cancelled) return
                 setDeployableProjects(deployable)
                 const first = deployable[0] ?? projects[0]
                 if (first && !project) {
@@ -382,6 +384,9 @@ export const useDevDeployment = ({
             }
         }
         loadProjects()
+        return () => {
+            cancelled = true
+        }
     }, [user?.id, currentOrganisation?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // From the phone's roles, so offline too (#450)
