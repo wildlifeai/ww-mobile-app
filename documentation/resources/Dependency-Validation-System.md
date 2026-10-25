@@ -60,10 +60,10 @@ This system exists to **protect the dependency chain** by:
 
 2. **Expo SDK Enforcement**: Keeps all Expo packages aligned
    - `expo: ~54.0.0` — SDK version
-   - `expo-dev-client: ~6.0.20` — must match SDK
+   - `expo-dev-client: ~6.0.20` — must match SDK (checked through `sdkCompatibility`)
 
 3. **Package Migration Guards**: Prevents reverting to bare RN packages
-   - **Blocks** `@expo/vector-icons` → **Must use** `react-native-vector-icons` or `expo-symbols`
+   - `blockedPackages` can refuse a package outright; the list is empty today
 
 4. **Dependency Cascade Protection**: Ensures transitive dependencies don't break constraints
    - Package overrides enforce versions throughout the dependency tree
@@ -279,7 +279,6 @@ Is this package optional? (y/N): N
 - **Use when**: Package version is critical for Expo SDK / React Native compatibility
 - **Examples**:
   - `react-native: 0.81.5` - **Must match Expo SDK 54**
-  - `typescript: ~5.3.3` - Required for React Native compatibility
 - **Behavior**: Validation fails (exit code 1) if version doesn't match
 - **Why**: Breaking these versions means **builds fail or hardware stops working**
 
@@ -287,14 +286,14 @@ Is this package optional? (y/N): N
 - **Use when**: Package should meet requirement but isn't part of the critical chain
 - **Examples**:
   - `react-native-ble-manager: 11.3.2` - Hardware interface
-  - `react-native-reanimated: ~4.1.1` - UI animations
+  - `react-native-bluetooth-state-manager: 1.3.5` - BLE state
 - **Behavior**: Warning shown but validation passes
 - **Why**: Allows flexibility while still tracking requirements
 
 #### `info` - Informational Only (Optional Features)
 - **Use when**: Tracking optional packages not required for core functionality
 - **Examples**:
-  - `expo-localization: ~17.0.8` - Language support (nice to have)
+  - none today; a rule whose drift is worth a line in the install log, not a warning
   - Development tools and optional features
 - **Behavior**: Information shown, no validation failure
 - **Why**: Awareness without enforcement
@@ -357,7 +356,6 @@ This pattern:
 📦 Validating package versions...
 
 ✅ react-native@0.81.5 satisfies 0.81.5
-✅ typescript@5.3.3 satisfies ~5.3.3
 ℹ️  expo@54.0.32 - known deviation from ~54.0.0
    Reason: 54.0.32 is a compatible patch version within the ~54.0.0 range
 
@@ -638,7 +636,6 @@ npm install --save-dev package-name@^2.16.0
 
 **Error** — Part of the critical SDK compatibility chain:
 - `react-native: 0.81.5` — **Must match Expo SDK 54**
-- `typescript: ~5.3.3` — Required for React Native compatibility
 - Core Expo SDK packages that must match the SDK version
 
 **Warning** — BLE/DFU libraries and supporting packages:

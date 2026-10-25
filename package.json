@@ -47,7 +47,6 @@
     "@getquip/expo-nordic-dfu": "^2.0.3",
     "@nozbe/watermelondb": "^0.28.0",
     "@react-native-async-storage/async-storage": "2.2.0",
-    "@react-native-community/geolocation": "^3.4.0",
     "@react-native-community/netinfo": "^11.3.1",
     "@react-native-google-signin/google-signin": "^16.1.5",
     "@react-navigation/elements": "^1.3.31",
@@ -69,6 +68,7 @@
     "expo-file-system": "~19.0.24",
     "expo-image": "~3.0.11",
     "expo-image-picker": "~17.0.11",
+    "expo-keep-awake": "~15.0.8",
     "expo-linking": "~8.0.12",
     "expo-localization": "~17.0.9",
     "expo-location": "~19.0.8",
@@ -106,11 +106,9 @@
     "@commitlint/cli": "^20.4.2",
     "@commitlint/config-conventional": "^20.4.2",
     "@jest/globals": "^29.7.0",
-    "@morrowdigital/watermelondb-expo-plugin": "^2.3.3",
     "@react-native-community/cli": "^20.0.2",
     "@react-native/eslint-config": "0.81.5",
     "@react-native/typescript-config": "0.81.5",
-    "@testing-library/jest-native": "^5.4.3",
     "@testing-library/react-native": "^12.4.3",
     "@types/jest": "29.5.14",
     "@types/react": "~19.1.10",
@@ -127,7 +125,7 @@
     "prettier": "2.8.8",
     "react-test-renderer": "19.1.0",
     "semver": "^7.8.5",
-    "typescript": "5.3.3"
+    "typescript": "~5.9.2"
   },
   "overrides": {
     "react": "19.1.0",
@@ -159,14 +157,12 @@
       "reactNativeDirectoryCheck": {
         "listUnknownPackages": false,
         "exclude": [
-          "@nozbe/watermelondb",
-          "@react-native-community/geolocation"
+          "@nozbe/watermelondb"
         ]
       }
     },
     "install": {
       "exclude": [
-        "typescript",
         "react-native-keyboard-controller",
         "react-native-worklets"
       ]
