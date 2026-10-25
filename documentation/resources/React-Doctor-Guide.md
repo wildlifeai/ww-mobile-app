@@ -59,7 +59,7 @@ Additionally, `doctor.config.json` ignores baseline aesthetic warnings that are 
 | Pattern | Reason |
 |---------|--------|
 | `android/**`, `ios/**` | Native platform code, not React |
-| `scripts/**`, `patches/**`, `archive/**` | Tooling and legacy code |
+| `scripts/**`, `patches/**` | Tooling |
 | `**/*.test.ts`, `**/*.test.tsx`, `**/__tests__/**`, `**/__mocks__/**` | Test files |
 | `src/types/database.types.ts` | Auto-generated Supabase types |
 | `supabase/**` | SQL schema dumps. CLI 0.9.x reads `service_role` in a `GRANT` as a leaked secret (`artifact-secret-leak`), and `supabase-table-missing-rls` only looks in the `CREATE TABLE` file while RLS is enabled in `xxx_rls/` and `yyy_policies/`. Both are false positives here. |

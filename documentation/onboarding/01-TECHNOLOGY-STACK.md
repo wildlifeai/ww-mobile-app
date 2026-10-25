@@ -401,7 +401,6 @@ Monitors network state to trigger sync when transitioning from offline → onlin
 | Jest | Unit & integration tests | `npm test` |
 | `@testing-library/react-native` | Component testing | — |
 | Maestro | E2E UI testing | `npm run test:maestro` |
-| Detox | E2E native testing | `npm run test:e2e` |
 
 ### Code Quality
 

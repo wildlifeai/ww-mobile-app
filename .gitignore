@@ -85,24 +85,6 @@ yarn-error.log
 
 # Expo
 .expo/
-project-context/ww-app-migration-plan/BUNDLE-IDENTIFIER-STRATEGY.md:Zone.Identifier
-project-context/ww-app-migration-plan/dev-decision-action-priorities.md:Zone.Identifier
-project-context/ww-app-migration-plan/dev-to-prod-checklist.md:Zone.Identifier
-project-context/ww-app-migration-plan/DEVELOPMENT-EXECUTION-PLAN.md:Zone.Identifier
-project-context/ww-app-migration-plan/DOCUMENT-INDEX.md:Zone.Identifier
-project-context/ww-app-migration-plan/FILE-SYSTEM-MIGRATION-EXAMPLES.md:Zone.Identifier
-project-context/ww-app-migration-plan/handling-bundle-identifiers.md:Zone.Identifier
-project-context/ww-app-migration-plan/in-place-migraition-plan.md:Zone.Identifier
-project-context/ww-app-migration-plan/MIGRATION-GUIDE.md:Zone.Identifier
-project-context/ww-app-migration-plan/MIGRATION-IMPACT-ANALYSIS.md:Zone.Identifier
-project-context/ww-app-migration-plan/MIGRATION-OVERVIEW.md:Zone.Identifier
-project-context/ww-app-migration-plan/mvp-dev-stage-considerations.md:Zone.Identifier
-project-context/ww-app-migration-plan/PRODUCTION-EXECUTION-PLAN.md:Zone.Identifier
-project-context/ww-app-migration-plan/QUICK-REFERENCE.md:Zone.Identifier
-project-context/ww-app-migration-plan/README.md:Zone.Identifier
-project-context/ww-app-migration-plan/wildlife_watcher_prod_plan.md:Zone.Identifier
-project-context/ww-app-migration-plan/wildlife_watcher_prod_plan.md:Zone.Identifier:Zone.Identifier
-project-context/ww-app-migration-plan/WILDLIFE-WATCHER-APP-ANALYSIS.md:Zone.Identifier
 
 # Logs
 logs
@@ -124,12 +106,6 @@ dev-debug.log
 *.code-workspace
 # OS specific
 
-# Task files
-# tasks.json
-# tasks/ 
-project-context/development-context/debugging/Screenshot_2025-07-30-22-19-21-464_com.wildlife.wildlifewatcher.expo.jpg
-.gitignore
-project-context/development-context/debugging/Screenshot_2025-07-30-22-26-19-500_com.wildlife.wildlifewatcher.expo.jpg
 
 # Misc
 .aider.chat.history.md
@@ -138,34 +114,13 @@ project-context/development-context/debugging/Screenshot_2025-07-30-22-26-19-500
 .aider.tags.cache.v3/cache.db-wal
 .aider.tags.cache.v3/cache.db
 
-# Claude Flow generated files
-.claude/settings.local.json
-.mcp.json
-claude-flow.config.json
-.swarm/
-.hive-mind/
-memory/claude-flow-data.json
-memory/sessions/*
-!memory/sessions/README.md
-memory/agents/*
-!memory/agents/README.md
-coordination/memory_bank/*
-coordination/subtasks/*
-coordination/orchestration/*
+# Local databases
 *.db
 *.db-journal
 *.db-wal
 *.sqlite
 *.sqlite-journal
 *.sqlite-wal
-claude-flow
-claude-flow.bat
-claude-flow.ps1
-hive-mind-prompt-*.txt
-.claude-flow/metrics/performance.json
-.claude-flow/metrics/system-metrics.json
-.claude-flow/metrics/task-metrics.json
-project-context/stuff.md
 
 # Playwright testing artifacts
 .playwright-mcp/
@@ -173,7 +128,6 @@ project-context/stuff.md
 # Serena MCP memory files
 .serena/
 
-project-context/presentations.coordination-hub
 # Sensitive Credentials & Keys
 *.keystore
 *.keystore.properties
@@ -194,6 +148,7 @@ supabase/.temp/
 # Personal agent configs stay local; the shared agent layer
 # (.agents/, AGENTS.md, CLAUDE.md) is committed on purpose.
 .cursorrules
+.mcp.json
 .windsurfrules
 .claude/
 **/claude/
