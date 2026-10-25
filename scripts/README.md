@@ -26,11 +26,11 @@
 All scripts that interact with Supabase read the project ID **dynamically** from `.env.development`. You never need to hardcode project refs — just update your `.env.development` file:
 
 ```bash
-# To use staging (current setup):
-EXPO_PUBLIC_SUPABASE_URL=https://nuhwmubvygxyddkycmpa.supabase.co
+# Dev, the default (`.env.example` ships it):
+EXPO_PUBLIC_SUPABASE_URL=https://qegeovogqxiouqbrxmnh.supabase.co
 
-# To switch back to dev, comment out staging and uncomment dev:
-# EXPO_PUBLIC_SUPABASE_URL=https://qegeovogqxiouqbrxmnh.supabase.co
+# Staging, only when a release needs its types:
+# EXPO_PUBLIC_SUPABASE_URL=https://nuhwmubvygxyddkycmpa.supabase.co
 ```
 
 Then `npm run android`, `npm run types:cloud-dev`, etc. will all target the correct instance automatically.
