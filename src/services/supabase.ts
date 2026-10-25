@@ -23,7 +23,7 @@ import {
 	getEnvironmentConfig,
 } from "../config/EnvironmentManager"
 import type { EnvironmentConfig } from "../config/environments"
-import { log, logError, logWarn } from '../utils/logger'
+import { log, logError } from '../utils/logger'
 import { createTimeoutFetch } from "./supabaseFetch"
 
 
@@ -281,65 +281,3 @@ function emitClientChanged(): void {
 		logError("❌ Error notifying listeners of client change:", error)
 	}
 }
-
-// ============================================================================
-// Backward Compatibility Layer (DEPRECATED)
-// ============================================================================
-
-/**
- * Legacy Supabase client export for backward compatibility.
- *
- * @deprecated Use getSupabaseClient() instead. This export will be removed in v2.0.
- *
- * This getter function provides the client instance, maintaining the same
- * interface as the old singleton pattern while issuing deprecation warnings
- * in development mode.
- *
- * Migration:
- * ```typescript
- * // Old code
- * import { supabase } from './supabase';
- * await supabase.from('users').select();
- *
- * // New code
- * import { getSupabaseClient } from './supabase';
- * const client = getSupabaseClient();
- * await client.from('users').select();
- * ```
- */
-export const supabase = new Proxy(
-	{} as SupabaseClient<Database>,
-	{
-		get(_target, prop) {
-			// Allow bundlers and runtimes to inspect specific properties without triggering warnings
-			if (
-				prop === "$$typeof" ||
-				prop === "__esModule" ||
-				prop === "then" ||
-				prop === "catch" ||
-				typeof prop === "symbol"
-			) {
-				return undefined
-			}
-
-			// Issue deprecation warning in development for all other property usage
-			if (__DEV__) {
-				logWarn(
-					"⚠️ DEPRECATED: Direct 'supabase' export is deprecated. " +
-					"Use getSupabaseClient() instead. " +
-					"See SUPABASE-CLIENT-MIGRATION-GUIDE.md for migration instructions.",
-				)
-			}
-
-			// Return undefined for client not initialized (matches Proxy behavior)
-			if (!supabaseClient) {
-				logError(
-					"❌ Supabase client not initialized. Call initializeSupabaseClient() first.",
-				)
-				return undefined
-			}
-
-			return supabaseClient[prop as keyof SupabaseClient<Database>]
-		},
-	},
-)

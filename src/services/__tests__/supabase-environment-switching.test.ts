@@ -425,17 +425,6 @@ describe("Supabase Client Environment Switching", () => {
 		})
 	})
 
-	describe("Backward compatibility", () => {
-		it("should maintain supabase export for legacy code", async () => {
-			// This test verifies the deprecated export still works
-			// In actual implementation, this will log a warning
-			const { supabase } = require("../supabase")
-
-			expect(supabase).toBeDefined()
-			// Legacy export should return function that gets current client
-		})
-	})
-
 	describe("Error scenarios", () => {
 		it("should handle missing environment config gracefully", async () => {
 			mockGetEnvironmentConfig.mockResolvedValueOnce({
