@@ -4,8 +4,7 @@
  * WatermelonDB Schema Validation Script
  *
  * Validates that the WatermelonDB schema (src/database/schema.ts) matches
- * the Supabase types (src/types/supabase.ts, or src/types/database.types.ts
- * while supabase.ts is empty) to prevent schema drift.
+ * the Supabase types (src/types/database.types.ts) to prevent schema drift.
  *
  * Every deliberate difference is named in the allowlists below, table and
  * column, never by pattern, and each is explained in scripts/README.md.
@@ -21,10 +20,7 @@ const path = require('path');
 // Configuration
 const VERBOSE = process.argv.includes('--verbose');
 const WATERMELON_SCHEMA_PATH = path.join(__dirname, '../src/database/schema.ts');
-let SUPABASE_TYPES_PATH = path.join(__dirname, '../src/types/supabase.ts');
-if (!fs.existsSync(SUPABASE_TYPES_PATH) || fs.statSync(SUPABASE_TYPES_PATH).size === 0) {
-    SUPABASE_TYPES_PATH = path.join(__dirname, '../src/types/database.types.ts');
-}
+const SUPABASE_TYPES_PATH = path.join(__dirname, '../src/types/database.types.ts');
 
 // Columns on every table that are not compared: WatermelonDB's own, and the sync
 // fields generate-watermelon-schema.js adds to each table (SYNC_FIELDS there).

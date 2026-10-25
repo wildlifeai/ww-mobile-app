@@ -12,13 +12,8 @@
 | `validate-watermelon-schema.js` | Static WatermelonDB schema validation | Cross-platform |
 | `validate-watermelon-schema-live.js` | Live schema comparison against Supabase | Cross-platform |
 | `deps-cli.js` | Interactive dependency management CLI | Cross-platform |
-| `post-install-helper.js` | Detect new packages after npm install | Cross-platform |
 | `check-types-cloud.sh` / `.ps1` | Compare committed types against cloud DB | Bash / PowerShell |
-| `check-types-local.sh` / `.ps1` | Compare committed types against local DB | Bash / PowerShell |
-| `switch-supabase-instance.sh` | Switch Supabase CLI project link | Bash |
 | `pre-build-check.sh` | Full pre-build validation (9 checks) | Bash |
-| `pre-commit-hook.sh` | Git pre-commit hook | Bash |
-| `test-integration-local.sh` | Run local integration tests | Bash |
 | `install-maestro-wsl2.sh` | Install the Maestro CLI and JDK 17 in WSL2 | Bash (WSL2) |
 | `ci-maestro.sh` | Run the Maestro flows on the CI emulator (install APK, Bluetooth on, junit report, final hierarchy, logcat) | Bash (CI) |
 | `ci-maestro-output.sh` | Redact the E2E password and print Maestro's report, hierarchies and logs into the job log | Bash (CI) |
@@ -112,7 +107,7 @@ When adding new scripts:
 
 ## validate-watermelon-schema.js
 
-`npm run schema:validate` compares `src/database/schema.ts` with the Supabase types (`src/types/supabase.ts`, or `src/types/database.types.ts` while that file is empty), column by column. It prints how many columns and tables it compared, and fails if it compared none. CI runs it in Schema Mirror Drift, where it blocks.
+`npm run schema:validate` compares `src/database/schema.ts` with the Supabase types (`src/types/database.types.ts`), column by column. It prints how many columns and tables it compared, and fails if it compared none. CI runs it in Schema Mirror Drift, where it blocks.
 
 Every difference it accepts is named in the allowlists at the top of the script, never matched by pattern. An entry that stops matching fails the run: an allowlisted table or column that WatermelonDB no longer has, or that Supabase now has, so a stale skip cannot hide a column that should be compared. Add an entry only with the evidence, and add it here.
 

@@ -96,8 +96,7 @@ scripts/
 ├── validate-deps.js              # Core validation engine
 ├── manage-dependency-rules.js    # Interactive CLI for rule management
 ├── dependency-rules.json         # Validation configuration
-├── deps-cli.js                   # CLI wrapper script
-└── post-install-helper.js        # Optional: Run validation after npm install
+└── deps-cli.js                   # CLI wrapper script
 ```
 
 ### Data Flow
