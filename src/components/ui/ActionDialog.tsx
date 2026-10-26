@@ -11,7 +11,13 @@ interface ActionDialogProps {
     actions?: ReactNode
 }
 
-/** The popup an ActionRow opens: its result and controls, and a Close. */
+/**
+ * The popup an ActionRow opens: its result and controls, and a Close.
+ *
+ * It renders in Paper's Portal, outside the NavigationContainer, so nothing
+ * inside it may call useNavigation: the hook throws and takes the app down
+ * (Camera View, 26 October 2026). Call it in the action and pass a callback in.
+ */
 export const ActionDialog = ({ visible, title, onClose, children, actions }: ActionDialogProps) => (
     <Portal>
         <Dialog visible={visible} onDismiss={onClose} style={styles.dialog}>
