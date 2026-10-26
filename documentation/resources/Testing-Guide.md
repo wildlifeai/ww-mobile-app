@@ -8,6 +8,7 @@
 |------|------|----------|---------|
 | Unit | Jest + RNTL | `src/**/__tests__/*.test.ts` | `npm test` |
 | Integration/BDD | Jest + custom helpers | `tests/integration/**/*.bdd.test.tsx` | `npm test -- bdd` |
+| Against cloud-dev | Jest, the real Supabase client and push | `tests/integration/cloud-dev/` | CI only, see below |
 | E2E | Maestro | `tests/maestro/smoke/` on every PR in CI (advisory), the flows in `tests/maestro/config.yaml` on the `full-e2e` label | `npm run test:maestro:smoke`, `npm run test:maestro` |
 
 ## Running Tests
@@ -199,6 +200,18 @@ through `scripts/maestro-offline.sh` after the other flows:
   in as the E2E account, then the three offline phases. Runs on the `full-e2e` label or by hand
   (`gh workflow run native-build-validation.yml --ref <branch>`); never in the merge queue,
   which has no labels.
+
+`ProjectService on cloud-dev` (`cloud-dev-integration`), advisory, runs on the same trigger and
+needs no build. It signs in as the E2E account and runs
+[`ProjectService.cloudDev.test.ts`](../../tests/integration/cloud-dev/ProjectService.cloudDev.test.ts):
+one project created through WatermelonDB, the outbox and `push_changes`, checked on the server
+with the creator's `project_admin` role, edited without losing the columns the edit left out,
+and deleted, plus a check that the server shows the account only projects its roles allow
+(#489). Every project it creates is soft-deleted at the end, even after a failed step. Without
+the four variables (`E2E_TEST_EMAIL`, `E2E_TEST_PASSWORD`, `EXPO_PUBLIC_SUPABASE_URL`,
+`EXPO_PUBLIC_SUPABASE_ANON_KEY`) the suite skips itself, so `npm test` never reaches the network,
+and the job fails rather than pass with nothing tested. Organisation isolation between two
+accounts and member changes need a second seeded account, which the E2E secrets do not hold.
 
 Both write a junit report and **fail if it holds no test cases**, because until 21 September
 2026 the E2E job reported success on every run while Maestro ran nothing (run 35493842313: an

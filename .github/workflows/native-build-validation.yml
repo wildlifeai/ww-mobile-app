@@ -372,3 +372,39 @@ jobs:
             ~/.maestro/tests/
           retention-days: 7
           if-no-files-found: warn
+
+  # Advisory, on the same trigger as E2E Full: ProjectService against cloud-dev
+  # through the real push (#489), as the seeded account in the E2E_TEST_EMAIL
+  # and E2E_TEST_PASSWORD secrets of the `development` environment. It creates,
+  # edits and deletes one project, and soft-deletes it even when a step fails.
+  # Needs no build, so it runs whatever the pull request changed.
+  cloud-dev-integration:
+    name: ProjectService on cloud-dev
+    if: contains(github.event.pull_request.labels.*.name, 'full-e2e') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The suite skips itself without these, which would pass with nothing tested
+      - name: Run the cloud-dev suite
+        env:
+          E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
+          E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL_DEV }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY_DEV }}
+        run: |
+          for name in E2E_TEST_EMAIL E2E_TEST_PASSWORD EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_ANON_KEY; do
+            if [ -z "${!name}" ]; then echo "::error::$name is not set for this job"; exit 1; fi
+          done
+          npx jest --ci tests/integration/cloud-dev --testPathIgnorePatterns=/node_modules/

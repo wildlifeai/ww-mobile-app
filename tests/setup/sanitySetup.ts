@@ -50,8 +50,11 @@ beforeEach(() => {
     }
 
     const supabaseService = require("../../src/services/supabase");
-    const mockClient = createClient();
-    if (supabaseService.getSupabaseClient.mockImplementation) {
+    // A suite that unmocks the client and the service talks to a real backend
+    // (tests/integration/cloud-dev, #489), and a real createClient() with no
+    // URL throws, so neither is touched there.
+    if (createClient.mockImplementation && supabaseService.getSupabaseClient.mockImplementation) {
+        const mockClient = createClient();
         supabaseService.getSupabaseClient.mockImplementation(() => mockClient);
         supabaseService.initializeSupabaseClient.mockImplementation(() => Promise.resolve(mockClient));
         supabaseService.reconnectSupabase.mockImplementation(() => Promise.resolve(mockClient));
