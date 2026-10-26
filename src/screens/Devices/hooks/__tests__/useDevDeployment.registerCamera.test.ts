@@ -111,10 +111,10 @@ beforeEach(() => {
 })
 
 describe('Dev Deployment of a camera the phone has no row for (#480)', () => {
-	it('registers it in the organisation and deploys it under that row', async () => {
+	it('registers it, in no organisation (#501), and deploys it under that row', async () => {
 		await mountAndStart()
 
-		expect(deviceService.createDevice).toHaveBeenCalledWith('ble-1', 'WILD-TEST', 'org-1', 'user-1')
+		expect(deviceService.createDevice).toHaveBeenCalledWith('ble-1', 'WILD-TEST', 'user-1')
 		expect(localActive).toHaveBeenCalledWith('device-new')
 		expect(checkServer).toHaveBeenCalledWith('device-new', 'user-1')
 		expect(createDeployment).toHaveBeenCalledWith(expect.objectContaining({ deviceId: 'device-new' }))

@@ -604,14 +604,11 @@ export const useDevDeployment = ({
             const registration = await registerCamera({
                 bluetoothId: bleDevice.id,
                 name: bleDevice.name || 'Unknown Device',
-                organisationId: currentOrganisation?.id,
                 userId: user.id,
             })
             setSubmitting(false)
             if (registration.kind !== 'registered') {
-                Alert.alert(CANNOT_REGISTER_TITLE, registration.kind === 'no_organisation'
-                    ? registration.message
-                    : 'This phone could not save a record of this camera, so nothing was started. Connect to it from the scanner, then try again.')
+                Alert.alert(CANNOT_REGISTER_TITLE, 'This phone could not save a record of this camera, so nothing was started. Connect to it from the scanner, then try again.')
                 return
             }
             cameraRow = registration.device
@@ -845,7 +842,7 @@ export const useDevDeployment = ({
             isStartDeploymentInProgress.current = false
         }
     }, [
-        bleDevice, bleSession, project, user, device, currentOrganisation?.id,
+        bleDevice, bleSession, project, user, device,
         startConfigure, progress, persistProjectSettings,
         batteryLevel, gpsLocation, locationName, cameraHeight, notes,
         sdCardStatus, sdCardMissing,

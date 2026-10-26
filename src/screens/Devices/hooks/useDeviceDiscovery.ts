@@ -8,7 +8,7 @@ import { useDevicePreDeploymentChecks } from '../../../hooks/useDevicePreDeploym
 import { useAppSelector } from '../../../redux'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { DeviceService } from '../../../services/DeviceService'
-import { registerCamera, CANNOT_REGISTER_TITLE } from '../../../services/cameraRegistration'
+import { registerCamera } from '../../../services/cameraRegistration'
 import { selectCurrentOrganisation } from '../../../redux/slices/authSlice'
 import { DeploymentService } from '../../../services/DeploymentService'
 import ProjectService from '../../../services/ProjectService'
@@ -255,12 +255,10 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                             return
                         }
 
-                        // The server's row when this account may read it, else a
-                        // new one in the current organisation (#451)
+                        // The server's row, else a new one, in no organisation (#451, #501)
                         const registration = await registerCamera({
                             bluetoothId: device.id,
                             name: device.name || 'Unknown Device',
-                            organisationId: currentOrganisation?.id,
                             userId: user.id,
                             isCancelled,
                             onStep: addLog,
@@ -268,11 +266,6 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
 
                         if (registration.kind === 'cancelled') {
                             log('[handleDeviceSelect] Operation cancelled after server lookup, aborting')
-                            await disconnectDevice(device)
-                            return
-                        }
-                        if (registration.kind === 'no_organisation') {
-                            Alert.alert(CANNOT_REGISTER_TITLE, registration.message)
                             await disconnectDevice(device)
                             return
                         }

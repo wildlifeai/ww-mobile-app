@@ -7,11 +7,12 @@ import { getSupabaseClient } from './supabase'
 export type DeviceRow = Database['public']['Tables']['devices']['Row']
 
 /**
- * The server's row for the camera with this Bluetooth id, or null when there
- * is none this account may read. `bluetooth_id` is unique on the server, and
- * row-level security (`can_read_device`) shows a device only to a project role
- * on a live deployment that uses it, or to any role in its organisation, so
- * null does not mean the camera is unregistered. A failed read throws.
+ * The server's row for the camera with this Bluetooth id, or null when it has
+ * no live one. `bluetooth_id` is unique on the server, and since ww-backend
+ * #346 row-level security (`can_read_device`) shows every live camera to every
+ * signed-in account but the demo one (#327, #501). A deleted row is hidden but
+ * keeps its Bluetooth id, so null is "unregistered or deleted". A failed read
+ * throws.
  */
 export async function fetchDeviceRowByBluetoothId(bluetoothId: string): Promise<DeviceRow | null> {
     const { data, error } = await getSupabaseClient()
@@ -24,8 +25,8 @@ export async function fetchDeviceRowByBluetoothId(bluetoothId: string): Promise<
 
 /**
  * Whether the server shows this account a device with this id. Row-level
- * security limits the answer as above, so false does not mean the server lacks
- * it. A failed read throws.
+ * security hides a deleted row, so false does not mean the server lacks it. A
+ * failed read throws.
  */
 export async function serverShowsDevice(id: string): Promise<boolean> {
     const { data, error } = await getSupabaseClient()

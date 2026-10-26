@@ -1375,14 +1375,14 @@ describe('a camera the server has under another id (#451)', () => {
 		expect(rowsIn('devices').map((d) => d.id).sort()).toEqual(['device-new', SERVER])
 	})
 
-	it("refuses it for good when this account cannot read the server's row, and never sends it again", async () => {
+	it("refuses it for good when the server row was deleted (#501), and never sends it again", async () => {
 		serverRows.devices = []
 
 		await expect(service.uploadOutbox(USER_B)).rejects.toThrow(
-			'devices: 1 refused by the server (23505 This camera is registered on the server to an organisation this account cannot see)')
+			'devices: 1 refused by the server (23505 This camera was deleted on the server, which still holds its Bluetooth id, so it cannot be registered again)')
 
 		expect(op('d1').status).toBe('refused')
-		expect(op('d1').errorMessage).toBe('23505 This camera is registered on the server to an organisation this account cannot see')
+		expect(op('d1').errorMessage).toBe('23505 This camera was deleted on the server, which still holds its Bluetooth id, so it cannot be registered again')
 		expect(rowsIn('devices').map((d) => d.id)).toEqual([LOCAL])
 		// Its device never reached the server, so the deployment waits
 		expect(op('dep1').status).toBe('pending')

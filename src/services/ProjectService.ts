@@ -42,7 +42,6 @@ class ProjectService {
 
 	/**
 	 * Get projects that current user has access to
-	 * Logic mirrors DeviceService.getDevicesForUser
 	 */
 	async getProjectsForUser(userId: string): Promise<ProjectWithDetails[]> {
 		try {
