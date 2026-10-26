@@ -71,47 +71,41 @@ If the submit step fails, the builds are still there. Submit each one from a che
 
 ### Release Process
 
-1. **Merge `dev` → `main`** (via PR)
-2. **Bump the application version.** Four files must agree, or EAS and OTA updates disagree about what is installed:
+The version is bumped on `dev` before the release, so the release PR carries it to `main`, and the
+tag goes on that PR's merge commit.
 
-   | File | Field | Example (0.0.61 → 0.0.62) |
-   |------|-------|---------------------------|
-   | `package.json` | `version` | `"0.0.62"` |
-   | `app.config.ts` | `android.versionCode` | `62` |
-   | `app.config.ts` | `ios.buildNumber` | `"62"` |
-   | `android/app/build.gradle` | `versionCode` / `versionName` | `62` / `"0.0.62"` |
-   | `android/app/src/main/res/values/strings.xml` | `expo_runtime_version` | `0.0.62` |
-   | `package-lock.json` | `version` (×2, top of file) | `"0.0.62"` — refreshed by `npm install` |
+1. **Merge everything for the release into `dev`.**
+2. **Bump the version in a PR into `dev`**, from a branch `chore/bump-0.0.X`, with the commit and
+   title `chore(release): 0.0.X`. These values must agree, or EAS and OTA updates disagree about
+   what is installed:
 
-   `app.config.ts` derives `version` and `runtimeVersion` from `package.json`, so those two follow automatically. The Android native values do **not** — see step 3.
+   | File | Field | Example (0.0.70 to 0.0.71) |
+   |------|-------|----------------------------|
+   | `package.json` | `version` | `"0.0.71"` |
+   | `app.config.ts` | `android.versionCode` | `71` |
+   | `app.config.ts` | `ios.buildNumber` | `"71"` |
+   | `android/app/build.gradle` | `versionCode` / `versionName` | `71` / `"0.0.71"` |
+   | `android/app/src/main/res/values/strings.xml` | `expo_runtime_version` | `0.0.71` |
+   | `package-lock.json` | `version` (twice, top of file) | `"0.0.71"` |
 
-   Verify before committing:
+   `app.config.ts` derives `version` and `runtimeVersion` from `package.json`. The Android values
+   do not: `android/` is tracked, so EAS reads `build.gradle` and `strings.xml` and ignores
+   `app.config.ts`. Edit them with the rest. `npx expo prebuild --no-install --platform android`
+   writes the same two files, but it regenerates the native project, so keep its output only if
+   its diff touches nothing else. Then:
+
    ```bash
    npm run version:check
    ```
 
-3. **Synchronize Android Native Directory**:
-   > [!IMPORTANT]
-   > Since the `android/` native directory is tracked and committed in git, EAS Build acts as a bare React Native builder. It reads `versionCode` and `versionName` directly from native files (like `android/app/build.gradle`) and ignores `app.config.ts`.
-   >
-   > **You MUST run the Expo prebuild command to sync the version bumps to the native directory before committing**:
-   > ```bash
-   > npx expo prebuild --no-install --platform android
-   > ```
-   > This will update the version code and name in `android/app/build.gradle` and update `expo_runtime_version` in `android/app/src/main/res/values/strings.xml` to match `app.config.ts`.
+3. **Merge the release PR from `dev` to `main`** with a merge commit.
+4. **Tag that merge commit and push the tag.** The tag starts `eas-build.yml`: production builds
+   for both platforms, submitted to the stores.
 
-4. **Commit the version bumps and native changes**:
    ```bash
-   git add package.json app.config.ts android/
-   git commit -m "chore: bump version to 0.0.54 (build 54)"
-   ```
-
-5. **Push and tag**:
-   ```bash
-   git push origin main
-   git tag v0.0.54
-   git push origin v0.0.54
-   # → GitHub Action builds + submits automatically
+   git fetch origin main
+   git tag -a v0.0.71 -m "0.0.71" origin/main
+   git push origin v0.0.71
    ```
 
 ## Store Tracks
