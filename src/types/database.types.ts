@@ -2328,6 +2328,7 @@ export type Database = {
           file_path: string
           file_public: boolean
           id: string
+          local_hour: number | null
           media_comments: string | null
           timestamp: string | null
           updated_at: string | null
@@ -2346,6 +2347,7 @@ export type Database = {
           file_path: string
           file_public?: boolean
           id?: string
+          local_hour?: number | null
           media_comments?: string | null
           timestamp?: string | null
           updated_at?: string | null
@@ -2364,6 +2366,7 @@ export type Database = {
           file_path?: string
           file_public?: boolean
           id?: string
+          local_hour?: number | null
           media_comments?: string | null
           timestamp?: string | null
           updated_at?: string | null
@@ -4444,6 +4447,14 @@ export type Database = {
           user_id: string
         }[]
       }
+      caller_is_demo: { Args: never; Returns: boolean }
+      camera_open_deployment: {
+        Args: { p_bluetooth_id: string }
+        Returns: {
+          deployed: boolean
+          project_name: string
+        }[]
+      }
       can_delete_deployment: {
         Args: { p_project_id: string; p_setup_by: string }
         Returns: boolean
@@ -4750,6 +4761,7 @@ export type Database = {
         }[]
       }
       label_map_problems: { Args: { p_label_map: Json }; Returns: string[] }
+      local_hour_of: { Args: { p_ts: string; p_tz: string }; Returns: number }
       longtransactionsenabled: { Args: never; Returns: boolean }
       match_media_embeddings: {
         Args: {

@@ -1,8 +1,8 @@
 -- *** Devices RLS Policies ***
 -- Joins deployments via device_id natively
 
--- SELECT: Project members can view devices linked to their projects via deployments
-CREATE POLICY "Project members can view active devices"
+-- SELECT: any signed-in user but the demo account (#327, can_read_device)
+CREATE POLICY "Signed-in users can view active devices"
   ON devices
   FOR SELECT
   TO authenticated
@@ -14,57 +14,46 @@ CREATE POLICY "Project members can view active devices"
     AND can_read_device(devices.id, devices.organisation_id)
   );
 
--- INSERT: Organisation members and admins can register a device
---
--- Without this policy the table had no INSERT route at all, and under RLS that
--- denies every role including ww_admin. The mobile app registers a camera it
--- meets over BLE and pushes the row on the next sync, so every such push failed
--- with 42501; because the app uploads projects, then devices, then deployments
--- and stops the chain on the first failure, no deployment could reach the cloud
--- either (#178, and wildlifeai/ww-mobile-app#287 for the chain behaviour).
---
--- Deliberately `organisation_member`, one tier below the UPDATE policy's
--- `organisation_manager` (Victor, 5 September 2026). The person holding a new
--- camera in a valley is a field user, and field users are usually not managers,
--- so requiring a manager to register hardware would leave the common case broken
--- in a less obvious way. Adding a device to an organisation you already belong to
--- is also the mildest of the three writes: it creates a row scoped to that
--- organisation and grants nobody anything.
---
--- The tenant boundary is unchanged. `has_organisation_role` matches on the
--- device's own organisation_id, so a member of org A still cannot register a
--- device into org B; test 18 pins that.
---
--- Note this is strictly wider than UPDATE: a member may create a device and then
--- not be allowed to rename it. That asymmetry is intentional for now, but it is
--- the obvious thing to revisit if field users start reporting they cannot correct
--- a device they just added.
-CREATE POLICY "Organisation members can add devices"
+-- INSERT: any signed-in user but the demo account registers a camera (#327). Cameras
+-- belong to no organisation, so organisation_id is not checked: a field user invited to one
+-- project registers the camera in their hand. Registering creates a row and grants nobody
+-- anything.
+CREATE POLICY "Signed-in users can add devices"
   ON devices
   FOR INSERT
   TO authenticated
   WITH CHECK (
-    (SELECT auth.uid()) IS NOT NULL AND (
-      has_system_role((SELECT auth.uid()), 'ww_admin')
-      OR has_organisation_role((SELECT auth.uid()), devices.organisation_id, 'organisation_member')
-    )
+    (SELECT auth.uid()) IS NOT NULL AND NOT public.caller_is_demo()
   );
 
--- UPDATE: Organisation managers and admins can update devices
-CREATE POLICY "Organisation managers can update devices"
+-- UPDATE: a project_admin of a project that has a live deployment of the camera, or a
+-- ww_admin (#327). trg_devices_lock_columns leaves the project admin only the name: the
+-- Bluetooth id, LoRaWAN EUI and organisation are ww_admin's, because a camera's EUI decides
+-- which deployment receives its LoRaWAN messages (#323).
+CREATE POLICY "Deploying project admins can update devices"
   ON devices
   FOR UPDATE
   TO authenticated
   USING (
     (SELECT auth.uid()) IS NOT NULL AND (
       has_system_role((SELECT auth.uid()), 'ww_admin')
-      OR has_organisation_role((SELECT auth.uid()), devices.organisation_id, 'organisation_manager')
+      OR EXISTS (
+        SELECT 1 FROM deployments AS d
+        WHERE d.device_id = devices.id
+          AND d.deleted_at IS NULL
+          AND has_project_role((SELECT auth.uid()), d.project_id, 'project_admin')
+      )
     )
   )
   WITH CHECK (
     (SELECT auth.uid()) IS NOT NULL AND (
       has_system_role((SELECT auth.uid()), 'ww_admin')
-      OR has_organisation_role((SELECT auth.uid()), devices.organisation_id, 'organisation_manager')
+      OR EXISTS (
+        SELECT 1 FROM deployments AS d
+        WHERE d.device_id = devices.id
+          AND d.deleted_at IS NULL
+          AND has_project_role((SELECT auth.uid()), d.project_id, 'project_admin')
+      )
     )
   );
 
@@ -72,5 +61,5 @@ CREATE POLICY "Organisation managers can update devices"
 -- the SELECT policy hides soft-deleted rows, and Postgres checks an UPDATE's new row
 -- against it, so no client UPDATE that sets deleted_at can pass (#160).
 
-COMMENT ON POLICY "Project members can view active devices" ON devices
-IS 'Uses user_roles and deployments for project/organisation association';
+COMMENT ON POLICY "Signed-in users can view active devices" ON devices
+IS 'Any signed-in user except the demo account reads a live camera (#327); see can_read_device';

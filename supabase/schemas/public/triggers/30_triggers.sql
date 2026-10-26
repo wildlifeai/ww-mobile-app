@@ -98,6 +98,12 @@ FOR EACH ROW
 EXECUTE FUNCTION public.copy_deployment_device_eui();
 
 -- No client update moves a project to another organisation, except a ww_admin's (#260).
+-- Only a ww_admin changes a camera's Bluetooth id, EUI or organisation (#327, #323).
+CREATE TRIGGER trg_devices_lock_columns
+BEFORE UPDATE OF bluetooth_id, device_eui, organisation_id ON public.devices
+FOR EACH ROW
+EXECUTE FUNCTION public.lock_device_columns();
+
 CREATE TRIGGER trg_projects_lock_organisation
 BEFORE UPDATE OF organisation_id ON public.projects
 FOR EACH ROW
@@ -108,6 +114,21 @@ CREATE TRIGGER trg_media_lock_columns
 BEFORE UPDATE OF deployment_id, uploaded_by ON public.media
 FOR EACH ROW
 EXECUTE FUNCTION public.lock_media_columns();
+
+-- A photo's local_hour, from its timestamp and its deployment's time zone (#335). UPDATE OF
+-- local_hour too, so a client's own value is recomputed rather than kept.
+CREATE TRIGGER trg_media_local_hour
+BEFORE INSERT OR UPDATE OF "timestamp", deployment_id, local_hour ON public.media
+FOR EACH ROW
+EXECUTE FUNCTION public.set_media_local_hour();
+
+-- A deployment's new time zone reaches its photos' local_hour (#335). The WHEN keeps a
+-- push_changes update that resends the same zone from touching every photo.
+CREATE TRIGGER trg_deployments_refresh_media_local_hour
+AFTER UPDATE OF timezone ON public.deployments
+FOR EACH ROW
+WHEN (old.timezone IS DISTINCT FROM new.timezone)
+EXECUTE FUNCTION public.refresh_media_local_hour();
 
 -- Trigger for project_invitations (moved from table file)
 CREATE TRIGGER update_project_invitations_updated_at

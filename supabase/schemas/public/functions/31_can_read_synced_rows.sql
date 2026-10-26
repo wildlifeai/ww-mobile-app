@@ -40,8 +40,30 @@ BEGIN
 END;
 $$;
 
--- A device: a project role on a live deployment that uses it, or any role in the
--- organisation that owns it.
+-- Whether the signed-in caller is the shared demo account (app_metadata.is_demo), whose
+-- token anyone can take from the website's "Try the demo" (#332). It sees no camera and
+-- registers none (#327). SECURITY DEFINER to read auth.users.
+CREATE OR REPLACE FUNCTION public.caller_is_demo()
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+VOLATILE
+AS $$
+BEGIN
+  RETURN COALESCE((
+    SELECT u.raw_app_meta_data ->> 'is_demo' = 'true'
+    FROM auth.users AS u
+    WHERE u.id = (SELECT auth.uid())
+  ), false);
+END;
+$$;
+
+-- A device: any signed-in user but the demo account. Cameras belong to no organisation
+-- (#327, decided 22 Oct 2026), so a lent camera or one held by a user with only a project
+-- role is found by its Bluetooth id like any other. A camera's row holds no project data;
+-- its deployments, photos, labels and LoRaWAN messages keep their project rules. The
+-- parameters are unused, kept so the devices policy and sync_deleted_ids call it unchanged.
 CREATE OR REPLACE FUNCTION public.can_read_device(p_device_id uuid, p_organisation_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -50,35 +72,13 @@ SET search_path = ''
 VOLATILE
 AS $$
 BEGIN
-  -- COALESCE: a NULL created_by makes the OR NULL rather than false, which RLS
-  -- reads as a refusal but a caller negating the result does not.
-  RETURN COALESCE((SELECT auth.uid()) IS NOT NULL AND (
-    EXISTS (
-      SELECT 1
-      FROM public.deployments AS d
-      INNER JOIN public.user_roles AS ur ON ur.scope_type = 'project' AND d.project_id = ur.scope_id
-      WHERE d.device_id = p_device_id
-        AND d.deleted_at IS NULL
-        AND ur.user_id = (SELECT auth.uid())
-        AND ur.is_active = TRUE
-        AND ur.deleted_at IS NULL
-        AND (ur.expires_at IS NULL OR ur.expires_at > now())
-    )
-    OR EXISTS (
-      SELECT 1
-      FROM public.user_roles AS ur
-      WHERE ur.scope_type = 'organisation'
-        AND ur.scope_id = p_organisation_id
-        AND ur.user_id = (SELECT auth.uid())
-        AND ur.is_active = TRUE
-        AND ur.deleted_at IS NULL
-        AND (ur.expires_at IS NULL OR ur.expires_at > now())
-    )
-  ), false);
+  RETURN (SELECT auth.uid()) IS NOT NULL AND NOT public.caller_is_demo();
 END;
 $$;
 
 REVOKE ALL ON FUNCTION public.can_read_project(uuid, uuid, uuid) FROM public, anon;
+REVOKE ALL ON FUNCTION public.caller_is_demo() FROM public, anon;
 REVOKE ALL ON FUNCTION public.can_read_device(uuid, uuid) FROM public, anon;
 GRANT EXECUTE ON FUNCTION public.can_read_project(uuid, uuid, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.caller_is_demo() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.can_read_device(uuid, uuid) TO authenticated;
