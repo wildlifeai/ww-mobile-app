@@ -3,7 +3,7 @@ import { useCallback, useRef } from 'react'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { createBleSession } from '../ble/session/createBleSession'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
-import { AI_BITS_MASK, formatSelfTestBits, parseSelfTestBits, selfTestWarnings } from '../utils/deviceSelfTest'
+import { AI_BITS_MASK, SelfTestBit, formatSelfTestBits, parseSelfTestBits, selfTestWarnings } from '../utils/deviceSelfTest'
 
 import { log, logError, logWarn } from '../utils/logger'
 
@@ -90,6 +90,23 @@ export const useBleInitialization = () => {
           errors.deviceHealth = selfTestWarnings(bits)
       } else if (bits === 0) {
           log('[BLE Init] Hardware check passed (BLE bits 0x0000; AI bits read after the wake)')
+      }
+
+      // Bit 5: the BLE processor reset itself after a fault and kept a record
+      // of it (ww-hardware PR #73). `fault` reads it from the BLE processor
+      // alone, so it costs no wake. The server has no field for it yet, so the
+      // record goes to the log; the screen shows only the warning above.
+      if (bits !== null && (bits & (1 << SelfTestBit.FAULT_RESET)) !== 0) {
+          try {
+              const record = await createBleSession(device).execute(commandRegistry.fault)
+              if (record) {
+                  logWarn(`[BLE Init] ${device.name ?? device.id} restarted after a firmware fault: ${record.line}`)
+              } else {
+                  log('[BLE Init] Bit 5 is set, but the fault record is gone (fault none)')
+              }
+          } catch (e) {
+              logWarn('[BLE Init] Could not read the fault record:', e instanceof Error ? e.message : String(e))
+          }
       }
 
       try {

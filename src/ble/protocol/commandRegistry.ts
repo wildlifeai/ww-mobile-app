@@ -277,6 +277,29 @@ const LORAWAN_PING_REPLIES: Record<string, LorawanPingReply> = {
 };
 
 /**
+ * The BLE processor's record of the fault it last reset itself after, the reply
+ * to `fault` (ww-hardware PR #73, MokoTech/Workspace/_Documentation/Fault_Handling.md,
+ * "Telling the app"). One line, at most 100 characters:
+ * `fault <reason> <code> <file>:<line> <pc> <lr> <count>`, or `fault none`.
+ */
+export interface FaultRecord {
+  /** `error`, `sdk_assert`, `sd_fault`, `hardfault`, `watchdog` or `test`; any other word is an unknown fault. */
+  reason: string;
+  /** The NRF_ERROR code for `error`, the CFSR for `hardfault`, otherwise 0x00000000. */
+  code: string;
+  /** `file:line` where the error was raised, `-:0` when there is none. */
+  location: string;
+  pc: string;
+  lr: string;
+  /** Fault resets in a row. */
+  count: number;
+  /** The line as the device sent it, for the log. */
+  line: string;
+}
+
+const FAULT_LINE = /^fault\s+(?:none\s*$|(\S+)\s+(0x[0-9a-fA-F]+)\s+(\S+:\d+)\s+(0x[0-9a-fA-F]+)\s+(0x[0-9a-fA-F]+)\s+(\d+)\s*$)/i;
+
+/**
  * Exported registry of constructed commands.
  */
 export const commandRegistry = {
@@ -318,6 +341,24 @@ export const commandRegistry = {
     () => 'selftest',
     /^Error bits = 0x[0-9a-fA-F]+/i,
     (match) => match[0]
+  ),
+  // Answered by the BLE processor itself, without waking the AI processor.
+  // Sent only when self-test bit 5 is set: older firmware has neither, so its
+  // refusal is a capability answer, not something to retry. Null for `fault none`.
+  fault: createSingleLineCommand<FaultRecord | null>(
+    'fault',
+    () => 'fault',
+    FAULT_LINE,
+    (match, line) => match[1] === undefined ? null : {
+      reason: match[1],
+      code: match[2],
+      location: match[3],
+      pc: match[4],
+      lr: match[5],
+      count: parseInt(match[6], 10),
+      line: (line ?? match[0]).trim(),
+    },
+    { timeoutMs: 3000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Unrecogni[sz]ed|^Unknown command/i }
   ),
   aifirmware: createSingleLineCommand<boolean>(
     'aifirmware',
