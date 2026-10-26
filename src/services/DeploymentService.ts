@@ -342,10 +342,13 @@ export const DeploymentService = {
      * camera with an open deployment on this phone to End Deployment; this
      * covers one started by someone else, or on another phone and not pulled.
      *
-     * It sees only what this account may read: deployments in projects where
-     * it holds a role, an organisation it manages, or everything for a
-     * ww_admin. "none" means none of those. A deployment in any other project
-     * is invisible here, and the server's refusal is then the only word on it.
+     * A deployment this account may read (a project where it holds a role, an
+     * organisation it manages, or everything for a ww_admin) is described in
+     * full: project, who started it and when. One in any other project is not
+     * readable, so `camera_open_deployment` (ww-backend #346, #328) answers
+     * for it with the project's name and nothing more, by the camera's
+     * Bluetooth id, for any signed-in account (#502). That limit was decided on
+     * 22 October 2026.
      *
      * Never blocks on the network: offline, failed or slower than
      * OPEN_DEPLOYMENT_CHECK_MS, the answer is "unchecked" with a warning.
@@ -477,7 +480,7 @@ async function describeOpenDeploymentElsewhere(deviceId: string, userId: string)
         .is('deployment_end', null)
         .is('deleted_at', null)
     if (error) throw error
-    if (!data || data.length === 0) return null
+    if (!data || data.length === 0) return describeOpenDeploymentUnreadable(deviceId)
 
     // One this phone has ended, the end not uploaded yet, is not in the way:
     // the outbox sends the end before the new deployment or in the same
@@ -505,6 +508,54 @@ async function describeOpenDeploymentElsewhere(deviceId: string, userId: string)
     const by = startedBy ? ` by ${startedBy}` : ''
     const on = open.deployment_start ? ` on ${new Date(open.deployment_start).toLocaleDateString()}` : ''
     return `This camera is still deployed in ${where}, started${by}${on}. That deployment has to be ended before the camera can be deployed again.`
+}
+
+/** Outbox states of an operation that has not reached the server yet. */
+const NOT_UPLOADED = ['pending', 'syncing', 'failed']
+
+/**
+ * The operator's message for an open deployment this account cannot read, or
+ * null when the camera has none (#502). `camera_open_deployment` answers by
+ * Bluetooth id with `(deployed, project_name)` and nothing else. A failed call
+ * throws, so the start warns; a backend without the function (before ww-backend
+ * #346) answers as before this existed, with nothing.
+ */
+async function describeOpenDeploymentUnreadable(deviceId: string): Promise<string | null> {
+    const device = await database.get<Device>('devices').find(deviceId).catch(() => null)
+    if (!device?.bluetoothId) {
+        log('[DeploymentService] No Bluetooth id on this phone for device', deviceId, ', so it cannot ask about other projects')
+        return null
+    }
+    const { data, error } = await getSupabaseClient().rpc('camera_open_deployment', { p_bluetooth_id: device.bluetoothId })
+    if (error) {
+        if (error.code === 'PGRST202') {
+            logWarn('[DeploymentService] The server has no camera_open_deployment yet; deployments in other projects are not checked')
+            return null
+        }
+        throw error
+    }
+    const answer = Array.isArray(data) ? data[0] : data
+    if (!answer?.deployed) return null
+
+    // The same exception as for a readable one, found the other way round: the
+    // answer carries no deployment id, so look for one this phone has ended
+    // on this camera whose end is still on its way to the server.
+    const endedHere = await database.get<Deployment>('deployments')
+        .query(Q.where('device_id', deviceId), Q.where('deployment_status_id', DEPLOYMENT_STATUS.ENDED))
+        .fetch()
+    if (endedHere.length > 0) {
+        const unsent = await database.get<SyncOutbox>('sync_outbox')
+            .query(
+                Q.where('table_name', 'deployments'),
+                Q.where('record_id', Q.oneOf(endedHere.map(d => d.id))),
+                Q.where('status', Q.oneOf(NOT_UPLOADED)),
+            )
+            .fetchCount()
+        if (unsent > 0) return null
+    }
+
+    const where = answer.project_name ? `"${answer.project_name}"` : 'another project'
+    return `This camera is still deployed in ${where}. That deployment has to be ended before the camera can be deployed again.`
 }
 
 /**
