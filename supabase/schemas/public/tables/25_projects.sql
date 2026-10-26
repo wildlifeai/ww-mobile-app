@@ -59,7 +59,10 @@ CREATE TABLE projects (
   -- 1/256, zero point -128) op16 = 0 is already 50%. Default 57 is op16 = 18, the
   -- factory value every camera used before this column.
   detection_threshold_pct int NOT NULL DEFAULT 57
-    CHECK (detection_threshold_pct >= 50 AND detection_threshold_pct <= 99)
+    CHECK (detection_threshold_pct >= 50 AND detection_threshold_pct <= 99),
+  -- The GBIF dataset this project publishes to, for the website's GBF report (#329). A key,
+  -- not a DOI: the GBIF API takes the key and returns the DOI.
+  gbif_dataset_key uuid
 );
 
 -- Create index for organisation-based queries
@@ -82,6 +85,7 @@ COMMENT ON COLUMN projects.flash_window_start_minutes_utc IS 'Start of the flash
 COMMENT ON COLUMN projects.flash_window_minutes IS 'Length of the flash window for flash_mode=time_of_day, written as op36. Minutes (1-1440); may wrap past midnight. NULL unless flash_mode=time_of_day.';
 COMMENT ON COLUMN projects.photos_per_trigger IS 'Photos per trigger (motion or timelapse), written to the device as op5. Photos as the user sees them: when the project also records the raw BMP, the app doubles the value for op5.';
 COMMENT ON COLUMN projects.photo_interval_milliseconds IS 'Interval between the photos of one trigger in milliseconds, written to the device as op6.';
+COMMENT ON COLUMN projects.gbif_dataset_key IS 'GBIF dataset key (UUID) of the dataset this project publishes to, if any. The website reads the published record count from the GBIF API.';
 COMMENT ON COLUMN projects.detection_threshold_pct IS 'On-device detection threshold, percent (50-99, default 57). The app writes it to the camera as op16 MODEL_THRESHOLD = ceil(pct * 2.56) - 128, exact for int8 softmax model outputs (scale 1/256, zero point -128): 57 -> 18, the factory value; 50 -> 0; 99 -> 126.';
 
 

@@ -257,16 +257,15 @@ BEGIN
         END LOOP;
     END IF;
 
-    -- DEVICES: Updated
+    -- DEVICES: Updated. The name only: bluetooth_id, device_eui and organisation_id are a
+    -- ww_admin's (trg_devices_lock_columns, #327), and assigning them would fail a stale
+    -- phone's whole push. They are set on insert.
     IF _devices_updated IS NOT NULL THEN
         FOR _item IN SELECT * FROM pg_catalog.jsonb_array_elements(_devices_updated)
         LOOP
             UPDATE public.devices
             SET
-                bluetooth_id = _item->>'bluetooth_id',
-                organisation_id = (_item->>'organisation_id')::uuid,
                 name = _item->>'name',
-                device_eui = _item->>'device_eui',
                 modified_by = (_item->>'modified_by')::uuid,
                 updated_at = (_item->>'updated_at')::timestamptz
             WHERE id = (_item->>'id')::uuid;

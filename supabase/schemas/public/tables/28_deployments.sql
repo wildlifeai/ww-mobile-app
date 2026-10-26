@@ -59,7 +59,7 @@ CREATE TABLE deployments (
   feature_type text CHECK (feature_type IS null OR (feature_type IN ('roadTrail', 'waterSource', 'burrow', 'nestSite', 'other'))),
   habitat text,
   deployment_tags text [],
-  timezone text -- IANA tz resolved from latitude/longitude (display-only)
+  timezone text -- IANA tz resolved from latitude/longitude; display, and media.local_hour (#335)
 );
 
 -- Indexes
@@ -93,7 +93,7 @@ COMMENT ON COLUMN deployments.camera_location_image_paths IS 'Array of paths to 
 COMMENT ON COLUMN deployments.camera_height IS 'Height of the camera in meters.';
 COMMENT ON COLUMN deployments.altitude IS 'Altitude in meters from GPS.';
 COMMENT ON COLUMN deployments.accuracy IS 'GPS accuracy in meters.';
-COMMENT ON COLUMN deployments.timezone IS 'IANA time zone name (e.g. Pacific/Auckland) for this deployment location, resolved from latitude/longitude at creation/ingestion via timezonefinder. NULL falls back to UTC at display. media.timestamp stays UTC; this column is display-only and does not affect stored instants.';
+COMMENT ON COLUMN deployments.timezone IS 'IANA time zone name (e.g. Pacific/Auckland) for this deployment location, resolved from latitude/longitude at creation/ingestion via timezonefinder. NULL falls back to UTC. media.timestamp stays UTC; this zone is for display and gives media.local_hour, which triggers recompute when it changes.';
 COMMENT ON COLUMN deployments.capture_method_id IS 'Mode of capture (timelapse, motion, etc).';
 COMMENT ON COLUMN deployments.project_id IS 'Project this deployment belongs to.';
 COMMENT ON COLUMN deployments.device_id IS 'Device used in this deployment.';

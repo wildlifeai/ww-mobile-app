@@ -12,7 +12,9 @@ CREATE TABLE lorawan_messages (
 -- Indexes for common queries
 CREATE INDEX lorawan_messages_device_eui_idx ON lorawan_messages (device_eui);
 CREATE INDEX lorawan_messages_device_id_idx ON lorawan_messages (device_id);
-CREATE INDEX lorawan_messages_deployment_id_idx ON lorawan_messages (deployment_id);
+-- A deployment's messages newest first, for deployment_latest_lorawan (#333); it also serves
+-- lookups by deployment_id alone, which had their own index until then.
+CREATE INDEX lorawan_messages_deployment_received_idx ON lorawan_messages (deployment_id, received_at DESC);
 CREATE INDEX lorawan_messages_received_at_idx ON lorawan_messages (received_at DESC);
 CREATE INDEX lorawan_messages_unprocessed_idx ON lorawan_messages (processed_at) WHERE processed_at IS NULL;
 
