@@ -483,7 +483,14 @@ export const commandRegistry = {
     () => true,
     // 8s timeout: DPD wake cycle (boot → selftest → process → respond)
     // takes 3-5s. Default 3s caused premature retries/duplicates.
-    { timeoutMs: 8000, failureRegex: /Failed|Invalid/i, retryPolicy: { maxRetries: 2 } }
+    //
+    // `^Error:` is the firmware's own refusal: a missing or out-of-range
+    // index or value, and since Seeed PR #276 a value op17 (1-3) or op33
+    // (1-255) does not take, "Error: 0 is not a valid value for op 33.". It
+    // used to match neither pattern, so a refusal sat out the 8 s twice and
+    // ended in TIMEOUT. Nothing is saved, and runCommandPipeline does not
+    // retry it.
+    { timeoutMs: 8000, failureRegex: /Failed|Invalid|^Error:/i, retryPolicy: { maxRetries: 2 } }
   ),
 
   getops: createSingleLineCommand<string[]>(

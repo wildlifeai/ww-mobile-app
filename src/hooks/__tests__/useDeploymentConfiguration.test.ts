@@ -142,12 +142,17 @@ describe('useDeploymentConfiguration configureCaptureMethod sensitivity', () => 
         expect(session.lines).toContain(`AI setop ${OP_PARAMETER.MD_SENSITIVITY} 2`)
     })
 
-    it('turns motion detection off for timelapse whatever the sensitivity', async () => {
+    // op11 = 0 switches motion detection off. op17 = 0 used to as well, but
+    // Seeed PR #276 takes 1-3 only and refuses it, so timelapse leaves op17 be.
+    it('turns motion detection off for timelapse with op11, never op17', async () => {
         const session = makeRecordingSession()
+        const ops = opsAfterReset()
+        ops[OP_PARAMETER.MD_INTERVAL] = '1000'
 
-        await configureCaptureMethod()(session, { deploymentId: 'd', captureMethod: 'timelapse', mdSensitivity: 3 }, opsAfterReset())
+        await configureCaptureMethod()(session, { deploymentId: 'd', captureMethod: 'timelapse', mdSensitivity: 3 }, ops)
 
-        expect(session.lines).toContain(`AI setop ${OP_PARAMETER.MD_SENSITIVITY} 0`)
+        expect(session.lines).toContain(`AI setop ${OP_PARAMETER.MD_INTERVAL} 0`)
+        expect(session.lines.filter(line => line.startsWith(`AI setop ${OP_PARAMETER.MD_SENSITIVITY} `))).toEqual([])
     })
 })
 

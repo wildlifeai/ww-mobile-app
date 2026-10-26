@@ -161,7 +161,9 @@ export const useDeploymentConfiguration = () => {
             // Timelapse mode
             const interval = config.timelapseInterval || 300
             log(`[DeployConfig] Timelapse mode - interval ${interval}s, timeout 30s`)
-            updates.push({ index: OP_PARAMETER.MD_SENSITIVITY, value: 0 }) // MD off in timelapse-only
+            // op11 = 0 is what switches motion detection off. op17 is left as
+            // the reset left it: since Seeed PR #276 it takes 1-3 only, and
+            // the 0 this used to write is refused there.
             updates.push({ index: OP_PARAMETER.MD_INTERVAL, value: 0 })
             updates.push({ index: OP_PARAMETER.TIMELAPSE_INTERVAL, value: interval })
             updates.push({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: DEPLOYMENT_INTERVAL_BEFORE_DPD_MS })
