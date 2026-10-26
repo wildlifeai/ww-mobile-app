@@ -17,6 +17,9 @@ let mockReadError: any = null
 let mockReadHangs = false
 let mockProjects: Record<string, string> = {}
 let mockMembers: Array<{ id: string; name: string }> | null = null
+/** What camera_open_deployment answers (ww-backend #346) */
+let mockCamera: { data: any; error: any } = { data: [{ deployed: false, project_name: null }], error: null }
+const mockRpc: Array<[string, any]> = []
 const mockFilters: Array<[string, string, any]> = []
 const mockFrom = jest.fn()
 
@@ -44,7 +47,11 @@ jest.mock('../supabase', () => ({
 			const id = () => mockFilters.filter(([, column]) => column === 'id').pop()?.[2]
 			return mockQuery(() => ({ data: mockProjects[id()] ? { name: mockProjects[id()] } : null, error: null }))
 		},
-		rpc: async () => (mockMembers ? { data: mockMembers, error: null } : { data: null, error: { code: '42501', message: 'Unauthorized' } }),
+		rpc: async (name: string, args: any) => {
+			mockRpc.push([name, args])
+			if (name === 'camera_open_deployment') return mockCamera
+			return mockMembers ? { data: mockMembers, error: null } : { data: null, error: { code: '42501', message: 'Unauthorized' } }
+		},
 	}),
 }))
 jest.mock('../SupabaseSyncService', () => ({
@@ -69,9 +76,77 @@ beforeEach(() => {
 	mockReadHangs = false
 	mockProjects = { 'project-9': 'Sinbad Gully' }
 	mockMembers = [{ id: 'user-2', name: 'Tui Smith' }]
+	mockCamera = { data: [{ deployed: false, project_name: null }], error: null }
+	mockRpc.length = 0
 	mockFilters.length = 0
 })
 afterEach(() => netInfo.__resetNetworkState())
+
+/**
+ * #502: a deployment in a project this account is not in cannot be read, so it
+ * used to look free, and only the refused push said otherwise. Since ww-backend
+ * #346, camera_open_deployment says whether the camera is deployed anywhere and
+ * in which project, by Bluetooth id, and nothing more.
+ */
+describe('DeploymentService.checkServerForOpenDeployment in a project this account cannot read (#502)', () => {
+	beforeEach(() => {
+		seedRows('devices', [{ id: 'device-1', bluetoothId: 'C4:2F:11:0A:9B:01' }])
+	})
+
+	it('stops, naming the project and nothing else', async () => {
+		mockCamera = { data: [{ deployed: true, project_name: 'Hollyford Track' }], error: null }
+
+		const result = await DeploymentService.checkServerForOpenDeployment('device-1', 'user-1')
+
+		expect(result).toEqual({
+			kind: 'open',
+			message: 'This camera is still deployed in "Hollyford Track". That deployment has to be ended before the camera can be deployed again.',
+		})
+		expect(mockRpc).toContainEqual(['camera_open_deployment', { p_bluetooth_id: 'C4:2F:11:0A:9B:01' }])
+	})
+
+	it('finds none when the camera is not deployed anywhere', async () => {
+		const result = await DeploymentService.checkServerForOpenDeployment('device-1', 'user-1')
+
+		expect(result).toEqual({ kind: 'none' })
+	})
+
+	it('lets through one this phone has ended, whose end is not uploaded yet', async () => {
+		mockCamera = { data: [{ deployed: true, project_name: 'Hollyford Track' }], error: null }
+		seedRows('deployments', [{ id: 'dep-mine', deviceId: 'device-1', deploymentStatusId: DEPLOYMENT_STATUS.ENDED }])
+		seedRows('sync_outbox', [{ tableName: 'deployments', recordId: 'dep-mine', status: 'pending' }])
+
+		const result = await DeploymentService.checkServerForOpenDeployment('device-1', 'user-1')
+
+		expect(result).toEqual({ kind: 'none' })
+	})
+
+	it('stops when the end this phone made has already reached the server', async () => {
+		mockCamera = { data: [{ deployed: true, project_name: 'Hollyford Track' }], error: null }
+		seedRows('deployments', [{ id: 'dep-mine', deviceId: 'device-1', deploymentStatusId: DEPLOYMENT_STATUS.ENDED }])
+		seedRows('sync_outbox', [{ tableName: 'deployments', recordId: 'dep-mine', status: 'synced' }])
+
+		const result = await DeploymentService.checkServerForOpenDeployment('device-1', 'user-1')
+
+		expect(result.kind).toBe('open')
+	})
+
+	it('warns when the call fails', async () => {
+		mockCamera = { data: null, error: { code: '08006', message: 'TypeError: Network request failed' } }
+
+		const result = await DeploymentService.checkServerForOpenDeployment('device-1', 'user-1')
+
+		expect(result.kind).toBe('unchecked')
+	})
+
+	it('carries on as before against a backend without the function', async () => {
+		mockCamera = { data: null, error: { code: 'PGRST202', message: 'Could not find the function' } }
+
+		const result = await DeploymentService.checkServerForOpenDeployment('device-1', 'user-1')
+
+		expect(result).toEqual({ kind: 'none' })
+	})
+})
 
 describe('DeploymentService.checkServerForOpenDeployment (#448)', () => {
 	it('stops on an open deployment the phone does not hold, naming its project and who started it', async () => {
@@ -148,6 +223,15 @@ describe('DeploymentService.checkServerForOpenDeployment (#448)', () => {
 		const result = await DeploymentService.checkServerForOpenDeployment('device-1', 'user-1')
 
 		expect(result.kind).toBe('unchecked')
+	})
+
+	it('does not ask about other projects when it can read the open one', async () => {
+		mockOpen = [openOnServer()]
+		seedRows('devices', [{ id: 'device-1', bluetoothId: 'C4:2F:11:0A:9B:01' }])
+
+		await DeploymentService.checkServerForOpenDeployment('device-1', 'user-1')
+
+		expect(mockRpc.map(([name]) => name)).not.toContain('camera_open_deployment')
 	})
 
 	it('warns when the server does not answer in time', async () => {
