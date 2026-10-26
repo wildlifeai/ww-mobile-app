@@ -13,6 +13,8 @@
  * are AI_PROC_NOT_RESPONDING, AI_NO_MAIN_CAMERA and AI_NO_HM0360 here.
  */
 
+import { batteryLowWarning } from './initWarnings'
+
 export enum SelfTestBit {
     // BLE processor (bits 0-7)
     LOW_BATTERY = 0,
@@ -216,7 +218,7 @@ export const CRITICAL_AI_MASK =
  * (#477), and must keep "Camera Error" for the same reason.
  */
 const WARNING_TEXT: Record<SelfTestBit, string> = {
-    [SelfTestBit.LOW_BATTERY]: 'Low Battery detected (Bit 0)',
+    [SelfTestBit.LOW_BATTERY]: batteryLowWarning(),
     [SelfTestBit.AI_PROC_NOT_RESPONDING]: 'AI Processor not responding (Bit 1)',
     [SelfTestBit.LORAWAN_ERROR]: 'LoRaWAN Error (Bit 2)',
     [SelfTestBit.WATCHDOG_RESET]: 'Watchdog Reset occurred (Bit 3)',

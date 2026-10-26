@@ -74,7 +74,7 @@ export const useStartDeployment = ({
     const { getLocation, location: gpsLocation } = useGPSLocation()
 
     // Advanced Settings State
-    const [batteryLevel, setBatteryLevel] = useState<number | null>(initPayload?.batteryLevel || null)
+    const [batteryLevel, setBatteryLevel] = useState<number | null>(initPayload?.batteryLevel ?? null)
     const [sdCardStatus, setSdCardStatus] = useState<{ total: number; free: number } | null>(initPayload?.sdCardStatus || null)
 
     
@@ -507,7 +507,7 @@ export const useStartDeployment = ({
             Alert.alert('Already Deployed', openDeployment.message)
             return
         }
-        if (openDeployment.kind === 'unchecked') progress.addLog(`⚠️ ${openDeployment.message}`)
+        if (openDeployment.kind === 'unchecked') progress.addLog(openDeployment.message)
 
         const cb = {
             addLog: progress.addLog,
@@ -782,7 +782,7 @@ export const useStartDeployment = ({
                     const readingTag = freshReading
                         ? 'Light check'
                         : 'Light check (last recorded, not measured now)'
-                    progress.addLog(`💡 ${readingTag}: ${dark ? 'DARK' : 'BRIGHT'}`)
+                    progress.addLog(`${readingTag}: ${dark ? 'DARK' : 'BRIGHT'}`)
 
                     const intervalKnown = checkInterval !== null
                     if (autoSwitch === 1) {
@@ -843,9 +843,9 @@ export const useStartDeployment = ({
                 const modelId = parseInt(finalOps[OP_PARAMETER.MODEL_PROJECT] ?? '0', 10) || 0
                 const modelVer = parseInt(finalOps[OP_PARAMETER.MODEL_VERSION] ?? '0', 10) || 0
                 if (project.model_id && modelId !== 0) {
-                    progress.addLog(`🧠 AI model active on device (ID ${modelId} v${modelVer})`)
+                    progress.addLog(`AI model active on device (ID ${modelId} v${modelVer})`)
                 } else if (project.model_id && modelId === 0) {
-                    progress.addLog('⚠️ NO MODEL LOADED. The camera will capture on motion but nothing will be classified. Re-run the deployment or check the model sync log above.')
+                    progress.addLog('NO MODEL LOADED. The camera will capture on motion but nothing will be classified. Re-run the deployment or check the model sync log above.')
                 } else {
                     progress.addLog('No on-device AI model for this project (motion-capture only)')
                 }

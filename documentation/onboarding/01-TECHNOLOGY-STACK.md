@@ -294,7 +294,10 @@ The app has a custom component library in `src/components/ui/`. **Always check h
 | `WWButton` | Standardised button |
 | `WWText` | Typography with theme integration |
 | `WWTextInput` | Form input with validation |
-| `WWSelect` | Dropdown/picker |
+| `WWSelect` | Dropdown/picker; the label is optional |
+| `FieldBox` | An input box with its title on the border and a "?" after it (Start Monitoring, Stop Monitoring, New and Edit Project) |
+| `FieldGroup` | A panel a shade lighter than the screen that groups boxes; inputs inside take its colour |
+| `ActionRow`, `ActionDialog` | An action: a quiet filled button showing its result, which runs in a closable popup |
 | `WWScreenView` | Screen container with safe areas |
 | `WWProgressBar` | Progress visualisation |
 

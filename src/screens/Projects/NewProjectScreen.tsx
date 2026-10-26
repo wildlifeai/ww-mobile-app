@@ -2,8 +2,9 @@
  * NewProjectScreen
  * Form for creating new projects with validation
  *
- * Design: Matches the StartDeployment screen pattern with Card-based sections,
- * consistent gap spacing, and WWScreenView for keyboard-aware scrolling.
+ * Design: Matches Start Monitoring: input boxes with the title on the border
+ * and a "?" each (FieldBox), no cards, consistent gap spacing,
+ * and WWScreenView for keyboard-aware scrolling.
  */
 
 import { useState, useMemo, useEffect, useCallback } from "react"

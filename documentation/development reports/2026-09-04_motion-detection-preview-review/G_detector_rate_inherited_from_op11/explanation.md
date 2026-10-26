@@ -51,7 +51,7 @@ App:
 
 - The test never writes op11: [`useMotionDetectionStream.ts:309-356`](../../../../src/screens/Devices/hooks/useMotionDetectionStream.ts#L309-L356).
 - The deployment card runs before op11 is configured:
-  [`DeploymentMotionDetectionSection.tsx:61-76`](../../../../src/screens/Deployments/components/DeploymentMotionDetectionSection.tsx#L61-L76)
+  [`DeploymentMotionDetectionSection.tsx:61-76`](https://github.com/wildlifeai/ww-mobile-app/blob/561da458bccda3ff1bb0dc2489292a949470e438/src/screens/Deployments/components/DeploymentMotionDetectionSection.tsx#L61-L76)
   versus `useDeploymentConfiguration.ts:105`.
 
 ## 4. Suggested fix
