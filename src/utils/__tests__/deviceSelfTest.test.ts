@@ -39,6 +39,23 @@ describe('deviceSelfTest', () => {
         expect(isBootPreset(0)).toBe(false)
     })
 
+    // ww-hardware PR #73: the BLE processor resets itself after a fault and
+    // keeps a record. Until bit 5 was named, every connection to such a device
+    // said "Unknown hardware issue (Code: 0x0020)" (#482).
+    it('names bit 5, the fault reset, as a warning rather than an unknown code', () => {
+        const bits = (1 << SelfTestBit.FAULT_RESET) | (1 << SelfTestBit.WATCHDOG_RESET)
+        expect(bits).toBe(0x0028)
+        expect(KNOWN_BITS_MASK & 0x0020).toBe(0x0020)
+        expect(selfTestWarnings(bits)).toEqual([
+            'Watchdog Reset occurred (Bit 3)',
+            'The device restarted after a firmware fault (Bit 5)',
+        ])
+        const issue = decodeSelfTest(0x0020)[0]
+        expect(issue.severity).toBe('warning')
+        expect(issue.title).toMatch(/firmware fault/)
+        expect(CRITICAL_AI_MASK & 0x0020).toBe(0)
+    })
+
     it('names each known bit with the wording the banners have always used', () => {
         expect(selfTestWarnings(0)).toEqual([])
         expect(selfTestWarnings(1 << SelfTestBit.LOW_BATTERY)).toEqual(['Low Battery detected (Bit 0)'])
@@ -123,7 +140,8 @@ describe('deviceSelfTest', () => {
     })
 
     it('keeps the masks in step with the table', () => {
-        expect(KNOWN_BITS_MASK).toBe(0x7f1f)
+        // 0x0020 since bit 5, the BLE fault reset (#482)
+        expect(KNOWN_BITS_MASK).toBe(0x7f3f)
         // Camera, HM0360, NN and, since #303, the SD card: 0x0800
         expect(CRITICAL_AI_MASK).toBe(0x2b00)
         expect(decodeSelfTest(CRITICAL_AI_MASK).every(i => i.severity !== undefined)).toBe(true)

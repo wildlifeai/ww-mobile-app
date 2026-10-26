@@ -20,6 +20,11 @@ export enum SelfTestBit {
     LORAWAN_ERROR = 2,
     WATCHDOG_RESET = 3,
     BROWNOUT_RESET = 4,
+    // The BLE processor reset itself after a fault and kept a record of it,
+    // which the `fault` command reads (ww-hardware PR #73, BLE 0.30.58). Set
+    // until its next reset, never after a power-on, the RESET button or a DFU,
+    // and it can come with bit 3. Older firmware never sets it.
+    FAULT_RESET = 5,
     // AI processor (bits 8-15)
     AI_NO_MAIN_CAMERA = 8,
     AI_NO_HM0360 = 9,
@@ -93,6 +98,14 @@ const ISSUE_TABLE: Array<Omit<SelfTestIssue, never>> = [
         severity: 'warning',
         title: '⚡ Recovered from a power brownout',
         hint: 'The supply voltage dipped. Check the batteries and connections.',
+    },
+    {
+        // A warning that never blocks: the device recovered on its own. The
+        // record itself goes to the log (useBleInitialization), not the screen.
+        bit: SelfTestBit.FAULT_RESET,
+        severity: 'warning',
+        title: '🔁 Restarted after a firmware fault',
+        hint: 'The Bluetooth processor restarted itself after a firmware fault and recovered. The details are in the app log. Worth reporting if it happens again.',
     },
     {
         bit: SelfTestBit.AI_NO_MAIN_CAMERA,
@@ -208,6 +221,7 @@ const WARNING_TEXT: Record<SelfTestBit, string> = {
     [SelfTestBit.LORAWAN_ERROR]: 'LoRaWAN Error (Bit 2)',
     [SelfTestBit.WATCHDOG_RESET]: 'Watchdog Reset occurred (Bit 3)',
     [SelfTestBit.BROWNOUT_RESET]: 'Brownout Reset occurred (Bit 4)',
+    [SelfTestBit.FAULT_RESET]: 'The device restarted after a firmware fault (Bit 5)',
     [SelfTestBit.AI_NO_MAIN_CAMERA]: 'Main Camera Error (Bit 8)',
     [SelfTestBit.AI_NO_HM0360]: 'Motion Detector Camera Error (Bit 9). Power cycle the camera, and if it persists, check the HM0360 ribbon',
     [SelfTestBit.AI_NO_FLASH]: 'LED Flash Circuit Failure (Bit 10)',

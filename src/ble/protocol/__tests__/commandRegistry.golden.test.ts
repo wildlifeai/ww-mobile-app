@@ -55,6 +55,16 @@ const GOLDEN: Record<keyof typeof commandRegistry, Row> = {
     appeui: { wire: 'get appeui', accepts: 'AppEui 0000000000000000' },
     appkey: { wire: 'get appkey', accepts: 'AppKey 00000000000000000000000000000000' },
     selftest: { wire: 'selftest', accepts: 'Error bits = 0x0000' },
+    // Charles's bench lines, ww-hardware Fault_Handling.md "The `fault` command" (PR #73)
+    fault: {
+        wire: 'fault',
+        accepts: [
+            'fault error 0x00000004 ble_commands.c:991 0x00027151 0x00000000 1',
+            'fault hardfault 0x00010000 -:0 0x000299b8 0x00027151 2',
+            'fault none',
+        ],
+        rejects: 'Unrecognised command',
+    },
     wake: { wire: 'wake', accepts: ['Wake', 'Waking AI processor', 'AI processor is awake'] },
     camera_type: { wire: 'camera_type', accepts: 'Camera type: RP3' },
     temp: { wire: 'temp', accepts: 'Temperature: 24.75C' },
