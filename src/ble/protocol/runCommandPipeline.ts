@@ -176,6 +176,12 @@ function isRetryable(error: Error): boolean {
     return false;
   }
 
+  // The firmware refused a value for an op it has (op17 and op33 since Seeed
+  // PR #276) and saved nothing. The same write is refused the same way again.
+  if (msg.includes('NOT A VALID VALUE')) {
+    return false;
+  }
+
   // The camera abandoned a capture and said why (#476). Its photos up to then
   // are saved, and a retry would be another capture, not this one again.
   if (msg.includes('CAPTURE FAILED AFTER')) {

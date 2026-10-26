@@ -103,6 +103,13 @@ day are in [traps.md](traps.md).
   rather than the stored decision, and never phrase a stored verdict as a measurement. The
   deployment log made exactly that mistake before #304. Before surfacing any op as "current",
   establish what writes it and when.
+- **op33 means three things, so ask `mdBlockThresholdOf`.** On the firmware of Seeed PR #276
+  it is the motion wake threshold (1 to 255, default 4) and op17 takes 1 to 3 only; before it,
+  op33 is reserved and reads 0; before ae_review it was MD_BLOCK_NUM_MAX. That firmware refuses
+  op17 = 0 and op33 = 0 with `Error: <value> is not a valid value for op <n>.`, which `setop`
+  now fails on at once without a retry. The same firmware stops sending a motion grid for image
+  1 of a burst, and the motion test uses the same check to know its first grid is image 2's
+  (#499).
 - **`setop` stores; the device applies at wake.** The flash LED and brightness, op13 and op9,
   are read in `setupLEDFlash()` when the device wakes, the camera settings when the image task
   starts, a camera switch resets at the next sleep, and op8 itself sets the timer of the *next*

@@ -2,7 +2,7 @@ import { BleSession } from '../session/createBleSession'
 import { commandRegistry } from '../protocol/commandRegistry'
 import { log, logWarn } from '../../utils/logger'
 import { formatGPSString } from '../../utils/gpsUtils'
-import { FACTORY_DEFAULTS, OP_PARAMETER, RESET_PRESERVED_OPS } from '../../hooks/useDeviceSettings'
+import { FACTORY_DEFAULTS, OP_PARAMETER, RESET_PRESERVED_OPS, mdBlockThresholdOf } from '../../hooks/useDeviceSettings'
 
 export interface ResetToDefaultsOptions {
     onProgress?: (step: string, progress: number) => void
@@ -84,6 +84,13 @@ export async function executeResetToDefaults(
             // ae_review, which is also the firmware without the flash mode
             // (op34). The LoRaWAN default there would turn hi-res on.
             if (index === OP_PARAMETER.LORAWAN_PING_MINUTES && currentOps.length <= OP_PARAMETER.FLASH_MODE) {
+                continue
+            }
+            // op33 is the motion wake threshold only on firmware that reports
+            // one: reserved before Seeed PR #276, and MD_BLOCK_NUM_MAX before
+            // ae_review. Writing the default there would change nothing or
+            // the wrong setting, so the reset stays what it was on that firmware.
+            if (index === OP_PARAMETER.MD_BLOCK_THRESHOLD && mdBlockThresholdOf(currentOps) === null) {
                 continue
             }
         }

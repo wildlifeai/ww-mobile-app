@@ -11,7 +11,7 @@ import { flashHold } from '../../../ble/session/flashHold'
 import { flashLedHold } from '../../../ble/session/flashLedHold'
 import { keepAwake } from '../../../ble/session/keepAwake'
 import { mdIntervalHold } from '../../../ble/session/mdIntervalHold'
-import { OP_PARAMETER } from '../../../hooks/useDeviceSettings'
+import { OP_PARAMETER, mdBlockThresholdOf } from '../../../hooks/useDeviceSettings'
 
 /** Maximum number of frames per test run. */
 const MAX_CAPTURE_COUNT = 60
@@ -112,8 +112,11 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
     const expectingHexRef = useRef<boolean>(false)
 
     // Frame counter: tracks which frame we're on within the capture run.
-    // Frame 1 after wake has no reference frame and always reports 0 motion blocks.
-    // Only frame 2+ has meaningful delta data.
+    // Image 1 of a burst has no reference frame and always reports 0 motion
+    // blocks, so only image 2 on means anything. Firmware before Seeed PR #276
+    // still sends image 1's empty grid, and the counter starts at 0 to skip
+    // it; that firmware's successor sends none, and the counter starts at 1
+    // (see startTest), so frame N is image N + 1 on both.
     const frameIndexRef = useRef<number>(0)
 
     // Whether we're actively processing incoming MD data.
@@ -413,6 +416,10 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
             } catch (e) {
                 log(`[MotionDetectionStream] getops failed, will set all params: ${e}`)
             }
+
+            // Firmware with the motion wake threshold sends no grid for image 1,
+            // so the first grid to arrive is image 2's and must not be skipped.
+            if (mdBlockThresholdOf(currentOps) !== null) frameIndexRef.current = 1
 
             const currentTestBits = currentOps ? parseInt(currentOps[OP_PARAMETER.TEST_MODE_BITS] ?? '0', 10) : -1
 

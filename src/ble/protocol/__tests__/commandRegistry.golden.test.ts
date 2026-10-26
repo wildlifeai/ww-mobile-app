@@ -97,7 +97,8 @@ const GOLDEN: Record<keyof typeof commandRegistry, Row> = {
         args: [{ index: 26, value: 0 }],
         wire: 'AI setop 26 0',
         accepts: 'Set OpParam 26 = 0',
-        rejects: 'Failed to set parameter',
+        // The last is prvSetOpParam on Seeed PR #276 refusing op33 = 0.
+        rejects: ['Failed to set parameter', 'Error: value required.', 'Error: 0 is not a valid value for op 33.'],
     },
     getops: {
         wire: 'AI getop -1',
@@ -146,7 +147,13 @@ const GOLDEN: Record<keyof typeof commandRegistry, Row> = {
         args: [2],
         wire: 'AI md 2',
         accepts: 'MD sensitivity set to 2',
-        rejects: ['Sleep', 'Unrecognised', 'Error: Sensitivity must be an integer between 0 and 3.'],
+        // The last is the wording of Seeed PR #276, which takes 1-3 only.
+        rejects: [
+            'Sleep',
+            'Unrecognised',
+            'Error: Sensitivity must be an integer between 0 and 3.',
+            'Error: Sensitivity must be 1, 2 or 3 (op 11 = 0 switches MD off).',
+        ],
     },
     erasemodel: { wire: 'AI erasemodel', accepts: 'Model Erased' },
     loadmodel: {
