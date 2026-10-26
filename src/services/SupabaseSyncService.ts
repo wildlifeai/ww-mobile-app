@@ -111,8 +111,13 @@ const isRefusedForGood = (error: { code?: string }, httpStatus?: number): boolea
 const isBluetoothIdTaken = (error: { code?: string, message?: string, details?: string | null }): boolean =>
     error.code === '23505' && /bluetooth_id/.test(`${error.message ?? ''} ${error.details ?? ''}`)
 
-/** In error_message, for the Settings line, when the server has the camera under an id this account cannot read */
-const CAMERA_REGISTERED_ELSEWHERE = '23505 This camera is registered on the server to an organisation this account cannot see'
+/**
+ * In error_message, for the Settings line, when the server has the camera under
+ * an id this account cannot read. Every signed-in account but the demo one reads
+ * every live camera since ww-backend #346, so that is a row deleted on the
+ * server, which keeps its Bluetooth id (#501).
+ */
+const CAMERA_REGISTERED_ELSEWHERE = '23505 This camera was deleted on the server, which still holds its Bluetooth id, so it cannot be registered again'
 
 /** The outbox statuses of a change not yet on the server, `orphaned` included since it may go back to `pending` */
 const NOT_UPLOADED = ['pending', 'failed', 'syncing', 'refused', 'orphaned']
@@ -1009,11 +1014,12 @@ class SupabaseSyncService {
      * queued change keeps its status, a refused one included: it was refused
      * for its own reason, never for 23503, which is retried.
      *
-     * When the server shows no such row, the camera is registered to an
-     * organisation this account cannot see, and the CREATE is refused for good
-     * with a reason Settings shows as it is. Its deployments keep failing 23503
-     * until the server gives the app a way to learn the id. A lookup that
-     * fails leaves the CREATE failed, so the next sync asks again.
+     * When the server shows no such row, the camera's row was deleted there
+     * and still holds the Bluetooth id: every other camera is readable since
+     * ww-backend #346 (#501). The CREATE is refused for good with a reason
+     * Settings shows as it is, and its deployments keep failing 23503 while the
+     * deleted row holds the id. A lookup that fails leaves the CREATE failed, so
+     * the next sync asks again.
      */
     private async settleTakenBluetoothId(
         tableOps: SyncOutbox[],

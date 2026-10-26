@@ -2,12 +2,10 @@ import { Q } from '@nozbe/watermelondb'
 import database from '../database'
 import Device from '../database/models/Device'
 import Deployment from '../database/models/Deployment'
-import { DeviceStatus, DeviceWithStatus, DeviceListItem } from '../types/device'
+import { DeviceStatus, DeviceWithStatus } from '../types/device'
 import OutboxService from './OutboxService'
 import { DEPLOYMENT_STATUS } from './DeploymentService'
 
-import ProjectService from './ProjectService'
-import { managedOrganisationIds, seesEverything } from './roleAccess'
 import { isKnownOffline } from './connectivityWatch'
 import { DeviceRow, fetchDeviceRowByBluetoothId, prepareDeviceRow } from './serverDevices'
 import { log, logError } from '../utils/logger'
@@ -38,16 +36,6 @@ export const DeviceService = {
     getDevices: async (): Promise<Device[]> => {
         const devicesCollection = database.get<Device>('devices')
         return await devicesCollection.query().fetch()
-    },
-
-    /**
-     * Get devices by organisation ID
-     */
-    getDevicesByOrganisation: async (organisationId: string): Promise<Device[]> => {
-        const devicesCollection = database.get<Device>('devices')
-        return await devicesCollection.query(
-            Q.where('organisation_id', organisationId)
-        ).fetch()
     },
 
     /**
@@ -166,44 +154,13 @@ export const DeviceService = {
     },
 
     /**
-     * Convert device to list item format for UI
-     */
-    deviceToListItem: async (device: Device): Promise<DeviceListItem> => {
-        const deviceWithStatus = await DeviceService.getDeviceWithStatus(device.id)
-
-        // Get last deployment (active or ended) for status display
-        const deploymentsCollection = database.get<Deployment>('deployments')
-        const allDeployments = await deploymentsCollection.query(
-            Q.where('device_id', device.id),
-            Q.sortBy('deployment_start', Q.desc)
-        ).fetch()
-        const lastDeployment = allDeployments[0]
-
-        return {
-            id: device.id,
-            name: device.name,
-            bluetoothId: device.bluetoothId,
-            status: deviceWithStatus?.status || 'needs_preparation',
-            locationName: deviceWithStatus?.activeDeployment?.locationName || lastDeployment?.locationName,
-            deploymentId: deviceWithStatus?.activeDeployment?.id || lastDeployment?.id,
-            deploymentEndDate: (deviceWithStatus?.activeDeployment?.deploymentEnd || lastDeployment?.deploymentEnd)
-                ? new Date((deviceWithStatus?.activeDeployment?.deploymentEnd || lastDeployment?.deploymentEnd)!)
-                : undefined,
-            lastDeploymentDate: lastDeployment?.deploymentStart
-                ? new Date(lastDeployment.deploymentStart)
-                : undefined,
-            projectName: undefined, // TODO: Resolve project name from deployment
-        }
-    },
-
-    /**
      * Ask the server for the camera with this Bluetooth id, before the scanner
      * registers one the phone has not met (#451). A row this account may read
      * is written to the phone under the server's id, with no outbox CREATE:
      * `bluetooth_id` is unique on the server, so a second id for the camera
-     * would be refused on every sync. "none" means none this account may read,
-     * not that the camera is unregistered. Offline, failed or slower than
-     * SERVER_LOOKUP_MS, the answer is "unchecked".
+     * would be refused on every sync. "none" means no live row: the camera is
+     * unregistered, or its row was deleted (#501). Offline, failed or slower
+     * than SERVER_LOOKUP_MS, the answer is "unchecked".
      */
     adoptFromServer: async (bluetoothId: string): Promise<ServerDeviceLookup> => {
         if (await isKnownOffline()) return { kind: 'unchecked' }
@@ -242,9 +199,14 @@ export const DeviceService = {
     },
 
     /**
-     * Create a new device from BLE discovery
+     * Register a camera the server has no row for, from BLE discovery.
+     *
+     * No organisation: since ww-backend #346 a camera belongs to none (#327).
+     * Any signed-in account but the demo one may register one, and every such
+     * account reads every camera. `devices.organisation_id` stays on both
+     * sides until nothing writes it, and nothing here does (#501).
      */
-    createDevice: async (bluetoothId: string, name: string, organisationId: string, userId: string): Promise<Device> => {
+    createDevice: async (bluetoothId: string, name: string, userId: string): Promise<Device> => {
         const devicesCollection = database.get<Device>('devices')
 
         let newDevice: Device | undefined
@@ -253,7 +215,6 @@ export const DeviceService = {
             newDevice = devicesCollection.prepareCreate(device => {
                 device.bluetoothId = bluetoothId
                 device.name = name
-                device.organisationId = organisationId
             })
 
             const outboxOp = OutboxService.recordOperation({
@@ -264,7 +225,6 @@ export const DeviceService = {
                     id: newDevice.id,
                     bluetooth_id: bluetoothId,
                     name: name,
-                    organisation_id: organisationId || null,
                     modified_by: userId
                 }
             })
@@ -275,133 +235,5 @@ export const DeviceService = {
         if (!newDevice) throw new Error("Failed to create device")
 
         return newDevice
-    },
-
-    /**
-     * Get all devices as list items
-     */
-    getDevicesAsListItems: async (): Promise<DeviceListItem[]> => {
-        const devices = await DeviceService.getDevices()
-        return await Promise.all(devices.map(device => DeviceService.deviceToListItem(device)))
-    },
-
-    /**
-     * Get devices for a user scoped to a specific organisation.
-     * Reuses getDevicesForUser then filters to only devices belonging to the given org.
-     */
-    getDevicesForUserInOrganisation: async (userId: string, organisationId: string): Promise<DeviceListItem[]> => {
-        const allDevices = await DeviceService.getDevicesForUser(userId)
-
-        // Get device records for this organisation to build a set of valid IDs
-        const orgDevices = await DeviceService.getDevicesByOrganisation(organisationId)
-        const orgDeviceIds = new Set(orgDevices.map(d => d.id))
-
-        return allDevices.filter(d => orgDeviceIds.has(d.id))
-    },
-
-    /**
-     * Get devices that user has access to via their projects
-     * Shows devices that have deployments in user's accessible projects
-     */
-    getDevicesForUser: async (userId: string): Promise<DeviceListItem[]> => {
-        // 1. Get user's accessible projects using the centralized service
-        // This handles Global Admin, Org Admin, Project Member, and Optimistic UI logic
-        const userProjects = await ProjectService.getProjectsForUser(userId)
-
-        // 2. Extract Project IDs
-        const projectIds = new Set(userProjects.map(p => p.id))
-        log(`[DeviceService] Found ${projectIds.size} accessible projects for user ${userId}`)
-
-        if (projectIds.size === 0) {
-            // Re-check Global Admin legacy check for safety/performance or unassigned devices
-            const userRolesCollection = database.get('user_roles')
-            const userRoles = await userRolesCollection.query(
-                Q.where('user_id', userId),
-                Q.where('is_active', true)
-            ).fetch()
-
-            // A ww_admin, or a manager at system scope, sees every device (#351)
-            if (seesEverything(userRoles as any)) {
-                return await DeviceService.getDevicesAsListItems()
-            }
-
-            return []
-        }
-
-        // 3. Get device IDs from deployments in these projects
-        const deploymentsCollection = database.get<Deployment>('deployments')
-        const deviceIds = new Set<string>()
-
-        const projectDeployments = await deploymentsCollection.query(
-            Q.where('project_id', Q.oneOf(Array.from(projectIds)))
-        ).fetch()
-        projectDeployments.forEach(d => {
-            if (d.deviceId) deviceIds.add(d.deviceId)
-        })
-        log(`[DeviceService] Found ${projectDeployments.length} deployments, cumulative devices: ${deviceIds.size}`)
-
-        if (deviceIds.size === 0) {
-            // Also check for Org Admin access to unassigned devices?
-            // If ProjectService returned projects, it means we have access to those projects.
-            // But we might also be an Org Admin who should see unassigned devices in the Org.
-            // The previous logic handled Org Admin explicit check.
-
-            // Let's restore Org Admin check for unassigned devices:
-            const userRolesCollection = database.get('user_roles')
-            const userRoles = await userRolesCollection.query(
-                Q.where('user_id', userId),
-                Q.where('is_active', true)
-            ).fetch()
-
-            // An organisation manager sees the organisation's devices, unassigned
-            // ones included (#351)
-            const managedOrgIds = managedOrganisationIds(userRoles as any)
-
-            if (managedOrgIds.size > 0) {
-                const allDevices: Device[] = []
-                for (const organisationId of managedOrgIds) {
-                    const orgDevices = await DeviceService.getDevicesByOrganisation(organisationId)
-                    allDevices.push(...orgDevices)
-                }
-                const uniqueDevices = Array.from(new Map(allDevices.map(d => [d.id, d])).values())
-                return await Promise.all(uniqueDevices.map(d => DeviceService.deviceToListItem(d)))
-            }
-
-            return []
-        }
-
-        // 5. Get devices and convert to list items
-        const devices = await DeviceService.getDevices()
-        const userDevices = devices.filter(d => deviceIds.has(d.id))
-
-        // 6. Merge with Org Admin devices (union)
-        // If user is Org Admin, they should see ALL devices in org (including unassigned) PLUS devices linked to projects they see (which are likely in same org).
-        // For simplicity, let's do the Org Admin check and merge.
-        const userRolesCollection = database.get('user_roles')
-        const userRoles = await userRolesCollection.query(
-            Q.where('user_id', userId),
-            Q.where('is_active', true)
-        ).fetch()
-
-        const managedOrgIds = managedOrganisationIds(userRoles as any)
-
-        if (managedOrgIds.size > 0) {
-            const allDevices: Device[] = []
-            // Add project-linked devices first
-            allDevices.push(...userDevices)
-
-            // Add the managed organisations' devices
-            for (const organisationId of managedOrgIds) {
-                const orgDevices = await DeviceService.getDevicesByOrganisation(organisationId)
-                allDevices.push(...orgDevices)
-            }
-
-            const uniqueDevices = Array.from(new Map(allDevices.map(d => [d.id, d])).values())
-            return await Promise.all(uniqueDevices.map(d => DeviceService.deviceToListItem(d)))
-        }
-
-        return await Promise.all(
-            userDevices.map(device => DeviceService.deviceToListItem(device))
-        )
     },
 }

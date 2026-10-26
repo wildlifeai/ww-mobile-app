@@ -6,9 +6,9 @@ import { DeviceService } from '../../../../services/DeviceService'
 
 /**
  * A camera this phone has not met is asked of the server before the scanner
- * registers it (#451), and before the organisation check, so an account with
- * no organisation can still use a camera it may read. Only one that is neither
- * here nor readable there needs an organisation to register it.
+ * registers it (#451). Since ww-backend #346 a camera belongs to no
+ * organisation, so any signed-in account registers one the server lacks, an
+ * account with no organisation included (#501).
  */
 
 const mockState: any = {
@@ -109,35 +109,33 @@ describe('the scanner and a camera this phone has not met (#451)', () => {
 		expect(deviceService.calculateDeviceStatus).toHaveBeenCalledWith('device-server')
 	})
 
-	it('registers it in the current organisation when the server has none this account may read', async () => {
+	it('registers it, in no organisation, when the server has none', async () => {
 		await selectCamera()
 
-		expect(deviceService.createDevice).toHaveBeenCalledWith('ble-1', 'WILD-TEST', 'org-1', 'user-1')
+		expect(deviceService.createDevice).toHaveBeenCalledWith('ble-1', 'WILD-TEST', 'user-1')
 		expect(mockNavigation.navigate).toHaveBeenCalledWith('StartMonitoringDetailsStep', expect.objectContaining({
 			deviceId: 'device-new',
 		}))
 	})
 
-	it('says who can register it when the account has no organisation', async () => {
+	// A field user invited to one project holds no organisation role
+	it('registers it for an account with no organisation too', async () => {
 		mockState.authentication.currentOrganisation = null
 
 		await selectCamera()
 
-		expect(deviceService.createDevice).not.toHaveBeenCalled()
-		expect(alert).toHaveBeenCalledWith('Cannot register this camera', expect.stringContaining(
-			'Only a member of an organisation can register a new camera'))
-		expect(alert.mock.calls[0][1]).not.toContain('could not ask the server')
-		expect(mockBleActions.disconnectDevice).toHaveBeenCalled()
+		expect(deviceService.createDevice).toHaveBeenCalledWith('ble-1', 'WILD-TEST', 'user-1')
+		expect(alert).not.toHaveBeenCalledWith('Cannot register this camera', expect.anything())
 	})
 
-	it('says the server could not be asked, when it could not', async () => {
+	// A second id for a camera the server has is settled at the push (23505)
+	it('registers it when the server could not be asked', async () => {
 		mockState.authentication.currentOrganisation = null
 		deviceService.adoptFromServer.mockResolvedValue({ kind: 'unchecked' })
 
 		await selectCamera()
 
-		expect(alert).toHaveBeenCalledWith('Cannot register this camera', expect.stringContaining(
-			'This phone could not ask the server about this camera. If it is already registered, try again with a connection.'))
+		expect(deviceService.createDevice).toHaveBeenCalledWith('ble-1', 'WILD-TEST', 'user-1')
 	})
 
 	it('asks to sign in, and asks the server nothing, when no one is signed in', async () => {

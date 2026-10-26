@@ -108,7 +108,7 @@ it("takes the server's row when the scanner asks for a camera the phone lacks", 
 
 it('swaps a local device for the server one in one write, and pushes its deployment with the server id', async () => {
 	// Registered on this phone while the server could not be asked, then deployed
-	const local = await DeviceService.createDevice('D4:5E', 'WILD-LENT', 'org-1', ME)
+	const local = await DeviceService.createDevice('D4:5E', 'WILD-LENT', ME)
 	const deployment = await DeploymentService.createDeployment({
 		name: 'Ridge', projectId: PROJECT, deviceId: local.id, setupBy: ME, locationName: 'Ridge track',
 	})
@@ -128,7 +128,7 @@ it('swaps a local device for the server one in one write, and pushes its deploym
 })
 
 describe('registerCamera, shared by the scanner and the Dev Deployment Test (#480)', () => {
-	const camera = { bluetoothId: 'D4:5E', name: 'WILD-LENT', organisationId: 'org-1', userId: ME }
+	const camera = { bluetoothId: 'D4:5E', name: 'WILD-LENT', userId: ME }
 
 	it("takes the server's row, and queues nothing", async () => {
 		const result = await registerCamera(camera)
@@ -137,26 +137,20 @@ describe('registerCamera, shared by the scanner and the Dev Deployment Test (#48
 		expect(await outbox('devices')).toEqual([])
 	})
 
-	it('creates one in the organisation, with its CREATE queued, when the server has none this account may read', async () => {
+	// Since ww-backend #346 a camera belongs to no organisation, so a field user
+	// invited to one project registers the camera in their hand (#501).
+	it('creates one in no organisation, with its CREATE queued, when the server has none', async () => {
 		mockDevicesOnServer = []
 
 		const result = await registerCamera(camera)
 
 		if (result.kind !== 'registered') throw new Error(`expected registered, got ${result.kind}`)
 		expect(result.device.bluetoothId).toBe('D4:5E')
-		expect(result.device.organisationId).toBe('org-1')
+		expect(result.device.organisationId ?? null).toBeNull()
 		const [create] = await outbox('devices')
 		expect(create.recordId).toBe(result.device.id)
 		expect(create.operationType).toBe('CREATE')
-	})
-
-	it('registers nothing without an organisation, and says who can', async () => {
-		mockDevicesOnServer = []
-
-		const result = await registerCamera({ ...camera, organisationId: null })
-
-		expect(result).toEqual({ kind: 'no_organisation', message: expect.stringContaining('Only a member of an organisation can register a new camera') })
-		expect(await database.get<Device>('devices').query().fetch()).toEqual([])
+		expect(JSON.parse(create.payload)).not.toHaveProperty('organisation_id')
 	})
 
 	it('writes nothing when cancelled after the server lookup', async () => {

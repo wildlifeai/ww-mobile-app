@@ -40,16 +40,15 @@ The scanner looks the camera up by its Bluetooth id, on the phone first
 1. **No one signed in:** "Not signed in", and the scanner disconnects.
 2. **It asks the server** (`DeviceService.adoptFromServer`, #451), unless NetInfo says the
    phone is offline, and waits up to 5 s. A row this account may read is written to the phone
-   under the server's id, with nothing queued, and the flow carries on with it. Nothing found
-   means nothing this account may read, not an unregistered camera.
-3. **Otherwise it registers the camera** in the current organisation (`DeviceService.createDevice`),
-   which queues its `CREATE`.
-4. **With no current organisation it cannot**, since only a member of an organisation may
-   register a camera, and a project invitation makes no one a member. The scanner says so,
-   "Cannot register this camera", and disconnects.
+   under the server's id, with nothing queued, and the flow carries on with it. Every signed-in
+   account but the demo one reads every live camera (ww-backend #346), so nothing found means an
+   unregistered camera, or one whose row was deleted.
+3. **Otherwise it registers the camera** (`DeviceService.createDevice`), which queues its
+   `CREATE`. In no organisation: a camera belongs to none (ww-backend #327), so a field user
+   invited to one project registers the camera in their hand (#501).
 
 The Engineer Console connects without any of this, so a camera met only through it has no
-device on the phone. The Dev Deployment Test runs the same steps 2 to 4 when Start is pressed on
+device on the phone. The Dev Deployment Test runs the same steps 2 and 3 when Start is pressed on
 such a camera, and starts nothing if they give it no device (#480). Until then its deployment
 was saved with no camera: never uploaded, and never found again by the scanner or the test's
 Stop.
@@ -432,7 +431,7 @@ If the device is not connected, the user can "Force End (Database Only)":
 |-------|-------|-----|
 | Dialog not appearing | Device timeout | Clear app data or re-connect |
 | "No Projects Found" | User has no projects in current org | Create a project first |
-| "Cannot register this camera" | The camera is neither on this phone nor one this account may read on the server, and the account has no organisation ([above](#a-camera-this-phone-has-not-met)). From the Dev Deployment Test's Start, it can also mean the phone could not save the camera's row | An organisation manager adds the user to the organisation, or registers the camera. If the phone was offline, try again with a connection. From the Dev Deployment Test, connect once from the scanner |
+| "Cannot register this camera" | From the Dev Deployment Test's Start: the phone could not save the camera's row ([above](#a-camera-this-phone-has-not-met)) | Connect once from the scanner, then try again |
 | Infinite connect loop | Navigation guard not reset | Fixed via `hasNavigatedRef` in `useEngineerConnect` |
 
 ### Start Deployment
