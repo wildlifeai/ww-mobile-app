@@ -8,7 +8,7 @@ import { WWIcon } from '../../../components/ui/WWIcon'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { useMotionDetectionStream, FrameSnapshot } from '../hooks/useMotionDetectionStream'
 import { createBleSession } from '../../../ble/session/createBleSession'
-import { OP_PARAMETER } from '../../../hooks/useDeviceSettings'
+import { OP_PARAMETER, mdBlockThresholdOf } from '../../../hooks/useDeviceSettings'
 import { log, logWarn } from '../../../utils/logger'
 import { MotionGrid, MiniGrid } from './MotionGrid'
 
@@ -21,6 +21,9 @@ const DEFAULT_INTERVAL_SEC = '1.0'
 const MIN_PHOTOS = 1
 const MAX_PHOTOS = 60
 const DEFAULT_PHOTOS = '20'
+// op33, the motion wake threshold (Seeed PR #276): cells above which the camera wakes
+const MIN_THRESHOLD = 1
+const MAX_THRESHOLD = 255
 
 interface MotionDetectionSectionProps {
     bleDevice: ExtendedPeripheral | undefined
@@ -40,12 +43,18 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
     const [intervalError, setIntervalError] = useState<string | undefined>(undefined)
     const [photosText, setPhotosText] = useState(DEFAULT_PHOTOS)
     const [photosError, setPhotosError] = useState<string | undefined>(undefined)
+    // Null until the camera reports a threshold, and on firmware without one,
+    // where the field is not shown and the test works as before.
+    const [firmwareThreshold, setFirmwareThreshold] = useState<number | null>(null)
+    const [thresholdText, setThresholdText] = useState('')
+    const [thresholdError, setThresholdError] = useState<string | undefined>(undefined)
     const [selectedFrame, setSelectedFrame] = useState<number | null>(null)
 
     // Extracted FlatList renderItem to avoid re-creation on every render
     const renderHistoryItem = useCallback(({ item: snap }: { item: FrameSnapshot }) => {
         const isSelected = selectedFrame === snap.frameIndex
-        const hasMotion = snap.blockCount > 0
+        // With a threshold, only a frame that would wake the camera counts.
+        const hasMotion = snap.wouldWake ?? snap.blockCount > 0
         return (
             <View
                 style={[
@@ -96,7 +105,10 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                 const mdBrightness = parseInt(ops?.[OP_PARAMETER.MD_FLASH_BRIGHTNESS_PERCENT] ?? '', 10)
                 if (!isNaN(mdLed)) setFlashLed(mdLed.toString())
                 if (!isNaN(mdBrightness)) setLedBrightness(Math.min(100, Math.max(0, mdBrightness)).toString())
-                log(`[MotionDetectionSection] Flash controls seeded from op21=${mdLed} op22=${mdBrightness}`)
+                const threshold = mdBlockThresholdOf(ops)
+                setFirmwareThreshold(threshold)
+                if (threshold !== null) setThresholdText(threshold.toString())
+                log(`[MotionDetectionSection] Flash controls seeded from op21=${mdLed} op22=${mdBrightness}, wake threshold ${threshold ?? 'none'}`)
             } catch (e) {
                 // Non-fatal: the operator can still choose, the defaults just
                 // are not the deployment's.
@@ -117,6 +129,7 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
         statusMessage,
         errorMessage,
         sensitivityNote,
+        wakeThreshold,
         clearError,
     } = useMotionDetectionStream({ device: bleDevice })
 
@@ -171,6 +184,21 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
         return val
     }, [])
 
+    const validateThreshold = useCallback((text: string): number | null => {
+        const val = Number(text)
+        if (!Number.isInteger(val) || val < MIN_THRESHOLD || val > MAX_THRESHOLD) {
+            setThresholdError(`${MIN_THRESHOLD} – ${MAX_THRESHOLD}`)
+            return null
+        }
+        setThresholdError(undefined)
+        return val
+    }, [])
+
+    const handleThresholdChange = useCallback((text: string) => {
+        setThresholdText(text)
+        validateThreshold(text)
+    }, [validateThreshold])
+
     const handlePhotosChange = useCallback((text: string) => {
         setPhotosText(text)
         validatePhotos(text)
@@ -189,15 +217,16 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
         const level = parseInt(sensitivity, 10)
         const intervalSec = validateInterval(intervalText)
         const photoCount = validatePhotos(photosText)
-        if (intervalSec === null || photoCount === null) return
+        const threshold = firmwareThreshold === null ? undefined : validateThreshold(thresholdText)
+        if (intervalSec === null || photoCount === null || threshold === null) return
 
         const intervalMs = Math.round(intervalSec * 1000)
         const flashLedVal = parseInt(flashLed, 10)
         const ledBrightnessVal = Math.min(100, Math.max(0, parseInt(ledBrightness, 10) || 0))
         log(`[MotionDetectionSection] Starting test: sensitivity=${level}, interval=${intervalMs}ms, photos=${photoCount}, flash=${flashLedVal}, brightness=${ledBrightnessVal}`)
         setSelectedFrame(null)
-        startTest(level, intervalMs, photoCount, flashLedVal, ledBrightnessVal)
-    }, [sensitivity, intervalText, photosText, flashLed, ledBrightness, validateInterval, validatePhotos, startTest])
+        startTest(level, intervalMs, photoCount, flashLedVal, ledBrightnessVal, threshold)
+    }, [sensitivity, intervalText, photosText, flashLed, ledBrightness, validateInterval, validatePhotos, startTest, firmwareThreshold, thresholdText, validateThreshold])
 
     // Cleanup on unmount only: no auto-start
     useEffect(() => {
@@ -207,7 +236,8 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
     }, [])
 
     const disabled = isInitializing || !bleDeviceConnected
-    const hasInputError = !!intervalError || !!photosError
+    const hasInputError = !!intervalError || !!photosError || (firmwareThreshold !== null && !!thresholdError)
+    const wokenFrames = frameHistory.filter(f => f.wouldWake).length
 
     // Pre-compute cell styles to avoid inline object allocation (256 cells × every render)
     // Note: gridCellStyles removed: TextGrid uses colored text spans instead of View styles
@@ -238,6 +268,26 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                             ]}
                             style={styles.segmented}
                         />
+
+                        {/* The motion wake threshold, on firmware that has one */}
+                        {firmwareThreshold !== null && (
+                            <View style={styles.thresholdRow}>
+                                <WWText variant="bodyMedium" style={styles.label}>Wake threshold</WWText>
+                                <TextInput
+                                    mode="outlined"
+                                    value={thresholdText}
+                                    onChangeText={handleThresholdChange}
+                                    keyboardType="number-pad"
+                                    right={<TextInput.Affix text="cells" />}
+                                    disabled={disabled}
+                                    error={!!thresholdError}
+                                    dense
+                                />
+                                <WWText variant="bodySmall" style={thresholdError ? styles.errorText : styles.hintText}>
+                                    {thresholdError ?? 'Wakes when more cells than this move'}
+                                </WWText>
+                            </View>
+                        )}
 
                         {/* Detection interval and photo count side by side */}
                         <View style={styles.inputsRow}>
@@ -391,6 +441,7 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                         {/* Frame count + blocks info */}
                         <WWText variant="bodySmall" style={styles.blocksText}>
                             Frame {frameCount}/{photosText} · Motion in {mdBlocksCount} blocks
+                            {wakeThreshold !== null && (mdBlocksCount > wakeThreshold ? ' · would wake' : ` · wakes above ${wakeThreshold}`)}
                         </WWText>
 
                         {/* The HM0360's own detector, read once per test frame. It
@@ -432,6 +483,11 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                         <WWText variant="labelMedium" style={styles.historyTitle}>
                             Frame History ({frameHistory.length})
                         </WWText>
+                        {wakeThreshold !== null && (
+                            <WWText variant="bodySmall" style={styles.hintText}>
+                                Would have woken the camera on {wokenFrames} of {frameHistory.length} frames (above {wakeThreshold} cells)
+                            </WWText>
+                        )}
 
                         {/* Virtualized horizontal mini-grid thumbnails */}
                         <FlatList
@@ -482,6 +538,9 @@ const styles = StyleSheet.create({
     },
     inputWrapper: {
         flex: 1,
+    },
+    thresholdRow: {
+        marginBottom: 4,
     },
     errorText: {
         color: '#D32F2F',
