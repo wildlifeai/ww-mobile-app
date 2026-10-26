@@ -521,7 +521,12 @@ const NOT_UPLOADED = ['pending', 'syncing', 'failed']
  * #346) answers as before this existed, with nothing.
  */
 async function describeOpenDeploymentUnreadable(deviceId: string): Promise<string | null> {
-    const device = await database.get<Device>('devices').find(deviceId).catch(() => null)
+    let device: Device | null = null
+    try {
+        device = await database.get<Device>('devices').find(deviceId)
+    } catch {
+        // Collection.find rejects when this phone holds no such device.
+    }
     if (!device?.bluetoothId) {
         log('[DeploymentService] No Bluetooth id on this phone for device', deviceId, ', so it cannot ask about other projects')
         return null

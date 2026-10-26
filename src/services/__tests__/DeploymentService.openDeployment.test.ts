@@ -10,6 +10,7 @@ import { resetFakeDatabase, seedRows } from '../../../tests/setup/helpers/fakeDa
  */
 
 const netInfo = require('@react-native-community/netinfo')
+const { log } = require('../../utils/logger')
 
 /** What the server answers, as this account is allowed to read it */
 let mockOpen: Array<Record<string, any>> = []
@@ -145,6 +146,16 @@ describe('DeploymentService.checkServerForOpenDeployment in a project this accou
 		const result = await DeploymentService.checkServerForOpenDeployment('device-1', 'user-1')
 
 		expect(result).toEqual({ kind: 'none' })
+	})
+
+	it('finds none without asking when this phone does not hold the camera', async () => {
+		mockCamera = { data: [{ deployed: true, project_name: 'Hollyford Track' }], error: null }
+
+		const result = await DeploymentService.checkServerForOpenDeployment('device-2', 'user-1')
+
+		expect(result).toEqual({ kind: 'none' })
+		expect(mockRpc.map(([name]) => name)).not.toContain('camera_open_deployment')
+		expect(log).toHaveBeenCalledWith(expect.stringContaining('No Bluetooth id'), 'device-2', expect.any(String))
 	})
 })
 
