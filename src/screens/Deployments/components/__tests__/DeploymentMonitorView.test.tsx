@@ -58,4 +58,18 @@ describe("DeploymentMonitorView, Stop Monitoring", () => {
 		expect(Alert.alert).not.toHaveBeenCalled()
 		expect(screen.getByText("Confirm Stop")).toBeTruthy()
 	})
+
+	// 26 October 2026: one Notes box, its examples behind the "?"
+	it("asks for notes in one box and passes them on", () => {
+		const onStopMonitoring = view(null)
+		fireEvent.press(screen.getByText("Stop Monitoring"))
+
+		expect(screen.queryByText("Deployment Notes")).toBeNull()
+		fireEvent.press(screen.getByLabelText("Help: Notes"))
+		expect(Alert.alert).toHaveBeenCalledWith("Notes", expect.stringContaining("SD card full"))
+
+		fireEvent.changeText(screen.getByLabelText("Notes"), "Lens fogged")
+		fireEvent.press(screen.getByText("Confirm Stop"))
+		expect(onStopMonitoring).toHaveBeenCalledWith("Lens fogged")
+	})
 })

@@ -58,7 +58,7 @@ describe('deviceSelfTest', () => {
 
     it('names each known bit with the wording the banners have always used', () => {
         expect(selfTestWarnings(0)).toEqual([])
-        expect(selfTestWarnings(1 << SelfTestBit.LOW_BATTERY)).toEqual(['Low Battery detected (Bit 0)'])
+        expect(selfTestWarnings(1 << SelfTestBit.LOW_BATTERY)).toEqual(['Battery is low. Replace the batteries before deploying.'])
         expect(selfTestWarnings((1 << SelfTestBit.AI_NO_SD_CARD) | (1 << SelfTestBit.LORAWAN_ERROR)))
             .toEqual([
                 'LoRaWAN Error (Bit 2)',
@@ -103,7 +103,7 @@ describe('deviceSelfTest', () => {
     it('reports a bit it does not know as an unknown issue, alongside the known ones', () => {
         expect(selfTestWarnings(1 << 15)).toEqual(['Unknown hardware issue (Code: 0x8000)'])
         expect(selfTestWarnings((1 << 15) | 1)).toEqual([
-            'Low Battery detected (Bit 0)',
+            'Battery is low. Replace the batteries before deploying.',
             'Unknown hardware issue (Code: 0x8001)',
         ])
     })

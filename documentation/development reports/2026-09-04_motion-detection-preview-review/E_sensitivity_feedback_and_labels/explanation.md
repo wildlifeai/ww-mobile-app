@@ -34,7 +34,7 @@ Three small things that together make the test say more than it knows.
 ## 3. Where in the code
 
 - `md` failure swallowed: [`useMotionDetectionStream.ts:366-371`](../../../../src/screens/Devices/hooks/useMotionDetectionStream.ts#L366-L371)
-- Id used as level: [`DeploymentMotionDetectionSection.tsx:61-70`](../../../../src/screens/Deployments/components/DeploymentMotionDetectionSection.tsx#L61-L70)
+- Id used as level: [`DeploymentMotionDetectionSection.tsx:61-70`](https://github.com/wildlifeai/ww-mobile-app/blob/561da458bccda3ff1bb0dc2489292a949470e438/src/screens/Deployments/components/DeploymentMotionDetectionSection.tsx#L61-L70)
 - Labels and limits: [`MotionDetectionSection.tsx:13-15`](../../../../src/screens/Devices/components/MotionDetectionSection.tsx#L13-L15)
   and `:347-352`
 

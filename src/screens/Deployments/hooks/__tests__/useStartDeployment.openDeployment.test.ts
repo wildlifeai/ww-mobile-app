@@ -142,7 +142,7 @@ describe('Start Monitoring and an open deployment on the server (#448)', () => {
 		expect(mockExecute).toHaveBeenCalledWith('getops')
 		expect(checkServer.mock.invocationCallOrder[0]).toBeLessThan(mockExecute.mock.invocationCallOrder[0])
 		expect(createDeployment).toHaveBeenCalled()
-		expect(result.current.finishLogs.some(line => line.startsWith('⚠️'))).toBe(false)
+		expect(result.current.finishLogs.some(line => line.startsWith('Could not ask the server'))).toBe(false)
 		expect(Alert.alert).not.toHaveBeenCalled()
 	})
 
@@ -153,7 +153,7 @@ describe('Start Monitoring and an open deployment on the server (#448)', () => {
 
 		await start(result)
 
-		expect(result.current.finishLogs).toContain(`⚠️ ${message}`)
+		expect(result.current.finishLogs).toContain(message)
 		expect(mockExecute).toHaveBeenCalledWith('getops')
 		expect(createDeployment).toHaveBeenCalled()
 		expect(Alert.alert).not.toHaveBeenCalled()

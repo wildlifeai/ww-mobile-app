@@ -125,59 +125,53 @@ BLE initialization happens **upstream** in the Scanner connection flow, and the 
 
 On this screen:
 - `isInitializing` is hardcoded to `false` (initialization is already complete)
-- `initErrors` displays any warnings from the upstream checks (e.g., LoRaWAN connectivity)
+- `initErrors` displays any warnings from the upstream checks (e.g., LoRaWAN connectivity). A fault is listed under "Hardware:" and the banner asks for a report; a minor line (a low battery, newer firmware, a card nearly full, `utils/initWarnings.ts`) is not, and a banner of minor lines only has **Dismiss**, which holds until a new line arrives. Until 26 October 2026 every line asked for a report, and people reported their batteries
 - `useBleSession` + `useBleActions` maintain the BLE heartbeat during form entry
 - **BLE query optimization:** On screen mount, the firmware versions are resolved silently from `initPayload` rather than actively querying the connected device over BLE. Before #268 the hook re-queried the device whenever the snapshot looked outdated, which on a bench build was every time.
 - **Focus state recheck:** When the screen regains focus (e.g., after the operator navigates back from a successful firmware update), the active BLE query `checkStatus()` is run to refresh the firmware status and clear the outdated firmware warning banner automatically.
 
 ### User Form
 
-The screen is organized into cards. Each card explains itself through its help button, not
-through a subtitle under the title: the standing descriptions were removed on 22 September
-2026 so the cards stay short on a phone screen. Put new explanation in the help text.
+Since 26 October 2026 the screen has two kinds of box and as little text as possible, with no
+card titles or subtitles. Put new explanation in a help text.
 
-**1. Associated Project** (always visible)
+- **Input** (`FieldBox` in `components/ui/`): the title sits on the box's top border with a
+  question mark right after it, which opens the field's help.
+- **Action** (`ActionRow`): a quiet filled button, the neutral surface colour, with the action's
+  name centred, a question mark after it, and what it found under the name once it has run, or a
+  thumbnail at the right. No icon. Tapping it runs the action in a popup (`ActionDialog`) that the
+  operator closes. Filled, so it never reads as an input; neutral, so Start Monitoring stays the
+  one button that stands out.
 
-| Element | Notes |
-|---------|-------|
-| Project Selector (`WWSelect`) | Dropdown to pick or switch the attached project. Dynamically recalculates capture method, sensitivity, and feature icons. It offers only the projects this account [may deploy into](./03-DATA-AND-SYNC.md#key-tables) (#450). When the scanner opened the screen on a project it may not deploy into, that project stays selected with the reason under the field, and Start says it again. |
-| Feature Icons Row | Visual indicators: 🔄 Activity Detection, ⏱ Timelapse, 📡 LoRaWAN, 🛰 GPS in images, 🧠 AI Model |
-| Model readiness line | Only when the project has a model: "Model ready on this phone", or "Model not downloaded: connect to download". Offline, a start with a model the phone lacks stops unless the camera already carries it (#333). Refreshes when the pre-download lands the files. |
+Three panels (`FieldGroup`), a shade lighter than the screen, group what belongs together:
+the Project box with its icons; Camera View, Test Motion Detection and LoRaWAN Signal; Notes with
+Site Photo. Advanced settings sits below them, outside any panel.
 
-**2. LoRaWAN Section** (only if `project.lorawan_required`)
+From the top:
 
-| Element | Notes |
-|---------|-------|
-| LoRaWAN Signal Test | Test Connectivity sends `ping`, and the card says Sent, Not joined yet, Busy, LoRaWAN is off or No answer. Off is the app's reading of `Not joined yet.` on a camera whose OP 32 is 0. The screen also pings once the project is chosen and the camera is connected, and warns unless the answer is Sent or Busy. Both read `src/ble/workflows/lorawanPing.ts` (#348); the nRF's replies are in the [console guide](04-ENGINEER-CONSOLE.md). A ping answered `OK` sends a real uplink. |
+| Element | Kind | Notes |
+|---------|------|-------|
+| Project (`WWSelect`) | Input | Pick or switch the attached project. Dynamically recalculates capture method, sensitivity, and feature icons. It offers only the projects this account [may deploy into](./03-DATA-AND-SYNC.md#key-tables) (#450). When the scanner opened the screen on a project it may not deploy into, that project stays selected with the reason under the field, and Start says it again. Its help explains the feature icons. |
+| Feature Icons Row | | Under the Project box, an icon with a word for each setting the project deploys: capture method and sensitivity, flash, pictures per trigger, LoRaWAN, GPS in images, AI model |
+| Model readiness line | | Only when the project has a model: "Model ready on this phone", or "Model not downloaded: connect to download". Offline, a start with a model the phone lacks stops unless the camera already carries it (#333). Refreshes when the pre-download lands the files. |
+| Camera View | Action | The Watcher's own picture, to aim it (`useCapturePreview`, the same capture as Capture Picture). Tapping takes the picture at once; the popup shows it with Take Another, and the row keeps it as a thumbnail. |
+| Test Motion Detection | Action | Activity Detection projects only. Tapping starts a 20-frame test at the project's sensitivity, at the motion interval the deployment writes; the popup shows the 16×16 grid live, and the row then says Motion seen or No motion (a frame counts only if it would have woken the camera, #500). The firmware runs the capture, so it cannot be stopped: Close leaves it running. |
+| LoRaWAN Signal | Action | Only if `project.lorawan_required`. Tapping sends `ping`, and the row says Sent, Not joined yet, Busy, LoRaWAN is off or No answer. Off is the app's reading of `Not joined yet.` on a camera whose OP 32 is 0. The screen also pings once the project is chosen and the camera is connected, and warns unless the answer is Sent or Busy. Both read `src/ble/workflows/lorawanPing.ts` (#348); the nRF's replies are in the [console guide](04-ENGINEER-CONSOLE.md). A ping answered `OK` sends a real uplink. |
+| Notes | Input | Free text: deployment conditions, observations, bait used. |
+| Site Photo | Action | The phone's picture of the Watcher in place, so anyone in the project can find the camera again. Tapping opens the phone camera at once (no gallery since 26 October 2026), and the popup then lists the shots, up to five, with delete. They are stored on the deployment record. |
+| Advanced settings | Plain row | Collapsed by default. Contents below. |
 
-**3. Notes** (always visible)
+Inside Advanced settings:
 
-| Element | Notes |
-|---------|-------|
-| Notes (`TextInput`, multiline) | Free-text field for deployment conditions, observations, bait usage, etc. |
+| Element | Kind | Notes |
+|---------|------|-------|
+| Site Name | Input | Dropdown of nearby past deployment locations (auto-selected closest), or free text for a new site. Used as both `name` and `locationName` for the deployment record. |
+| Camera Height (cm) | Input | Height of the lens from the ground |
+| Check Battery Level | Action | The row shows the level read at connection; tapping reads `battery` again. The popup warns at or below 30%. |
+| Check SD Card | Action | The row shows the free space; tapping reads `aiinfo` again. The popup says nearly full at or below 10% free. |
+| Check Firmware | Action | Up to date, Update available, Update not ready (one camera's build only, #437) or Update not finished (#374), per processor; versions only under Details. Update opens `FirmwareUpdateScreen`. |
 
-**4. Take a photo of the Watcher** (always visible)
-
-| Element | Notes |
-|---------|-------|
-| Photo picker (`DeploymentPhotosSection`) | Camera or gallery. The shots are stored on the deployment record so anyone in the project can find the camera again. The help button carries the guidance on which photos to take. |
-
-**5. Advanced Settings** (collapsible accordion)
-
-The cards sit in the order below. Camera View comes first because the operator aims the
-camera before naming the site.
-
-| Element | Notes |
-|---------|-------|
-| Camera View Image | One test photo via `CameraViewSection`, to aim the camera |
-| Site Name | Dropdown of nearby past deployment locations (auto-selected closest), or free-text input for new sites. Used as both `name` and `locationName` for the deployment record. |
-| Camera Height (cm) | Numeric input for height from ground |
-| Motion Detection Test | Collapsible 16×16 grid via `DeploymentMotionDetectionSection` (Activity Detection projects only) |
-| Battery Level | Manual check button → reads `battery` via BLE |
-| SD Card Status | Manual check button → reads `aiinfo` via BLE |
-| Firmware Status | Shows BLE + Himax firmware versions with update buttons → `FirmwareUpdateScreen` |
-
-**6. Firmware Warning Banner** (conditional, shown when any firmware is outdated)
+**Firmware Warning Banner** (conditional, shown when any firmware is outdated)
 
 | Element | Notes |
 |---------|-------|
@@ -382,6 +376,9 @@ flowchart TD
     I --> P["Update DB only, skip BLE"]
     P --> O
 ```
+
+Stop Monitoring asks for end notes first: one **Notes** box, its examples behind its question
+mark, then Cancel or Confirm Stop (26 October 2026).
 
 ### Who may end it
 

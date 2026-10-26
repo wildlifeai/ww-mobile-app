@@ -240,8 +240,7 @@ hooks/
 ├── useAndroidPermissions.ts   # Android runtime permissions
 ├── useDeepLinking.ts          # Deep link handling
 ├── useAppNavigation.tsx       # Typed navigation hook
-├── useInterval.tsx            # Interval utility
-└── useTimer.ts                # Timer utility
+└── useInterval.tsx            # Interval utility
 ```
 
 Screen-scoped hooks live beside their screens, see `src/screens/Devices/hooks/` (scanner, firmware update, console) and `src/screens/Deployments/hooks/` (start/end/monitor).

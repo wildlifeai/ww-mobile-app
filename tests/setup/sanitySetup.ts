@@ -279,6 +279,7 @@ jest.mock("react-native-gesture-handler", () => ({
 jest.mock("react-native-paper", () => ({
     Provider: ({ children }: { children: any }) => children,
     PaperProvider: ({ children }: { children: any }) => children,
+    ThemeProvider: ({ children }: { children: any }) => children,
     Button: ({ children, disabled, ...props }: any) => {
         const React = require("react");
         const { View, Text } = require("react-native");
@@ -303,6 +304,9 @@ jest.mock("react-native-paper", () => ({
     Text: "Text",
     TextInput: "TextInput",
     ActivityIndicator: "ActivityIndicator",
+    // WWIcon draws a paper Icon, and the action popups a ProgressBar
+    Icon: "Icon",
+    ProgressBar: "ProgressBar",
     MD3LightTheme: { colors: {} },
     useTheme: () => ({ colors: {} }),
     Menu: Object.assign(({ children }: { children: any }) => children, { Item: "Menu.Item" }),

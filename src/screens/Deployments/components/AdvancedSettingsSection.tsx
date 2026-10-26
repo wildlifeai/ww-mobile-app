@@ -1,27 +1,18 @@
 import React, { useCallback, useState } from 'react'
 import { View, StyleSheet } from 'react-native'
-import { List, Card, Button, Text, TextInput } from 'react-native-paper'
+import { List, Text, TextInput } from 'react-native-paper'
 import { WWButton } from '../../../components/ui/WWButton'
 import { WWSelect } from '../../../components/ui/WWSelect'
-
-import { CameraViewSection } from './CameraViewSection'
-import { DeploymentMotionDetectionSection } from './DeploymentMotionDetectionSection'
-import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
-import { BatteryLevelCard } from './BatteryLevelCard'
-import { SdCardStatusCard } from './SdCardStatusCard'
-import { FirmwareStatusCard } from './FirmwareStatusCard'
+import { FieldBox } from '../../../components/ui/FieldBox'
 import { UseFirmwareStatusReturn } from '../../Devices/hooks/useFirmwareStatus'
-
+import { BatteryAction, FirmwareAction, SdCardAction } from './DeviceCheckActions'
 
 interface AdvancedSettingsSectionProps {
-    device?: ExtendedPeripheral
-    project?: any
-    onImageCaptured: (path: string) => void
     cameraHeight: string
     onCameraHeightChange: (text: string) => void
     locationName: string
     onLocationNameChange: (text: string) => void
-    availableLocations: {label: string, value: string}[]
+    availableLocations: { label: string, value: string }[]
     isCustomLocation: boolean
     setIsCustomLocation: (val: boolean) => void
     batteryLevel: number | null
@@ -30,22 +21,22 @@ interface AdvancedSettingsSectionProps {
     handleSdCardCheck: () => void
     isCheckingBattery?: boolean
     isCheckingSdCard?: boolean
-    // The raw BMP capture format, retired 21 September 2026. The card that
-    // offered it is commented out below; see useStartDeployment for why.
-    //   recordJpegOnly: boolean
-    //   setRecordJpegOnly: (val: boolean) => void
+    // The raw BMP capture format was retired on 21 September 2026; see
+    // useStartDeployment, step 7b, for why. Its card went with the
+    // 26 October 2026 redesign.
     isInitializing: boolean
     bleDeviceConnected: boolean
-    theme: any
     onShowHelp: (title: string, content: string) => void
     firmwareStatus: UseFirmwareStatusReturn
     onUpdateFirmware?: (target: 'ble' | 'himax') => void
 }
 
+/**
+ * Start Monitoring's Advanced settings: one plain row, collapsed by default.
+ * Inside, in this order (26 October 2026): Site Name, Camera Height, then the
+ * battery, SD card and firmware checks. Test Motion Detection sits on the page.
+ */
 export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = ({
-    device,
-    project,
-    onImageCaptured,
     cameraHeight,
     onCameraHeightChange,
     locationName,
@@ -59,202 +50,86 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
     handleSdCardCheck,
     isCheckingBattery,
     isCheckingSdCard,
-    // recordJpegOnly,
-    // setRecordJpegOnly,
     isInitializing,
     bleDeviceConnected,
-    theme,
     onShowHelp,
     firmwareStatus,
     onUpdateFirmware
 }) => {
     const [expanded, setExpanded] = useState(false)
-
-    // Battery Render Helpers
-
-    const renderBatteryHelp = useCallback((props: any) => (
-        <Button 
-            {...props} 
-            icon="help-circle-outline" 
-            onPress={() => onShowHelp('Battery Level', 'Check the device battery level. It must be above 30% for monitoring.')}
-        >
-            <Text>Help</Text>
-        </Button>
-    ), [onShowHelp])
-
-    // SD Card Render Helpers
-
-    const renderSdCardHelp = useCallback((props: any) => (
-        <Button 
-            {...props} 
-            icon="help-circle-outline" 
-            onPress={() => onShowHelp('SD Card Status', 'Verifies SD card space. Ensure sufficient space is available for recordings.')}
-        >
-            <Text>Help</Text>
-        </Button>
-    ), [onShowHelp])
-
-    // Location Render Helpers
-
-    const renderLocationHelp = useCallback((props: any) => (
-        <Button 
-            {...props} 
-            icon="help-circle-outline" 
-            onPress={() => onShowHelp('Location & Camera Settings', 'Site Name: Name of the monitoring site.\n\nCamera Height: The height of the camera lens from the ground in centimeters.')}
-        >
-            <Text>Help</Text>
-        </Button>
-    ), [onShowHelp])
-
-
-    // Capture Format help, retired with the card below.
-    //
-    //   const renderFormatHelp = useCallback((props: any) => (
-    //       <Button
-    //           {...props}
-    //           icon="help-circle-outline"
-    //           onPress={() => onShowHelp('Capture Format', 'Record JPEG only. Off (default): the camera records each trigger as a high-quality raw BMP plus a JPG, and the website compresses the BMP, which gives better image quality for the current testing phase. On: record JPEG only, with smaller files, faster uploads and less SD-card use.')}
-    //       >
-    //           <Text>Help</Text>
-    //       </Button>
-    //   ), [onShowHelp])
-
-    const renderRightIcon = useCallback((props: any) => <List.Icon {...props} icon={expanded ? "chevron-up" : "chevron-down"} />, [expanded])
+    const checksBlocked = isInitializing || !bleDeviceConnected
+    const renderChevron = useCallback(
+        (props: any) => <List.Icon {...props} icon={expanded ? 'chevron-up' : 'chevron-down'} />,
+        [expanded],
+    )
 
     return (
         <View>
             <List.Item
-                title="Advanced Settings"
-                right={renderRightIcon}
+                title="Advanced settings"
+                right={renderChevron}
                 onPress={() => setExpanded(!expanded)}
                 style={styles.accordionHeader}
             />
             {expanded && (
-                <View style={styles.accordionContent}>
-                    
-                    {/* Camera View first: the operator aims the camera before
-                        naming the site, so the preview sits above the settings. */}
-                    <CameraViewSection
-                        device={device}
-                        onImageCaptured={onImageCaptured}
-                        onShowHelp={onShowHelp}
-                    />
-
-                    {/* Location & Camera Settings Card */}
-                    <Card style={styles.card}>
-                        <Card.Title title="Location & Camera Settings" right={renderLocationHelp} />
-                    <Card.Content style={styles.content}>
+                <View style={styles.content}>
+                    <FieldBox title="Site Name" onHelp={() => onShowHelp('Site Name', 'The name of the monitoring site. Pick one used before nearby, or create a new one.')}>
                         {availableLocations.length > 0 && !isCustomLocation ? (
-                            <View style={styles.inputContainer}>
-                                <WWSelect
-                                    label="Site Name"
-                                    value={locationName}
-                                    options={[...availableLocations, {label: '- Create New Site Location -', value: 'ADD_NEW'}]}
-                                    onChange={(val) => {
-                                        if (val === 'ADD_NEW') {
-                                            setIsCustomLocation(true)
-                                            onLocationNameChange('')
-                                        } else {
-                                            onLocationNameChange(val)
-                                        }
-                                    }}
-                                />
-                            </View>
-                        ) : (
-                            <View style={styles.inputContainer}>
-                                <TextInput
-                                    label="Site Name"
-                                    value={locationName}
-                                    onChangeText={onLocationNameChange}
-                                    mode="outlined"
-                                />
-                                {availableLocations.length > 0 && (
-                                    <WWButton mode="text" onPress={() => { setIsCustomLocation(false); if(availableLocations.length > 0) onLocationNameChange(availableLocations[0].value) }} style={styles.switchButton}>
-                                        <Text>Select from nearby locations instead</Text>
-                                    </WWButton>
-                                )}
-                            </View>
-                        )}
-
-                        <View style={styles.inputContainer}>
-                            <TextInput
-                                label="Camera Height (cm)"
-                                placeholder="e.g. 50"
-                                value={cameraHeight}
-                                onChangeText={(text) => {
-                                    if (/^\d*$/.test(text)) {
-                                        onCameraHeightChange(text)
+                            <WWSelect
+                                value={locationName}
+                                options={[...availableLocations, { label: '- Create New Site Location -', value: 'ADD_NEW' }]}
+                                onChange={(val) => {
+                                    if (val === 'ADD_NEW') {
+                                        setIsCustomLocation(true)
+                                        onLocationNameChange('')
+                                    } else {
+                                        onLocationNameChange(val)
                                     }
                                 }}
-                                mode="outlined"
-                                keyboardType="numeric"
                             />
-                        </View>
-                    </Card.Content>
-                </Card>
+                        ) : (
+                            <TextInput value={locationName} onChangeText={onLocationNameChange} mode="outlined" />
+                        )}
+                    </FieldBox>
+                    {isCustomLocation && availableLocations.length > 0 && (
+                        <WWButton
+                            mode="text"
+                            onPress={() => { setIsCustomLocation(false); onLocationNameChange(availableLocations[0].value) }}
+                        >
+                            <Text>Select from nearby locations instead</Text>
+                        </WWButton>
+                    )}
 
-                {/* Capture Format card, the raw BMP quality trial. Retired on
-                    21 September 2026 (Victor): every deployment records one JPEG
-                    per trigger now. Commented out rather than deleted until it is
-                    certain nothing wants it back; the hook side is commented out
-                    in useStartDeployment, step 7b.
+                    <FieldBox title="Camera Height (cm)" onHelp={() => onShowHelp('Camera Height', 'The height of the camera lens from the ground, in centimetres.')}>
+                        <TextInput
+                            value={cameraHeight}
+                            onChangeText={(text) => {
+                                if (/^\d*$/.test(text)) onCameraHeightChange(text)
+                            }}
+                            mode="outlined"
+                            keyboardType="numeric"
+                        />
+                    </FieldBox>
 
-                <Card style={styles.card}>
-                    <Card.Title title="Capture Format" right={renderFormatHelp} />
-                    <Card.Content style={styles.content}>
-                        <View style={styles.switchRow}>
-                            <View style={styles.switchLabel}>
-                                <Text variant="bodyMedium">Record JPEG only</Text>
-                                <Text style={styles.statusHint}>
-                                    On (default): one JPEG per trigger, smaller and faster. Off: also record a raw BMP, higher quality at two pictures per trigger.
-                                </Text>
-                            </View>
-                            <Switch
-                                value={recordJpegOnly}
-                                onValueChange={setRecordJpegOnly}
-                            />
-                        </View>
-                    </Card.Content>
-                </Card>
-                */}
-
-                {/* MD rendered inside Advanced Settings */}
-                <DeploymentMotionDetectionSection
-                    device={device}
-                    project={project}
-                    onShowHelp={onShowHelp}
-                />
-
-                {/* Battery Check Card */}
-                <BatteryLevelCard
-                    batteryLevel={batteryLevel}
-                    handleBatteryCheck={handleBatteryCheck}
-                    isInitializing={isInitializing}
-                    bleDeviceConnected={bleDeviceConnected}
-                    isChecking={isCheckingBattery}
-                    renderBatteryHelp={renderBatteryHelp}
-                    styles={styles}
-                />
-
-                {/* SD Card Check Card */}
-                <SdCardStatusCard
-                    sdCardStatus={sdCardStatus}
-                    handleSdCardCheck={handleSdCardCheck}
-                    isInitializing={isInitializing}
-                    bleDeviceConnected={bleDeviceConnected}
-                    isChecking={isCheckingSdCard}
-                    renderSdCardHelp={renderSdCardHelp}
-                    styles={styles}
-                />
-
-                {/* Firmware Status Card */}
-                <FirmwareStatusCard
-                    firmwareStatus={firmwareStatus}
-                    theme={theme}
-                    onShowHelp={onShowHelp}
-                    onUpdateFirmware={onUpdateFirmware}
-                />
-
+                    <BatteryAction
+                        batteryLevel={batteryLevel}
+                        onCheck={handleBatteryCheck}
+                        isChecking={isCheckingBattery}
+                        disabled={checksBlocked}
+                        onShowHelp={onShowHelp}
+                    />
+                    <SdCardAction
+                        sdCardStatus={sdCardStatus}
+                        onCheck={handleSdCardCheck}
+                        isChecking={isCheckingSdCard}
+                        disabled={checksBlocked}
+                        onShowHelp={onShowHelp}
+                    />
+                    <FirmwareAction
+                        firmwareStatus={firmwareStatus}
+                        onUpdateFirmware={onUpdateFirmware}
+                        onShowHelp={onShowHelp}
+                    />
                 </View>
             )}
         </View>
@@ -266,55 +141,8 @@ const styles = StyleSheet.create({
         backgroundColor: 'transparent',
         paddingHorizontal: 0,
     },
-    accordionContent: {
-        gap: 16,
-        paddingBottom: 16,
-        paddingHorizontal: 0,
-    },
-    card: {
-        width: '100%',
-    },
     content: {
         gap: 16,
+        paddingBottom: 16,
     },
-    inputContainer: {
-        marginBottom: 8,
-    },
-    switchRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
-    },
-    switchLabel: {
-        flex: 1,
-    },
-    switchButton: {
-        marginTop: 4,
-        alignSelf: 'flex-start'
-    },
-    statusDisplay: {
-        gap: 4,
-        marginTop: 8,
-    },
-    statusHint: {
-        opacity: 0.6,
-        marginTop: 4,
-        fontSize: 12,
-    },
-    actionButton: {
-        marginTop: 8,
-    },
-    firmwareVersionText: {
-        marginBottom: 8,
-    },
-    warningText: {
-        marginTop: 8,
-    },
-    successText: {
-        marginBottom: 12,
-    },
-    updatingContainer: {
-        marginTop: 8,
-    }
 })

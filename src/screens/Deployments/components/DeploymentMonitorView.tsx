@@ -7,6 +7,9 @@ import { useDeploymentMonitor } from '../hooks/useDeploymentMonitor'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { LiveActivityLog } from './LiveActivityLog'
 import { END_REFUSED_TITLE } from '../../../services/deploymentAccess'
+import { FieldBox } from '../../../components/ui/FieldBox'
+
+const END_NOTES_HELP = 'Anything worth recording about how this deployment ended: SD card full, battery low, device damaged, or what you found at the site.'
 
 interface Props {
   device: ExtendedPeripheral | null
@@ -79,21 +82,17 @@ export const DeploymentMonitorView: React.FC<Props> = ({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.notesScrollContainer}>
-          <Text style={[styles.notesPageTitle, { color: colors.onSurface }]}>Stop Monitoring</Text>
-          <Text style={[styles.notesPageSubtitle, { color: colors.onSurfaceVariant }]}>
-            Please provide any notes about this deployment before stopping it.
-          </Text>
-
-          <Text style={[styles.notesPageLabel, { color: colors.onSurface }]}>Deployment Notes</Text>
-          <TextInput
-            placeholder="e.g. SD card full, Battery low, Device damaged..."
-            placeholderTextColor={colors.onSurfaceVariant}
-            multiline
-            textAlignVertical="top"
-            value={endNotes}
-            onChangeText={setEndNotes}
-            style={[styles.notesPageInput, { color: colors.onSurface, borderColor: colors.outline, backgroundColor: colors.surface }]}
-          />
+          {/* Just the box: its title on the border, the examples in its help (26 October 2026) */}
+          <FieldBox title="Notes" onHelp={() => Alert.alert('Notes', END_NOTES_HELP)} style={styles.notesBox}>
+            <TextInput
+              multiline
+              textAlignVertical="top"
+              value={endNotes}
+              onChangeText={setEndNotes}
+              accessibilityLabel="Notes"
+              style={[styles.notesPageInput, { color: colors.onSurface, borderColor: colors.outline }]}
+            />
+          </FieldBox>
         </View>
         <View style={[styles.notesPageFooter, { paddingBottom: bottom + 16, borderTopColor: colors.surfaceVariant }]}>
           <TouchableOpacity
@@ -279,20 +278,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 24,
   },
-  notesPageTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  notesPageSubtitle: {
-    fontSize: 16,
-    marginBottom: 24,
-    lineHeight: 24,
-  },
-  notesPageLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
+  notesBox: {
+    flex: 1,
   },
   notesPageInput: {
     flex: 1,
