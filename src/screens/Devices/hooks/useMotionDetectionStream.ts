@@ -4,14 +4,14 @@ import { unstable_batchedUpdates } from 'react-native'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { log, logError, logWarn } from '../../../utils/logger'
 import { bleEventBus, BleEvent } from '../../../ble/protocol/eventBus'
-import { commandRegistry, isMdRefusal } from '../../../ble/protocol/commandRegistry'
+import { commandRegistry, isMdRefusal, CAPTURE_FAILED_LINE } from '../../../ble/protocol/commandRegistry'
 import { bleTransport } from '../../../ble/protocol/bleTransportController'
 import { createBleSession } from '../../../ble/session/createBleSession'
 import { flashHold } from '../../../ble/session/flashHold'
 import { flashLedHold } from '../../../ble/session/flashLedHold'
 import { keepAwake } from '../../../ble/session/keepAwake'
 import { mdIntervalHold } from '../../../ble/session/mdIntervalHold'
-import { OP_PARAMETER } from '../../../hooks/useDeviceSettings'
+import { OP_PARAMETER, mdBlockThresholdOf } from '../../../hooks/useDeviceSettings'
 
 /** Maximum number of frames per test run. */
 const MAX_CAPTURE_COUNT = 60
@@ -75,6 +75,12 @@ export interface FrameSnapshot {
     /** Precomputed display string (16 lines of 16 chars). Ready to render as <Text>. */
     gridString: string
     blockCount: number
+    /**
+     * Whether this frame would have woken a sleeping camera: more cells than
+     * the op33 threshold in force for the test. Null on firmware without the
+     * threshold (before Seeed PR #276), where any cell counts as motion.
+     */
+    wouldWake: boolean | null
 }
 
 /**
@@ -102,6 +108,10 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
     const [statusMessage, setStatusMessage] = useState<string>('')
     const [errorMessage, setErrorMessage] = useState<string>('')
     const [sensitivityNote, setSensitivityNote] = useState<SensitivityNote>(null)
+    // The op33 motion wake threshold in force for this test, or null on
+    // firmware without one. In a ref too, for the frame listener.
+    const [wakeThreshold, setWakeThreshold] = useState<number | null>(null)
+    const wakeThresholdRef = useRef<number | null>(null)
 
     // Frame history — ephemeral, cleared on new test / unmount
     const [frameHistory, setFrameHistory] = useState<FrameSnapshot[]>([])
@@ -112,8 +122,11 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
     const expectingHexRef = useRef<boolean>(false)
 
     // Frame counter: tracks which frame we're on within the capture run.
-    // Frame 1 after wake has no reference frame and always reports 0 motion blocks.
-    // Only frame 2+ has meaningful delta data.
+    // Image 1 of a burst has no reference frame and always reports 0 motion
+    // blocks, so only image 2 on means anything. Firmware before Seeed PR #276
+    // still sends image 1's empty grid, and the counter starts at 0 to skip
+    // it; that firmware's successor sends none, and the counter starts at 1
+    // (see startTest), so frame N is image N + 1 on both.
     const frameIndexRef = useRef<number>(0)
 
     // Whether we're actively processing incoming MD data.
@@ -203,6 +216,26 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                 if (device) cleanUpAfterTest(device, 'camera not enabled')
                 return
             }
+            // A capture the camera abandoned: `Capture failed after N of M
+            // images: <reason>`, and no `Captured` (#476). Without this the
+            // test ran on and its holds stayed on the device. Ignored before
+            // this test's capture started, as `Captured` is: a motion wake's
+            // own capture can fail during the setup sleep.
+            if (CAPTURE_FAILED_LINE.test(msg)) {
+                if (!captureStartedRef.current) {
+                    log(`[MotionDetectionStream] Ignored "${msg.trim()}": it came before this test's capture started`)
+                    return
+                }
+                log(`[MotionDetectionStream] Capture failed: ${msg.trim()}`)
+                activeRef.current = false
+                pendingFramesRef.current = []
+                setIsTesting(false)
+                setStatusMessage('')
+                setErrorMessage(msg.trim())
+                bleTransport.clearAll()
+                if (device) cleanUpAfterTest(device, 'capture failed')
+                return
+            }
             if (/No model found/i.test(msg) && /NN/i.test(msg)) {
                 // Non-critical for MD test — just log
                 log('[MotionDetectionStream] Note: No NN model loaded (OK for MD test)')
@@ -257,6 +290,7 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                             frameIndex: frameIndexRef.current,
                             gridString,
                             blockCount: blockCountRef.current,
+                            wouldWake: wakeThresholdRef.current === null ? null : blockCountRef.current > wakeThresholdRef.current,
                         }
                         // Accumulate in ref — no re-render until test completes
                         pendingFramesRef.current.push(snapshot)
@@ -347,6 +381,10 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
      * @param captureCount - Number of frames to capture (capped at MAX_CAPTURE_COUNT)
      * @param flashLed - Flash LED type (0=Off, 1=Visible, 2=IR)
      * @param ledBrightness - LED brightness (0-100%)
+     * @param wakeThreshold - op33, the cells above which the camera wakes (1-255).
+     *   Written when it differs, on firmware that has the threshold only; left
+     *   out, the test runs at the camera's own. Like op17 it stays on the card,
+     *   and the reset at the start of a deployment puts it back to 4.
      */
     const startTest = useCallback(async (
         sensitivityLevel?: number,
@@ -354,6 +392,7 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
         captureCount: number = 20,
         flashLed: number = 0,
         ledBrightness: number = 5,
+        wakeThreshold?: number,
     ) => {
         if (!device) return
         const count = Math.min(Math.max(1, Math.round(captureCount)), MAX_CAPTURE_COUNT)
@@ -393,6 +432,13 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
             } catch (e) {
                 log(`[MotionDetectionStream] getops failed, will set all params: ${e}`)
             }
+
+            // Firmware with the motion wake threshold sends no grid for image 1,
+            // so the first grid to arrive is image 2's and must not be skipped.
+            const firmwareThreshold = mdBlockThresholdOf(currentOps)
+            if (firmwareThreshold !== null) frameIndexRef.current = 1
+            wakeThresholdRef.current = firmwareThreshold
+            setWakeThreshold(firmwareThreshold)
 
             const currentTestBits = currentOps ? parseInt(currentOps[OP_PARAMETER.TEST_MODE_BITS] ?? '0', 10) : -1
 
@@ -514,6 +560,23 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                     } else if (refusal !== null) {
                         log(`[MotionDetectionStream] md unanswered (${refusal instanceof Error ? refusal.message : String(refusal)}); op17 is confirmed, so the level holds`)
                     }
+                }
+            }
+
+            // 2a. The motion wake threshold, op33, on firmware that has one.
+            //     setop 33 takes effect on the HM0360 at once (Seeed PR #276).
+            //     A refusal leaves the camera's own value, which the card shows.
+            if (firmwareThreshold !== null && wakeThreshold !== undefined && wakeThreshold !== firmwareThreshold) {
+                setStatusMessage(`Setting the wake threshold to ${wakeThreshold} cells…`)
+                log(`[MotionDetectionStream] Setting op33 to ${wakeThreshold} (was ${firmwareThreshold})`)
+                const stored = await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.MD_BLOCK_THRESHOLD, value: wakeThreshold }))
+                    .then(() => true, (e: unknown) => {
+                        logWarn('[MotionDetectionStream] op33 not set, testing at the camera threshold:', e)
+                        return false
+                    })
+                if (stored) {
+                    wakeThresholdRef.current = wakeThreshold
+                    setWakeThreshold(wakeThreshold)
                 }
             }
 
@@ -657,7 +720,8 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
         statusMessage,
         errorMessage,
         sensitivityNote,
+        wakeThreshold,
         clearTestFinished: () => setTestFinished(false),
         clearError: () => setErrorMessage(''),
-    }), [mdGrid, isTesting, testFinished, startTest, stopTest, mdBlocksCount, motionDetected, frameCount, frameHistory, statusMessage, errorMessage, sensitivityNote])
+    }), [mdGrid, isTesting, testFinished, startTest, stopTest, mdBlocksCount, motionDetected, frameCount, frameHistory, statusMessage, errorMessage, sensitivityNote, wakeThreshold])
 }

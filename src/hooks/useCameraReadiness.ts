@@ -91,11 +91,9 @@ export const useCameraReadiness = ({
             setBits(held.bits)
         }
         return selfTestCache.subscribe(device.id, reading => {
+            if (bitsRef.current !== reading.bits) log(`[CameraReadiness] device reports ${formatSelfTestBits(reading.bits)}`)
             bitsRef.current = reading.bits
-            setBits(prev => {
-                if (prev !== reading.bits) log(`[CameraReadiness] device reports ${formatSelfTestBits(reading.bits)}`)
-                return reading.bits
-            })
+            setBits(reading.bits)
         })
     }, [device])
 

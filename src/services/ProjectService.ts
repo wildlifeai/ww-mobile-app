@@ -42,7 +42,6 @@ class ProjectService {
 
 	/**
 	 * Get projects that current user has access to
-	 * Logic mirrors DeviceService.getDevicesForUser
 	 */
 	async getProjectsForUser(userId: string): Promise<ProjectWithDetails[]> {
 		try {
@@ -598,6 +597,7 @@ class ProjectService {
 				flash_window_minutes: model.flashWindowMinutes ?? null,
 				...burstColumns(model),
 				detection_threshold_pct: detectionThresholdColumn(model),
+				gbif_dataset_key: null, // set on the website for GBIF publishing, never stored on the phone
 				// Computed fields
 				member_count: memberCount,
 				deployment_count: deploymentCount,
@@ -643,6 +643,7 @@ class ProjectService {
 			flash_window_minutes: model.flashWindowMinutes ?? null,
 			...burstColumns(model),
 			detection_threshold_pct: detectionThresholdColumn(model),
+			gbif_dataset_key: null, // set on the website for GBIF publishing, never stored on the phone
 		}
 	}
 }

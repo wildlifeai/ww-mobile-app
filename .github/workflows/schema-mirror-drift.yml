@@ -21,7 +21,6 @@ on:
     paths:
       - 'supabase/**'
       - 'src/database/schema.ts'
-      - 'src/types/supabase.ts'
       - 'src/types/database.types.ts'
       - 'scripts/sync-db-schema.js'
       - 'scripts/schema-sync-config.js'

@@ -1,9 +1,10 @@
-import React, { useCallback } from 'react'
-import { StyleSheet } from 'react-native'
-import { Card, Text, Button, useTheme } from 'react-native-paper'
+import React, { useState } from 'react'
+import { StyleSheet, View } from 'react-native'
+import { Text, useTheme } from 'react-native-paper'
 import { WWTextInput } from '../../../components/ui/WWTextInput'
 import { Control, Controller, FieldErrors } from 'react-hook-form'
 import { HelpDialog } from '../../../components/ui/HelpDialog'
+import { FieldBox } from '../../../components/ui/FieldBox'
 
 interface ProjectFormData {
     name: string
@@ -24,107 +25,98 @@ interface Props {
     errors: FieldErrors<ProjectFormData>
 }
 
+const HELP = {
+    name: 'A unique name for the project. Everyone in the project sees it.',
+    description: 'What the project is about: where it runs, why, and which species it watches.',
+}
+
+/**
+ * The project's name and description, on New Project and Edit Project. Each is
+ * a box with its title on the border and its own "?" (26 October 2026 redesign).
+ */
 export const NewProjectBasicInfoSection: React.FC<Props> = ({ control, errors }) => {
     const theme = useTheme()
-    const [helpVisible, setHelpVisible] = React.useState(false)
-
-    const renderHelp = useCallback((props: any) => (
-        <Button
-            {...props}
-            icon="help-circle-outline"
-            onPress={() => setHelpVisible(true)}
-        >
-            <Text>Help</Text>
-        </Button>
-    ), [])
+    const [help, setHelp] = useState<{ title: string; content: string } | null>(null)
 
     return (
-        <>
-            <Card>
-                <Card.Title
-                    title="Project Details"
-                    right={renderHelp}
+        <View style={styles.section}>
+            <FieldBox title="Project Name" onHelp={() => setHelp({ title: 'Project Name', content: HELP.name })}>
+                <Controller
+                    control={control}
+                    name="name"
+                    rules={{
+                        required: "Project name is required",
+                        minLength: {
+                            value: 3,
+                            message: "Project name must be at least 3 characters",
+                        },
+                        maxLength: {
+                            value: 100,
+                            message: "Project name must not exceed 100 characters",
+                        },
+                    }}
+                    render={({ field: { value, onChange, onBlur } }) => (
+                        <WWTextInput
+                            value={value}
+                            onChange={onChange}
+                            onBlur={onBlur}
+                            mode="outlined"
+                            error={!!errors.name}
+                            testID="project-name-input"
+                        />
+                    )}
                 />
-                <Card.Content style={styles.cardContent}>
-                    <Controller
-                        control={control}
-                        name="name"
-                        rules={{
-                            required: "Project name is required",
-                            minLength: {
-                                value: 3,
-                                message: "Project name must be at least 3 characters",
-                            },
-                            maxLength: {
-                                value: 100,
-                                message: "Project name must not exceed 100 characters",
-                            },
-                        }}
-                        render={({ field: { value, onChange, onBlur } }) => (
-                            <WWTextInput
-                                label="Project Name"
-                                value={value}
-                                onChange={onChange}
-                                onBlur={onBlur}
-                                mode="outlined"
-                                placeholder="Enter project name"
-                                error={!!errors.name}
-                                testID="project-name-input"
-                            />
-                        )}
-                    />
-                    {errors.name && (
-                        <Text variant="bodySmall" style={{ color: theme.colors.error }}>
-                            {errors.name.message as string}
-                        </Text>
-                    )}
+            </FieldBox>
+            {errors.name && (
+                <Text variant="bodySmall" style={{ color: theme.colors.error }}>
+                    {errors.name.message as string}
+                </Text>
+            )}
 
-                    <Controller
-                        control={control}
-                        name="description"
-                        rules={{
-                            maxLength: {
-                                value: 500,
-                                message: "Description must not exceed 500 characters",
-                            },
-                        }}
-                        render={({ field: { value, onChange, onBlur } }) => (
-                            <WWTextInput
-                                label="Description"
-                                value={value}
-                                onChange={onChange}
-                                onBlur={onBlur}
-                                mode="outlined"
-                                placeholder="Enter project description"
-                                multiline
-                                numberOfLines={4}
-                                error={!!errors.description}
-                                testID="project-description-input"
-                                style={styles.textArea}
-                            />
-                        )}
-                    />
-                    {errors.description && (
-                        <Text variant="bodySmall" style={{ color: theme.colors.error }}>
-                            {errors.description.message as string}
-                        </Text>
+            <FieldBox title="Description" onHelp={() => setHelp({ title: 'Description', content: HELP.description })}>
+                <Controller
+                    control={control}
+                    name="description"
+                    rules={{
+                        maxLength: {
+                            value: 500,
+                            message: "Description must not exceed 500 characters",
+                        },
+                    }}
+                    render={({ field: { value, onChange, onBlur } }) => (
+                        <WWTextInput
+                            value={value}
+                            onChange={onChange}
+                            onBlur={onBlur}
+                            mode="outlined"
+                            multiline
+                            numberOfLines={4}
+                            error={!!errors.description}
+                            testID="project-description-input"
+                            style={styles.textArea}
+                        />
                     )}
-                </Card.Content>
-            </Card>
+                />
+            </FieldBox>
+            {errors.description && (
+                <Text variant="bodySmall" style={{ color: theme.colors.error }}>
+                    {errors.description.message as string}
+                </Text>
+            )}
 
             <HelpDialog
-                visible={helpVisible}
-                title="Project Details"
-                content="Project Name: A unique name to identify your project. This is visible to all project members.\n\nDescription: Additional context about the project, such as location, objectives, or species being monitored."
-                onDismiss={() => setHelpVisible(false)}
+                visible={!!help}
+                title={help?.title ?? ''}
+                content={help?.content ?? ''}
+                onDismiss={() => setHelp(null)}
             />
-        </>
+        </View>
     )
 }
 
 const styles = StyleSheet.create({
-    cardContent: {
-        gap: 12,
+    section: {
+        gap: 16,
     },
     textArea: {
         minHeight: 100,

@@ -142,6 +142,32 @@ describe('executeResetToDefaults resulting ops', () => {
         expect(session.writes.filter(w => w.startsWith('AI setop 32 '))).toEqual([])
     })
 
+    // Seeed PR #276 made op33 the motion wake threshold, default 4, and refuses
+    // 0. The reset used to write 0 there, so it failed on that firmware (#499).
+    it('puts the motion wake threshold back to 4 on firmware that has one', async () => {
+        const session = makeSession()
+        const result = await executeResetToDefaults(session as any, {
+            currentOps: opTable(37, { [OP_PARAMETER.MD_BLOCK_THRESHOLD]: '12' }),
+            skipIdentityReset: true,
+        })
+        expect(session.writes).toContain('AI setop 33 4')
+        expect(result![OP_PARAMETER.MD_BLOCK_THRESHOLD]).toBe('4')
+    })
+
+    it.each([
+        ['reserves op33 and reports 0', 37, '0'],
+        // Before ae_review: no flash mode, and op33 was MD_BLOCK_NUM_MAX
+        ['used op33 for something else', 34, '12'],
+    ])('leaves op33 alone on firmware that %s', async (_why, length, op33) => {
+        const session = makeSession()
+        const result = await executeResetToDefaults(session as any, {
+            currentOps: opTable(length, { [OP_PARAMETER.MD_BLOCK_THRESHOLD]: op33 }),
+            skipIdentityReset: true,
+        })
+        expect(session.writes.filter(w => w.startsWith('AI setop 33 '))).toEqual([])
+        expect(result![OP_PARAMETER.MD_BLOCK_THRESHOLD]).toBe(op33)
+    })
+
     it('returns null when the ops could not be read, so callers keep their own view', async () => {
         const session = makeSession()
 

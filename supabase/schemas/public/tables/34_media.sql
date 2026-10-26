@@ -20,14 +20,21 @@ CREATE TABLE media (
 
   -- Provenance / deduplication
   file_hash text,
-  uploaded_by uuid REFERENCES auth.users (id) ON DELETE SET NULL
+  uploaded_by uuid REFERENCES auth.users (id) ON DELETE SET NULL,
+
+  -- Capture hour in the deployment's time zone, for the website's day/night filter (#335).
+  -- Kept by trg_media_local_hour and trg_deployments_refresh_media_local_hour
+  -- (functions/52_media_local_hour.sql); a client's own value is overwritten.
+  local_hour smallint CHECK (local_hour >= 0 AND local_hour <= 23)
 );
 
 -- Unique constraint to support composite FK from observations/observation_events
 ALTER TABLE media ADD CONSTRAINT uq_media_id_deployment UNIQUE (id, deployment_id);
 
 -- Indexes
-CREATE INDEX idx_media_deployment_id ON media (deployment_id);
+-- A deployment's photos by hour, for the day/night filter (#335); it also serves lookups by
+-- deployment_id alone, which had their own index until then.
+CREATE INDEX idx_media_deployment_local_hour ON media (deployment_id, local_hour);
 CREATE INDEX idx_media_timestamp ON media (timestamp);
 CREATE INDEX idx_media_file_hash ON media (file_hash);
 CREATE INDEX idx_media_deleted_at ON media (deleted_at);
@@ -46,6 +53,7 @@ COMMENT ON COLUMN media.file_public IS 'Whether this file may be publicly shared
 COMMENT ON COLUMN media.favorite IS 'User-flagged favourite image (CamtrapDP favorite).';
 COMMENT ON COLUMN media.file_hash IS 'SHA-256 hash of file contents used for deduplication on upload.';
 COMMENT ON COLUMN media.uploaded_by IS 'User who uploaded this file via the web interface.';
+COMMENT ON COLUMN media.local_hour IS 'Hour (0-23) of timestamp in the deployment''s time zone, UTC when it has none or it is unknown; NULL without a timestamp. Kept by triggers; the website decides which hours are night.';
 COMMENT ON COLUMN media.deleted_at IS 'Soft delete timestamp — NULL means active.';
 
 ALTER TABLE media ENABLE ROW LEVEL SECURITY;

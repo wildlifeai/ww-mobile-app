@@ -61,12 +61,36 @@ export interface CommandDefinitionOptions {
        delayMs?: number;
    };
    failureRegex?: RegExp;
+   /** The error message for a line `failureRegex` matched; `<name> failed: <line>` by default */
+   failureMessage?: (line: string) => string;
    responseMode?: 'single_line' | 'multi_line' | 'fire_and_forget' | 'stream';
    idempotent?: boolean;
    safeDuringStreaming?: boolean;
    isLongRunning?: boolean;
    requiresExclusiveLock?: boolean;
 }
+
+/**
+ * A capture the AI processor abandoned, from the firmware of Seeed PR #275:
+ * `Capture failed after N of M images: <reason>`, about 5 s after the photo
+ * was due, and no `Captured`. N photos were saved, and the reason is a
+ * datapath event such as `EDM WDT2 timeout` or `No frame`. That firmware no
+ * longer retries by itself. Older firmware never sends it (#476).
+ */
+export const CAPTURE_FAILED_LINE = /^Capture failed after \d+ of \d+ images/i;
+
+/**
+ * The reply of `AI capture` and `AI light` between a cold boot and the first
+ * sleep, from the same firmware. A cold boot follows power-on, RESET,
+ * `AI reset`, `AI switchslot`, a firmware update, and the AI processor
+ * resetting itself after a fault. The command has woken the processor, so the
+ * same command sent after its next Sleep works: runCommandPipeline waits for
+ * that Sleep and sends it once more, so no screen has to (#476).
+ */
+export const FIRST_SLEEP_REFUSAL = /^Error: no captures until after the first sleep/i;
+
+/** Either of the two, for the commands that capture. */
+const CAPTURE_REFUSED = new RegExp(`${CAPTURE_FAILED_LINE.source}|${FIRST_SLEEP_REFUSAL.source}`, 'i');
 
 /**
  * Helper to create a simple single-line matching command.
@@ -105,7 +129,7 @@ export function createSingleLineCommand<T>(
       },
       isComplete: () => matchedString !== null || failedString !== null,
       parser: () => {
-        if (failedString) throw new Error(`${name} failed: ${failedString}`);
+        if (failedString) throw new Error(options?.failureMessage?.(failedString) ?? `${name} failed: ${failedString}`);
         if (!matchedString) throw new Error(`${name}: Result accessed before complete`);
         const match = matchedString.match(regex);
         if (!match) throw new Error(`${name}: Parse failure on getResult`);
@@ -159,7 +183,7 @@ export function createMultiLineCommand<T>(
       },
       isComplete: () => isDone,
       parser: () => {
-        if (failedString) throw new Error(`${name} failed: ${failedString}`);
+        if (failedString) throw new Error(options?.failureMessage?.(failedString) ?? `${name} failed: ${failedString}`);
         if (!isDone) throw new Error(`${name}: Result accessed before complete`);
         return parseResult(lines);
       },
@@ -253,6 +277,29 @@ const LORAWAN_PING_REPLIES: Record<string, LorawanPingReply> = {
 };
 
 /**
+ * The BLE processor's record of the fault it last reset itself after, the reply
+ * to `fault` (ww-hardware PR #73, MokoTech/Workspace/_Documentation/Fault_Handling.md,
+ * "Telling the app"). One line, at most 100 characters:
+ * `fault <reason> <code> <file>:<line> <pc> <lr> <count>`, or `fault none`.
+ */
+export interface FaultRecord {
+  /** `error`, `sdk_assert`, `sd_fault`, `hardfault`, `watchdog` or `test`; any other word is an unknown fault. */
+  reason: string;
+  /** The NRF_ERROR code for `error`, the CFSR for `hardfault`, otherwise 0x00000000. */
+  code: string;
+  /** `file:line` where the error was raised, `-:0` when there is none. */
+  location: string;
+  pc: string;
+  lr: string;
+  /** Fault resets in a row. */
+  count: number;
+  /** The line as the device sent it, for the log. */
+  line: string;
+}
+
+const FAULT_LINE = /^fault\s+(?:none\s*$|(\S+)\s+(0x[0-9a-fA-F]+)\s+(\S+:\d+)\s+(0x[0-9a-fA-F]+)\s+(0x[0-9a-fA-F]+)\s+(\d+)\s*$)/i;
+
+/**
  * Exported registry of constructed commands.
  */
 export const commandRegistry = {
@@ -294,6 +341,24 @@ export const commandRegistry = {
     () => 'selftest',
     /^Error bits = 0x[0-9a-fA-F]+/i,
     (match) => match[0]
+  ),
+  // Answered by the BLE processor itself, without waking the AI processor.
+  // Sent only when self-test bit 5 is set: older firmware has neither, so its
+  // refusal is a capability answer, not something to retry. Null for `fault none`.
+  fault: createSingleLineCommand<FaultRecord | null>(
+    'fault',
+    () => 'fault',
+    FAULT_LINE,
+    (match, line) => match[1] === undefined ? null : {
+      reason: match[1],
+      code: match[2],
+      location: match[3],
+      pc: match[4],
+      lr: match[5],
+      count: parseInt(match[6], 10),
+      line: (line ?? match[0]).trim(),
+    },
+    { timeoutMs: 3000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Unrecogni[sz]ed|^Unknown command/i }
   ),
   aifirmware: createSingleLineCommand<boolean>(
     'aifirmware',
@@ -459,7 +524,14 @@ export const commandRegistry = {
     () => true,
     // 8s timeout: DPD wake cycle (boot → selftest → process → respond)
     // takes 3-5s. Default 3s caused premature retries/duplicates.
-    { timeoutMs: 8000, failureRegex: /Failed|Invalid/i, retryPolicy: { maxRetries: 2 } }
+    //
+    // `^Error:` is the firmware's own refusal: a missing or out-of-range
+    // index or value, and since Seeed PR #276 a value op17 (1-3) or op33
+    // (1-255) does not take, "Error: 0 is not a valid value for op 33.". It
+    // used to match neither pattern, so a refusal sat out the 8 s twice and
+    // ended in TIMEOUT. Nothing is saved, and runCommandPipeline does not
+    // retry it.
+    { timeoutMs: 8000, failureRegex: /Failed|Invalid|^Error:/i, retryPolicy: { maxRetries: 2 } }
   ),
 
   getops: createSingleLineCommand<string[]>(
@@ -495,7 +567,9 @@ export const commandRegistry = {
     (count: number, interval: number) => `AI capture ${count} ${interval}`,
     /Captured.*?Last is ([\w.]+)/i,
     (match) => match[1] || true,
-    { timeoutMs: 30000, retryPolicy: { maxRetries: 0 } }
+    // A failed capture ends the command with the camera's own words, which
+    // name the reason, rather than 30 s later with TIMEOUT (#476)
+    { timeoutMs: 30000, retryPolicy: { maxRetries: 0 }, failureRegex: CAPTURE_REFUSED, failureMessage: (line) => line.trim() }
   ),
 
   /**
@@ -526,7 +600,11 @@ export const commandRegistry = {
     // 16s, which is longer than the caller's own 15s budget for the whole
     // measurement: observed on hardware, where the retry landed 8s late and the
     // wait expired before the second attempt could answer.
-    { timeoutMs: 8000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Unrecognised|^Failed to queue light check/i },
+    //
+    // The cold-boot refusal (#476) is a failure too, so it ends the command at
+    // once and runCommandPipeline sends it again after the next Sleep. It is
+    // never `Unrecognised`, so it cannot reach the fall-back-to-a-capture path.
+    { timeoutMs: 8000, retryPolicy: { maxRetries: 0 }, failureRegex: new RegExp(`^Unrecognised|^Failed to queue light check|${FIRST_SLEEP_REFUSAL.source}`, 'i') },
   ),
 
   /**
@@ -601,7 +679,7 @@ export const commandRegistry = {
     (count: number, interval: number) => `AI capture ${count} ${interval}`,
     /^Captured\s+(\d+)\s+images/i,
     (match) => parseInt(match[1], 10),
-    { timeoutMs: 45000, retryPolicy: { maxRetries: 0 } }
+    { timeoutMs: 45000, retryPolicy: { maxRetries: 0 }, failureRegex: CAPTURE_REFUSED, failureMessage: (line) => line.trim() }
   ),
 
   txfile: createSingleLineCommand<boolean>(

@@ -173,14 +173,6 @@ class AiModelService {
     }
 
     /**
-     * @deprecated Use ensureFilesDownloaded instead
-     */
-    async ensureModelDownloaded(model: AiModel): Promise<string> {
-        const result = await this.ensureFilesDownloaded(model)
-        return result.modelUri
-    }
-
-    /**
      * Reads a downloaded AI model file as raw bytes for BLE file transfer.
      */
     async readModelAsBytes(localUri: string): Promise<Uint8Array> {

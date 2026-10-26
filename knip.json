@@ -9,13 +9,9 @@
     "plugins/**/*.js"
   ],
   "ignore": ["src/types/database.types.ts"],
-  "ignoreFiles": ["src/types/supabase.ts"],
   "ignoreDependencies": [
     "buffer",
-    "@babel/runtime",
-    "expo-keep-awake",
-    "@react-native-community/geolocation",
-    "@morrowdigital/watermelondb-expo-plugin"
+    "@babel/runtime"
   ],
   "ignoreBinaries": ["maestro"],
   "ignoreExportsUsedInFile": true,

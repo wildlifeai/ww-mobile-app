@@ -13,6 +13,8 @@
  * are AI_PROC_NOT_RESPONDING, AI_NO_MAIN_CAMERA and AI_NO_HM0360 here.
  */
 
+import { batteryLowWarning } from './initWarnings'
+
 export enum SelfTestBit {
     // BLE processor (bits 0-7)
     LOW_BATTERY = 0,
@@ -20,6 +22,11 @@ export enum SelfTestBit {
     LORAWAN_ERROR = 2,
     WATCHDOG_RESET = 3,
     BROWNOUT_RESET = 4,
+    // The BLE processor reset itself after a fault and kept a record of it,
+    // which the `fault` command reads (ww-hardware PR #73, BLE 0.30.58). Set
+    // until its next reset, never after a power-on, the RESET button or a DFU,
+    // and it can come with bit 3. Older firmware never sets it.
+    FAULT_RESET = 5,
     // AI processor (bits 8-15)
     AI_NO_MAIN_CAMERA = 8,
     AI_NO_HM0360 = 9,
@@ -51,6 +58,17 @@ export interface SelfTestIssue {
  */
 export const SD_CARD_POWER_CYCLE_HINT =
     'Insert or reseat a FAT32 card, then power cycle the camera (unplug it or remove the battery) and reconnect. A card put in while the camera is on is not detected until it restarts.'
+
+/**
+ * What to do about bit 9, for every message that reports it (#477). On the
+ * bench on 14 October 2026 the usual cause was the HM0360 not starting at
+ * power-on (Seeed #57): 6 of 22 runs, each cleared by power cycling the camera
+ * with nothing else touched. Restarting the AI processor does not clear it,
+ * because the HM0360 stays powered. Until then every message said to check
+ * the cable first.
+ */
+export const HM0360_POWER_CYCLE_HINT =
+    'Power cycle the camera (unplug it or take the batteries out for a few seconds) and reconnect. If the night sensor still does not respond, check the HM0360 ribbon.'
 
 const ISSUE_TABLE: Array<Omit<SelfTestIssue, never>> = [
     {
@@ -84,6 +102,14 @@ const ISSUE_TABLE: Array<Omit<SelfTestIssue, never>> = [
         hint: 'The supply voltage dipped. Check the batteries and connections.',
     },
     {
+        // A warning that never blocks: the device recovered on its own. The
+        // record itself goes to the log (useBleInitialization), not the screen.
+        bit: SelfTestBit.FAULT_RESET,
+        severity: 'warning',
+        title: '🔁 Restarted after a firmware fault',
+        hint: 'The Bluetooth processor restarted itself after a firmware fault and recovered. The details are in the app log. Worth reporting if it happens again.',
+    },
+    {
         bit: SelfTestBit.AI_NO_MAIN_CAMERA,
         severity: 'error',
         title: '📷 Main camera not responding',
@@ -93,7 +119,7 @@ const ISSUE_TABLE: Array<Omit<SelfTestIssue, never>> = [
         bit: SelfTestBit.AI_NO_HM0360,
         severity: 'error',
         title: '🌙 Night-IR sensor (HM0360) not responding',
-        hint: 'Check the HM0360 cable. Motion detection, the day/night light sensor and night captures will not work without it.',
+        hint: `${HM0360_POWER_CYCLE_HINT} Motion detection, the day/night light sensor and night captures do not work without it.`,
     },
     {
         bit: SelfTestBit.AI_NO_FLASH,
@@ -188,22 +214,27 @@ export const CRITICAL_AI_MASK =
  * `useBleInitialization` and `useDevicePreDeploymentChecks` have shown since the
  * first release; both used to carry their own copy of the table. Bit 11 also
  * says how to clear it (#325), and must keep the words "no SD card": Start
- * Monitoring picks its blocker by matching them.
+ * Monitoring picks its blocker by matching them. Bit 9 says how to clear it too
+ * (#477), and must keep "Camera Error" for the same reason.
  */
 const WARNING_TEXT: Record<SelfTestBit, string> = {
-    [SelfTestBit.LOW_BATTERY]: 'Low Battery detected (Bit 0)',
+    [SelfTestBit.LOW_BATTERY]: batteryLowWarning(),
     [SelfTestBit.AI_PROC_NOT_RESPONDING]: 'AI Processor not responding (Bit 1)',
     [SelfTestBit.LORAWAN_ERROR]: 'LoRaWAN Error (Bit 2)',
     [SelfTestBit.WATCHDOG_RESET]: 'Watchdog Reset occurred (Bit 3)',
     [SelfTestBit.BROWNOUT_RESET]: 'Brownout Reset occurred (Bit 4)',
+    [SelfTestBit.FAULT_RESET]: 'The device restarted after a firmware fault (Bit 5)',
     [SelfTestBit.AI_NO_MAIN_CAMERA]: 'Main Camera Error (Bit 8)',
-    [SelfTestBit.AI_NO_HM0360]: 'Motion Detector Camera Error (Bit 9)',
+    [SelfTestBit.AI_NO_HM0360]: 'Motion Detector Camera Error (Bit 9). Power cycle the camera, and if it persists, check the HM0360 ribbon',
     [SelfTestBit.AI_NO_FLASH]: 'LED Flash Circuit Failure (Bit 10)',
     [SelfTestBit.AI_NO_SD_CARD]: 'Device has no SD card detected (Bit 11). Power cycle the camera after inserting or reseating a card',
     [SelfTestBit.AI_PDM_ERROR]: 'PDM Microphone Failure (Bit 12)',
     [SelfTestBit.AI_NN_ERROR]: 'Neural Network Error (Bit 13)',
     [SelfTestBit.AI_NO_BLE]: 'AI processor lost contact with the BLE processor at boot (Bit 14)',
 }
+
+/** The bit 9 banner line, which Start Monitoring's blocker looks for to give the power cycle first */
+export const NIGHT_SENSOR_WARNING = WARNING_TEXT[SelfTestBit.AI_NO_HM0360]
 
 export function selfTestWarnings(bits: number): string[] {
     if (bits === 0) return []

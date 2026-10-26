@@ -3,12 +3,12 @@
 import { List, Text } from 'react-native-paper'
 import Constants from 'expo-constants'
 
-const ListItemIcon = (iconName: string) => (props: any) => <List.Icon {...props} icon={iconName} />
+const listItemIcon = (iconName: string) => (props: any) => <List.Icon {...props} icon={iconName} />
 
 const Icons = {
-    rocket: ListItemIcon("rocket"),
-    cellphone: ListItemIcon("cellphone"),
-    wifi: ListItemIcon("wifi"),
+    rocket: listItemIcon("rocket"),
+    cellphone: listItemIcon("cellphone"),
+    wifi: listItemIcon("wifi"),
 }
 
 export const ExpoInfoSection = () => {

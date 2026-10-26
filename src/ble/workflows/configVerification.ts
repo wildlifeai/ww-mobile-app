@@ -12,7 +12,7 @@
 
 import { commandRegistry } from '../protocol/commandRegistry'
 import { BleSession } from '../session/createBleSession'
-import { FACTORY_DEFAULTS, OP_PARAMETER } from '../../hooks/useDeviceSettings'
+import { FACTORY_DEFAULTS, OP_PARAMETER, mdBlockThresholdOf } from '../../hooks/useDeviceSettings'
 
 export interface ConfigCheckResult {
     verified: boolean
@@ -50,6 +50,9 @@ export async function verifyConfigDefaults(session: BleSession): Promise<ConfigC
         if (VOLATILE_OPS.has(index)) continue
         // Older firmware exposes fewer OPs — absent indices are not mismatches
         if (index >= currentOps.length) continue
+        // Firmware without the motion wake threshold reports op33 as 0 (or as
+        // something else entirely before ae_review): not a mismatch.
+        if (index === OP_PARAMETER.MD_BLOCK_THRESHOLD && mdBlockThresholdOf(currentOps) === null) continue
         checkedCount++
         const actual = currentOps[index]
         if (actual !== String(expected)) {

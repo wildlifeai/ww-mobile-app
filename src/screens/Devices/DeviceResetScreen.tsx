@@ -85,7 +85,7 @@ const OP_NAMES: Record<number, string> = {
     [OP_PARAMETER.CAM_AE_TARGET]: 'AE Target Luma',
     [OP_PARAMETER.CAM_WB_MODE]: 'White Balance Mode',
     [OP_PARAMETER.LORAWAN_PING_MINUTES]: 'LoRaWAN Ping (min, 0 = off)',
-    [OP_PARAMETER.RFU_2]: 'Reserved (op33)',
+    [OP_PARAMETER.MD_BLOCK_THRESHOLD]: 'Motion Wake Threshold (cells)',
     [OP_PARAMETER.FLASH_MODE]: 'Capture Flash Mode',
     [OP_PARAMETER.FLASH_TOD_START]: 'Flash Time-of-Day Start (min UTC)',
     [OP_PARAMETER.FLASH_TOD_DURATION]: 'Flash Time-of-Day Duration (min)',

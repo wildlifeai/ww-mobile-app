@@ -62,8 +62,14 @@ export const OP_PARAMETER = {
      * switch, so nothing writes it to a camera without the flash mode (op34).
      */
     LORAWAN_PING_MINUTES: 32,
-    /** Reserved (was MD_BLOCK_NUM_MAX until ae_review, Sep 2026; the firmware dropped it) */
-    RFU_2: 33,
+    /**
+     * Motion wake threshold: the camera wakes when more than this many of the
+     * HM0360's 16 x 16 motion cells show motion. 1-255, firmware default 4
+     * (Seeed PR #276). Reserved and ignored on firmware before it, which reports
+     * 0; before ae_review (Sep 2026) it was MD_BLOCK_NUM_MAX. Read it through
+     * `mdBlockThresholdOf`, which tells the three apart.
+     */
+    MD_BLOCK_THRESHOLD: 33,
     /** Capture flash mode: 0 = off, 1 = AE (light sensor decides), 2 = always on, 3 = time of day. See firmware flash_led_modes_proposal.md */
     FLASH_MODE: 34,
     /** FLASH_MODE time of day: minutes after midnight UTC when the flash turns on */
@@ -77,6 +83,27 @@ export const OP_PARAMETER = {
  * ("Ping timer set to 43200s"), and the factory default.
  */
 export const LORAWAN_PING_DEFAULT_MINUTES = 720
+
+/**
+ * op33 MD_BLOCK_THRESHOLD as the device reports it, or null when its firmware
+ * has no threshold.
+ *
+ * The firmware of Seeed PR #276 made op33 the motion wake threshold and
+ * replaces an out-of-range value at load, so it never reports 0. Firmware
+ * before it reserves op33 and reports 0. Firmware before ae_review has no op34
+ * and used op33 for MD_BLOCK_NUM_MAX. So a threshold is a value of 1 to 255 on
+ * a table that reaches op34, and anything else means "no threshold here": the
+ * reset leaves op33 alone, and the motion test keeps its old behaviour.
+ *
+ * The same firmware stopped sending a motion grid for the first image of a
+ * burst (always empty), so this is also how the motion test knows whether its
+ * first grid belongs to image 1 or image 2.
+ */
+export function mdBlockThresholdOf(ops: readonly string[] | null | undefined): number | null {
+    if (!ops || ops.length <= OP_PARAMETER.FLASH_MODE) return null
+    const value = Number(ops[OP_PARAMETER.MD_BLOCK_THRESHOLD])
+    return Number.isInteger(value) && value >= 1 && value <= 255 ? value : null
+}
 
 /**
  * op13 FLASH_LED, by index: `FLASH_LED_LABELS[value]` names one.
@@ -164,8 +191,9 @@ export const FACTORY_DEFAULTS: Record<number, number> = {
     // 29-36: firmware in-RAM defaults (fatfs_task.c op_parameter[],
     // ae_review_to_merge 931ef923). Including them means resetOps clears bench
     // experiments at deployment start and configVerification covers them. 32
-    // and 33 are reserved on this firmware (the hi-res and MD global-motion
-    // parameters were dropped).
+    // is the LoRaWAN ping since 6 October 2026, and 33 the motion wake
+    // threshold since Seeed PR #276 (reserved before it, see
+    // mdBlockThresholdOf).
     //
     // op34 is 0: the flash mode is off after a reset, matching the firmware's
     // own default. It is not the value a deployed camera runs on - the
@@ -179,7 +207,10 @@ export const FACTORY_DEFAULTS: Record<number, number> = {
     // LoRaWAN on by default, as before op32 had a meaning; a deployment then
     // writes 0 for a project that does not require it (see configureLorawan)
     [OP_PARAMETER.LORAWAN_PING_MINUTES]: LORAWAN_PING_DEFAULT_MINUTES,
-    [OP_PARAMETER.RFU_2]: 0,
+    // The firmware default since Seeed PR #276, which refuses 0. Written only
+    // to firmware that has the threshold (resetToDefaults), so a reset on
+    // older firmware is what it was.
+    [OP_PARAMETER.MD_BLOCK_THRESHOLD]: 4,
     [OP_PARAMETER.FLASH_MODE]: 0,
     [OP_PARAMETER.FLASH_TOD_START]: 0,
     [OP_PARAMETER.FLASH_TOD_DURATION]: 0,

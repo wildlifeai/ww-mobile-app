@@ -78,7 +78,9 @@ CREATE TABLE observations (
 );
 
 -- Indexes
-CREATE INDEX idx_observations_deployment_id ON observations (deployment_id);
+-- A deployment's observations by species, for grid_facets and the website's species filter
+-- (#336); it also serves lookups by deployment_id alone, which had their own index until then.
+CREATE INDEX idx_observations_deployment_scientific_name ON observations (deployment_id, scientific_name);
 CREATE INDEX idx_observations_media_id ON observations (media_id);
 CREATE INDEX idx_observations_event_id ON observations (observation_event_id);
 CREATE INDEX idx_observations_taxon_id ON observations (taxon_id);

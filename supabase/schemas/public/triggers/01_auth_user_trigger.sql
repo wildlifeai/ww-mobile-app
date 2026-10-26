@@ -62,8 +62,12 @@ BEGIN
     AND deleted_at IS NULL
     LIMIT 1;
 
-    -- Only assign if General organisation exists
-    IF general_org_id IS NOT NULL THEN
+    -- Only assign if General organisation exists, and never to the shared demo account
+    -- (app_metadata.is_demo, the website's public "Try the demo" login): anyone can take
+    -- its token, and General's organisation_member would let it create projects and
+    -- register cameras (#332).
+    IF general_org_id IS NOT NULL
+       AND NEW.raw_app_meta_data->>'is_demo' IS DISTINCT FROM 'true' THEN
       -- Any live role in General already counts: one role per scope (#248).
       IF NOT EXISTS (
         SELECT 1 FROM public.user_roles

@@ -5,8 +5,8 @@ This validation script ensures your WatermelonDB schema (`src/database/schema.ts
 ## TL;DR - Quick Reference
 
 ```bash
-# Daily development - check status
-npm run dev:status
+# Check committed types and the schema against cloud-dev
+npm run types:check-cloud-dev && npm run schema:validate:live:cloud-dev
 
 # Sync from live database
 npm run sync:from-live:cloud-dev
@@ -22,17 +22,14 @@ npm run prebuild:check
 Validates against the **live database** to ensure types are current:
 
 ```bash
-# Quick status check
-npm run dev:status  # Checks types + schema against local database
+# Check committed types against cloud-dev
+npm run types:check-cloud-dev
 
 # Validate against cloud-dev
 npm run schema:validate:live:cloud-dev
 
 # Complete sync workflow (regenerate types + validate)
 npm run sync:from-live:cloud-dev
-
-# Validate against local database
-npm run schema:validate:live:local
 ```
 
 ### Static Validation (Legacy)
@@ -81,7 +78,6 @@ When the Supabase schema changes:
 
 1. **Regenerate TypeScript types**:
    ```bash
-   npm run types:local          # For local development
    npm run types:cloud-dev      # For cloud-dev environment
    ```
 
@@ -106,8 +102,8 @@ When the Supabase schema changes:
 ### Daily Development
 
 ```bash
-# Single command to check everything
-npm run dev:status
+# Check committed types against cloud-dev
+npm run types:check-cloud-dev
 
 # If drift detected, sync from live
 npm run sync:from-live:cloud-dev
@@ -126,7 +122,7 @@ npm run schema:validate:live:cloud-dev
 
 ```bash
 # Complete validation workflow
-npm run prebuild:preview  # Includes schema validation
+npm run validate:cloud-dev  # types, TypeScript and tests
 
 # Or manual steps
 npm run types:check-cloud-dev    # Check types are current
@@ -160,10 +156,6 @@ git commit -m "chore: sync schema with backend changes"
 ```bash
 # Verbose output for debugging
 npm run schema:validate:live:cloud-dev -- --verbose
-
-# Check what environment you're validating against
-npm run schema:validate:live:local        # Local database
-npm run schema:validate:live:cloud-dev    # Cloud dev database
 ```
 
 ### New Column Added to Supabase
@@ -225,4 +217,4 @@ Build will fail if schema validation fails, preventing deployment of apps with s
 
 - [WatermelonDB Schema Documentation](https://nozbe.github.io/WatermelonDB/Schema.html)
 - [Supabase Type Generation](https://supabase.com/docs/reference/javascript/installing#generating-types)
-- Type Synchronization Guide: `scripts/README-TYPE-SCRIPTS.md`
+- Type generation: the `sync-types-cloud.js` section of `scripts/README.md`

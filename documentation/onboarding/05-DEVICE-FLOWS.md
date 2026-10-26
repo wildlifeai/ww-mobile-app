@@ -34,18 +34,24 @@ flowchart TD
 ### A camera this phone has not met
 
 The scanner looks the camera up by its Bluetooth id, on the phone first
-(`DeviceService.getDeviceByBluetoothId`). When the phone has no device for it:
+(`DeviceService.getDeviceByBluetoothId`). When the phone has no device for it,
+`registerCamera` (`cameraRegistration.ts`) gives it one:
 
 1. **No one signed in:** "Not signed in", and the scanner disconnects.
 2. **It asks the server** (`DeviceService.adoptFromServer`, #451), unless NetInfo says the
    phone is offline, and waits up to 5 s. A row this account may read is written to the phone
-   under the server's id, with nothing queued, and the flow carries on with it. Nothing found
-   means nothing this account may read, not an unregistered camera.
-3. **Otherwise it registers the camera** in the current organisation (`DeviceService.createDevice`),
-   which queues its `CREATE`.
-4. **With no current organisation it cannot**, since only a member of an organisation may
-   register a camera, and a project invitation makes no one a member. The scanner says so,
-   "Cannot register this camera", and disconnects.
+   under the server's id, with nothing queued, and the flow carries on with it. Every signed-in
+   account but the demo one reads every live camera (ww-backend #346), so nothing found means an
+   unregistered camera, or one whose row was deleted.
+3. **Otherwise it registers the camera** (`DeviceService.createDevice`), which queues its
+   `CREATE`. In no organisation: a camera belongs to none (ww-backend #327), so a field user
+   invited to one project registers the camera in their hand (#501).
+
+The Engineer Console connects without any of this, so a camera met only through it has no
+device on the phone. The Dev Deployment Test runs the same steps 2 and 3 when Start is pressed on
+such a camera, and starts nothing if they give it no device (#480). Until then its deployment
+was saved with no camera: never uploaded, and never found again by the scanner or the test's
+Stop.
 
 Who may read or register a camera is in [the
 contract](../../.agents/skills/references/cross-repo-contracts.md). A camera registered here that
@@ -119,59 +125,53 @@ BLE initialization happens **upstream** in the Scanner connection flow, and the 
 
 On this screen:
 - `isInitializing` is hardcoded to `false` (initialization is already complete)
-- `initErrors` displays any warnings from the upstream checks (e.g., LoRaWAN connectivity)
+- `initErrors` displays any warnings from the upstream checks (e.g., LoRaWAN connectivity). A fault is listed under "Hardware:" and the banner asks for a report; a minor line (a low battery, newer firmware, a card nearly full, `utils/initWarnings.ts`) is not, and a banner of minor lines only has **Dismiss**, which holds until a new line arrives. Until 26 October 2026 every line asked for a report, and people reported their batteries
 - `useBleSession` + `useBleActions` maintain the BLE heartbeat during form entry
 - **BLE query optimization:** On screen mount, the firmware versions are resolved silently from `initPayload` rather than actively querying the connected device over BLE. Before #268 the hook re-queried the device whenever the snapshot looked outdated, which on a bench build was every time.
 - **Focus state recheck:** When the screen regains focus (e.g., after the operator navigates back from a successful firmware update), the active BLE query `checkStatus()` is run to refresh the firmware status and clear the outdated firmware warning banner automatically.
 
 ### User Form
 
-The screen is organized into cards. Each card explains itself through its help button, not
-through a subtitle under the title: the standing descriptions were removed on 22 September
-2026 so the cards stay short on a phone screen. Put new explanation in the help text.
+Since 26 October 2026 the screen has two kinds of box and as little text as possible, with no
+card titles or subtitles. Put new explanation in a help text.
 
-**1. Associated Project** (always visible)
+- **Input** (`FieldBox` in `components/ui/`): the title sits on the box's top border with a
+  question mark right after it, which opens the field's help.
+- **Action** (`ActionRow`): a quiet filled button, the neutral surface colour, with the action's
+  name centred, a question mark after it, and what it found under the name once it has run, or a
+  thumbnail at the right. No icon. Tapping it runs the action in a popup (`ActionDialog`) that the
+  operator closes. Filled, so it never reads as an input; neutral, so Start Monitoring stays the
+  one button that stands out.
 
-| Element | Notes |
-|---------|-------|
-| Project Selector (`WWSelect`) | Dropdown to pick or switch the attached project. Dynamically recalculates capture method, sensitivity, and feature icons. It offers only the projects this account [may deploy into](./03-DATA-AND-SYNC.md#key-tables) (#450). When the scanner opened the screen on a project it may not deploy into, that project stays selected with the reason under the field, and Start says it again. |
-| Feature Icons Row | Visual indicators: 🔄 Activity Detection, ⏱ Timelapse, 📡 LoRaWAN, 🛰 GPS in images, 🧠 AI Model |
-| Model readiness line | Only when the project has a model: "Model ready on this phone", or "Model not downloaded: connect to download". Offline, a start with a model the phone lacks stops unless the camera already carries it (#333). Refreshes when the pre-download lands the files. |
+Three panels (`FieldGroup`), a shade lighter than the screen, group what belongs together:
+the Project box with its icons; Camera View, Test Motion Detection and LoRaWAN Signal; Notes with
+Site Photo. Advanced settings sits below them, outside any panel.
 
-**2. LoRaWAN Section** (only if `project.lorawan_required`)
+From the top:
 
-| Element | Notes |
-|---------|-------|
-| LoRaWAN Signal Test | Test Connectivity sends `ping`, and the card says Sent, Not joined yet, Busy, LoRaWAN is off or No answer. Off is the app's reading of `Not joined yet.` on a camera whose OP 32 is 0. The screen also pings once the project is chosen and the camera is connected, and warns unless the answer is Sent or Busy. Both read `src/ble/workflows/lorawanPing.ts` (#348); the nRF's replies are in the [console guide](04-ENGINEER-CONSOLE.md). A ping answered `OK` sends a real uplink. |
+| Element | Kind | Notes |
+|---------|------|-------|
+| Project (`WWSelect`) | Input | Pick or switch the attached project. Dynamically recalculates capture method, sensitivity, and feature icons. It offers only the projects this account [may deploy into](./03-DATA-AND-SYNC.md#key-tables) (#450). When the scanner opened the screen on a project it may not deploy into, that project stays selected with the reason under the field, and Start says it again. Its help explains the feature icons. |
+| Feature Icons Row | | Under the Project box, an icon with a word for each setting the project deploys: capture method and sensitivity, flash, pictures per trigger, LoRaWAN, GPS in images, AI model |
+| Model readiness line | | Only when the project has a model: "Model ready on this phone", or "Model not downloaded: connect to download". Offline, a start with a model the phone lacks stops unless the camera already carries it (#333). Refreshes when the pre-download lands the files. |
+| Camera View | Action | The Watcher's own picture, to aim it (`useCapturePreview`, the same capture as Capture Picture). Tapping takes the picture at once; the popup shows it with Take Another, and the row keeps it as a thumbnail. |
+| Test Motion Detection | Action | Activity Detection projects only. Tapping starts a 20-frame test at the project's sensitivity, at the motion interval the deployment writes; the popup shows the 16×16 grid live, and the row then says Motion seen or No motion (a frame counts only if it would have woken the camera, #500). The firmware runs the capture, so it cannot be stopped: Close leaves it running. |
+| LoRaWAN Signal | Action | Only if `project.lorawan_required`. Tapping sends `ping`, and the row says Sent, Not joined yet, Busy, LoRaWAN is off or No answer. Off is the app's reading of `Not joined yet.` on a camera whose OP 32 is 0. The screen also pings once the project is chosen and the camera is connected, and warns unless the answer is Sent or Busy. Both read `src/ble/workflows/lorawanPing.ts` (#348); the nRF's replies are in the [console guide](04-ENGINEER-CONSOLE.md). A ping answered `OK` sends a real uplink. |
+| Notes | Input | Free text: deployment conditions, observations, bait used. |
+| Site Photo | Action | The phone's picture of the Watcher in place, so anyone in the project can find the camera again. Tapping opens the phone camera at once (no gallery since 26 October 2026), and the popup then lists the shots, up to five, with delete. They are stored on the deployment record. |
+| Advanced settings | Plain row | Collapsed by default. Contents below. |
 
-**3. Notes** (always visible)
+Inside Advanced settings:
 
-| Element | Notes |
-|---------|-------|
-| Notes (`TextInput`, multiline) | Free-text field for deployment conditions, observations, bait usage, etc. |
+| Element | Kind | Notes |
+|---------|------|-------|
+| Site Name | Input | Dropdown of nearby past deployment locations (auto-selected closest), or free text for a new site. Used as both `name` and `locationName` for the deployment record. |
+| Camera Height (cm) | Input | Height of the lens from the ground |
+| Check Battery Level | Action | The row shows the level read at connection; tapping reads `battery` again. The popup warns at or below 30%. |
+| Check SD Card | Action | The row shows the free space; tapping reads `aiinfo` again. The popup says nearly full at or below 10% free. |
+| Check Firmware | Action | Up to date, Update available, Update not ready (one camera's build only, #437) or Update not finished (#374), per processor; versions only under Details. Update opens `FirmwareUpdateScreen`. |
 
-**4. Take a photo of the Watcher** (always visible)
-
-| Element | Notes |
-|---------|-------|
-| Photo picker (`DeploymentPhotosSection`) | Camera or gallery. The shots are stored on the deployment record so anyone in the project can find the camera again. The help button carries the guidance on which photos to take. |
-
-**5. Advanced Settings** (collapsible accordion)
-
-The cards sit in the order below. Camera View comes first because the operator aims the
-camera before naming the site.
-
-| Element | Notes |
-|---------|-------|
-| Camera View Image | One test photo via `CameraViewSection`, to aim the camera |
-| Site Name | Dropdown of nearby past deployment locations (auto-selected closest), or free-text input for new sites. Used as both `name` and `locationName` for the deployment record. |
-| Camera Height (cm) | Numeric input for height from ground |
-| Motion Detection Test | Collapsible 16×16 grid via `DeploymentMotionDetectionSection` (Activity Detection projects only) |
-| Battery Level | Manual check button → reads `battery` via BLE |
-| SD Card Status | Manual check button → reads `aiinfo` via BLE |
-| Firmware Status | Shows BLE + Himax firmware versions with update buttons → `FirmwareUpdateScreen` |
-
-**6. Firmware Warning Banner** (conditional, shown when any firmware is outdated)
+**Firmware Warning Banner** (conditional, shown when any firmware is outdated)
 
 | Element | Notes |
 |---------|-------|
@@ -185,7 +185,7 @@ When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeplo
 
 **First it asks the phone's roles** whether this account may deploy into the project (`startRefusal` in `deploymentAccess.ts`, #450, [the rule](./03-DATA-AND-SYNC.md#key-tables)). A viewer, an organisation manager with no role in the project, or a phone with no roles synced yet **stops the start** with "Cannot Start Monitoring" and the reason, before the server is asked or anything is written to the camera. It needs no connection.
 
-**Then, before step 1, it asks the server about the camera** (`DeploymentService.checkServerForOpenDeployment`, #448). The server allows one open deployment per camera ([the contract](../../.agents/skills/references/cross-repo-contracts.md)), and the scanner only knows the phone's own. An open deployment on the server that this phone does not hold, or holds and has not ended, **stops the start** with "Already Deployed", naming its project, who started it when the server will say, and when; nothing has been written to the camera. The check sees only what this account may read (deployments in its projects, in an organisation it manages, or everywhere for a `ww_admin`): **an open deployment in any other project is invisible to it**, and only the refused push shows it. Offline, on a failed read or after 10 s without an answer, it says so in the progress log and carries on.
+**Then, before step 1, it asks the server about the camera** (`DeploymentService.checkServerForOpenDeployment`, #448). The server allows one open deployment per camera ([the contract](../../.agents/skills/references/cross-repo-contracts.md)), and the scanner only knows the phone's own. An open deployment on the server that this phone does not hold, or holds and has not ended, **stops the start** with "Already Deployed", naming its project, who started it when the server will say, and when; nothing has been written to the camera. A deployment this account may read (in its projects, in an organisation it manages, or everywhere for a `ww_admin`) is described in full. One in any other project is not readable, so the check then asks `camera_open_deployment` with the camera's Bluetooth id (ww-backend #346), which says whether it is deployed anywhere and in which project, and nothing else: no start date, no person (#502). One this phone has ended, the end not uploaded yet, is not in the way either way. Offline, on a failed read or after 10 s without an answer, it says so in the progress log and carries on.
 
 | Step | Action | Detail |
 |------|--------|--------|
@@ -377,6 +377,9 @@ flowchart TD
     P --> O
 ```
 
+Stop Monitoring asks for end notes first: one **Notes** box, its examples behind its question
+mark, then Cancel or Confirm Stop (26 October 2026).
+
 ### Who may end it
 
 Before the sequence, and before Force End is offered, the phone's roles are asked whether this
@@ -425,7 +428,7 @@ If the device is not connected, the user can "Force End (Database Only)":
 |-------|-------|-----|
 | Dialog not appearing | Device timeout | Clear app data or re-connect |
 | "No Projects Found" | User has no projects in current org | Create a project first |
-| "Cannot register this camera" | The camera is neither on this phone nor one this account may read on the server, and the account has no organisation ([above](#a-camera-this-phone-has-not-met)) | An organisation manager adds the user to the organisation, or registers the camera. If the phone was offline, try again with a connection |
+| "Cannot register this camera" | From the Dev Deployment Test's Start: the phone could not save the camera's row ([above](#a-camera-this-phone-has-not-met)) | Connect once from the scanner, then try again |
 | Infinite connect loop | Navigation guard not reset | Fixed via `hasNavigatedRef` in `useEngineerConnect` |
 
 ### Start Deployment
@@ -437,6 +440,7 @@ If the device is not connected, the user can "Force End (Database Only)":
 | "Failed to Set Deployment ID" | BLE write error or AI NACK | Keep phone within 1m; app falls back to GPS-only |
 | "No SD Card Detected" | Stale selftest bits (false positive) | App now masks stale AI bits (8-15) before AI processor is woken. If warning persists after reconnection, the SD card is genuinely missing, or was put in while the camera was on (next row). |
 | "No SD Card" stays after the card is put back | A card inserted into a powered camera is never mounted: the warm boot fails FatFS `disk_initialize` with `FR_NOT_READY`, and bit 11 stays set on every wake | Power cycle the camera (unplug it or remove the battery), then reconnect. Checking again cannot clear it. Every message that reports bit 11 says so since #325. |
+| "Motion Detector Camera Error (Bit 9)", "Night-IR sensor (HM0360) not responding" | The HM0360 did not answer at boot. On the bench the usual cause was it not starting at power-on (Seeed #57, 6 of 22 runs on 14 October 2026). Restarting the AI processor does not clear it, because the HM0360 stays powered | Power cycle the camera, then reconnect. If it stays, check the HM0360 ribbon with the camera off. Every message that reports bit 9 says so since #477. |
 | "AI model update FAILED" | The files were on the phone but the transfer to the card failed, or the camera refused the `loadmodel`. The deployment carries on and records without classifying | Reconnect with the phone close to the camera and run the deployment again. |
 | "This project's AI model "..." is not a TFLite model" | The model's file in storage is something else, such as a ZIP archive (the dev backend's model `d0000000-...-0000000000a1` on 8 October 2026). Loading it would halt the camera (Seeed #241) | Replace the model's file with the TFLite model itself. Nothing was written to the camera, and downloading again brings the same file. |
 | "The camera did not confirm it loaded this project's AI model" | `loadmodel` went unanswered. The usual cause is a model file the Himax could not parse, which halts it: it answers commands but never captures or sleeps (Seeed #241) | Power cycle the camera (unplug it or remove the battery), reconnect and start again. No deployment was created. |
@@ -445,7 +449,7 @@ If the device is not connected, the user can "Force End (Database Only)":
 | "This project's AI model "..." could not be downloaded" | The model is not on the camera or its card, and the phone could not download its files. Offline, it was assigned after the phone's last sync or the pre-download had not finished; online, the download itself failed | Check the connection, wait for the sync (the Start Monitoring screen then says "Model ready on this phone"), and start again. Nothing was written to the camera. |
 | "Cannot Start Monitoring": "You are a viewer in ..." or "You are not a member of ..." | This account may not deploy into the project: a viewer, or an organisation manager with no role in it (#450). The server would refuse the deployment | A project admin makes you a member, or pick a project you are a member of. Nothing was written to the camera. |
 | "Cannot Start Monitoring": "Your roles have not reached this phone yet ..." | No role of this account is on the phone, so it cannot tell | Connect so the app syncs, then start again. |
-| "Already Deployed": "This camera is still deployed in ..." | The server has an open deployment on this camera that this phone does not hold: another user's, or one started on another phone and not pulled yet (#448) | Whoever runs that deployment ends it. If it is yours, sync, then reconnect: the scanner sends the camera to End Deployment. Nothing was written to the camera. |
+| "Already Deployed": "This camera is still deployed in ..." | The server has an open deployment on this camera that this phone does not hold: another user's, one started on another phone and not pulled yet (#448), or one in a project this account is not in, named but without who or when (#502) | Whoever runs that deployment ends it. If it is yours, sync, then reconnect: the scanner sends the camera to End Deployment. Nothing was written to the camera. |
 
 ### End Deployment
 

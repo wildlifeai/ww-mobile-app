@@ -5,17 +5,19 @@ import { useNavigation, useRoute, RouteProp, useIsFocused } from '@react-navigat
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWButton } from '../../components/ui/WWButton'
 import { RootStackParamList } from '../../navigation/types'
-import { Card, Text, Button, IconButton, useTheme } from 'react-native-paper'
+import { Text, Button, IconButton, TextInput, useTheme } from 'react-native-paper'
 import { WWSelect } from '../../components/ui/WWSelect'
 import { WWIcon } from '../../components/ui/WWIcon'
 import { StatusInitializationHeader } from '../Devices/components/InitializationHeader'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useGetAiModelsQuery } from '../../redux/api/projectsApi'
 
-import { LoRaWANSection } from './components/LoRaWANSection'
-
-import { MetadataSection } from './components/MetadataSection'
-import { DeploymentPhotosSection } from './components/DeploymentPhotosSection'
+import { LoRaWANAction } from './components/LoRaWANAction'
+import { CameraViewAction } from './components/CameraViewAction'
+import { SitePhotoAction } from './components/SitePhotoAction'
+import { MotionTestAction } from './components/MotionTestAction'
+import { FieldBox } from '../../components/ui/FieldBox'
+import { FieldGroup } from '../../components/ui/FieldGroup'
 import { HelpDialog } from '../../components/ui/HelpDialog'
 import { FinishProgressDialog } from '../Devices/components/FinishProgressDialog'
 import { AdvancedSettingsSection } from './components/AdvancedSettingsSection'
@@ -26,11 +28,15 @@ import { useFirmwareStatus } from '../Devices/hooks/useFirmwareStatus'
 import { useModelOnPhone } from '../../hooks/useOfflineFiles'
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
 import { resolveProjectFlash, shortFlashLabel } from '../../utils/projectFlash'
-import { SD_CARD_POWER_CYCLE_HINT } from '../../utils/deviceSelfTest'
+import { SD_CARD_POWER_CYCLE_HINT, HM0360_POWER_CYCLE_HINT, NIGHT_SENSOR_WARNING } from '../../utils/deviceSelfTest'
+import { NEWER_AI_FIRMWARE, NEWER_BLE_FIRMWARE } from '../../utils/initWarnings'
 import { shortBurstLabel } from '../../utils/projectBurst'
 
 
 type StartMonitoringDetailsRouteProp = RouteProp<RootStackParamList, 'StartMonitoringDetailsStep'>;
+
+/** The Project box's help */
+const PROJECT_HELP = 'The project this deployment belongs to. Its settings go to the camera when monitoring starts, and the icons under it show them.'
 
 export const StartMonitoringDetailsStep = () => {
     const theme = useTheme()
@@ -96,10 +102,10 @@ export const StartMonitoringDetailsStep = () => {
             setInitErrors(prev => {
                 let health = prev.deviceHealth || []
                 if (!firmwareStatus.statuses.ble.isOutdated) {
-                    health = health.filter(msg => !msg.includes('Newer firmware available'))
+                    health = health.filter(msg => !msg.startsWith(NEWER_BLE_FIRMWARE))
                 }
                 if (!firmwareStatus.statuses.himax.isOutdated) {
-                    health = health.filter(msg => !msg.includes('Newer AI firmware available'))
+                    health = health.filter(msg => !msg.startsWith(NEWER_AI_FIRMWARE))
                 }
                 if (health.length === (prev.deviceHealth?.length || 0)) return prev
                 return { ...prev, deviceHealth: health }
@@ -156,6 +162,12 @@ export const StartMonitoringDetailsStep = () => {
         return warnings.some(w => w.includes('Camera Error') || w.includes('Camera system not enabled') || w.includes('Neural Network Error'))
     }, [initErrors.deviceHealth])
 
+    // A night sensor that did not start usually needs a power cycle, not a cable (#477)
+    const hasNightSensorError = useMemo(
+        () => (initErrors.deviceHealth || []).includes(NIGHT_SENSOR_WARNING),
+        [initErrors.deviceHealth],
+    )
+
     // A missing card blocks on its own since #303, and the blocker below says
     // so instead of blaming the camera.
     const hasSdCardError = useMemo(() => {
@@ -163,11 +175,6 @@ export const StartMonitoringDetailsStep = () => {
         return warnings.some(w => /no sd card/i.test(w))
     }, [initErrors.deviceHealth])
 
-    const renderProjectSettingsRight = useCallback((props: any) => (
-        <Button {...props} icon="help-circle-outline" onPress={() => showHelp('Associated Project', 'This section shows the project linked to this device and its active features.\n\n🔄 Motion icon: Activity detection is enabled\n⏱ Clock icon: Time-lapse capture is enabled\n📡 Waves icon: LoRaWAN connectivity is enabled\n🛰 Satellite icon: GPS location is recorded in images\n🧠 Brain icon: An AI model is assigned for analysis\n⚡ Flash icon: The capture flash this project deploys, which also lights motion frames at night')}>
-            <Text>Help</Text>
-        </Button>
-    ), [showHelp])
 
 
     // Sanity Check: Ensure required params are present
@@ -241,7 +248,7 @@ export const StartMonitoringDetailsStep = () => {
                             {hasSdCardError
                                 ? `The device reports no SD card. Every image and setting a deployment writes goes to the card, so monitoring cannot start without one. ${SD_CARD_POWER_CYCLE_HINT}`
                                 : hasCameraError
-                                    ? 'The AI processor has reported a critical camera or hardware error. Starting monitoring is blocked. Please check the camera module connections or hardware configuration.'
+                                    ? `The AI processor has reported a critical camera or hardware error. Starting monitoring is blocked. ${hasNightSensorError ? HM0360_POWER_CYCLE_HINT : 'Please check the camera module connections or hardware configuration.'}`
                                     : 'The AI processor (camera module) did not wake up after multiple attempts. The device cannot start monitoring without it. Please go back and try reconnecting to the device.'}
                         </Text>
                         <Button
@@ -284,21 +291,17 @@ export const StartMonitoringDetailsStep = () => {
                     </View>
                 )}
 
-                {/* Associated Project */}
-                <Card style={styles.card}>
-                        <Card.Title
-                        title="Associated Project"
-                        right={renderProjectSettingsRight}
-                    />
-                    <Card.Content>
+                {/* Project and its icons, one panel (26 October 2026 redesign) */}
+                <FieldGroup>
                         <View style={styles.projectSelectContainer}>
+                            <FieldBox title="Project" onHelp={() => showHelp('Project', PROJECT_HELP)}>
                             <WWSelect
-                                label="Project"
                                 value={project?.id || ''}
                                 options={availableProjects.map((p) => ({ label: p.name, value: p.id }))}
                                 onChange={handleProjectChange}
                                 disabled={submitting || isInitializing}
                             />
+                            </FieldBox>
                             {/* Why this account may not deploy into the chosen
                                 project: a viewer, or no role in it (#450).
                                 Start says it again on the press. */}
@@ -375,35 +378,41 @@ export const StartMonitoringDetailsStep = () => {
                             </Text>
                         )}
 
-                    </Card.Content>
-                </Card>
+                </FieldGroup>
 
-                {project?.lorawan_required ? (
-                    <LoRaWANSection
-                        device={bleDevice}
-                        onShowHelp={showHelp}
+                {/* The camera tested in place: what it sees, what wakes it, and LoRaWAN */}
+                <FieldGroup>
+                <CameraViewAction device={bleDevice} onImageCaptured={handleImageCaptured} onShowHelp={showHelp} />
+
+                {/* Motion projects only: test the detector where the camera points */}
+                <MotionTestAction device={bleDevice} project={project} onShowHelp={showHelp} />
+
+                {project?.lorawan_required ? <LoRaWANAction device={bleDevice} onShowHelp={showHelp} /> : null}
+                </FieldGroup>
+
+                {/* What the person records about the site */}
+                <FieldGroup>
+                <FieldBox title="Notes" onHelp={() => showHelp('Notes', 'Anything worth recording about this deployment: location details, bait used, weather, or what the camera is watching.')}>
+                    <TextInput
+                        value={formState.notes}
+                        onChangeText={handleNotesChange}
+                        mode="outlined"
+                        multiline
+                        numberOfLines={3}
                     />
-                ) : null}
+                </FieldBox>
 
-
-                <MetadataSection
-                    notes={formState.notes}
-                    onNotesChange={handleNotesChange}
-                    onShowHelp={showHelp}
-                />
-
-                <DeploymentPhotosSection
+                {/* Site Photo: the phone's picture of the Watcher in place */}
+                <SitePhotoAction
                     photoPaths={deploymentPhotoPaths}
                     onAddPhoto={handleAddDeploymentPhoto}
                     onRemovePhoto={handleRemoveDeploymentPhoto}
                     onShowHelp={showHelp}
                     disabled={submitting || isInitializing}
                 />
+                </FieldGroup>
 
                 <AdvancedSettingsSection
-                    device={bleDevice}
-                    project={project}
-                    onImageCaptured={handleImageCaptured}
                     cameraHeight={formState.cameraHeight}
                     onCameraHeightChange={handleCameraHeightChange}
                     locationName={locationName}
@@ -417,11 +426,8 @@ export const StartMonitoringDetailsStep = () => {
                     handleSdCardCheck={handleSdCardCheck}
                     isCheckingBattery={isCheckingBattery}
                     isCheckingSdCard={isCheckingSdCard}
-                    // recordJpegOnly={recordJpegOnly}
-                    // setRecordJpegOnly={setRecordJpegOnly}
                     isInitializing={isInitializing}
                     bleDeviceConnected={!!bleDevice?.connected}
-                    theme={theme}
                     onShowHelp={showHelp}
                     firmwareStatus={firmwareStatus}
                     onUpdateFirmware={(target) => {
@@ -509,10 +515,9 @@ const styles = StyleSheet.create({
     startRefusal: {
         marginTop: 8,
     },
+    // Inside the Project panel, whose gap spaces it from the icons
     projectSelectContainer: {
-        marginBottom: 16,
-        marginTop: 4,
-        zIndex: 10, 
+        zIndex: 10,
     },
     errorContainer: {
         flex: 1,

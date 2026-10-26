@@ -39,8 +39,11 @@ export const Notifications = () => {
 
 	const onRefresh = useCallback(async () => {
 		setRefreshing(true)
-		await loadInvitations()
-		setRefreshing(false)
+		try {
+			await loadInvitations()
+		} finally {
+			setRefreshing(false)
+		}
 	}, [loadInvitations])
 
 	const { refreshSession } = useSupabaseAuth()

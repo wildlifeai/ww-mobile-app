@@ -4,10 +4,10 @@ import { List, Chip, Text } from 'react-native-paper'
 import { WWText } from '../../../../components/ui/WWText'
 import Constants from 'expo-constants'
 
-const ListItemIcon = (iconName: string) => (props: any) => <List.Icon {...props} icon={iconName} />
+const listItemIcon = (iconName: string) => (props: any) => <List.Icon {...props} icon={iconName} />
 
 const Icons = {
-    puzzle: ListItemIcon("puzzle"),
+    puzzle: listItemIcon("puzzle"),
 }
 
 // Check if module is detected via NativeModules or exists in package.json

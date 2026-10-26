@@ -55,10 +55,11 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 
 	useEffect(() => {
 		if (!user?.email) return
+		let active = true
 
 		const loadCount = async () => {
 			const count = await InvitationService.getPendingInvitationCount()
-			setInvitationCount(count)
+			if (active) setInvitationCount(count)
 		}
 
 		loadCount()
@@ -69,6 +70,7 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 		})
 
 		return () => {
+			active = false
 			InvitationService.unsubscribeFromInvitations()
 		}
 	}, [user?.email])

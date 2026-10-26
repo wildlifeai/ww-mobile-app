@@ -19,19 +19,3 @@ export interface DeviceWithStatus {
     activeDeployment?: Deployment
     lastDeployment?: Deployment
 }
-
-/**
- * Device list item for UI display
- */
-export interface DeviceListItem {
-    id: string
-    name: string
-    bluetoothId: string
-    status: DeviceStatus
-    locationName?: string
-    deploymentId?: string
-    deploymentEndDate?: Date
-    lastDeploymentDate?: Date
-    projectName?: string
-}
-

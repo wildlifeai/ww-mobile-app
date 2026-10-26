@@ -85,7 +85,15 @@ export const toCsv = (readings: LightReading[]): string => {
  */
 export const useLightSensorLog = () => {
     const [readings, setReadings] = useState<LightReading[]>([])
+    // The ref mirrors the state so a change can build on the latest list without
+    // doing work inside a state updater, which React may call more than once.
+    const readingsRef = useRef<LightReading[]>([])
     const loadedRef = useRef(false)
+
+    const replace = useCallback((next: LightReading[]) => {
+        readingsRef.current = next
+        setReadings(next)
+    }, [])
 
     // Restore any previous session's readings once on mount.
     useEffect(() => {
@@ -97,13 +105,13 @@ export const useLightSensorLog = () => {
                 if (!info.exists) return
                 const raw = await FileSystem.readAsStringAsync(LOG_FILE)
                 const parsed = JSON.parse(raw)
-                if (Array.isArray(parsed)) setReadings(parsed)
+                if (Array.isArray(parsed)) replace(parsed)
             } catch (e) {
                 // A corrupt log must never block measuring — start fresh instead.
                 logError('[LightSensorLog] could not restore readings:', e)
             }
         })()
-    }, [])
+    }, [replace])
 
     const persist = useCallback(async (next: LightReading[]) => {
         try {
@@ -115,36 +123,33 @@ export const useLightSensorLog = () => {
     }, [])
 
     const addReading = useCallback((reading: LightReading) => {
-        setReadings(prev => {
-            const next = [...prev, reading]
-            persist(next)
-            log(`[LightSensorLog] reading #${next.length}: aeMean=${reading.aeMean}`)
-            return next
-        })
-    }, [persist])
+        const next = [...readingsRef.current, reading]
+        replace(next)
+        persist(next)
+        log(`[LightSensorLog] reading #${next.length}: aeMean=${reading.aeMean}`)
+    }, [persist, replace])
 
     /** Attach or replace the note on the most recent reading. */
     const annotateLast = useCallback((note: string) => {
-        setReadings(prev => {
-            if (prev.length === 0) return prev
-            const next = [...prev]
-            next[next.length - 1] = { ...next[next.length - 1], note }
-            persist(next)
-            return next
-        })
-    }, [persist])
+        const prev = readingsRef.current
+        if (prev.length === 0) return
+        const next = [...prev]
+        next[next.length - 1] = { ...next[next.length - 1], note }
+        replace(next)
+        persist(next)
+    }, [persist, replace])
 
     const clear = useCallback(() => {
         Alert.alert('Clear readings?', `Deletes all ${readings.length} logged readings. This cannot be undone.`, [
             { text: 'Cancel', style: 'cancel' },
             {
                 text: 'Clear', style: 'destructive', onPress: () => {
-                    setReadings([])
+                    replace([])
                     persist([])
                 },
             },
         ])
-    }, [readings.length, persist])
+    }, [readings.length, persist, replace])
 
     /** Write the CSV to disk and offer it through the OS share sheet. */
     const exportCsv = useCallback(async () => {

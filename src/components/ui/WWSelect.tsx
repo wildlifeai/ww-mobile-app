@@ -13,7 +13,8 @@ type CommonProps = {
 	onChange?: (value: string) => void
 	onSelectEffect?: (value: string) => void
 	errorText?: string
-	label: string
+	/** Optional: leave it out when the card's title already names the field */
+	label?: string
 	options: Option[]
 	style?: StyleProp<ViewStyle>
 	theme?: any
@@ -53,7 +54,7 @@ export const WWSelect = forwardRef<View, WWSelectProps>(
 					{...props}
 					label={label}
 					mode="outlined"
-					placeholder={label}
+					placeholder={props.placeholder ?? label}
 					options={options}
 					value={value}
 					onSelect={onSelect}

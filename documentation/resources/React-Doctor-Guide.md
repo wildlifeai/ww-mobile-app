@@ -54,12 +54,24 @@ The following `jsx-a11y` rules are suppressed because they target HTML DOM eleme
 
 Additionally, `doctor.config.json` ignores baseline aesthetic warnings that are not strict bugs (e.g., `prefer-module-scope-pure-function`, `jsx-pascal-case`) and suppresses `deadCode` checking (`"deadCode": false`) to prevent false-positives like `unused-file` on Expo navigation routes.
 
+Rules ignored on 25 October 2026, when the score went from 71 to above 95. Each one either misreads
+this codebase or asks for a rewrite that is not worth its risk:
+
+| Rule | Why it is off |
+|------|---------------|
+| `no-high-complexity-react-function` | Same family as `no-giant-component`, already off: the Engineer Console screens are long by design, and splitting them is a redesign, not a fix |
+| `server-sequential-independent-await`, `async-parallel` | BLE commands and WatermelonDB writes are serialised on purpose; the transport queues device traffic in order, and `Promise.all` would reorder it |
+| `no-loading-flag-reset-outside-finally` | Every flagged reset sits in a `finally` or `catch` behind an `unmountedRef` guard, which the rule does not see |
+| `no-adjust-state-on-prop-change` | The BLE hooks mirror state in refs deliberately (phase machines in `useFirmwareUpdate`, scan state in `useDeviceDiscovery`), see the BLE reference |
+| `no-set-state-after-await-in-effect` | The seed effects in `MotionDetectionSection` and `useCapturePicture` read the camera once per connection and keep its answer; a cancel flag would drop it whenever the device object is replaced mid-read, and the once-only ref would then block a retry. `useFirmwareStatus` guards with `isMounted` |
+| `js-set-map-lookups`, `js-index-maps` | The lists are tens of items; a Set or Map adds code for no measurable gain |
+
 ### Ignored Files
 
 | Pattern | Reason |
 |---------|--------|
 | `android/**`, `ios/**` | Native platform code, not React |
-| `scripts/**`, `patches/**`, `archive/**` | Tooling and legacy code |
+| `scripts/**`, `patches/**` | Tooling |
 | `**/*.test.ts`, `**/*.test.tsx`, `**/__tests__/**`, `**/__mocks__/**` | Test files |
 | `src/types/database.types.ts` | Auto-generated Supabase types |
 | `supabase/**` | SQL schema dumps. CLI 0.9.x reads `service_role` in a `GRANT` as a leaked secret (`artifact-secret-leak`), and `supabase-table-missing-rls` only looks in the `CREATE TABLE` file while RLS is enabled in `xxx_rls/` and `yyy_policies/`. Both are false positives here. |

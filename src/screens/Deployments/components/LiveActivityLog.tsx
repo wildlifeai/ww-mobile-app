@@ -83,6 +83,7 @@ function getEventColor(category: string, theme: any) {
         case 'sleep':
             return theme.colors.onSurfaceVariant
         case 'selftest_warn':
+        case 'capture_failed':
             return theme.colors.error
         case 'motion':
             return theme.colors.tertiary || '#FF9800'

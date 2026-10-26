@@ -55,6 +55,31 @@ $$;
 -- its organisation (#320, which replaced #304's same-organisation rule). A camera has at
 -- most one open deployment (deployments_one_open_per_device, tables/28_deployments.sql).
 
+-- devices.bluetooth_id, device_eui and organisation_id: refused for any client role except a
+-- ww_admin (#327). The deploying project's admins may rename a camera, nothing more: a
+-- camera's EUI decides which deployment receives its LoRaWAN messages (#323), and its
+-- Bluetooth id is how every phone finds it.
+CREATE OR REPLACE FUNCTION public.lock_device_columns()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = ''
+AS $$
+BEGIN
+  IF current_user IN ('authenticated', 'anon')
+     AND (NEW.bluetooth_id IS DISTINCT FROM OLD.bluetooth_id
+          OR NEW.device_eui IS DISTINCT FROM OLD.device_eui
+          OR NEW.organisation_id IS DISTINCT FROM OLD.organisation_id) THEN
+    -- Nested, so has_system_role runs only for a real change by a client.
+    IF NOT public.has_system_role((SELECT auth.uid()), 'ww_admin') THEN
+      RAISE EXCEPTION 'Permission denied: only a ww_admin can change a device''s bluetooth_id, device_eui or organisation_id'
+        USING ERRCODE = '42501';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
 -- projects.organisation_id: refused for any client role except a ww_admin.
 CREATE OR REPLACE FUNCTION public.lock_project_organisation()
 RETURNS trigger

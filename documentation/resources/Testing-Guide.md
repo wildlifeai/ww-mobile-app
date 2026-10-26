@@ -8,6 +8,7 @@
 |------|------|----------|---------|
 | Unit | Jest + RNTL | `src/**/__tests__/*.test.ts` | `npm test` |
 | Integration/BDD | Jest + custom helpers | `tests/integration/**/*.bdd.test.tsx` | `npm test -- bdd` |
+| Against cloud-dev | Jest, the real Supabase client and push | `tests/integration/cloud-dev/` | CI only, see below |
 | E2E | Maestro | `tests/maestro/smoke/` on every PR in CI (advisory), the flows in `tests/maestro/config.yaml` on the `full-e2e` label | `npm run test:maestro:smoke`, `npm run test:maestro` |
 
 ## Running Tests
@@ -200,6 +201,18 @@ through `scripts/maestro-offline.sh` after the other flows:
   (`gh workflow run native-build-validation.yml --ref <branch>`); never in the merge queue,
   which has no labels.
 
+`ProjectService on cloud-dev` (`cloud-dev-integration`), advisory, runs on the same trigger and
+needs no build. It signs in as the E2E account and runs
+[`ProjectService.cloudDev.test.ts`](../../tests/integration/cloud-dev/ProjectService.cloudDev.test.ts):
+one project created through WatermelonDB, the outbox and `push_changes`, checked on the server
+with the creator's `project_admin` role, edited without losing the columns the edit left out,
+and deleted, plus a check that the server shows the account only projects its roles allow
+(#489). Every project it creates is soft-deleted at the end, even after a failed step. Without
+the four variables (`E2E_TEST_EMAIL`, `E2E_TEST_PASSWORD`, `EXPO_PUBLIC_SUPABASE_URL`,
+`EXPO_PUBLIC_SUPABASE_ANON_KEY`) the suite skips itself, so `npm test` never reaches the network,
+and the job fails rather than pass with nothing tested. Organisation isolation between two
+accounts and member changes need a second seeded account, which the E2E secrets do not hold.
+
 Both write a junit report and **fail if it holds no test cases**, because until 21 September
 2026 the E2E job reported success on every run while Maestro ran nothing (run 35493842313: an
 empty `~/.maestro/tests/` under a green tick). Both then print Maestro's output into the job log
@@ -240,7 +253,6 @@ them, [`2026-10-02_e2e-real-screens`](../development%20reports/2026-10-02_e2e-re
 {
   "test:maestro": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/",
   "test:maestro:smoke": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/smoke/",
-  "test:maestro:full": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/",
   "test:maestro:auth": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/auth-workflow.yaml",
   "test:maestro:crud": "maestro test -e APP_ID=com.wildlife.wildlifewatcher.expo tests/maestro/project-crud-workflow.yaml",
   "test:maestro:offline": "bash scripts/maestro-offline.sh -e APP_ID=com.wildlife.wildlifewatcher.expo"
@@ -368,16 +380,16 @@ it") has the local commands for the gates.
 
 | Workflow | Runs on | Proves | Gate? |
 |---|---|---|---|
-| Quality Gate Validation | every PR, merge queue | `type-check`, `lint`, `version:check`, `docs:validate`, the type system is not empty, no `console.log` outside the logger, Jest with coverage at or above the 20% floor | gate: `quality-gates (22.x)` and `(24.x)` |
+| Quality Gate Validation | every PR, merge queue | `type-check`, `lint`, `version:check`, `docs:validate`, the type system is not empty, no `console.log` outside the logger, Jest with coverage at or above the 50% floor | gate: `quality-gates (22.x)` and `(24.x)` |
 | Native Build Validation | every PR, merge queue | an Android EAS local build of the `e2e` profile, `E2E Smoke` on an emulator, `expo prebuild` for iOS; `E2E Full` on the `full-e2e` label. A `changes` job skips the expensive steps on a docs-only PR while every check still reports | advisory: a failure shows red, but none of its checks is required on `dev` |
 | Commitlint | every PR, merge queue | conventional commit subjects | gate: `commitlint` |
 | Type Synchronization Validation, Cloud Type Validation | PRs, pushes | `src/types/database.types.ts` matches what `supabase gen types` produces from cloud-dev (PRs into `dev`) or production (PRs into `main`) | gate on `dev`: `Cloud Type Validation Summary`. Nothing is required on `main` |
 | React Doctor Review | every PR, merge queue | 60+ React and React Native rules. An error-severity finding fails the PR; warnings go to a sticky comment with a 0 to 100 score. Config in `doctor.config.json`, detail in [React-Doctor-Guide.md](React-Doctor-Guide.md) | advisory: an error shows red, but the check is not required |
-| PR-Agent code review | PR open, comments | an AI review comment. It triggers on comments, so it can never be required | advisory |
+| PR-Agent code review | PR open, comments | an AI review comment. It triggers on comments, so it can never be required. Skipped on Dependabot PRs, whose runs get no Gemini key | advisory |
 | Op Index Drift | PRs touching `useDeviceSettings.ts`; Mondays | `OP_PARAMETER` matches the firmware enum on Seeed `dev` (`scripts/check-op-indices.js`); the firmware may legitimately lead by one PR | advisory |
 | Self-Test Bit Drift | PRs touching `utils/deviceSelfTest.ts`; Mondays | `SelfTestBit` matches `selfTest_type_t` on Seeed `dev` (`scripts/check-selftest-bits.js`): every bit number on both sides, none at 16 or above; the firmware may legitimately lead by one PR | advisory |
 | Expo Doctor | PRs touching `package.json`, the lockfile, `app.config.ts`, `eas.json` or `android/` | `npx expo-doctor` and `npx expo install --check`: package versions against the SDK, the app config schema, the native folders, the React Native Directory. Both read the Expo API, which is why they are not in the offline quality gate. What they are told to skip is below | advisory: a failure shows red, but the check is not required |
-| CodeQL | PRs, pushes to `dev`, Mondays | GitHub's JavaScript and TypeScript security queries; findings are code scanning alerts in the Security tab, and the `CodeQL` check fails a PR that adds one at or above the repository's failure threshold. `archive/`, `android/`, `supabase/`, `patches/` and the tests are left out | advisory until `CodeQL` is required (#392) |
+| CodeQL | PRs, pushes to `dev`, Mondays | GitHub's JavaScript and TypeScript security queries; findings are code scanning alerts in the Security tab, and the `CodeQL` check fails a PR that adds one at or above the repository's failure threshold. `android/`, `supabase/`, `patches/` and the tests are left out | advisory until `CodeQL` is required (#392) |
 | Schema Mirror Drift | PRs touching `supabase/`, the schema files or the sync scripts; Mondays | `supabase/schemas` still matches ww-backend's `dev` (`scripts/check-schema-mirror.js`, with the read-only token); the fix for that drift is `npm run db:sync-schema` and a commit. A second job runs `validate-watermelon-schema.js`: `src/database/schema.ts` matches the Supabase types, with every accepted difference named in `scripts/README.md` | advisory: the mirror job stays green with a warning; the WatermelonDB job shows red on a mismatch, but neither is required |
 | Dead Code | every PR, merge queue, Mondays | knip: files nothing imports, exports and types nothing uses, dependencies nothing imports, imports of packages `package.json` does not list. What `knip.json` tells it is below | advisory: a finding shows red (#393), but `knip` is not required |
 | Dependency Audit | PRs touching `package.json` or the lockfile; Mondays | `npm audit --omit=dev --audit-level=high`, read from the lockfile with no install. Dependabot (`.github/dependabot.yml`) opens the bump PRs: one grouped PR a week for everything outside the Expo SDK set, which moves together through `npx expo install` | advisory on PRs; the Monday run fails, so an advisory published against an unchanged lockfile is still seen |
@@ -394,10 +406,8 @@ it") has the local commands for the gates.
 - The React Native Directory check does not list packages the directory has no entry for
   (`@getquip/expo-nordic-dfu`, `react-native-document-picker`, `react-native-vector-icons`,
   `@nozbe/simdjson`) and excludes `@nozbe/watermelondb` (untested on the New Architecture, the
-  app's database all the same) and `@react-native-community/geolocation` (unmaintained; replacing
-  it is a decision, not a CI fix).
-- `expo install` ignores `typescript`, pinned at 5.3.3 for React Native (see the Dependency
-  Validation System guide), and `react-native-keyboard-controller` and `react-native-worklets`,
+  app's database all the same).
+- `expo install` ignores `react-native-keyboard-controller` and `react-native-worklets`,
   installed newer than the SDK 54 list expects; the builds pass with them and a downgrade is a
   separate decision.
 
@@ -421,17 +431,9 @@ above it is the narrower form (`TEST_BIT_SAVE_BMP` in `useDeviceSettings.ts`).
 - `@babel/runtime` is ignored as a dependency: Babel's runtime transform, on in
   `babel-preset-expo`, writes imports of its helpers into the compiled app, where knip cannot
   see them.
-- `expo-keep-awake` is ignored as an unlisted dependency: the file transfer and the firmware
-  update import it, and only `expo` installs it. It has native code, so listing it is a decision
-  for the maintainer, not a CI fix.
-- `@react-native-community/geolocation` and `@morrowdigital/watermelondb-expo-plugin` are ignored
-  as unused dependencies: nothing imports either, but one is a native module and the other an
-  Expo config plugin, so removing them is a native-build decision.
 - `maestro` is ignored as a binary: it is a separate CLI the `test:maestro*` scripts call, not an
   npm package (see "Maestro E2E Testing").
-- `src/types/database.types.ts` is generated and not inspected. `src/types/supabase.ts` is empty
-  and imported by nothing, and stays: `npm run types:local` writes there, and
-  `scripts/validate-watermelon-schema.js` reads it before `database.types.ts`.
+- `src/types/database.types.ts` is generated and not inspected.
 - Revisit after #411, which changes both files: `src/services/DeploymentPhotoService.ts` is left
   out of the export checks (its default export duplicates the named one and nothing uses it), and
   so is `tests/setup/helpers/fakeDatabase.ts`, whose `fakeDatabase` the tests reach through
@@ -553,18 +555,10 @@ After login, new users see the tutorial carousel before reaching the main app. V
 - assertVisible: { id: "bottom-tab-scanner" }    # Main app loaded
 ```
 
-### Local Seeding
+### Seeding the accounts
 
-To use these accounts locally:
-
-```bash
-# 1. Reset the local Supabase database
-cd ../ww-backend
-supabase db reset
-
-# 2. Run the seed script (requires SEED_USER_PASSWORD in .env.test)
-bash scripts/seed-local.sh
-```
+The seed users live in ww-backend. How to load them into a Supabase project is in that repo's
+[CLOUD_SEEDING guide](https://github.com/wildlifeai/ww-backend/blob/dev/documentation/resources/CLOUD_SEEDING.md).
 
 > [!TIP]
 > When writing new features that depend on user roles, always test with at least three accounts: `alice@ww.org` (admin), `laura@ww.org` (org manager), and `mark@ww.org` (member) to catch permission regressions.

@@ -118,7 +118,9 @@ file is the list of things that look like an app bug and are not, and the revers
   blocker up, and repeating `selftest` will never clear it. Only a cold boot will. Expect the
   same in the field whenever anyone swaps a card without cutting power. Since #325 every message
   that reports bit 11 tells the operator to power cycle, using `SD_CARD_POWER_CYCLE_HINT` in
-  `utils/deviceSelfTest.ts`; a new one should use it too.
+  `utils/deviceSelfTest.ts`; a new one should use it too. Bit 9 is the same story: an HM0360
+  that did not start at power-on (Seeed #57) survives an AI restart, since the sensor stays
+  powered, so every bit 9 message leads with the power cycle (`HM0360_POWER_CYCLE_HINT`, #477).
 - **Ignore the battery percentage on a bench unit, it is reading the USB rail.** A WW500 powered
   over USB on the bench reports numbers like `Battery = 3076mV 2%` that say nothing about any
   cell, so a low reading there is not a reason to stop, charge anything or doubt a result.
@@ -177,6 +179,12 @@ file is the list of things that look like an app bug and are not, and the revers
   22 September 2026. The patch does the close bookkeeping at once and keeps one set of
   back-button and dimensions listeners. Metro loads paper from `src/`, so the patch carries
   `src/` and both `lib/` builds. If paper is upgraded, re-check the reopen before dropping it.
+- **Nothing inside a paper `Dialog` may call `useNavigation`.** Paper's `Portal` renders at the
+  `PaperProvider`, which wraps the `NavigationContainer` in `src/App.tsx`, so a popup has Redux and
+  the theme but no navigation, and the hook throws "Couldn't find a navigation object". The
+  `WWBleDisconnectedBanner` in Start Monitoring's Camera View popup sent the app back to the
+  scanner on 26 October 2026. Call the hook outside the dialog and pass a callback in;
+  `CameraViewAction.test.tsx` guards that popup.
 - **An `Alert.alert` confirmation returns at once, and RTK Query's `refetch()` throws once its
   screen has gone.** Archiving a project showed "Update Failed" from May to September 2026
   (#191): the save returned before the user answered, Edit Project went back underneath the

@@ -58,7 +58,7 @@ flows (`E2E Full`, on the `full-e2e` label) sign in as a seeded cloud-dev user f
 secrets; what each proves is in the Testing Guide. Every check that can be required also runs on `merge_group`,
 so `dev` can sit behind a merge queue without touching the workflows. PR-Agent is the one
 that cannot: it triggers on open and on comments, so it stays advisory.
-The coverage floor is a ratchet at 20%: it only moves up, by hand.
+The coverage floor is a ratchet at 50%: it only moves up, by hand.
 Four checks are required on `dev`: `Cloud Type Validation Summary`, `commitlint`, `quality-gates (22.x)`
 and `quality-gates (24.x)`. Everything else is advisory, E2E Smoke, Expo Doctor, React Doctor, Dead Code
 and the WatermelonDB schema check included: they can show red but do not stop a merge. iOS builds once

@@ -5,16 +5,16 @@
  * 
  * Improvements over validate-watermelon-schema.js:
  * - Validates against live Supabase database (not just generated types)
- * - Leverages existing check-types-*.sh infrastructure
+ * - Leverages the check-types-cloud scripts
  * - Uses Supabase REST API introspection for accurate schema
- * - Supports multiple environments (local, cloud-dev, cloud-prod)
+ * - Supports the cloud-dev and cloud-prod environments
  * - Better error reporting with actionable fix suggestions
  * - CI/CD friendly with JSON output option
  * - Integrates with existing type validation workflow
  * 
  * Usage:
- *   npm run schema:validate:live -- --env local
- *   npm run schema:validate:live -- --env cloud-dev --json
+ *   npm run schema:validate:live -- --env=cloud-dev
+ *   npm run schema:validate:live -- --env=cloud-prod --json
  */
 
 const fs = require('fs');
@@ -26,18 +26,13 @@ const ARGS = process.argv.slice(2);
 const VERBOSE = ARGS.includes('--verbose');
 const JSON_OUTPUT = ARGS.includes('--json');
 const ENV_ARG = ARGS.find(arg => arg.startsWith('--env='));
-const ENV = ENV_ARG ? ENV_ARG.split('=')[1] : 'local';
+const ENV = ENV_ARG ? ENV_ARG.split('=')[1] : 'cloud-dev';
 
 const WATERMELON_SCHEMA_PATH = path.join(__dirname, '../src/database/schema.ts');
 const SUPABASE_TYPES_PATH = path.join(__dirname, '../src/types/database.types.ts');
 
 // Environment configuration
 const ENVIRONMENTS = {
-    local: {
-        checkScript: './scripts/check-types-local.sh',
-        description: 'Local Supabase (localhost:54321)',
-        requiresBackend: true
-    },
     'cloud-dev': {
         checkScript: './scripts/check-types-cloud.sh cloud-dev',
         // The project ref is NOT hardcoded here: check-types-cloud reads it from
@@ -47,12 +42,10 @@ const ENVIRONMENTS = {
         // (qegeovogqxiouqbrxmnh) all along - a stale string that sends a reader
         // to the wrong database.
         description: 'Cloud Dev (project ref from .env.development)',
-        requiresBackend: false
     },
     'cloud-prod': {
         checkScript: './scripts/check-types-cloud.sh cloud-prod',
         description: 'Cloud Prod (not yet configured)',
-        requiresBackend: false
     }
 };
 
@@ -83,11 +76,7 @@ function validateTypesAreCurrent() {
 
         if (isWindows) {
             // Use PowerShell scripts on Windows
-            if (ENV === 'local') {
-                checkScript = 'powershell.exe -ExecutionPolicy Bypass -File .\\scripts\\check-types-local.ps1';
-            } else {
-                checkScript = `powershell.exe -ExecutionPolicy Bypass -File .\\scripts\\check-types-cloud.ps1 -Environment ${ENV}`;
-            }
+            checkScript = `powershell.exe -ExecutionPolicy Bypass -File .\\scripts\\check-types-cloud.ps1 -Environment ${ENV}`;
         } else {
             // Use bash scripts on Unix/Mac
             checkScript = envConfig.checkScript;
@@ -518,7 +507,7 @@ async function main() {
     try {
         // Validate environment
         if (!ENVIRONMENTS[ENV]) {
-            throw new Error(`Invalid environment: ${ENV}. Valid options: local, cloud-dev, cloud-prod`);
+            throw new Error(`Invalid environment: ${ENV}. Valid options: cloud-dev, cloud-prod`);
         }
 
         const envConfig = ENVIRONMENTS[ENV];

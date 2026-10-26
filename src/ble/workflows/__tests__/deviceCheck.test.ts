@@ -52,6 +52,8 @@ interface FakeOptions {
     motionBlocks?: number[]
     /** The burst attempt the camera first acknowledges; earlier ones hang until aborted */
     burstAckOn?: number
+    /** The burst starts, then the camera abandons it with this line (#476) */
+    burstFails?: string
     /** The AI processor's clock ignores setutc */
     aiClockStuck?: boolean
     /** The AI processor's clock reads back this far off, as after a sleep (negative is behind) */
@@ -156,6 +158,7 @@ const fakeDevice = (opts: FakeOptions = {}) => {
                     return new Promise<T>((_, reject) => options?.signal?.addEventListener('abort', () => reject(new Error('aborted'))))
                 }
                 emit(`About to capture ${count} images`)
+                if (opts.burstFails) throw new Error(opts.burstFails)
                 ;(opts.motionBlocks ?? [0, 3, 12, 7]).forEach(n => emit(`HM0360 motion in ${n} blocks:`))
                 return reply(count)
             }
@@ -349,6 +352,16 @@ describe('runDeviceCheck', () => {
 
         expect(device.sent.filter(c => c === 'AI capture 10 500')).toHaveLength(3)
         expect(steps.motion?.status).toBe('pass')
+    })
+
+    it('fails the motion step with the camera\'s reason when it abandons the burst (#476)', async () => {
+        const device = fakeDevice({ burstFails: 'Capture failed after 4 of 10 images: No frame' })
+        const { steps } = await run(device)
+
+        expect(device.sent.filter(c => c === 'AI capture 10 500')).toHaveLength(1)
+        expect(steps.motion?.status).toBe('fail')
+        expect(steps.motion?.summary).toBe('Capture failed after 4 of 10 images: No frame')
+        expect(device.ops[18]).toBe('0')
     })
 
     it('gives up on the burst after four tries', async () => {
@@ -622,5 +635,12 @@ describe('describeSelfTest', () => {
 
         expect(state.status).toBe('fail')
         expect(state.summary).toMatch(/^0x8100: the colour camera \(RP3\) did not answer, unknown self-test code 0x8000\./)
+    })
+
+    it('says to power cycle before checking the ribbons when the HM0360 did not answer (#477)', () => {
+        const state = describeSelfTest(0x0200, 'RP3')
+
+        expect(state.status).toBe('fail')
+        expect(state.summary).toBe('0x0200: the HM0360 sensor did not answer. Power cycle the unit and run again. If it fails again, check the camera ribbon cables.')
     })
 })

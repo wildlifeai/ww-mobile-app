@@ -383,6 +383,30 @@ describe('Simulated Transport Resiliency', () => {
     expect(getopWrites).toHaveLength(1);
   });
 
+  // Seeed PR #276 refuses a value op17 or op33 does not take and saves nothing.
+  // The reply used to match neither of setop's patterns, so the deployment's
+  // reset sat out 8 s three times and the operator saw TIMEOUT, not the reason.
+  test('a refused setop fails at once with the firmware reply, without retrying', async () => {
+    const mockWrite = transport.writeToDevice as jest.Mock;
+
+    mockWrite.mockImplementation(async (_periph, payload) => {
+      expect(payload).toBe('AI setop 33 0');
+      rxRouter.handleIncomingBytes(DEVICE_ID, Buffer.from(
+        'Error: 0 is not a valid value for op 33.\r\n',
+      ));
+      return true;
+    });
+
+    const started = Date.now();
+    await expect(
+      bleTransport.enqueue(() => runCommandPipeline(peripheral, () => commandRegistry.setop({ index: 33, value: 0 })))
+    ).rejects.toThrow('setop failed: Error: 0 is not a valid value for op 33.');
+
+    expect(Date.now() - started).toBeLessThan(2000);
+    const setopWrites = mockWrite.mock.calls.filter((c: any[]) => c[1] === 'AI setop 33 0');
+    expect(setopWrites).toHaveLength(1);
+  });
+
   // The capability probe: firmware without the command answers "Unrecognised",
   // and the caller falls back to taking a real capture. Retrying that could never
   // succeed, so it must reject on the first attempt.

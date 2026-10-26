@@ -3,7 +3,6 @@ module.exports = {
 	setupFiles: ["<rootDir>/jest.setup.js"],
 	setupFilesAfterEnv: [
 		"<rootDir>/tests/setup/sanitySetup.ts",
-		"@testing-library/jest-native/extend-expect",
 	],
 	testEnvironment: "node",
 	transform: {
@@ -15,14 +14,12 @@ module.exports = {
 	moduleNameMapper: {
 		"^@/(.*)$": "<rootDir>/src/$1",
 		"^@test/(.*)$": "<rootDir>/tests/setup/$1",
-		"expo-sqlite": "<rootDir>/tests/__mocks__/expo-sqlite.ts",
 		"expo-updates": "<rootDir>/tests/__mocks__/expo-updates.ts",
 		"expo-secure-store": "<rootDir>/tests/__mocks__/expo-secure-store.ts",
 		"expo-file-system/legacy": "<rootDir>/tests/__mocks__/expo-file-system-legacy.ts",
 		"react-native-drawer-layout": "<rootDir>/tests/__mocks__/react-native-drawer-layout.tsx",
 		"react-native-maps": "<rootDir>/tests/__mocks__/react-native-maps.tsx",
 		"react-native-toast-message": "<rootDir>/tests/__mocks__/react-native-toast-message.tsx",
-		"@shopify/react-native-skia": "<rootDir>/tests/__mocks__/@shopify/react-native-skia.js",
 		"@react-native-community/netinfo":
 			"<rootDir>/tests/__mocks__/@react-native-community/netinfo.ts",
 		"\\.(png|jpg|jpeg|gif|svg|ttf|otf)$": "<rootDir>/tests/__mocks__/fileMock.js",
@@ -37,8 +34,7 @@ module.exports = {
 		// Root level tests
 		"<rootDir>/__tests__/**/*.{js,jsx,ts,tsx}",
 	],
-	testPathIgnorePatterns: ["<rootDir>/node_modules/", "<rootDir>/e2e/", "<rootDir>/project-context/", "<rootDir>/archive/"],
-	modulePathIgnorePatterns: ["<rootDir>/project-context/", "<rootDir>/archive/"],
+	testPathIgnorePatterns: ["<rootDir>/node_modules/"],
 	collectCoverageFrom: [
 		"src/**/*.{ts,tsx}",
 		"!src/**/*.d.ts",
@@ -49,7 +45,7 @@ module.exports = {
 		"!src/**/*.stories.{ts,tsx}",
 		"!src/**/*.mock.{ts,tsx}",
 	],
-	coverageReporters: ["text", "lcov", "html"],
+	coverageReporters: ["text", "lcov", "html", "json-summary"],
 	coverageDirectory: "<rootDir>/coverage",
 	clearMocks: true,
 	resetMocks: false,

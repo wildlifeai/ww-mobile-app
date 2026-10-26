@@ -1,6 +1,5 @@
 import { DeviceService } from "../DeviceService"
 import database from "../../database"
-import ProjectService from "../ProjectService"
 import OutboxService from "../OutboxService"
 
 // Mock dependencies
@@ -10,6 +9,8 @@ jest.mock("../../database", () => ({
 	batch: jest.fn(),
 }))
 
+// DeploymentService, which DeviceService imports, pulls in ProjectService and
+// with it InvitationService, which needs a real database at load
 jest.mock("../ProjectService", () => ({
 	getProjectsForUser: jest.fn(),
 }))
@@ -79,7 +80,8 @@ describe("DeviceService", () => {
 	})
 
 	describe("createDevice", () => {
-		it("should prepare create and batch write", async () => {
+		// A camera belongs to no organisation since ww-backend #346 (#501)
+		it("should prepare create and batch write, with no organisation", async () => {
 			const mockNewDevice = { id: "new-d1" }
 			// database.write invokes the callback
 			;(database.write as jest.Mock).mockImplementation(async (callback) => {
@@ -92,72 +94,14 @@ describe("DeviceService", () => {
 			})
 			;(OutboxService.recordOperation as jest.Mock).mockReturnValue("outbox-op")
 
-			const result = await DeviceService.createDevice("bt-id", "New Device", "org-1", "user-1")
+			const result = await DeviceService.createDevice("bt-id", "New Device", "user-1")
 
 			expect(mockCollection.prepareCreate).toHaveBeenCalled()
-			expect(OutboxService.recordOperation).toHaveBeenCalled()
+			expect(OutboxService.recordOperation).toHaveBeenCalledWith(expect.objectContaining({
+				payload: { id: "new-d1", bluetooth_id: "bt-id", name: "New Device", modified_by: "user-1" },
+			}))
 			// The result will have the properties set in the callback
-			expect(result).toEqual({ ...mockNewDevice, bluetoothId: "bt-id", name: "New Device", organisationId: "org-1" })
-		})
-	})
-
-	describe("getDevicesForUser", () => {
-		it("should return empty list if user has no projects and no direct access", async () => {
-			;(ProjectService.getProjectsForUser as jest.Mock).mockResolvedValue([])
-			
-			// Mock user roles query needed for fallback check
-			const mockUserRolesCollection = {
-				query: jest.fn().mockReturnThis(),
-				fetch: jest.fn().mockResolvedValue([]),
-			}
-			;(database.get as jest.Mock).mockImplementation((table) => {
-				if (table === 'user_roles') return mockUserRolesCollection
-				return mockCollection
-			})
-
-			const result = await DeviceService.getDevicesForUser("user-1")
-			expect(result).toEqual([])
-		})
-
-		// This test simulates the "Global Admin" case or user with projects
-		it("should return devices based on project deployments", async () => {
-			const mockProjects = [{ id: "p1" }]
-			;(ProjectService.getProjectsForUser as jest.Mock).mockResolvedValue(mockProjects)
-
-			// 1. Deployments query
-			const mockDeployments = [{ deviceId: "d1" }, { deviceId: "d2" }]
-			// 2. Devices query
-			const mockDevices = [
-				{ id: "d1", name: "Device 1", bluetoothId: "bt1" },
-				{ id: "d2", name: "Device 2", bluetoothId: "bt2" }
-			]
-
-			const mockDeploymentsColl = { query: jest.fn().mockReturnThis(), fetch: jest.fn().mockResolvedValue(mockDeployments) }
-			const mockDevicesColl = { query: jest.fn().mockReturnThis(), fetch: jest.fn().mockResolvedValue(mockDevices) }
-			
-			// Mock getting status for list item
-			// We need to mock getDeviceWithStatus / or directly query inside deviceToListItem
-			// deviceToListItem calls getDeviceWithStatus -> calculateDeviceStatus -> queries
-			// This makes unit testing complex due to many internal calls. 
-			// We will trust the mockCollection return values for strict unit testing logic flow.
-
-			;(database.get as jest.Mock).mockImplementation((table) => {
-				if (table === 'deployments') return mockDeploymentsColl
-				if (table === 'devices') return mockDevicesColl
-				return mockCollection
-			})
-
-			// Spy on internal method to simplify test of getDevicesForUser logic only
-			jest.spyOn(DeviceService, 'deviceToListItem').mockResolvedValue({
-				id: 'd1', name: 'Device 1', bluetoothId: 'bt1', status: 'prepared' 
-			} as any)
-
-			const results = await DeviceService.getDevicesForUser("user-1")
-
-			expect(ProjectService.getProjectsForUser).toHaveBeenCalledWith("user-1")
-			// Should return 2 devices (d1 and d2 from deployments)
-			expect(results).toHaveLength(2)
-			expect(DeviceService.deviceToListItem).toHaveBeenCalledTimes(2)
+			expect(result).toEqual({ ...mockNewDevice, bluetoothId: "bt-id", name: "New Device" })
 		})
 	})
 })

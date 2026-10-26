@@ -170,6 +170,7 @@ services/
 ├── DeploymentService.ts       # Deployment lifecycle
 ├── DeviceService.ts           # Device record management
 ├── serverDevices.ts           # A camera's server row: read by Bluetooth id, written to the phone (#451)
+├── cameraRegistration.ts      # A row for a camera the phone lacks, for the scanner and the Dev Deployment Test (#480)
 ├── UserRoleService.ts         # User role management
 ├── roleAccess.ts              # What the roles let a user see, and do with a deployment
 ├── deploymentAccess.ts        # May this account start or end a deployment, from the phone's roles (#450)
@@ -239,8 +240,7 @@ hooks/
 ├── useAndroidPermissions.ts   # Android runtime permissions
 ├── useDeepLinking.ts          # Deep link handling
 ├── useAppNavigation.tsx       # Typed navigation hook
-├── useInterval.tsx            # Interval utility
-└── useTimer.ts                # Timer utility
+└── useInterval.tsx            # Interval utility
 ```
 
 Screen-scoped hooks live beside their screens, see `src/screens/Devices/hooks/` (scanner, firmware update, console) and `src/screens/Deployments/hooks/` (start/end/monitor).

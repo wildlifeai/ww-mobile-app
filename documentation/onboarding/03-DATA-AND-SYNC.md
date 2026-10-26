@@ -333,9 +333,11 @@ private async uploadOutbox() {
 
 The outbox is uploaded in a fixed foreign-key order, `projects`, then `devices`, then
 `deployments`, so a parent row always lands before the child that references it. A camera's
-device row is queued once, when the scanner first registers it (`DeviceService.createDevice`),
-and not at all when the scanner takes the server's row instead ([A camera the server already
-has](#a-camera-the-server-already-has)). A deployment start queues no device `CREATE` (#451):
+device row is queued once, when the scanner or a Dev Deployment Test first registers it
+(`registerCamera`, then `DeviceService.createDevice`), and not at all when it takes the server's
+row instead ([A camera the server already has](#a-camera-the-server-already-has)).
+`createDeployment` refuses a deployment without a camera or a project, which the server could
+never take (#480). A deployment start queues no device `CREATE` (#451):
 until then it queued one with every deployment, which the server refused with `42501` for a
 camera of another organisation. A deployment whose device the server has never seen fails
 `23503` (foreign key), and the self-healing path in `SupabaseSyncService` then queues the
@@ -398,16 +400,17 @@ for the device with that Bluetooth id (`SupabaseSyncService.settleTakenBluetooth
   deployments change not yet uploaded that names the local id (pending, failed, in flight,
   refused or orphaned, each keeping its status), marks the local `CREATE` `synced` with `replaced: ...` in `error_message`, and
   removes the local device. The deployments go up with the server's id in the same push.
-- **The server shows no such camera.** It is registered to an organisation this account cannot
-  see. The `CREATE` is `refused` ([Retry Logic](#retry-logic)), and its deployments fail `23503`
-  on every sync until the server gives the app a way to learn the id (ww-backend #327).
+- **The server shows no such camera.** Every live camera is readable since ww-backend #346, so
+  its row was deleted there and still holds the Bluetooth id. The `CREATE` is `refused`
+  ([Retry Logic](#retry-logic)), and its deployments fail `23503` on every sync while that
+  deleted row holds the id (#501).
 - **The lookup fails.** The `CREATE` stays `failed`, and the next sync asks again.
 
 A device `CREATE` refused `42501`, from a call carrying that one device, is the other case
 (`SupabaseSyncService.settleDeviceAlreadyOnServer`). Postgres checks the INSERT policy before
-`ON CONFLICT`, so re-sending the `CREATE` of a camera the server already has is refused for
-anyone outside its organisation, and phones still hold such copies from deployment starts before
-#451. When the server shows this account a device with that id, they are marked `synced` with
+`ON CONFLICT`. Since ww-backend #346 any signed-in account but the demo one may insert a camera,
+so this is the demo account's case, and the copies phones still hold from deployment starts
+before #451, when the INSERT needed the camera's organisation. When the server shows this account a device with that id, they are marked `synced` with
 `already on the server: ...` in `error_message`. When it shows none, the refusal stands, and a
 lookup that fails leaves them `failed`.
 
@@ -549,7 +552,7 @@ that depend on it. Two kinds of operation are kept but never sent again:
   |---|---|
   | `23P01 ... deployments_one_open_per_device` | The camera already has an open deployment on the server (ww-backend #324) |
   | `42501 ...` | Row-level security or a trigger would not let this account write it: no role in the project or organisation, or a viewer |
-  | `23505 This camera is registered on the server to an organisation this account cannot see` | A new camera whose Bluetooth id the server has under another id this account cannot read ([A camera the server already has](#a-camera-the-server-already-has)) |
+  | `23505 This camera was deleted on the server, which still holds its Bluetooth id, so it cannot be registered again` | A new camera whose Bluetooth id a deleted server row still holds ([A camera the server already has](#a-camera-the-server-already-has)) |
   | `not_applied: ...` | An update or delete that matched no row: the row is gone, or this account may no longer change it (a creator made a viewer, ww-backend #266) |
 
   A refused change stays on the phone with its record. Nothing sends it again: once the cause

@@ -181,7 +181,8 @@ class ConfigurableDependencyValidator {
 			const output = error.stdout || ""
 
 			// Check against known/accepted warnings
-			const sdkCompat = this.config.sdkCompatibility?.["51"] || {}
+			const expoMajor = (this.getInstalledVersion("expo") || "").split(".")[0]
+			const sdkCompat = this.config.sdkCompatibility?.[expoMajor] || {}
 			let hasUnexpectedWarnings = false
 
 			Object.entries(sdkCompat).forEach(([pkg, expectedVersion]) => {

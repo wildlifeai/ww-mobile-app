@@ -47,6 +47,12 @@ CREATE TABLE media_embeddings (
     FOREIGN KEY (media_id, deployment_id) REFERENCES media (id, deployment_id) ON DELETE CASCADE
 );
 
+-- media_id alone is the key, so this pair is unique anyway. Declaring it gives the foreign
+-- key's columns a unique constraint, so PostgREST sees media to media_embeddings as
+-- one-to-one and lets the website order media by active_learning_score (#337; PGRST118
+-- without it).
+ALTER TABLE media_embeddings ADD CONSTRAINT uq_media_embeddings_media_deployment UNIQUE (media_id, deployment_id);
+
 CREATE INDEX idx_media_embeddings_run ON media_embeddings (embedding_run_id);
 CREATE INDEX idx_media_embeddings_deployment_cluster ON media_embeddings (deployment_id, cluster_id);
 CREATE INDEX idx_media_embeddings_review_queue

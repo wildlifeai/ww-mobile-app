@@ -3,8 +3,9 @@
  * Dedicated screen for editing project settings.
  * Navigated to from ProjectDetailsScreen via the gear icon.
  * 
- * Design: Matches the StartDeployment screen pattern with Card-based sections,
- * consistent gap spacing, and WWScreenView for keyboard-aware scrolling.
+ * Design: Matches Start Monitoring: input boxes with the title on the border
+ * and a "?" each (FieldBox), no cards, consistent gap spacing,
+ * and WWScreenView for keyboard-aware scrolling.
  */
 
 import { useMemo, useEffect, useCallback, useRef } from "react"
@@ -147,7 +148,7 @@ export const EditProjectScreen = () => {
 	return (
 		<WWScreenView style={styles.screenView}>
 			<View style={styles.container}>
-				{/* Project Details Card (shared with NewProject) */}
+				{/* Project name and description (shared with NewProject) */}
 				<NewProjectBasicInfoSection
 					control={control as any}
 					errors={errors as any}

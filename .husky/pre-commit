@@ -15,7 +15,7 @@ case "$branch" in
     echo "2. Create a new branch: git checkout -b feature/my-feature"
     echo "3. Run your commit again"
     echo "----------------------------------------------------------"
-    echo "🤖 REMINDER: Have you followed the /commit-checklist flow?"
+    echo "🤖 REMINDER: check the agent layer before committing (AGENTS.md, .agents/skills/references/documentation.md)"
     echo "Make sure to check documentation before committing!"
     echo "=========================================================="
     exit 1
@@ -23,7 +23,7 @@ case "$branch" in
 esac
 
 echo "----------------------------------------------------------"
-echo "🤖 REMINDER: Have you followed the /commit-checklist flow?"
+echo "🤖 REMINDER: check the agent layer before committing (AGENTS.md, .agents/skills/references/documentation.md)"
 echo "   📂 Docs live in: documentation/ (not docs/)"
 echo "   📋 Org CONTRIBUTING: github.com/wildlifeai/.github"
 echo "----------------------------------------------------------"

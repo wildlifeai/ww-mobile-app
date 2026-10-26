@@ -103,6 +103,13 @@ day are in [traps.md](traps.md).
   rather than the stored decision, and never phrase a stored verdict as a measurement. The
   deployment log made exactly that mistake before #304. Before surfacing any op as "current",
   establish what writes it and when.
+- **op33 means three things, so ask `mdBlockThresholdOf`.** On the firmware of Seeed PR #276
+  it is the motion wake threshold (1 to 255, default 4) and op17 takes 1 to 3 only; before it,
+  op33 is reserved and reads 0; before ae_review it was MD_BLOCK_NUM_MAX. That firmware refuses
+  op17 = 0 and op33 = 0 with `Error: <value> is not a valid value for op <n>.`, which `setop`
+  now fails on at once without a retry. The same firmware stops sending a motion grid for image
+  1 of a burst, and the motion test uses the same check to know its first grid is image 2's
+  (#499).
 - **`setop` stores; the device applies at wake.** The flash LED and brightness, op13 and op9,
   are read in `setupLEDFlash()` when the device wakes, the camera settings when the image task
   starts, a camera switch resets at the next sleep, and op8 itself sets the timer of the *next*
@@ -194,6 +201,16 @@ day are in [traps.md](traps.md).
   is the one exception: it takes about 25 photos and keeps four, so it captures through the
   registry inside one keepAwake hold and downloads with `workflows/downloadPhoto.ts`. Anything
   else capturing that way needs the same op10/op18 pre-flight and the hold.
+- **A capture can fail or be refused, and the command layer says so (#476).** AI firmware from
+  Seeed PR #275 on abandons a capture with `Capture failed after N of M images: <reason>` and
+  no `Captured`; `capture` and `captureBurst` fail on it (`CAPTURE_FAILED_LINE`) with the
+  camera's line as the error message, never retried. Between a cold boot and the first sleep the
+  same firmware answers `AI capture` and `AI light` with
+  `Error: no captures until after the first sleep.` (`FIRST_SLEEP_REFUSAL`), and
+  `runCommandPipeline` waits for the next Sleep and sends the command once more, so no flow
+  handles it again. A new command that captures adds both to its `failureRegex`, and a flow
+  that follows the text stream instead, as the motion test does, ends on the failure line
+  itself.
 - **The focus lens forgets its position when the AI processor sleeps.** `AI vcm` only holds
   while the processor is awake, because the camera powers off with it, so a photo at a lens
   position must follow its `vcm` inside one keepAwake hold. Below about 256 the lens does not

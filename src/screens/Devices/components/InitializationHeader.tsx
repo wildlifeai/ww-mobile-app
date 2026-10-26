@@ -1,8 +1,9 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { View, StyleSheet } from 'react-native'
-import { ActivityIndicator, Text, Card } from 'react-native-paper'
+import { ActivityIndicator, Button, Text, Card } from 'react-native-paper'
 import { WWText } from '../../../components/ui/WWText'
 import { WWProgressBar } from '../../../components/ui/WWProgressBar'
+import { sortInitWarnings } from '../../../utils/initWarnings'
 
 export interface BaseHeaderProps {
     isInitializing: boolean
@@ -17,14 +18,23 @@ export interface BaseHeaderProps {
     warningHintText?: string
 }
 
-const InitializationErrorsView: React.FC<BaseHeaderProps> = ({ initErrors, theme, warningHintText = "You can still proceed with preparation, but address these issues before deployment." }) => {
+const InitializationErrorsView: React.FC<BaseHeaderProps & { dismissed: string[]; onDismiss: (lines: string[]) => void }> = ({ initErrors, theme, dismissed, onDismiss, warningHintText = "You can still proceed with preparation, but address these issues before deployment." }) => {
     if (!initErrors.selftest && !initErrors.setUtc && (!initErrors.deviceHealth || initErrors.deviceHealth.length === 0)) {
+        return null;
+    }
+    // Faults ask for a report; minor lines (utils/initWarnings.ts) do not, and a
+    // banner of minor lines only can be dismissed. It stays dismissed while its
+    // lines are ones already dismissed, and comes back with a new one.
+    const lines = initErrors.deviceHealth ?? []
+    const { battery, minor, faults } = sortInitWarnings(lines)
+    const toReport = !!initErrors.selftest || !!initErrors.setUtc || faults.length > 0
+    if (!toReport && lines.every(l => dismissed.includes(l))) {
         return null;
     }
     return (
         <View style={[styles.errorSection, { backgroundColor: theme.colors.errorContainer, borderLeftColor: theme.colors.error }]}>
             <Text variant="titleMedium" style={[styles.errorTitle, { color: theme.colors.onErrorContainer }]}>
-                ⚠️ Initialization Warnings
+                Initialization Warnings
             </Text>
             {initErrors.selftest && (
                 <Text variant="bodySmall" style={[styles.errorText, { color: theme.colors.onErrorContainer }]}>
@@ -36,19 +46,37 @@ const InitializationErrorsView: React.FC<BaseHeaderProps> = ({ initErrors, theme
                     • Time Sync: {initErrors.setUtc}
                 </Text>
             )}
-            {initErrors.deviceHealth && initErrors.deviceHealth.map((warning) => (
+            {faults.map((warning) => (
                 <Text key={warning} variant="bodySmall" style={[styles.errorText, { color: theme.colors.onErrorContainer }]}>
                     • Hardware: {warning}
                 </Text>
             ))}
-            <Text variant="bodySmall" style={[styles.errorHint, { color: theme.colors.onErrorContainer }]}>
-                {warningHintText}
-            </Text>
+            {[...minor, ...(battery ? [battery] : [])].map((line) => (
+                <Text key={line} variant="bodySmall" style={[styles.errorText, { color: theme.colors.onErrorContainer }]}>
+                    • {line}
+                </Text>
+            ))}
+            {toReport ? (
+                <Text variant="bodySmall" style={[styles.errorHint, { color: theme.colors.onErrorContainer }]}>
+                    {warningHintText}
+                </Text>
+            ) : (
+                <Button
+                    compact
+                    onPress={() => onDismiss(lines)}
+                    style={styles.dismiss}
+                    textColor={theme.colors.onErrorContainer}
+                >
+                    Dismiss
+                </Button>
+            )}
         </View>
     );
 }
 
 export const StatusInitializationHeader: React.FC<BaseHeaderProps> = (props) => {
+    // The lines the person dismissed on this screen, kept while it is open
+    const [dismissed, setDismissed] = useState<string[]>([])
     return (
         <>
             {props.isInitializing && (
@@ -72,7 +100,7 @@ export const StatusInitializationHeader: React.FC<BaseHeaderProps> = (props) => 
                     </Card.Content>
                 </Card>
             )}
-            <InitializationErrorsView {...props} />
+            <InitializationErrorsView {...props} dismissed={dismissed} onDismiss={setDismissed} />
         </>
     )
 }
@@ -121,6 +149,10 @@ const styles = StyleSheet.create({
     },
     errorText: {
         marginBottom: 4,
+    },
+    dismiss: {
+        alignSelf: 'flex-end',
+        marginTop: 4,
     },
     errorHint: {
         marginTop: 8,

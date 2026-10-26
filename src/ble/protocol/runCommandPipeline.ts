@@ -1,6 +1,6 @@
 import { bleEventBus, BleEvent } from './eventBus';
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice';
-import { CommandContext } from './commandRegistry';
+import { CommandContext, FIRST_SLEEP_REFUSAL } from './commandRegistry';
 import { BLE_PROTOCOL_RETRIES, BLE_PROTOCOL_TIMINGS } from './protocolConstants';
 import { bleTransport } from './bleTransportController';
 import { writeToDevice } from '../transport';
@@ -176,6 +176,18 @@ function isRetryable(error: Error): boolean {
     return false;
   }
 
+  // The firmware refused a value for an op it has (op17 and op33 since Seeed
+  // PR #276) and saved nothing. The same write is refused the same way again.
+  if (msg.includes('NOT A VALID VALUE')) {
+    return false;
+  }
+
+  // The camera abandoned a capture and said why (#476). Its photos up to then
+  // are saved, and a retry would be another capture, not this one again.
+  if (msg.includes('CAPTURE FAILED AFTER')) {
+    return false;
+  }
+
   // Allowed to retry
   if (msg.includes('TIMEOUT') || msg.includes('DEVICE_SLEEP') || msg.includes('DEVICE_BUSY')) {
     return true;
@@ -183,6 +195,41 @@ function isRetryable(error: Error): boolean {
 
   // Default to allowing transport drops or GATT errors to retry
   return true;
+}
+
+/**
+ * How long a command the AI processor refused for a cold boot waits for its
+ * next Sleep before giving up (#476). The processor sleeps once its inactivity
+ * period (op 8) has passed with nothing holding it awake; this allows for a
+ * keep-awake hold on top.
+ */
+export const FIRST_SLEEP_WAIT_MS = 15000;
+
+/** The cold-boot refusal, wherever its command put it in the error message. */
+const FIRST_SLEEP_REFUSAL_IN_MESSAGE = new RegExp(FIRST_SLEEP_REFUSAL.source.replace(/^\^/, ''), 'i');
+
+/** Resolve true on this device's next Sleep, false on timeout or when `signal` aborts. */
+function waitForNextSleep(deviceId: string, timeoutMs: number, signal?: AbortSignal): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (signal?.aborted) {
+      resolve(false);
+      return;
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const finish = (slept: boolean) => {
+      clearTimeout(timer);
+      bleEventBus.removeListener('deviceSignal', onSignal);
+      signal?.removeEventListener('abort', onAbort);
+      resolve(slept);
+    };
+    const onSignal = (event: BleEvent & { type: 'DEVICE_SIGNAL' }) => {
+      if (event.deviceId === deviceId && event.signal === DeviceSignal.SLEEP) finish(true);
+    };
+    const onAbort = () => finish(false);
+    bleEventBus.on('deviceSignal', onSignal);
+    signal?.addEventListener('abort', onAbort);
+    timer = setTimeout(() => finish(false), timeoutMs);
+  });
 }
 
 export async function runCommandPipeline<T>(
@@ -193,6 +240,7 @@ export async function runCommandPipeline<T>(
   const context = commandConstructor();
   const maxRetries = options?.maxRetries ?? context.retryPolicy?.maxRetries ?? BLE_PROTOCOL_RETRIES.DEFAULT_MAX_RETRIES;
   let attempt = 0;
+  let resentAfterSleep = false;
 
   let lockAcquired = false;
   let heartbeatsPaused = false;
@@ -231,6 +279,23 @@ export async function runCommandPipeline<T>(
         }
         return result;
       } catch (error: any) {
+        // A capture or light check refused between a cold boot and the first
+        // sleep (#476). The command has woken the processor, so once it has
+        // slept the same command works. Sent again once, here rather than in
+        // every screen, and outside the retry budget, which is 0 for every
+        // command that can be refused this way. Still inside this queue task,
+        // so nothing else wakes the processor in between.
+        if (!resentAfterSleep && FIRST_SLEEP_REFUSAL_IN_MESSAGE.test(error?.message ?? '')) {
+          resentAfterSleep = true;
+          const slept = await waitForNextSleep(peripheral.id, FIRST_SLEEP_WAIT_MS, options?.signal);
+          if (options?.signal?.aborted) throw new Error('COMMAND_CANCELLED');
+          if (slept) {
+            // As the transport does after a Sleep: time to enter DPD first
+            await new Promise(r => setTimeout(r, BLE_PROTOCOL_TIMINGS.SLEEP_SETTLE_MS));
+            continue;
+          }
+        }
+
         if (attempt >= maxRetries || !isRetryable(error)) {
           throw error;
         }

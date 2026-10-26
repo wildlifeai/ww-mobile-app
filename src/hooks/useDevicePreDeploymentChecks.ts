@@ -10,6 +10,7 @@ import { log, logWarn } from '../utils/logger'
 import { convertBleToSemanticVersion } from '../utils/versionUtils'
 import { InitPayload } from '../navigation/types'
 import { CRITICAL_AI_MASK, formatSelfTestBits, parseSelfTestBits, selfTestWarnings } from '../utils/deviceSelfTest'
+import { batteryLowWarning, NEWER_AI_FIRMWARE, NEWER_BLE_FIRMWARE, sdCardAlmostFullWarning } from '../utils/initWarnings'
 
 /**
  * Pre-deployment checks: what the Scanner runs between "connected" and the Start
@@ -61,7 +62,7 @@ export const useDevicePreDeploymentChecks = () => {
             const level = await session.execute(commandRegistry.battery)
             payload.batteryLevel = level
             if (level < 20) {
-                newErrors.deviceHealth.push(`Battery is low (${level}%)`)
+                newErrors.deviceHealth.push(batteryLowWarning(level))
             }
         } catch (e) {
             logWarn('[Pre-Deployment] Battery check failed:', e)
@@ -91,7 +92,7 @@ export const useDevicePreDeploymentChecks = () => {
                             payload.sdCardStatus = sdStatus as any
                             const percentFull = ((sdStatus.total - (sdStatus.free || 0)) / sdStatus.total) * 100
                             if (percentFull > 90) {
-                                newErrors.deviceHealth.push(`SD Card is almost full (${percentFull.toFixed(1)}% used)`)
+                                newErrors.deviceHealth.push(sdCardAlmostFullWarning(percentFull))
                             }
                         } else {
                             newErrors.deviceHealth.push('No SD Card detected or total space is 0')
@@ -164,7 +165,7 @@ export const useDevicePreDeploymentChecks = () => {
             const normalizedVersion = convertBleToSemanticVersion(version)
             if (latest && normalizedVersion !== latest.version) {
                 payload.bleFirmwareUpdateAvailable = true
-                newErrors.deviceHealth.push(`Newer firmware available: ${latest.version}`)
+                newErrors.deviceHealth.push(`${NEWER_BLE_FIRMWARE}: ${latest.version}`)
             }
         } catch (e) {
             logWarn('[Pre-Deployment] Firmware check failed:', e)
@@ -185,7 +186,7 @@ export const useDevicePreDeploymentChecks = () => {
                 if (aiVersion) {
                     const status = await himaxStatus(device.id, himaxVersionOf(aiVersion), null, await latestHimaxBuilds())
                     if (status.isOutdated && !status.unfinished) {
-                        newErrors.deviceHealth.push('Newer AI firmware available')
+                        newErrors.deviceHealth.push(NEWER_AI_FIRMWARE)
                     }
                 }
             } catch (e) {

@@ -41,15 +41,6 @@ export const logsSlice = createSlice({
 			const { id } = action.payload
 			state[id] = []
 		},
-		/**
-		 * @deprecated Use logAdded or clearLogs instead.
-		 * Maintained for temporary compatibility during refactor if needed,
-		 * but strictly speaking we should switch consumers.
-		 * If we receive a string, we treat it as a reset if empty, or append?
-		 * The old behavior was overwrite.
-		 * We will REMOVE this to force finding all usages.
-		 */
-		// deviceLogChange: ...
 	},
 })
 
