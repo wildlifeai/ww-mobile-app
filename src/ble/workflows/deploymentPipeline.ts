@@ -523,7 +523,7 @@ export async function configureDevice(
         burst?: ProjectBurstColumns | null
         /** Doubles op5 so each JPEG keeps its raw BMP. */
         recordRawBmp?: boolean
-        /** op16 from the project's detection threshold (#342). Omitted leaves the reset's 18. */
+        /** op16 from the project's detection threshold (#342). Omitted leaves the reset's 60. */
         detectionThreshold?: ProjectDetectionThresholdColumns | null
         /** op32 from the project's LoRaWAN setting. Omitted leaves the reset's default, on. */
         lorawanRequired?: boolean

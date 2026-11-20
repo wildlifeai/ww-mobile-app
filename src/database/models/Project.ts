@@ -33,7 +33,7 @@ export default class Project extends Model {
     @field('photos_per_trigger') photosPerTrigger!: number
     /** Milliseconds between those pictures, 200 to 2000, written as op6 */
     @field('photo_interval_milliseconds') photoIntervalMilliseconds!: number
-    /** On-device detection threshold, percent, 50 to 99, written as op16 = ceil(pct * 2.56) - 128 */
+    /** On-device detection threshold, percent, 50 to 99, written as op16 unchanged (Seeed PR #289) */
     @field('detection_threshold_pct') detectionThresholdPct!: number
     @field('is_archived') isArchived!: boolean
     @text('project_image') projectImage?: string | null

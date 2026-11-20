@@ -48,7 +48,7 @@ export interface DeploymentConfig {
     recordRawBmp?: boolean
     /**
      * The project's detection threshold, written as op16 (#342). Omitted
-     * leaves op16 at the reset's factory 18, which is 57%, the column default.
+     * leaves op16 at the reset's 60, the firmware's default.
      */
     detectionThreshold?: ProjectDetectionThresholdColumns
     /**
@@ -258,12 +258,12 @@ export const useDeploymentConfiguration = () => {
 
     /**
      * Writes the project's detection threshold to the device as op16
-     * MODEL_THRESHOLD, ceil(pct * 2.56) - 128 (#342).
+     * MODEL_THRESHOLD, the percent itself since Seeed PR #289 (#342, #520).
      *
-     * The reset before this sets op16 to the factory 18, which is 57%, the
-     * column default, so a project on the default writes nothing here. Only a
-     * model on the device reads op16; it is written whatever the model, since
-     * with none the value is never read.
+     * The reset before this sets op16 to 60, the firmware's default, so a
+     * project at 60% writes nothing here. Only a model on the device reads
+     * op16; it is written whatever the model, since with none the value is
+     * never read.
      */
     const configureDetectionThreshold = useCallback(async (
         session: any,

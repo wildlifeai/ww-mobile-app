@@ -315,21 +315,27 @@ OP 6 at the reset's 500 and OP 8 at 1000.
 model's threshold (#342):
 
 ```
-AI setop 16 <0 to 126>   (MODEL_THRESHOLD, ceil(projects.detection_threshold_pct * 2.56) - 128)
+AI setop 16 <50 to 99>   (MODEL_THRESHOLD, projects.detection_threshold_pct unchanged)
 ```
 
 The mapping lives in
 [`src/utils/projectDetectionThreshold.ts`](../../src/utils/projectDetectionThreshold.ts),
-and the deployment log says `Detection threshold: 57% (op16 18)`. The Himax compares
-the target class's int8 softmax output, scale 1/256 and zero point -128, with OP 16,
-so OP 16 = q means probability (q + 128) / 256, and the formula gives the smallest q
-that reaches the percent: 50% is 0, the lowest the camera can be set, and 99% is 126.
-The column's 50 to 99 CHECK is mirrored, and a value outside it deploys as 57.
+and the deployment log says `Detection threshold: 57% (op16 57)`. Since Seeed PR #289
+OP 16 is a percent, 0 to 100: a frame is a detection when the model is at least that
+sure of the target class (#520). The column's 50 to 99 CHECK is mirrored, and a value
+outside it deploys as 57.
 
-The default, 57%, is OP 16 = 18, the factory value the reset (step 5) has just
-written, so a project on it writes nothing here and deploys exactly as before #342.
-Until then nothing else wrote OP 16, so a threshold set on the bench was lost at the
-next deployment. It is written whatever the model; with none on the device the
+Firmware before that PR read OP 16 as the model's raw int8 output, probability
+(q + 128) / 256, and the app wrote `ceil(pct * 2.56) - 128`. The app cannot tell the two
+apart, since the AI `ver` reply is only a build stamp, so an app with this change on
+older firmware runs the default 57% at 72%: stricter, not broken. The release order
+covers it: the app reaches the stores before firmware with that PR reaches the
+production catalogue.
+
+The reset (step 5) has just written 60, the firmware's own default, so the column
+default 57% is always written here, and a project at 60% writes nothing. Until #342
+nothing else wrote OP 16, so a threshold set on the bench was lost at the next
+deployment. It is written whatever the model; with none on the device the
 firmware never reads it. The Dev Deployment Test screen writes the selected project's
 threshold the same way.
 
