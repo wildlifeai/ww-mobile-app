@@ -251,7 +251,7 @@ class ProjectService {
 					// updates leave them out.
 					project.photosPerTrigger = DEFAULT_PHOTOS_PER_TRIGGER
 					project.photoIntervalMilliseconds = DEFAULT_PHOTO_INTERVAL_MS
-					// The detection threshold likewise (#342): 57%, op16 18
+					// The detection threshold likewise (#342): 57%, written as op16 57
 					project.detectionThresholdPct = DEFAULT_DETECTION_THRESHOLD_PCT
 				})
 

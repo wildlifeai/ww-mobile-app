@@ -154,7 +154,9 @@ export const FACTORY_DEFAULTS: Record<number, number> = {
     [OP_PARAMETER.FLASH_LED]: 0,
     [OP_PARAMETER.MODEL_PROJECT]: 0,
     [OP_PARAMETER.MODEL_VERSION]: 0,
-    [OP_PARAMETER.MODEL_THRESHOLD]: 18,
+    // A percent since Seeed PR #289, and 60 is that firmware's own default.
+    // Older firmware reads it as the raw int8 output, (60 + 128) / 256 = 73%.
+    [OP_PARAMETER.MODEL_THRESHOLD]: 60,
     [OP_PARAMETER.MD_SENSITIVITY]: 1,
     [OP_PARAMETER.TEST_MODE_BITS]: 0,
     [OP_PARAMETER.IMAGES_COUNT]: 0,

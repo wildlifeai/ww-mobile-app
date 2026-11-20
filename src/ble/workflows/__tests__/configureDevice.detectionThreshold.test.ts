@@ -43,13 +43,13 @@ describe('configureDevice detection threshold', () => {
             expect.objectContaining({ detectionThreshold }),
             ['0'],
         )
-        expect(logs).toContain('Detection threshold: 80% (op16 77)')
+        expect(logs).toContain('Detection threshold: 80% (op16 80)')
     })
 
     it('logs the default for a project without one', async () => {
         const { logs } = await run({ detectionThreshold: { detection_threshold_pct: null } })
 
-        expect(logs).toContain('Detection threshold: 57% (op16 18)')
+        expect(logs).toContain('Detection threshold: 57% (op16 57)')
     })
 
     it('says nothing about the threshold when the caller has none', async () => {

@@ -448,14 +448,14 @@ describe('useDeploymentConfiguration burst', () => {
 })
 
 /**
- * The detection threshold (op16), from the project (#342). The reset before
- * this sets op16 to the factory 18, which is 57%, the column default, and no
- * other step writes it, so a threshold tuned at the bench was lost at every
- * deployment.
+ * The detection threshold (op16), from the project (#342), as a percent since
+ * Seeed PR #289 (#520). The reset before this sets op16 to the firmware
+ * default 60, and no other step writes it, so a threshold tuned at the bench
+ * was lost at every deployment.
  */
 describe('useDeploymentConfiguration detection threshold', () => {
-    /** A post-reset table: op16 at its factory 18 unless told otherwise. */
-    const opsAfterReset = (op16 = '18'): string[] =>
+    /** A post-reset table: op16 at the factory 60 unless told otherwise. */
+    const opsAfterReset = (op16 = '60'): string[] =>
         Array.from({ length: 37 }, (_, index) => (index === OP_PARAMETER.MODEL_THRESHOLD ? op16 : '0'))
 
     const hook = () => renderHook(() => useDeploymentConfiguration()).result.current
@@ -467,24 +467,35 @@ describe('useDeploymentConfiguration detection threshold', () => {
 
         await hook().configureDetectionThreshold(session, { detection_threshold_pct: 80 }, opsAfterReset())
 
-        expect(session.lines).toEqual([`AI setop ${OP_PARAMETER.MODEL_THRESHOLD} 77`])
+        expect(session.lines).toEqual([`AI setop ${OP_PARAMETER.MODEL_THRESHOLD} 80`])
     })
 
     it('writes both ends of the range', async () => {
         const low = makeRecordingSession()
         await hook().configureDetectionThreshold(low, { detection_threshold_pct: 50 }, opsAfterReset())
-        expect(low.lines).toEqual([`AI setop ${OP_PARAMETER.MODEL_THRESHOLD} 0`])
+        expect(low.lines).toEqual([`AI setop ${OP_PARAMETER.MODEL_THRESHOLD} 50`])
 
         const high = makeRecordingSession()
         await hook().configureDetectionThreshold(high, { detection_threshold_pct: 99 }, opsAfterReset())
-        expect(high.lines).toEqual([`AI setop ${OP_PARAMETER.MODEL_THRESHOLD} 126`])
+        expect(high.lines).toEqual([`AI setop ${OP_PARAMETER.MODEL_THRESHOLD} 99`])
     })
 
-    it('writes nothing for the default, which the reset has already left', async () => {
+    it('writes the column default, 57, over the 60 the reset left', async () => {
         const session = makeRecordingSession()
 
         await hook().configureDetectionThreshold(session, { detection_threshold_pct: 57 }, opsAfterReset())
         await hook().configureDetectionThreshold(session, {}, opsAfterReset())
+
+        expect(session.lines).toEqual([
+            `AI setop ${OP_PARAMETER.MODEL_THRESHOLD} 57`,
+            `AI setop ${OP_PARAMETER.MODEL_THRESHOLD} 57`,
+        ])
+    })
+
+    it('writes nothing for a project at 60, which the reset has already left', async () => {
+        const session = makeRecordingSession()
+
+        await hook().configureDetectionThreshold(session, { detection_threshold_pct: 60 }, opsAfterReset())
 
         expect(session.lines).toEqual([])
     })
@@ -492,18 +503,18 @@ describe('useDeploymentConfiguration detection threshold', () => {
     it('skips a value the device already holds', async () => {
         const session = makeRecordingSession()
 
-        await hook().configureDetectionThreshold(session, { detection_threshold_pct: 80 }, opsAfterReset('77'))
+        await hook().configureDetectionThreshold(session, { detection_threshold_pct: 80 }, opsAfterReset('80'))
 
         expect(session.lines).toEqual([])
     })
 
     it('puts a device off the default back on it for a default project', async () => {
-        // A table where op16 is not 18, as a caller without a reset could pass
+        // A table where op16 is not 57, as a caller without a reset could pass
         const session = makeRecordingSession()
 
         await hook().configureDetectionThreshold(session, { detection_threshold_pct: null }, opsAfterReset('64'))
 
-        expect(session.lines).toEqual([`AI setop ${OP_PARAMETER.MODEL_THRESHOLD} 18`])
+        expect(session.lines).toEqual([`AI setop ${OP_PARAMETER.MODEL_THRESHOLD} 57`])
     })
 
     it('configure writes op16 from the project, against its own copy of the table', async () => {
@@ -517,9 +528,9 @@ describe('useDeploymentConfiguration detection threshold', () => {
             detectionThreshold: { detection_threshold_pct: 90 },
         }, ops)
 
-        expect(op16Lines(session.lines)).toEqual([`AI setop ${OP_PARAMETER.MODEL_THRESHOLD} 103`])
+        expect(op16Lines(session.lines)).toEqual([`AI setop ${OP_PARAMETER.MODEL_THRESHOLD} 90`])
         // The caller's table is left as it was
-        expect(ops[OP_PARAMETER.MODEL_THRESHOLD]).toBe('18')
+        expect(ops[OP_PARAMETER.MODEL_THRESHOLD]).toBe('60')
     })
 
     it('configure skips op16 when the device already holds the project value', async () => {
@@ -530,7 +541,7 @@ describe('useDeploymentConfiguration detection threshold', () => {
             deploymentId: 'd',
             captureMethod: 'activity',
             detectionThreshold: { detection_threshold_pct: 90 },
-        }, opsAfterReset('103'))
+        }, opsAfterReset('90'))
 
         expect(op16Lines(session.lines)).toEqual([])
     })
