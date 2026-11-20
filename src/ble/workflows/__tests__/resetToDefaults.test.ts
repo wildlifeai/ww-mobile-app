@@ -168,6 +168,26 @@ describe('executeResetToDefaults resulting ops', () => {
         expect(result![OP_PARAMETER.MD_BLOCK_THRESHOLD]).toBe(op33)
     })
 
+    // Seeed PR #283: ops 37 and 38 hold the exposure the RP camera's AE loop
+    // reached, restored at the next wake. Resetting them at each deployment
+    // would start a bright site from the init table again (#514).
+    it('leaves the saved auto-exposure state, ops 37 and 38, alone', async () => {
+        const session = makeSession()
+        const result = await executeResetToDefaults(session as any, {
+            currentOps: opTable(39, {
+                [OP_PARAMETER.CAM_AE_EXPOSURE]: '1840',
+                [OP_PARAMETER.CAM_AE_GAIN]: '96',
+            }),
+            skipIdentityReset: true,
+        })
+        expect(FACTORY_DEFAULTS[OP_PARAMETER.CAM_AE_EXPOSURE]).toBeUndefined()
+        expect(FACTORY_DEFAULTS[OP_PARAMETER.CAM_AE_GAIN]).toBeUndefined()
+        expect(session.writes.filter(w => /^AI setop 3[78] /.test(w))).toEqual([])
+        expect(result).toHaveLength(39)
+        expect(result![OP_PARAMETER.CAM_AE_EXPOSURE]).toBe('1840')
+        expect(result![OP_PARAMETER.CAM_AE_GAIN]).toBe('96')
+    })
+
     it('returns null when the ops could not be read, so callers keep their own view', async () => {
         const session = makeSession()
 
