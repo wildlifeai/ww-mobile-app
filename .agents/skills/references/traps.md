@@ -358,3 +358,21 @@ file is the list of things that look like an app bug and are not, and the revers
   one. Inside an isolated agent worktree `cmd /c mklink /J` is refused, and PowerShell's
   `New-Item -ItemType Junction` works. Point the junction at an install whose
   `package-lock.json` matches the branch's: the main checkout is not always on a current branch.
+- **R8 optimisation breaks Expo's options objects unless Expo's Kotlin layer is kept.** Release
+  builds optimise since #513. Without `-keep class expo.modules.kotlin.** { *; }` in
+  `proguard-rules.pro`, every Expo call that takes an options object failed, in release builds
+  only: the phone's location ("Failed to get current location") and saving a photo downloaded
+  from the camera ("The 3rd argument cannot be cast to type ...WritingOptions",
+  NullPointerException). Keeping kotlin-reflect did not help. Jest, `tsc` and debug builds
+  cannot see this, and release builds drop the app's own logs (`logger.ts` logs only in
+  `__DEV__`), so test any R8 or keep-rule change on a phone. For that, a local release build
+  with `applicationIdSuffix '.expo'` on the release buildType installs over the dev app (same
+  debug key, data kept), and `npx expo run:android --variant release --no-bundler` loads
+  `.env.development` so it points at cloud dev; never commit the suffix (20 November 2026).
+- **A release build inside `.claude/worktrees` fails in CMake with "Filename longer than 260
+  characters".** The object paths embed the absolute path of each autolinked C++ source, and
+  CMake stops shortening them once the folder path passes its limit. A debug build at the same
+  depth still fits. Add `externalNativeBuild { cmake { arguments "-DCMAKE_OBJECT_PATH_MAX=259" } }`
+  to `defaultConfig` for the local build only, or build from a shorter path; a `subst` drive at
+  the project root breaks Expo autolinking, which cannot find `package.json` at a drive root.
+  A junctioned `node_modules` makes it worse (sources outside the tree), so copy it for real.
