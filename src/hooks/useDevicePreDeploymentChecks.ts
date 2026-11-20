@@ -9,7 +9,7 @@ import { himaxStatus, himaxVersionOf, latestHimaxBuilds } from '../services/hima
 import { log, logWarn } from '../utils/logger'
 import { convertBleToSemanticVersion } from '../utils/versionUtils'
 import { InitPayload } from '../navigation/types'
-import { CRITICAL_AI_MASK, formatSelfTestBits, parseSelfTestBits, selfTestWarnings } from '../utils/deviceSelfTest'
+import { CRITICAL_AI_MASK, formatSelfTestBits, isProvisional, parseSelfTestBits, PROVISIONAL_BIT, SD_CARD_NOT_CHECKED_WARNING, selfTestWarnings } from '../utils/deviceSelfTest'
 import { batteryLowWarning, NEWER_AI_FIRMWARE, NEWER_BLE_FIRMWARE, sdCardAlmostFullWarning } from '../utils/initWarnings'
 
 /**
@@ -126,6 +126,10 @@ export const useDevicePreDeploymentChecks = () => {
             // Post-wake health: the broadcast carries the real camera, SD and NN bits
             // (bits 8-15), which the pre-wake selftest in useBleInitialization masks.
             // The cache has usually heard it by now; give it a moment, then ask.
+            // The wait is for the final reading, past a provisional one (bit
+            // 15): it comes about 0.2 s after "Wake" with a card and 0.7 s
+            // without (Seeed issue #290), and this starts after `AI info` has
+            // answered, so 1500 ms covers both.
             let bits: number | null = null
             const heard = await selfTestCache.waitForFresh(device.id, wakeStartedAt, 1500)
             if (heard) {
@@ -142,7 +146,20 @@ export const useDevicePreDeploymentChecks = () => {
                 }
             }
 
-            if (bits !== null && bits !== 0) {
+            // Only a provisional reading (bit 15): the camera answered before it
+            // mounted its card, and the final reading never came, as with an
+            // older BLE processor. Its other bits are real, but its bit 11 is
+            // not a pass. `AI info` above has read the card itself when it
+            // reported a size; otherwise say the card was not checked. A
+            // warning, not a block, since that firmware never sends the final.
+            if (bits !== null && isProvisional(bits)) {
+                logWarn(`[Pre-Deployment] Only a provisional self-test arrived (${formatSelfTestBits(bits)}), so bit 11 is unknown`)
+                if (!(payload.sdCardStatus?.total) && !newErrors.deviceHealth.includes(SD_CARD_NOT_CHECKED_WARNING)) {
+                    newErrors.deviceHealth.push(SD_CARD_NOT_CHECKED_WARNING)
+                }
+            }
+
+            if (bits !== null && (bits & ~PROVISIONAL_BIT) !== 0) {
                 logWarn(`[Pre-Deployment] Non-zero error bits detected after AI wake: ${formatSelfTestBits(bits)} (${bits})`)
                 for (const warning of selfTestWarnings(bits)) {
                     if (!newErrors.deviceHealth.includes(warning)) {

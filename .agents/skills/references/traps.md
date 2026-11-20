@@ -17,14 +17,22 @@ file is the list of things that look like an app bug and are not, and the revers
   `selftest` after waking the AI processor. The two are not duplicates, and neither is
   removable. Anything reading bits 8 or 9, the main camera and the HM0360, must reject the
   all-bits-set pattern or it will report five hardware failures on a healthy device.
-- **Self-test bit 14 is named but never arrives, so nothing should wait for it.** The Himax sets
-  it (`SELF_TEST_AI_NO_BLE`, Seeed PR #240) when the nRF has not read its first message within
-  300 ms of boot, then sends the nRF nothing until the nRF's next command, which clears it before
-  anything is answered: on the bench on 30 September 2026 the AI console showed `selfTest 4000`
-  for two minutes while the nRF reported `0000` (Seeed #246). What a Himax that lost the nRF at
-  boot leaves for the app to see is the preset above, still standing after the AI processor
-  should have reported, because its own report never reached the nRF to replace it. The app
-  names the bit (ww-hardware #56) only so a reading that does carry it is not shown as unknown.
+- **Self-test bit 14 arrives only on firmware with Seeed PR #286, so nothing should wait for it.**
+  The Himax sets it (`SELF_TEST_AI_NO_BLE`, Seeed PR #240) when the nRF has not read its first
+  message in time after boot, and stops sending to the nRF. Before PR #286 the nRF's next command
+  cleared it before anything was answered: on the bench on 30 September 2026 the AI console showed
+  `selfTest 4000` for two minutes while the nRF reported `0000` (Seeed #246). PR #286 keeps it
+  until a final reading has carried it, so a nRF that was only late learns of it on that wake. A
+  Himax that lost the nRF for good still leaves only the preset above. The app names the bit
+  (ww-hardware #56) as a warning that never blocks.
+- **The first self-test of a warm wake is provisional, so never take it for the SD card.** Since
+  Seeed PR #284 the Himax answers before its card is mounted. With the bit 15 fix (Seeed #290,
+  branch `261106_lorawanPing`) that reading carries bit 15 (`AI_PROVISIONAL`), and the final one
+  follows unasked, about 0.2 s after `Wake` with a card and 0.7 s without (bench, 7 November
+  2026). `selfTestCache.getFresh` and `waitForFresh` skip it; a flow left with only a provisional
+  reading must not pass bit 11 (#521). Firmware with PR #284 and no bit 15 sends only the early
+  reading, so a missing card reads `0000` on a warm wake (bench, 8 November 2026). A Himax with
+  the fix next to an older nRF leaves bit 15 set for the whole wake.
 - **The device is woken only by a command, so nothing may wait for a Wake it will not cause.**
   The transport queue paused on Sleep and resumed only on Wake; when a Sleep landed while a
   slow JavaScript thread was still completing `slots`, during a screen mounting eight gallery

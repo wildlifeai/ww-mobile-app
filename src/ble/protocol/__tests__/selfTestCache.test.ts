@@ -129,6 +129,56 @@ describe('selfTestCache', () => {
         await expect(pending).resolves.toBeNull()
     })
 
+    /**
+     * Bit 15 (Seeed issue #290): on a warm boot the Himax answers before its
+     * SD card is mounted, with bit 15 set, then sends the final reading
+     * unasked. On the bench on 7 November 2026 every warm wake gave 0x8000,
+     * then 0x0000 with a card or 0x0800 without, the last about 0.7 s after
+     * Wake. A flow that took the first one passed the card without checking it.
+     */
+    describe('provisional readings (bit 15)', () => {
+        it('stores one, but getFresh does not hand it out', () => {
+            wake(DEVICE, 1000)
+            line('Error bits = 0x8000', DEVICE, 1100)
+            expect(selfTestCache.get(DEVICE)?.bits).toBe(0x8000)
+            expect(selfTestCache.getFresh(DEVICE, 1000)).toBeNull()
+        })
+
+        it('waitForFresh waits past it for the final reading', async () => {
+            wake(DEVICE, 1000)
+            const pending = selfTestCache.waitForFresh(DEVICE, 1000, 2000)
+            line('Error bits = 0x8000', DEVICE, 1100)
+            line('Error bits = 0x0800', DEVICE, 1700)
+            await expect(pending).resolves.toMatchObject({ bits: 0x0800, postWake: true })
+        })
+
+        it('waitForFresh resolves null when only the provisional reading comes', async () => {
+            jest.useFakeTimers()
+            wake(DEVICE)
+            const pending = selfTestCache.waitForFresh(DEVICE, 0, 1500)
+            line('Error bits = 0x8000')
+            jest.advanceTimersByTime(1600)
+            await expect(pending).resolves.toBeNull()
+        })
+
+        it('still tells subscribers, so a screen that shows the latest bits follows both', () => {
+            const seen: number[] = []
+            const unsubscribe = selfTestCache.subscribe(DEVICE, reading => seen.push(reading.bits))
+            wake(DEVICE, 1000)
+            line('Error bits = 0x8000', DEVICE, 1100)
+            line('Error bits = 0x0000', DEVICE, 1300)
+            unsubscribe()
+            expect(seen).toEqual([0x8000, 0x0000])
+        })
+
+        it('is not a fault on its own, but the faults it carries are', () => {
+            selfTestCache.record(DEVICE, 0x8000, 1000)
+            expect(selfTestCache.getLastFault(DEVICE)).toBeNull()
+            selfTestCache.record(DEVICE, 0x8100, 2000)
+            expect(selfTestCache.getLastFault(DEVICE)?.bits).toBe(0x8100)
+        })
+    })
+
     describe('getLastFault', () => {
         // The firmware runs its camera self-test at boot, so a device with a
         // missing sensor says so once and then reports clean on every warm wake.

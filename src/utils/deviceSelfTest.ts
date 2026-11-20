@@ -34,16 +34,27 @@ export enum SelfTestBit {
     AI_NO_SD_CARD = 11,
     AI_PDM_ERROR = 12,
     AI_NN_ERROR = 13,
-    // The Himax sets this when the nRF has not read its first message within
-    // 300 ms of boot, sends the nRF nothing while it is set, and clears it at
-    // the nRF's next command (Seeed PR #240, 29 September 2026). So it is not
-    // expected to arrive over BLE (Seeed issue #246). It is named so that a
-    // reading which does carry it is not shown as an unknown fault.
+    // The Himax sets this when the nRF has not read its first message in time
+    // after boot, and stops sending to the nRF while it is set (Seeed PR #240).
+    // Since Seeed PR #286 the bit is kept until a final reading (bit 15 clear)
+    // has carried it, so a nRF that was only late learns of it on that wake,
+    // and it does reach the app. A warning: the reading arrived, so the link
+    // works now.
     AI_NO_BLE = 14,
+    // Not a fault. On a warm boot "Wake" goes out before the SD card is
+    // mounted, so a reading sent then cannot know bit 11; such a reading has
+    // this bit set. Once the mount is done (about 0.2 s after "Wake" with a
+    // card, 0.7 s without) the Himax sends the final reading unasked, bit 15
+    // clear (Seeed issue #290). A cold boot never sets it. Firmware without it
+    // never sets it either, and sends only the early reading.
+    AI_PROVISIONAL = 15,
 }
 
+/** Every bit but 15, which says when a reading was taken, not what is wrong. */
+type ReportedBit = Exclude<SelfTestBit, SelfTestBit.AI_PROVISIONAL>
+
 export interface SelfTestIssue {
-    bit: SelfTestBit
+    bit: ReportedBit
     severity: 'error' | 'warning'
     title: string
     hint: string
@@ -163,7 +174,7 @@ export function parseSelfTestBits(raw: string | null | undefined): number | null
     return isNaN(v) ? null : v
 }
 
-/** Decode a bitmask into the list of active issues (empty = all healthy). */
+/** Decode a bitmask into the list of active issues (empty = all healthy). Bit 15 is never one. */
 export function decodeSelfTest(bits: number): SelfTestIssue[] {
     return ISSUE_TABLE.filter(issue => (bits & (1 << issue.bit)) !== 0)
 }
@@ -188,8 +199,29 @@ export const AI_BITS_MASK = 0xff00
  */
 export const isBootPreset = (bits: number) => (bits & AI_BITS_MASK) === AI_BITS_MASK
 
-/** Every bit the app knows how to name. Anything outside it is reported as unknown. */
-export const KNOWN_BITS_MASK = ISSUE_TABLE.reduce((mask, issue) => mask | (1 << issue.bit), 0)
+/** Bit 15: the reading went out before the AI processor's start-up checks were done. */
+export const PROVISIONAL_BIT = 1 << SelfTestBit.AI_PROVISIONAL
+
+/**
+ * A reading sent before the SD card was mounted, so its bit 11 means nothing
+ * yet. The other bits it carries are real; the final reading follows unasked.
+ */
+export const isProvisional = (bits: number) => (bits & PROVISIONAL_BIT) !== 0
+
+/** Every bit that names a fault or a warning. */
+export const FAULT_BITS_MASK = ISSUE_TABLE.reduce((mask, issue) => mask | (1 << issue.bit), 0)
+
+/** Every bit the app knows. Anything outside it is reported as unknown. Bit 15 is known but never a fault. */
+export const KNOWN_BITS_MASK = FAULT_BITS_MASK | PROVISIONAL_BIT
+
+/**
+ * What a flow says when all it has is a provisional reading, so it cannot know
+ * whether there is a card. A warning, never a block: firmware with the early
+ * reply but an older BLE processor never sends the final one. It must not
+ * contain the words "no SD card", which Start Monitoring's blocker matches.
+ */
+export const SD_CARD_NOT_CHECKED_WARNING =
+    'SD card not checked: the camera replied before it had looked for the card (Bit 15). Run the checks again to confirm it'
 
 /**
  * The AI-side faults that make a deployment pointless: no main camera, no
@@ -217,7 +249,7 @@ export const CRITICAL_AI_MASK =
  * Monitoring picks its blocker by matching them. Bit 9 says how to clear it too
  * (#477), and must keep "Camera Error" for the same reason.
  */
-const WARNING_TEXT: Record<SelfTestBit, string> = {
+const WARNING_TEXT: Record<ReportedBit, string> = {
     [SelfTestBit.LOW_BATTERY]: batteryLowWarning(),
     [SelfTestBit.AI_PROC_NOT_RESPONDING]: 'AI Processor not responding (Bit 1)',
     [SelfTestBit.LORAWAN_ERROR]: 'LoRaWAN Error (Bit 2)',
