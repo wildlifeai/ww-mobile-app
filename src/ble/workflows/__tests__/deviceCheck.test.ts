@@ -623,18 +623,30 @@ describe('describeSelfTest', () => {
     })
 
     it('names a bit the app does not know, rather than an empty list', () => {
-        const state = describeSelfTest(0x8000, 'RP3')
+        const state = describeSelfTest(0x0080, 'RP3')
 
         expect(state.status).toBe('warn')
-        expect(state.summary).not.toBe('0x8000: .')
-        expect(state.summary).toBe('0x8000: unknown self-test code 0x8000.')
+        expect(state.summary).not.toBe('0x0080: .')
+        expect(state.summary).toBe('0x0080: unknown self-test code 0x0080.')
     })
 
     it('still fails a camera fault reported beside an unknown bit', () => {
-        const state = describeSelfTest(0x8100, 'RP3')
+        const state = describeSelfTest(0x0180, 'RP3')
 
         expect(state.status).toBe('fail')
-        expect(state.summary).toMatch(/^0x8100: the colour camera \(RP3\) did not answer, unknown self-test code 0x8000\./)
+        expect(state.summary).toMatch(/^0x0180: the colour camera \(RP3\) did not answer, unknown self-test code 0x0080\./)
+    })
+
+    // Bit 15 (Seeed issue #290) only says the reading went before the SD card
+    // was mounted; the storage step reads the card itself (#521).
+    it('leaves bit 15, the provisional reading, out of the verdict and the code', () => {
+        expect(describeSelfTest(0x8000, 'RP3')).toEqual(describeSelfTest(0x0000, 'RP3'))
+        expect(describeSelfTest(0x8000, 'RP3').status).toBe('pass')
+
+        const fault = describeSelfTest(0x8100, 'RP3')
+        expect(fault.status).toBe('fail')
+        expect(fault.summary).toMatch(/^0x0100: the colour camera \(RP3\) did not answer\./)
+        expect(fault.summary).not.toMatch(/unknown/)
     })
 
     it('says to power cycle before checking the ribbons when the HM0360 did not answer (#477)', () => {

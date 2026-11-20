@@ -1,6 +1,6 @@
 import { bleEventBus, BleEvent } from './eventBus'
 import { DeviceSignal } from './deviceSignals'
-import { ERROR_BITS_LINE, isBootPreset, KNOWN_BITS_MASK, parseSelfTestBits, formatSelfTestBits } from '../../utils/deviceSelfTest'
+import { ERROR_BITS_LINE, FAULT_BITS_MASK, isBootPreset, isProvisional, parseSelfTestBits, formatSelfTestBits } from '../../utils/deviceSelfTest'
 import { log } from '../../utils/logger'
 
 /**
@@ -23,6 +23,15 @@ import { log } from '../../utils/logger'
  * the whole preset are dropped outright; a reading with `postWake: false` is
  * kept, since its low byte (battery, LoRaWAN, resets) is real either way.
  *
+ * ## Provisional readings (bit 15)
+ *
+ * On a warm boot the Himax answers before its SD card is mounted, with bit 15
+ * set, and sends the final reading unasked once the mount is done (Seeed issue
+ * #290). The provisional one is stored and passed to subscribers like any
+ * other, and the final one replaces it, but `getFresh` and `waitForFresh`
+ * never hand it out: it cannot say whether there is a card, and a flow that
+ * took it would pass bit 11 without having checked it.
+ *
  * ## Lifetime
  *
  * - **`Wake` keeps the entry and notes the time**, so a caller can tell a
@@ -39,6 +48,10 @@ export interface SelfTestReading {
 }
 
 type Listener = (reading: SelfTestReading) => void
+
+/** After a wake, not before `sinceTs`, and final. */
+const isUsable = (reading: SelfTestReading, sinceTs: number) =>
+    reading.postWake && reading.ts >= sinceTs && !isProvisional(reading.bits)
 
 class SelfTestCache {
     private readings: Map<string, SelfTestReading> = new Map()
@@ -115,7 +128,7 @@ class SelfTestCache {
         const reading: SelfTestReading = { bits, ts, postWake: this.lastWake.has(deviceId) }
         this.readings.set(deviceId, reading)
         // eslint-disable-next-line no-bitwise
-        if ((bits & KNOWN_BITS_MASK) !== 0) this.faults.set(deviceId, reading)
+        if ((bits & FAULT_BITS_MASK) !== 0) this.faults.set(deviceId, reading)
         this.listeners.get(deviceId)?.forEach(fn => fn(reading))
     }
 
@@ -127,20 +140,21 @@ class SelfTestCache {
 
     /**
      * The latest reading if it is one the caller can use: taken after a wake
-     * (so the AI bits are real) and no older than `sinceTs`. Null otherwise, which
-     * is the signal to send `selftest`.
+     * (so the AI bits are real), final (bit 15 clear, so bit 11 is real too) and
+     * no older than `sinceTs`. Null otherwise, which is the signal to send
+     * `selftest`.
      */
     public getFresh(deviceId: string, sinceTs: number): SelfTestReading | null {
         this.attach()
         const reading = this.readings.get(deviceId)
-        if (!reading || !reading.postWake || reading.ts < sinceTs) return null
-        return reading
+        return reading && isUsable(reading, sinceTs) ? reading : null
     }
 
     /**
      * Wait for a reading newer than `sinceTs`, typically the broadcast that
      * follows a wake the caller has just caused. Resolves with what is held if
-     * that already qualifies; null on timeout.
+     * that already qualifies; null on timeout. A provisional reading does not
+     * qualify: the wait goes on for the final one.
      */
     public waitForFresh(deviceId: string, sinceTs: number, timeoutMs: number): Promise<SelfTestReading | null> {
         this.attach()
@@ -148,7 +162,7 @@ class SelfTestCache {
         if (held) return Promise.resolve(held)
         return new Promise(resolve => {
             const unsubscribe = this.subscribe(deviceId, reading => {
-                if (!reading.postWake || reading.ts < sinceTs) return
+                if (!isUsable(reading, sinceTs)) return
                 clearTimeout(timer)
                 unsubscribe()
                 resolve(reading)

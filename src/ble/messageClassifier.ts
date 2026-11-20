@@ -10,6 +10,7 @@
 import { parseLightCheck, summariseLightCheck } from './protocol/lightCheck'
 import { BLE_PROTOCOL_TIMINGS } from './protocol/protocolConstants'
 import { CAPTURE_FAILED_LINE } from './protocol/commandRegistry'
+import { parseSelfTestBits, PROVISIONAL_BIT } from '../utils/deviceSelfTest'
 
 export enum MessageType {
   RESPONSE = 'RESPONSE',
@@ -285,7 +286,15 @@ export function classifyForMonitor(rawMessage: string): MonitorEvent | null {
   if (/^heartbeat is\s/i.test(content)) return { category: 'selftest_ok', label: `No motion in the last ${BLE_PROTOCOL_TIMINGS.HEARTBEAT_IDLE_MS / 1000} seconds`, icon: 'check-circle' }
 
   // --- SELF-TEST EVENTS ---
-  if (/^Error bits = 0x/i.test(content) && !/^Error bits = 0x0000/i.test(content)) return { category: 'selftest_warn', label: 'Self-test warning', icon: 'alert', details: content }
+  // Bit 15 alone (0x8000) is the reading a warm wake sends before the SD card
+  // is mounted, with the final one close behind (Seeed issue #290), so it is
+  // as quiet as 0x0000. Anything else set is a warning.
+  if (/^Error bits = 0x/i.test(content)) {
+    const bits = parseSelfTestBits(content)
+    // eslint-disable-next-line no-bitwise
+    if (bits === null || (bits & ~PROVISIONAL_BIT) !== 0) return { category: 'selftest_warn', label: 'Self-test warning', icon: 'alert', details: content }
+    return null
+  }
 
   // --- LIGHT SENSOR DECISION ---
   // The day/night verdict, sent after every light check: one per capture and one

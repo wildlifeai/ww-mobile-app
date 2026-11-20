@@ -13,6 +13,15 @@ describe('classifyForMonitor', () => {
     expect(event?.isHidden).toBeUndefined()
   })
 
+  // A warm wake's first self-test goes out before the SD card is mounted, with
+  // bit 15 set, and the final one follows (Seeed issue #290, #521)
+  it('keeps a reading with only bit 15 set as quiet as 0x0000, and warns on any other bit', () => {
+    expect(classifyForMonitor('Error bits = 0x0000')).toBeNull()
+    expect(classifyForMonitor('Error bits = 0x8000')).toBeNull()
+    expect(classifyForMonitor('Error bits = 0x0800')).toMatchObject({ category: 'selftest_warn', details: 'Error bits = 0x0800' })
+    expect(classifyForMonitor('Error bits = 0x8800')).toMatchObject({ category: 'selftest_warn', details: 'Error bits = 0x8800' })
+  })
+
   it('counts the motion wake and lists it', () => {
     const event = classifyForMonitor('Wake (MD)')
     expect(event).toMatchObject({ category: 'motion', label: 'Motion detected' })

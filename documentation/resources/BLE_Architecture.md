@@ -27,7 +27,7 @@ Developers **must** use the correct write path for each use case. Misuse causes 
 | Motion detection `setop`/`capture` | `bleSession.execute()` | Queued commands, the holds included. |
 | Motion detection grid events | passive `textLine` subscription | Async text lines parsed via `useMotionDetectionStream`. |
 | Light sensor registers (`HM0360 AE regs`) and decision (`AE light check`) | passive `textLine` subscription | Both sent after every capture and every light check, including ones the app did not request. The register block is the measurement; the decision line is parsed by `lightCheck.ts` as optional metadata. Surfaced through `useLightSensor`. See [Light-Sensor.md](./Light-Sensor.md). |
-| Self-test result (`Error bits = 0x…`) | passive `textLine` subscription | The device announces this after **every wake**, unprompted. `ble/protocol/selfTestCache.ts` keeps the latest reading per connection; the pre-deployment checks, the Capture Picture health card and `useCameraReadiness` read it and send `selftest` only when nothing has been heard since the wake they care about. |
+| Self-test result (`Error bits = 0x…`) | passive `textLine` subscription | The device announces this after **every wake**, unprompted. `ble/protocol/selfTestCache.ts` keeps the latest reading per connection; the pre-deployment checks, the Capture Picture health card and `useCameraReadiness` read it and send `selftest` only when nothing has been heard since the wake they care about. A reading with bit 15 set went out before the SD card was mounted; the cache stores it but never hands it out as fresh, and waits for the final one (#521). |
 
 > [!TIP]
 > Before adding a command that polls for device state, check whether the device already

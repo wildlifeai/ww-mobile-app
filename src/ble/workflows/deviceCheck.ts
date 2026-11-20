@@ -35,7 +35,7 @@ import { mdIntervalHold } from '../session/mdIntervalHold'
 import { downloadPhoto } from './downloadPhoto'
 import { executeResetToDefaults } from './resetToDefaults'
 import { OP_PARAMETER } from '../../hooks/useDeviceSettings'
-import { decodeSelfTest, formatSelfTestBits, KNOWN_BITS_MASK, parseSelfTestBits, SelfTestBit } from '../../utils/deviceSelfTest'
+import { decodeSelfTest, formatSelfTestBits, KNOWN_BITS_MASK, parseSelfTestBits, PROVISIONAL_BIT, SelfTestBit } from '../../utils/deviceSelfTest'
 import { CAMERA_VARIANT_LABELS, CameraVariant, parseVariant } from '../../utils/cameraVariant'
 import { SWEEP_UP, SWEEP_DOWN, SweepPoint, LensVerdict, lensVerdict, parseDirSizes } from '../../utils/deviceCheck/lensSweep'
 import { photoProblem } from '../../utils/deviceCheck/photoStats'
@@ -176,9 +176,13 @@ const hasCameraFault = (bits: number) => (bits & CAMERA_BITS) !== 0
  * running image drives, so it is named from `running`; bit 9 is the HM0360,
  * which the colour image also checks because it detects motion for it. A
  * camera bit or any other error fails; warning bits only warn, and so does a
- * bit the app has no name for, which is reported by its code.
+ * bit the app has no name for, which is reported by its code. Bit 15 only says
+ * the reading came before the SD card was mounted, so it is left out: the
+ * storage step reads the card itself.
  */
-export const describeSelfTest = (bits: number, running: CameraVariant): CheckStepState => {
+export const describeSelfTest = (reading: number, running: CameraVariant): CheckStepState => {
+    // eslint-disable-next-line no-bitwise
+    const bits = reading & ~PROVISIONAL_BIT
     const code = formatSelfTestBits(bits)
     if (bits === 0) {
         return {

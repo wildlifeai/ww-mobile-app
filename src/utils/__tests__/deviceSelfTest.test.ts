@@ -7,6 +7,10 @@ import {
     ERROR_BITS_LINE,
     CRITICAL_AI_MASK,
     KNOWN_BITS_MASK,
+    FAULT_BITS_MASK,
+    PROVISIONAL_BIT,
+    isProvisional,
+    SD_CARD_NOT_CHECKED_WARNING,
     SD_CARD_POWER_CYCLE_HINT,
     HM0360_POWER_CYCLE_HINT,
     NIGHT_SENSOR_WARNING,
@@ -101,16 +105,16 @@ describe('deviceSelfTest', () => {
     })
 
     it('reports a bit it does not know as an unknown issue, alongside the known ones', () => {
-        expect(selfTestWarnings(1 << 15)).toEqual(['Unknown hardware issue (Code: 0x8000)'])
-        expect(selfTestWarnings((1 << 15) | 1)).toEqual([
+        expect(selfTestWarnings(1 << 7)).toEqual(['Unknown hardware issue (Code: 0x0080)'])
+        expect(selfTestWarnings((1 << 7) | 1)).toEqual([
             'Battery is low. Replace the batteries before deploying.',
-            'Unknown hardware issue (Code: 0x8001)',
+            'Unknown hardware issue (Code: 0x0081)',
         ])
     })
 
     // Seeed PR #240 added bit 14 on 29 September 2026 and the app called it
-    // "Unknown" until ww-hardware issue 56. The nRF clears it with its first
-    // command, so it is not expected over BLE; if it arrives, it is named and
+    // "Unknown" until ww-hardware issue 56. Since Seeed PR #286 it is kept until
+    // a final reading has carried it, so it does reach the app: it is named and
     // it never blocks a deployment.
     it('names bit 14, the AI processor missing the BLE processor at boot, as a warning only', () => {
         expect(SelfTestBit.AI_NO_BLE).toBe(14)
@@ -127,8 +131,10 @@ describe('deviceSelfTest', () => {
 
     // The numbers are checked against the firmware by scripts/check-selftest-bits.js;
     // this keeps the app's own tables agreeing with its enum.
-    it('has exactly one issue row and one banner line for every bit it names', () => {
-        const bits = Object.values(SelfTestBit).filter((v): v is number => typeof v === 'number')
+    it('has exactly one issue row and one banner line for every fault bit it names', () => {
+        const bits = Object.values(SelfTestBit)
+            .filter((v): v is number => typeof v === 'number')
+            .filter(bit => bit !== SelfTestBit.AI_PROVISIONAL)
         expect(bits.length).toBeGreaterThan(0)
         for (const bit of bits) {
             expect(decodeSelfTest(1 << bit).map(i => i.bit)).toEqual([bit])
@@ -136,12 +142,39 @@ describe('deviceSelfTest', () => {
             expect(warnings).toHaveLength(1)
             expect(warnings[0]).not.toMatch(/^Unknown/)
         }
-        expect(KNOWN_BITS_MASK).toBe(bits.reduce((mask, bit) => mask | (1 << bit), 0))
+        expect(FAULT_BITS_MASK).toBe(bits.reduce((mask, bit) => mask | (1 << bit), 0))
+        expect(KNOWN_BITS_MASK).toBe(FAULT_BITS_MASK | PROVISIONAL_BIT)
+    })
+
+    // Seeed issue #290: a warm wake's first reading goes out before the SD card
+    // is mounted, with bit 15 set, and the final one follows unasked. Bit 15 is
+    // a state, not a fault, so it gives no banner, no issue and no unknown code.
+    it('knows bit 15, the provisional reading, and never reports it', () => {
+        expect(SelfTestBit.AI_PROVISIONAL).toBe(15)
+        expect(PROVISIONAL_BIT).toBe(0x8000)
+        expect(isProvisional(0x8000)).toBe(true)
+        expect(isProvisional(0x8800)).toBe(true)
+        expect(isProvisional(0x0800)).toBe(false)
+
+        expect(decodeSelfTest(0x8000)).toEqual([])
+        expect(selfTestWarnings(0x8000)).toEqual([])
+        expect(selfTestWarnings(0x8100)).toEqual(['Main Camera Error (Bit 8)'])
+        expect(CRITICAL_AI_MASK & PROVISIONAL_BIT).toBe(0)
+        // The nRF's boot preset still sets the whole AI byte, bit 15 included
+        expect(isBootPreset(0xff00)).toBe(true)
+        expect(isBootPreset(0x8000)).toBe(false)
+    })
+
+    it('words the card-not-checked warning so Start Monitoring never takes it for a missing card', () => {
+        expect(SD_CARD_NOT_CHECKED_WARNING).not.toMatch(/no sd card/i)
+        expect(SD_CARD_NOT_CHECKED_WARNING).toMatch(/Bit 15/)
     })
 
     it('keeps the masks in step with the table', () => {
         // 0x0020 since bit 5, the BLE fault reset (#482)
-        expect(KNOWN_BITS_MASK).toBe(0x7f3f)
+        expect(FAULT_BITS_MASK).toBe(0x7f3f)
+        // Bit 15 is known, never a fault (#521)
+        expect(KNOWN_BITS_MASK).toBe(0xff3f)
         // Camera, HM0360, NN and, since #303, the SD card: 0x0800
         expect(CRITICAL_AI_MASK).toBe(0x2b00)
         expect(decodeSelfTest(CRITICAL_AI_MASK).every(i => i.severity !== undefined)).toBe(true)
