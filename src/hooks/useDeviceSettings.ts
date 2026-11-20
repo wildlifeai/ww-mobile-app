@@ -76,6 +76,19 @@ export const OP_PARAMETER = {
     FLASH_TOD_START: 35,
     /** FLASH_MODE time of day: minutes the flash stays on, wrapping past midnight */
     FLASH_TOD_DURATION: 36,
+    /**
+     * RP camera auto-exposure state, written by the firmware, not user-set:
+     * the exposure in lines (8-5000) the AE loop last reached, restored at the
+     * next wake when op29 is 1 so AE starts there instead of the init table's
+     * 2368 lines (Seeed PR #283). 0 = none saved. Kept out of FACTORY_DEFAULTS.
+     */
+    CAM_AE_EXPOSURE: 37,
+    /**
+     * RP camera auto-exposure state, written by the firmware, not user-set:
+     * the analog gain code (0-960 = 1x-16x) reached with op37, restored with
+     * it (Seeed PR #283). Kept out of FACTORY_DEFAULTS.
+     */
+    CAM_AE_GAIN: 38,
 } as const
 
 /**
@@ -214,6 +227,11 @@ export const FACTORY_DEFAULTS: Record<number, number> = {
     [OP_PARAMETER.FLASH_MODE]: 0,
     [OP_PARAMETER.FLASH_TOD_START]: 0,
     [OP_PARAMETER.FLASH_TOD_DURATION]: 0,
+    // op37 CAM_AE_EXPOSURE and op38 CAM_AE_GAIN are deliberately absent. The
+    // firmware writes them itself on every wake, so a reset to 0 at each
+    // deployment would throw away the exposure the camera has reached, and the
+    // first wakes at a bright site would start from the init table again;
+    // configVerification would also flag values that change on every wake.
 }
 
 

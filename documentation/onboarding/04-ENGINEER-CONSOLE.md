@@ -189,6 +189,12 @@ The following subset is directly used during deployment:
 | 35 | `FLASH_TOD_START` | Time-of-day mode only: minutes after midnight UTC when the flash turns on |
 | 36 | `FLASH_TOD_DURATION` | Time-of-day mode only: how many minutes it stays on, wrapping past midnight |
 
+Ops 37 `CAM_AE_EXPOSURE` and 38 `CAM_AE_GAIN` (Seeed PR #283) are the exposure and gain the RP
+camera's auto-exposure last reached, which the firmware saves and restores at the next wake. They
+are state, not settings: no screen shows them, and the reset and the deployments never write them,
+so a camera keeps the exposure it has learnt. The BLE firmware's `getop -1` stops at op36 until its
+own table grows.
+
 ### OP Bulk Fetch Optimization (`AI getop -1`)
 
 All deployment flows use the **bulk parameter fetch** command to minimize BLE round-trips:

@@ -29,3 +29,21 @@ describe('verifyConfigDefaults op33', () => {
         expect(result.mismatches[OP_PARAMETER.MD_BLOCK_THRESHOLD]).toEqual({ expected: 4, actual: '9' })
     })
 })
+
+/**
+ * Seeed PR #283 added ops 37 and 38, the RP camera's saved auto-exposure,
+ * which the firmware rewrites on every wake. They are not factory defaults,
+ * so a camera that reports them still verifies (#514).
+ */
+describe('verifyConfigDefaults ops 37 and 38', () => {
+    it('does not compare the saved auto-exposure state', async () => {
+        const ops = Array.from({ length: 39 }, (_, i) => (FACTORY_DEFAULTS[i] ?? 0).toString())
+        ops[OP_PARAMETER.CAM_AE_EXPOSURE] = '1840'
+        ops[OP_PARAMETER.CAM_AE_GAIN] = '96'
+
+        const result = await verifyConfigDefaults({ execute: jest.fn(async () => ops) } as any)
+
+        expect(result.verified).toBe(true)
+        expect(result.mismatches).toEqual({})
+    })
+})
