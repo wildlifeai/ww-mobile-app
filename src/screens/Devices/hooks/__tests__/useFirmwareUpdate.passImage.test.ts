@@ -127,4 +127,38 @@ describe('useFirmwareUpdate passImage', () => {
         })
         expect(result.current.isComplete).toBe(true)
     })
+
+    // #529: Update software's image 1, with the Bluetooth update next. The new
+    // Bluetooth firmware resets the AI processor and the finish restarts the
+    // camera, so this restart only waited out its timeouts (36 s on the bench)
+    it('stops after image 1 for the Bluetooth update without restarting the camera', async () => {
+        const sent: string[] = []
+        const camera = (createBleSession as jest.Mock).getMockImplementation()!
+        ;(createBleSession as jest.Mock).mockImplementation((d: any) => {
+            const session = camera(d)
+            const execute = session.execute
+            return { ...session, execute: jest.fn(async (build: any) => { sent.push(build().build()); return execute(build) }) }
+        })
+        const transfers = (runFileTransferPipeline as jest.Mock).mock.calls.length
+
+        const { result } = renderHook(() => useFirmwareUpdate({ target: 'himax', device }))
+        await act(async () => { await settle() })
+
+        let update: Promise<boolean> = Promise.resolve(false)
+        await act(async () => {
+            update = result.current.startUpdate({ himaxSource: 'download', stopAfterFirstImage: true })
+            await settle()
+        })
+        await act(async () => {
+            finishTransfer!()
+            await settle()
+        })
+
+        expect(await update).toBe(true)
+        expect((runFileTransferPipeline as jest.Mock).mock.calls.length - transfers).toBe(1)
+        expect(sent.filter(line => line.startsWith('AI firmware '))).toHaveLength(1)
+        expect(sent).not.toContain('AI reset')
+        expect(sent).not.toContain('AI dpd')
+        expect(result.current.pairProgress).toEqual({ total: 2, done: 1 })
+    })
 })

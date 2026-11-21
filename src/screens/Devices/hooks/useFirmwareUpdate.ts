@@ -824,6 +824,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         filenameToFlash: string,
         passLabel: string,
         record?: { beforeFlash: () => Promise<void>; afterFlash: () => Promise<void> },
+        restart = true,
     ) => {
         if (!device?.connected) throw new Error('Device disconnected.')
 
@@ -994,6 +995,17 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         await record?.afterFlash()
 
         if (unmountedRef.current) return
+
+        if (!restart) {
+            // Image 1 of Update software with the Bluetooth update next (#529):
+            // the new Bluetooth firmware resets the AI processor when it boots,
+            // and the finish restarts the camera before image 2 anyway. Across
+            // Seeed PR #284 this restart only waited out its timeouts, 36 s on
+            // the bench (WILD-CAAE, 21 November 2026), since the new image
+            // cannot answer the old Bluetooth processor.
+            appendLog(`${passLabel}Firmware write complete. The camera starts it after the Bluetooth update.`)
+            return
+        }
 
         appendLog(`${passLabel}Firmware write complete. Waiting for device to sleep...`)
 
@@ -1263,6 +1275,8 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                 appendLog(`Starting second image (${fw.cameraVariant ?? 'unknown'})...`)
             }
 
+            // Update software stops after image 1 for the Bluetooth update (#529)
+            const stopsHere = stopAfterFirstImage && n === 0 && plan.length > 1
             const runPass = async () => {
                 if (slotsSupported) {
                     if (!unmountedRef.current) setInterPassWait(n > 0)
@@ -1282,7 +1296,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                 await flashHimaxImage(source, fw, filename, passLabel, {
                     beforeFlash: () => saveRecord(n + 1, n),
                     afterFlash: () => saveRecord(n + 1, n + 1),
-                })
+                }, !stopsHere)
             }
 
             try {
@@ -1302,9 +1316,9 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                 await runPass()
             }
             if (unmountedRef.current) return
-            if (stopAfterFirstImage && n === 0 && plan.length > 1) {
+            if (stopsHere) {
                 if (!unmountedRef.current) setPairProgress({ total, done: 1 })
-                appendLog('Image 1 of 2 installed. Image 2 goes after the Bluetooth update.')
+                appendLog('Image 1 of 2 written. Image 2 goes after the Bluetooth update.')
                 advancePhase('complete')
                 return
             }

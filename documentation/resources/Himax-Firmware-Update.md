@@ -217,7 +217,7 @@ Seeed PR #284 and ww-hardware PR #77 change how the two processors signal each o
 2. The Bluetooth update is offered now, and needs no AI processor. In this state the AI processor answers nothing and the firmware check runs out of time, so it is this phone's record of the update that says it is half done (`useFirmwareStatus`). Another phone, without the record, offers neither update.
 3. Finish update writes image 2 with both processors new.
 
-Start Monitoring's **Update software** runs this order in one go (#529, [`utils/softwareUpdate.ts`](../../src/utils/softwareUpdate.ts)): with both processors behind, the AI update with `stopAfterFirstImage`, the Bluetooth update, then the AI update again, which finishes from the record. With one behind, only that one. The order is the same on either side of the change.
+Start Monitoring's **Update software** runs this order in one go (#529, [`utils/softwareUpdate.ts`](../../src/utils/softwareUpdate.ts)): with both processors behind, the AI update with `stopAfterFirstImage`, the Bluetooth update, then the AI update again, which finishes from the record. Image 1 is written without the restart: the new Bluetooth firmware resets the AI processor when it boots and the finish restarts the camera first, and across the change that restart only waited out its timeouts (36 s). With one behind, only that one. The order is the same on either side of the change.
 
 The AI build that contains Seeed PR #284 and Bluetooth 0.30.61 (ww-hardware PR #77) go into the firmware catalogue together: the app cannot tell the AI builds apart, since `AI ver` is only a build stamp.
 
