@@ -8,7 +8,8 @@ import { useExtendedTheme } from '../../theme'
 import { useAppSelector } from '../../redux'
 import { WWText } from '../../components/ui/WWText'
 import { useFirmwareStatus, FirmwareComponentStatus } from './hooks/useFirmwareStatus'
-import { friendlyVersion, missingFirmware, unfinishedLine } from '../../utils/firmwareWords'
+import { bleUpdateWaits } from '../../utils/firmwareOrder'
+import { BLE_WAITS_FOR_AI, friendlyVersion, missingFirmware, unfinishedLine } from '../../utils/firmwareWords'
 
 interface FirmwareComponentCardProps {
     title: string
@@ -19,6 +20,11 @@ interface FirmwareComponentCardProps {
     isConnected: boolean
     /** Opened from the Engineer Console: Update stays offered when up to date */
     engineer: boolean
+    /**
+     * Bluetooth only: the AI processor has an update waiting, not yet half
+     * done, so this card offers no update until it has run (#527)
+     */
+    waitsForAi?: boolean
     onUpdate: () => void
 }
 
@@ -41,7 +47,7 @@ const statusLine = (status: FirmwareComponentStatus): string => {
     return current ? `Up to date: ${current}` : 'Version unknown'
 }
 
-const FirmwareComponentCard = ({ title, status, colors, spacing, isChecking, isConnected, engineer, onUpdate }: FirmwareComponentCardProps) => (
+const FirmwareComponentCard = ({ title, status, colors, spacing, isChecking, isConnected, engineer, waitsForAi, onUpdate }: FirmwareComponentCardProps) => (
     <View style={[styles.card, { backgroundColor: colors.surfaceVariant, marginBottom: spacing }]}>
         <WWText variant="titleMedium" style={{ color: colors.onSurfaceVariant }}>
             {title}
@@ -49,7 +55,12 @@ const FirmwareComponentCard = ({ title, status, colors, spacing, isChecking, isC
         <WWText variant="bodyMedium" style={{ color: status.isOutdated ? colors.error : colors.onSurfaceVariant }}>
             {statusLine(status)}
         </WWText>
-        {(status.isOutdated || engineer) && (
+        {waitsForAi && (
+            <WWText variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
+                {BLE_WAITS_FOR_AI}
+            </WWText>
+        )}
+        {!waitsForAi && (status.isOutdated || engineer) && (
             <Button
                 mode="contained"
                 style={styles.marginTop12}
@@ -114,6 +125,7 @@ export const FirmwareStatusScreen = () => {
                             isChecking={isChecking}
                             isConnected={!!device?.connected}
                             engineer={engineer}
+                            waitsForAi={bleUpdateWaits(statuses)}
                             onUpdate={() => navigation.navigate('FirmwareUpdateScreen', { deviceId, target: 'ble', engineer })}
                         />
                         

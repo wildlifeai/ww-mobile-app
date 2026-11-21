@@ -5,7 +5,7 @@ import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import ReferenceDataService from '../../../services/ReferenceDataService'
 import Firmware from '../../../database/models/Firmware'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
-import { himaxStatus, himaxVersionOf } from '../../../services/himaxStatus'
+import { himaxStatus, himaxVersionOf, LatestHimaxBuilds } from '../../../services/himaxStatus'
 import { HimaxVariant, SlotsReply } from '../../../utils/himaxFirmwareState'
 import { logError, logWarn } from '../../../utils/logger'
 import { convertBleToSemanticVersion } from '../../../utils/versionUtils'
@@ -89,6 +89,8 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
                     'Firmware status check timed out - the device may have gone to sleep. Wake it and pull to refresh.'))
             }, 30000)
         })
+        // What the check has heard before a deadline cuts it short, see the catch
+        const heard: { latest?: LatestHimaxBuilds; latestBle?: Firmware | null; bleVersion?: string | null } = {}
         // The losing branch of the race keeps running: guard its state writes
         // behind timedOut (a late success must not clobber the declared error)
         // and swallow its late rejection (already reported via the race).
@@ -99,6 +101,8 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
             // Dual-image devices hold one firmware per camera variant
             const latestRp3 = await ReferenceDataService.getLatestHimaxByVariant('RP3')
             const latestHm0360 = await ReferenceDataService.getLatestHimaxByVariant('HM0360')
+            heard.latest = { RP3: latestRp3, HM0360: latestHm0360, any: latestHimax }
+            heard.latestBle = latestBle
 
             let currentBleVersion: string | null = null
             let currentHimaxVersion: string | null = null
@@ -109,6 +113,7 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
                 // Device `version` typically returns something like "V0.2.0"
                 const rawBleVer = await session.execute(() => commandRegistry.version())
                 currentBleVersion = convertBleToSemanticVersion(rawBleVer as string)
+                heard.bleVersion = currentBleVersion
             } catch (e) {
                 logWarn('[FirmwareStatus] Failed to read BLE version:', e)
             }
@@ -170,6 +175,41 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
             const msg = error instanceof Error ? error.message : String(error)
             logError('[FirmwareStatus] Check failed:', error)
             setErrorMsg(msg)
+            // A camera whose AI processor is across Seeed PR 284 and whose BLE
+            // processor is not NACKs every AI command, so the check runs out of
+            // time (#527, bench of 21 November 2026). That is the state an AI
+            // update stops in at image 2, and this phone's record of it is what
+            // releases the Bluetooth update (utils/firmwareOrder.ts). So when
+            // the record says an update is half done, say so, with the BLE
+            // version if it was heard. Without one, keep the last verdict.
+            if (heard.latest) {
+                const latest = heard.latest
+                const himaxState = await himaxStatus(device.id, null, null, latest)
+                if (isMounted.current && himaxState.unfinished) {
+                    logWarn('[FirmwareStatus] AI not heard, but this phone left its update half done:', himaxState.unfinished)
+                    const { latestBle, bleVersion } = heard
+                    // The latest builds too: right after the app starts there is
+                    // no earlier check, and without them Check Firmware reads
+                    // "Not checked" (bench, 21 November 2026)
+                    setStatuses(prev => ({
+                        ble: bleVersion === undefined ? prev.ble : {
+                            type: 'ble',
+                            currentVersion: bleVersion || 'Unknown',
+                            latestVersion: latestBle?.version || 'Unknown',
+                            latestFirmware: latestBle ?? null,
+                            isOutdated: !!latestBle?.version && bleVersion !== latestBle.version,
+                        },
+                        himax: {
+                            type: 'himax',
+                            currentVersion: 'Unknown',
+                            latestVersion: latest.any?.version || 'Unknown',
+                            latestFirmware: latest.any,
+                            variants: { RP3: latest.RP3, HM0360: latest.HM0360 },
+                            ...himaxState,
+                        },
+                    }))
+                }
+            }
         } finally {
             clearTimeout(deadlineTimer)
             if (isMounted.current) {

@@ -1,9 +1,10 @@
-import { render, screen } from "@testing-library/react-native"
+import { fireEvent, render, screen } from "@testing-library/react-native"
 import { FirmwareStatusScreen } from "../FirmwareStatusScreen"
 
+const mockNavigate = jest.fn()
 jest.mock("@react-navigation/native", () => ({
 	useRoute: () => ({ params: { deviceId: "dev-1" } }),
-	useNavigation: () => ({ navigate: jest.fn() }),
+	useNavigation: () => ({ navigate: mockNavigate }),
 	useIsFocused: () => false,
 }))
 
@@ -13,6 +14,8 @@ jest.mock("../../../redux", () => ({
 
 // What a test changes in the AI processor's status, over the #437 default below
 const mockHimax: { current: Record<string, unknown> } = { current: {} }
+// And in the Bluetooth processor's
+const mockBle: { current: Record<string, unknown> } = { current: {} }
 jest.mock("../hooks/useFirmwareStatus", () => ({
 	useFirmwareStatus: () => ({
 		isChecking: false,
@@ -20,7 +23,7 @@ jest.mock("../hooks/useFirmwareStatus", () => ({
 		errorMsg: null,
 		checkStatus: jest.fn(),
 		statuses: {
-			ble: { type: "ble", currentVersion: "0.30.57", latestVersion: "0.30.57", latestFirmware: null, isOutdated: false },
+			ble: { type: "ble", currentVersion: "0.30.57", latestVersion: "0.30.57", latestFirmware: null, isOutdated: false, ...mockBle.current },
 			himax: {
 				type: "himax", currentVersion: "WW500_C02 10:09:08 Oct  9 2026", latestVersion: "WW500_C02 10:56:08 Oct  9 2026",
 				latestFirmware: null, isOutdated: false, missingVariant: "RP3",
@@ -74,5 +77,52 @@ describe("FirmwareStatusScreen with an AI update that stopped part way", () => {
 		expect(screen.getByText("Update not finished: 1 of 2 images installed")).toBeTruthy()
 		expect(screen.getByText("Finish update")).toBeTruthy()
 		expect(screen.queryByText(/Up to date: 9 Oct/)).toBeNull()
+	})
+})
+
+/**
+ * #527: Seeed PR 284 changed how the two processors signal each other, and a
+ * camera with old AI and new Bluetooth takes no file. The Bluetooth card
+ * offered its update first, which left exactly that. It now waits while the
+ * AI processor has an update waiting, unless that update is half done: then
+ * the camera runs new AI, and the Bluetooth update is what image 2 needs.
+ */
+describe("FirmwareStatusScreen with both processors behind", () => {
+	afterEach(() => {
+		mockHimax.current = {}
+		mockBle.current = {}
+		mockNavigate.mockClear()
+	})
+
+	it("offers no Bluetooth update while the AI update waits", () => {
+		mockHimax.current = { isOutdated: true, missingVariant: null }
+		mockBle.current = { latestVersion: "0.30.61", isOutdated: true }
+		render(<FirmwareStatusScreen />)
+
+		expect(screen.getByText("Update the AI processor first")).toBeTruthy()
+		expect(screen.getAllByText("Update")).toHaveLength(1)
+		fireEvent.press(screen.getByText("Update"))
+		expect(mockNavigate).toHaveBeenCalledWith("FirmwareUpdateScreen", expect.objectContaining({ target: "himax" }))
+	})
+
+	it("offers the Bluetooth update once the AI update is half done", () => {
+		mockHimax.current = { isOutdated: true, missingVariant: null, unfinished: { endVariant: "HM0360", done: 1, total: 2 } }
+		mockBle.current = { latestVersion: "0.30.61", isOutdated: true }
+		render(<FirmwareStatusScreen />)
+
+		expect(screen.queryByText("Update the AI processor first")).toBeNull()
+		fireEvent.press(screen.getByText("Update"))
+		expect(mockNavigate).toHaveBeenCalledWith("FirmwareUpdateScreen", expect.objectContaining({ target: "ble" }))
+		expect(screen.getByText("Finish update")).toBeTruthy()
+	})
+
+	it("offers the Bluetooth update on its own when the AI processor is up to date", () => {
+		mockHimax.current = { currentVersion: "WW500_C02 10:56:08 Oct  9 2026", missingVariant: null }
+		mockBle.current = { latestVersion: "0.30.61", isOutdated: true }
+		render(<FirmwareStatusScreen />)
+
+		expect(screen.queryByText("Update the AI processor first")).toBeNull()
+		fireEvent.press(screen.getByText("Update"))
+		expect(mockNavigate).toHaveBeenCalledWith("FirmwareUpdateScreen", expect.objectContaining({ target: "ble" }))
 	})
 })

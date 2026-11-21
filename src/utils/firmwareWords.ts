@@ -108,6 +108,9 @@ export const updateStep = (
     }
 }
 
+/** Where the Bluetooth update waits for the AI processor's (#527, see utils/firmwareOrder.ts) */
+export const BLE_WAITS_FOR_AI = 'Update the AI processor first'
+
 /** The one result line once an update has finished. */
 export const updateResult = (newVersion?: string | null): string =>
     newVersion
