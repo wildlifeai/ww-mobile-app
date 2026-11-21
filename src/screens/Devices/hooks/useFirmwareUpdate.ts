@@ -283,6 +283,12 @@ export type HimaxFirmwareSource = 'sdcard' | 'download'
 export interface StartUpdateOptions {
     himaxSource?: HimaxFirmwareSource
     selectedFirmware?: Firmware | string
+    /**
+     * AI only: stop once image 1 of the pair is in, leaving the update half
+     * done for the Bluetooth update to go between the two images (Update
+     * software, #529). The record says so, and the next AI update finishes it.
+     */
+    stopAfterFirstImage?: boolean
 }
 
 /** The image one pass of a Himax update sends: its 8.3 name on the SD card, and its cloud path when it is a release */
@@ -355,6 +361,8 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
     // passes - drives an honest status label instead of "pre-flight checks".
     const [interPassWait, setInterPassWait] = useState(false)
     const preflightDoneRef = useRef(false)
+    // Bumped to run the pre-flight again, for Update software's retry (#529)
+    const [preflightRun, setPreflightRun] = useState(0)
 
     const unmountedRef = useRef(false)
     const phaseRef = useRef<UpdatePhase>('idle')
@@ -522,7 +530,14 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         run()
         return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [device?.connected, device?.name, isUpdating, target])
+    }, [device?.connected, device?.name, isUpdating, target, preflightRun])
+
+    /** Reads the camera again, as the screen does on opening */
+    const rerunPreflight = useCallback(() => {
+        preflightDoneRef.current = false
+        setIsPreflightDone(false)
+        setPreflightRun(run => run + 1)
+    }, [])
 
     // ── Graceful Disconnect Fallback ───────────────────────────────
     
@@ -809,6 +824,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         filenameToFlash: string,
         passLabel: string,
         record?: { beforeFlash: () => Promise<void>; afterFlash: () => Promise<void> },
+        restart = true,
     ) => {
         if (!device?.connected) throw new Error('Device disconnected.')
 
@@ -980,6 +996,17 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
 
         if (unmountedRef.current) return
 
+        if (!restart) {
+            // Image 1 of Update software with the Bluetooth update next (#529):
+            // the new Bluetooth firmware resets the AI processor when it boots,
+            // and the finish restarts the camera before image 2 anyway. Across
+            // Seeed PR #284 this restart only waited out its timeouts, 36 s on
+            // the bench (WILD-CAAE, 21 November 2026), since the new image
+            // cannot answer the old Bluetooth processor.
+            appendLog(`${passLabel}Firmware write complete. The camera starts it after the Bluetooth update.`)
+            return
+        }
+
         appendLog(`${passLabel}Firmware write complete. Waiting for device to sleep...`)
 
         // Wait for the Himax to finish and send Sleep signal
@@ -1042,7 +1069,11 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
      * not available (legacy firmware database) or when an explicit SD-card
      * filename is given.
      */
-    const runHimaxUpdate = useCallback(async (source: HimaxFirmwareSource = 'sdcard', selectedFirmware?: Firmware | string) => {
+    const runHimaxUpdate = useCallback(async (
+        source: HimaxFirmwareSource = 'sdcard',
+        selectedFirmware?: Firmware | string,
+        stopAfterFirstImage = false,
+    ) => {
         if (!device?.connected) throw new Error('Device disconnected.')
 
         // `endVariant`, when known, is the camera the update must leave
@@ -1244,6 +1275,8 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                 appendLog(`Starting second image (${fw.cameraVariant ?? 'unknown'})...`)
             }
 
+            // Update software stops after image 1 for the Bluetooth update (#529)
+            const stopsHere = stopAfterFirstImage && n === 0 && plan.length > 1
             const runPass = async () => {
                 if (slotsSupported) {
                     if (!unmountedRef.current) setInterPassWait(n > 0)
@@ -1263,7 +1296,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                 await flashHimaxImage(source, fw, filename, passLabel, {
                     beforeFlash: () => saveRecord(n + 1, n),
                     afterFlash: () => saveRecord(n + 1, n + 1),
-                })
+                }, !stopsHere)
             }
 
             try {
@@ -1283,6 +1316,12 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                 await runPass()
             }
             if (unmountedRef.current) return
+            if (stopsHere) {
+                if (!unmountedRef.current) setPairProgress({ total, done: 1 })
+                appendLog('Image 1 of 2 written. Image 2 goes after the Bluetooth update.')
+                advancePhase('complete')
+                return
+            }
         }
 
         if (!unmountedRef.current) setPairProgress({ total, done: total })
@@ -1292,7 +1331,8 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
 
     // ── Public start ───────────────────────────────────────────────
 
-    const startUpdate = useCallback(async (options?: StartUpdateOptions) => {
+    /** Runs the update; resolves true when it finished, false when it failed */
+    const startUpdate = useCallback(async (options?: StartUpdateOptions): Promise<boolean> => {
         setIsUpdating(true)
         setErrorMsg(null)
         setNewVersion(null)
@@ -1313,13 +1353,16 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         if (device?.id) dispatch(setDfuStatus({ id: device.id, status: true }))
         // The offline pre-download must not delete the image this update reads
         const releaseCache = FirmwareService.holdCache()
+        let finished = false
 
         try {
             if (target === 'ble') {
                 await runBleDfu()
             } else {
-                await runHimaxUpdate(options?.himaxSource, options?.selectedFirmware)
+                await runHimaxUpdate(options?.himaxSource, options?.selectedFirmware, options?.stopAfterFirstImage)
             }
+            // Read through the ref: the run moves it, which the compiler cannot see
+            finished = (phaseRef.current as UpdatePhase) === 'complete'
         } catch (err: any) {
             if (!unmountedRef.current) {
                 logError(`[FW Update] ${target} update failed:`, err)
@@ -1332,6 +1375,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
             if (device?.id) dispatch(setDfuStatus({ id: device.id, status: false }))
             if (!unmountedRef.current) setIsUpdating(false)
         }
+        return finished
     }, [target, runBleDfu, runHimaxUpdate, advancePhase, dispatch, device?.id])
 
     // ── Derived values ─────────────────────────────────────────────
@@ -1430,5 +1474,6 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         // Actions
         startUpdate,
         cancelUpdate,
+        rerunPreflight,
     }
 }

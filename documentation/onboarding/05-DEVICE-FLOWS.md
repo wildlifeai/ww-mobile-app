@@ -87,8 +87,8 @@ flowchart TD
     D --> E["Load Project & Device data"]
     E --> F["Silent OP reset on mount"]
     F --> G["User fills form"]
-    G --> H{"Firmware outdated?"}
-    H -- Yes --> I["Show warning banner (optional update)"]
+    G --> H{"Software behind?"}
+    H -- Yes --> I["Software update banner (optional)"]
     I --> G
     H -- No --> J{"Tap 'Start Monitoring'"}
     J --> K["Pipeline: Role check → Server check → Time Sync → AI Model → Snapshot → DB Record → Reset OPs → Configure"]
@@ -125,10 +125,10 @@ BLE initialization happens **upstream** in the Scanner connection flow, and the 
 
 On this screen:
 - `isInitializing` is hardcoded to `false` (initialization is already complete)
-- `initErrors` displays any warnings from the upstream checks (e.g., LoRaWAN connectivity). A fault is listed under "Hardware:" and the banner asks for a report; a minor line (a low battery, newer firmware, a card nearly full, `utils/initWarnings.ts`) is not, and a banner of minor lines only has **Dismiss**, which holds until a new line arrives. Until 26 October 2026 every line asked for a report, and people reported their batteries
+- `initErrors` displays any warnings from the upstream checks (e.g., LoRaWAN connectivity). A fault is listed under "Hardware:" and the banner asks for a report; a minor line (a low battery, a card nearly full, `utils/initWarnings.ts`) is not, and a banner of minor lines only has **Dismiss**, which holds until a new line arrives. Until 26 October 2026 every line asked for a report, and people reported their batteries
 - `useBleSession` + `useBleActions` maintain the BLE heartbeat during form entry
 - **BLE query optimization:** On screen mount, the firmware versions are resolved silently from `initPayload` rather than actively querying the connected device over BLE. Before #268 the hook re-queried the device whenever the snapshot looked outdated, which on a bench build was every time.
-- **Focus state recheck:** When the screen regains focus (e.g., after the operator navigates back from a successful firmware update), the active BLE query `checkStatus()` is run to refresh the firmware status and clear the outdated firmware warning banner automatically.
+- **Focus state recheck:** When the screen regains focus (e.g., after the operator navigates back from a successful firmware update), the active BLE query `checkStatus()` is run to refresh the firmware status and clear the software update banner automatically.
 
 ### User Form
 
@@ -169,13 +169,16 @@ Inside Advanced settings:
 | Camera Height (cm) | Input | Height of the lens from the ground |
 | Check Battery Level | Action | The row shows the level read at connection; tapping reads `battery` again. The popup warns at or below 30%. |
 | Check SD Card | Action | The row shows the free space; tapping reads `aiinfo` again. The popup says nearly full at or below 10% free. |
-| Check Firmware | Action | Up to date, Update available, Update not ready (one camera's build only, #437) or Update not finished (#374), per processor; versions only under Details. Update opens `FirmwareUpdateScreen`. |
+| Check Software | Action | Up to date, Update available or Update not finished, for the camera as a whole (#529); no processors, no versions. Update software opens `SoftwareUpdateScreen`. |
 
-**Firmware Warning Banner** (conditional, shown when any firmware is outdated)
+**Software update banner** (conditional, #529)
 
 | Element | Notes |
 |---------|-------|
-| Warning banner | Orange banner with "Update Firmware" button navigating to `FirmwareStatusScreen`: one line per chip, and Update opens the operator's view of the update, from which build to which, one button, one bar and one status line while it runs with the update's last steps under them, one result line (#344). The build picker and the SD-card source are the Engineer Console's view. Non-blocking, user can proceed without updating. |
+| Banner | "Software update available" or "Software update not finished", and **Update software**, nothing else, when `useSoftwareState` says so. A half-done update shows even when the AI processor does not answer, since across Seeed PR #284 that is the state it leaves. Optional: Start Monitoring is never blocked by it. |
+| `SoftwareUpdateScreen` | Runs every step the camera needs (`utils/softwareUpdate.ts`): AI image 1, the Bluetooth update, then the rest of the AI update, or only the steps that are behind. It starts on its own once the camera is read; below 30% battery it asks once, "It's on USB power, update anyway", for every step. One bar across the whole update, with the update's own step line and log lines under it. A stop says "The update stopped. Tap Update software to finish.", and the button reads the camera again and does what is left. |
+
+What counts as behind for the person deploying: older than the catalogue (Bluetooth by release number, AI by build time) or half done. A camera newer than the catalogue reads up to date. An update also reads up to date while its files are not on the phone or a camera's AI build is missing (#437). The per-processor screens, downgrades and single images are the Engineer Console's.
 
 Project settings (capture method, sensitivity, timelapse interval, GPS image tagging, capture flash, pictures per trigger) are inherited from the selected project and displayed as feature icons. The user can switch projects at any time via the dropdown.
 
@@ -451,7 +454,7 @@ If the device is not connected, the user can "Force End (Database Only)":
 | "This project's AI model "..." is not a TFLite model" | The model's file in storage is something else, such as a ZIP archive (the dev backend's model `d0000000-...-0000000000a1` on 8 October 2026). Loading it would halt the camera (Seeed #241) | Replace the model's file with the TFLite model itself. Nothing was written to the camera, and downloading again brings the same file. |
 | "The camera did not confirm it loaded this project's AI model" | `loadmodel` went unanswered. The usual cause is a model file the Himax could not parse, which halts it: it answers commands but never captures or sleeps (Seeed #241) | Power cycle the camera (unplug it or remove the battery), reconnect and start again. No deployment was created. |
 | "This project's AI model ... is not on this phone" | The model did not come down with the reference data: phone offline, or the model is not `validated` or `deployed` | Get the phone online and start again, which syncs first. If it persists, check the model's status on the website. |
-| "This camera's BLE firmware is ..., and sending files to it needs ... or later" | The model has to be sent to the card and the camera's BLE firmware predates the relay FIFO the transfer needs ([the floor](../resources/File-Transfer-Protocol.md#the-ble-firmware-floor)) | Update the BLE firmware, then start again. Nothing was written to the camera. |
+| "The camera's software is too old for this model. Update software, then start monitoring." | The model has to be sent to the card and the camera's BLE firmware predates the relay FIFO the transfer needs ([the floor](../resources/File-Transfer-Protocol.md#the-ble-firmware-floor)). The Engineer Console's file tools say it in full: "This camera's BLE firmware is ..., and sending files to it needs ... or later" | Update software, then start again. Nothing was written to the camera. |
 | "This project's AI model "..." could not be downloaded" | The model is not on the camera or its card, and the phone could not download its files. Offline, it was assigned after the phone's last sync or the pre-download had not finished; online, the download itself failed | Check the connection, wait for the sync (the Start Monitoring screen then says "Model ready on this phone"), and start again. Nothing was written to the camera. |
 | "Cannot Start Monitoring": "You are a viewer in ..." or "You are not a member of ..." | This account may not deploy into the project: a viewer, or an organisation manager with no role in it (#450). The server would refuse the deployment | A project admin makes you a member, or pick a project you are a member of. Nothing was written to the camera. |
 | "Cannot Start Monitoring": "Your roles have not reached this phone yet ..." | No role of this account is on the phone, so it cannot tell | Connect so the app syncs, then start again. |

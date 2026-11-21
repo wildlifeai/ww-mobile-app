@@ -5,12 +5,11 @@ import { createBleSession } from '../ble/session/createBleSession'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
 import { selfTestCache } from '../ble/protocol/selfTestCache'
 import ReferenceDataService from '../services/ReferenceDataService'
-import { himaxStatus, himaxVersionOf, latestHimaxBuilds } from '../services/himaxStatus'
 import { log, logWarn } from '../utils/logger'
 import { convertBleToSemanticVersion } from '../utils/versionUtils'
 import { InitPayload } from '../navigation/types'
 import { CRITICAL_AI_MASK, formatSelfTestBits, isProvisional, parseSelfTestBits, PROVISIONAL_BIT, SD_CARD_NOT_CHECKED_WARNING, selfTestWarnings } from '../utils/deviceSelfTest'
-import { batteryLowWarning, NEWER_AI_FIRMWARE, NEWER_BLE_FIRMWARE, sdCardAlmostFullWarning } from '../utils/initWarnings'
+import { batteryLowWarning, sdCardAlmostFullWarning } from '../utils/initWarnings'
 
 /**
  * Pre-deployment checks: what the Scanner runs between "connected" and the Start
@@ -180,9 +179,9 @@ export const useDevicePreDeploymentChecks = () => {
             payload.deviceFirmwareVersion = version
             const latest = await ReferenceDataService.getLatestFirmware('ble')
             const normalizedVersion = convertBleToSemanticVersion(version)
+            // No warning line: Start Monitoring's banner says Update software once (#529)
             if (latest && normalizedVersion !== latest.version) {
                 payload.bleFirmwareUpdateAvailable = true
-                newErrors.deviceHealth.push(`${NEWER_BLE_FIRMWARE}: ${latest.version}`)
             }
         } catch (e) {
             logWarn('[Pre-Deployment] Firmware check failed:', e)
@@ -195,17 +194,8 @@ export const useDevicePreDeploymentChecks = () => {
                 const aiVersion = await session.execute(commandRegistry.aiver)
                 payload.himaxFirmwareVersion = aiVersion
                 log(`[Pre-Deployment] Himax firmware: ${aiVersion}`)
-                // Firmware Status's judgement (#464): the camera against the
-                // latest build of the camera it runs, not the newest of either.
-                // No `slots` here, this check sends nothing more (#268), so
-                // either camera's latest counts as current. An unfinished
-                // update has its own card on Start Monitoring.
-                if (aiVersion) {
-                    const status = await himaxStatus(device.id, himaxVersionOf(aiVersion), null, await latestHimaxBuilds())
-                    if (status.isOutdated && !status.unfinished) {
-                        newErrors.deviceHealth.push(NEWER_AI_FIRMWARE)
-                    }
-                }
+                // Read for Start Monitoring's firmware check, which judges it
+                // and says Update software once (#529): no warning line here
             } catch (e) {
                 logWarn('[Pre-Deployment] Himax firmware check failed:', e)
             }
