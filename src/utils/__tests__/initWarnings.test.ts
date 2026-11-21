@@ -1,4 +1,4 @@
-import { batteryLowWarning, isMinorWarning, NEWER_AI_FIRMWARE, NEWER_BLE_FIRMWARE, sdCardAlmostFullWarning, sortInitWarnings } from '../initWarnings'
+import { batteryLowWarning, isMinorWarning, sdCardAlmostFullWarning, sortInitWarnings } from '../initWarnings'
 import { selfTestWarnings, SelfTestBit, NIGHT_SENSOR_WARNING } from '../deviceSelfTest'
 
 /**
@@ -15,8 +15,6 @@ describe('initWarnings', () => {
 
     it.each([
         batteryLowWarning(12),
-        `${NEWER_BLE_FIRMWARE}: 0.30.58`,
-        NEWER_AI_FIRMWARE,
         sdCardAlmostFullWarning(93.25),
     ])('counts %s as minor', (line) => {
         expect(isMinorWarning(line)).toBe(true)
@@ -32,9 +30,9 @@ describe('initWarnings', () => {
     })
 
     it('keeps one battery line, the reading over the self-test bit, and sorts the rest', () => {
-        expect(sortInitWarnings([batteryLowWarning(), NEWER_AI_FIRMWARE, 'LoRaWAN Error (Bit 2)', batteryLowWarning(7)])).toEqual({
+        expect(sortInitWarnings([batteryLowWarning(), sdCardAlmostFullWarning(93.25), 'LoRaWAN Error (Bit 2)', batteryLowWarning(7)])).toEqual({
             battery: batteryLowWarning(7),
-            minor: [NEWER_AI_FIRMWARE],
+            minor: [sdCardAlmostFullWarning(93.25)],
             faults: ['LoRaWAN Error (Bit 2)'],
         })
         expect(sortInitWarnings(['LoRaWAN Error (Bit 2)'])).toEqual({ battery: null, minor: [], faults: ['LoRaWAN Error (Bit 2)'] })

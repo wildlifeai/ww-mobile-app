@@ -47,6 +47,7 @@ import { LightSensorScreen } from "../screens/Devices/LightSensorScreen"
 import { DevDeploymentTestScreen } from "../screens/Devices/DevDeploymentTestScreen"
 import { DeviceCheckScreen } from "../screens/Devices/DeviceCheckScreen"
 import { FirmwareUpdateScreen } from "../screens/Devices/FirmwareUpdateScreen"
+import { SoftwareUpdateScreen } from "../screens/Devices/SoftwareUpdateScreen"
 import { FileTransferTestScreen } from "../screens/Devices/FileTransferTestScreen"
 import { ModelValidationTestScreen } from "../screens/Devices/ModelValidationTestScreen"
 import { FirmwareStatusScreen } from "../screens/Devices/FirmwareStatusScreen"
@@ -239,6 +240,11 @@ export const MainNavigation = () => {
 							name="FirmwareUpdateScreen"
 							component={FirmwareUpdateScreen}
 							options={{ title: "Firmware Update" }}
+						/>
+						<Stack.Screen
+							name="SoftwareUpdateScreen"
+							component={SoftwareUpdateScreen}
+							options={{ title: "Update software" }}
 						/>
 						<Stack.Screen
 							name="FileTransferTestScreen"

@@ -25,11 +25,11 @@ import { DeploymentMonitorView } from './components/DeploymentMonitorView'
 
 import { useStartDeployment } from './hooks/useStartDeployment'
 import { useFirmwareStatus } from '../Devices/hooks/useFirmwareStatus'
+import { useSoftwareState } from './hooks/useSoftwareState'
 import { useModelOnPhone } from '../../hooks/useOfflineFiles'
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
 import { resolveProjectFlash, shortFlashLabel } from '../../utils/projectFlash'
 import { SD_CARD_POWER_CYCLE_HINT, HM0360_POWER_CYCLE_HINT, NIGHT_SENSOR_WARNING } from '../../utils/deviceSelfTest'
-import { NEWER_AI_FIRMWARE, NEWER_BLE_FIRMWARE } from '../../utils/initWarnings'
 import { shortBurstLabel } from '../../utils/projectBurst'
 
 
@@ -51,7 +51,7 @@ export const StartMonitoringDetailsStep = () => {
     // Destructure everything from hook first
     const {
         formState, submitting, project, availableProjects, startRefusalReason, sensitivityLabel,
-        device, bleDevice, isInitializing, initProgress, initStep, initErrors, setInitErrors, aiProcessorFailed,
+        device, bleDevice, isInitializing, initProgress, initStep, initErrors, aiProcessorFailed,
         finishProgress, finishStep, finishLogs, isFinishing, isStartSuccess,
         handleImageCaptured,
         deploymentPhotoPaths, handleAddDeploymentPhoto, handleRemoveDeploymentPhoto,
@@ -96,25 +96,8 @@ export const StartMonitoringDetailsStep = () => {
         initialHimaxVersion: initPayload?.himaxFirmwareVersion,
     })
 
-    // Sync firmwareStatus updates with initErrors.deviceHealth
-    useEffect(() => {
-        if (!firmwareStatus.isChecking) {
-            setInitErrors(prev => {
-                let health = prev.deviceHealth || []
-                if (!firmwareStatus.statuses.ble.isOutdated) {
-                    health = health.filter(msg => !msg.startsWith(NEWER_BLE_FIRMWARE))
-                }
-                if (!firmwareStatus.statuses.himax.isOutdated) {
-                    health = health.filter(msg => !msg.startsWith(NEWER_AI_FIRMWARE))
-                }
-                if (health.length === (prev.deviceHealth?.length || 0)) return prev
-                return { ...prev, deviceHealth: health }
-            })
-        }
-    }, [firmwareStatus.statuses.ble.isOutdated, firmwareStatus.statuses.himax.isOutdated, firmwareStatus.isChecking, setInitErrors])
-
     // Re-check firmware status when this screen regains focus
-    // (e.g. after returning from FirmwareUpdateScreen/FirmwareStatusScreen with a successful update)
+    // (e.g. after returning from SoftwareUpdateScreen with a successful update)
     useEffect(() => {
         if (isFocused && bleDevice?.connected) {
             if (isFirstFocus.current) {
@@ -126,12 +109,18 @@ export const StartMonitoringDetailsStep = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isFocused, bleDevice?.connected])
 
-    const isAnyFirmwareOutdated = !firmwareStatus.isChecking && (
-        firmwareStatus.statuses.ble.isOutdated || 
-        firmwareStatus.statuses.himax.isOutdated
-    )
-    // An AI update this phone ran stopped part way, so the camera may be on the other camera's image (#374)
-    const isAiUpdateUnfinished = !!firmwareStatus.statuses.himax.unfinished
+    // The camera's software in one word, and one update for all of it (#529)
+    const software = useSoftwareState(firmwareStatus)
+    const openSoftwareUpdate = () => {
+        const id = bleDevice?.id || bleDeviceId
+        if (!id) return
+        // Suppress the disconnect alert while the camera restarts
+        isDfuInProgress.current = true
+        navigation.navigate('SoftwareUpdateScreen', { deviceId: id })
+    }
+    // A half-done update shows even with the AI processor not answering: across
+    // Seeed PR #284 that is the state it leaves until it is finished (#527)
+    const showSoftwareBanner = software === 'unfinished' || (software === 'available' && !aiProcessorFailed)
 
     const headerLeft = useCallback(() => (
         <IconButton
@@ -263,30 +252,22 @@ export const StartMonitoringDetailsStep = () => {
                     </View>
                 )}
 
-                {/* Firmware Warning Banner */}
-                {isAnyFirmwareOutdated && !aiProcessorFailed && (
+                {/* Software update banner: a title and one button (#529) */}
+                {showSoftwareBanner && (
                     <View style={{ backgroundColor: '#FFF3E0', marginBottom: 16, padding: 12, borderRadius: 8 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                             <WWIcon source="alert-circle-outline" size={24} color="#E65100" />
                             <Text variant="titleSmall" style={{ color: '#E65100', marginLeft: 8, flex: 1 }}>
-                                {isAiUpdateUnfinished ? 'AI firmware update not finished' : 'Firmware Update Available'}
+                                {software === 'unfinished' ? 'Software update not finished' : 'Software update available'}
                             </Text>
                         </View>
-                        <Text variant="bodySmall" style={{ color: '#E65100', marginBottom: 8 }}>
-                            {isAiUpdateUnfinished
-                                ? 'The last AI firmware update stopped part way, so the camera may be on the wrong image. Finish it before you start monitoring.'
-                                : 'One or more firmware components are outdated. We recommend updating them via the Engineer Console for optimal performance, but you may proceed with monitoring.'}
-                        </Text>
                         <Button
                             mode="contained"
                             buttonColor="#E65100"
                             textColor="#FFFFFF"
-                            onPress={() => {
-                                isDfuInProgress.current = true
-                                navigation.navigate('FirmwareStatusScreen', { deviceId: bleDeviceId! })
-                            }}
+                            onPress={openSoftwareUpdate}
                         >
-                            <Text style={{ color: '#FFFFFF' }}>Update Firmware</Text>
+                            <Text style={{ color: '#FFFFFF' }}>Update software</Text>
                         </Button>
                     </View>
                 )}
@@ -430,14 +411,8 @@ export const StartMonitoringDetailsStep = () => {
                     bleDeviceConnected={!!bleDevice?.connected}
                     onShowHelp={showHelp}
                     firmwareStatus={firmwareStatus}
-                    onUpdateFirmware={(target) => {
-                        const id = bleDevice?.id || deviceId
-                        if (id) {
-                            // Suppress the disconnect alert during BLE DFU
-                            isDfuInProgress.current = true
-                            navigation.navigate('FirmwareUpdateScreen', { deviceId: id, target })
-                        }
-                    }}
+                    softwareState={software}
+                    onUpdateSoftware={openSoftwareUpdate}
                 />
 
                 <View style={styles.footer}>

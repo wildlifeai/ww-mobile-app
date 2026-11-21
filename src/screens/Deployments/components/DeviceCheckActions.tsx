@@ -1,11 +1,10 @@
 import { useState } from 'react'
-import { StyleSheet, View } from 'react-native'
-import { Button, Divider, Text, useTheme } from 'react-native-paper'
+import { StyleSheet } from 'react-native'
+import { Button, Text, useTheme } from 'react-native-paper'
 import { ActionRow } from '../../../components/ui/ActionRow'
 import { ActionDialog } from '../../../components/ui/ActionDialog'
 import { UseFirmwareStatusReturn } from '../../Devices/hooks/useFirmwareStatus'
-import { bleUpdateWaits } from '../../../utils/firmwareOrder'
-import { BLE_WAITS_FOR_AI } from '../../../utils/firmwareWords'
+import { SoftwareState } from '../../../utils/softwareUpdate'
 import { batteryLowWarning } from '../../../utils/initWarnings'
 
 /**
@@ -99,40 +98,33 @@ export const SdCardAction = ({ sdCardStatus, onCheck, isChecking, disabled, onSh
     )
 }
 
-interface FirmwareProps {
+interface SoftwareProps {
     firmwareStatus: UseFirmwareStatusReturn
-    onUpdateFirmware?: (target: 'ble' | 'himax') => void
+    /** From `useSoftwareState`: what the firmware check means to the person deploying */
+    softwareState: SoftwareState
+    onUpdateSoftware?: () => void
     onShowHelp: ShowHelp
 }
 
-type ProcessorStatus = UseFirmwareStatusReturn['statuses']['ble']
+/** What the row and the popup say for each state */
+export const SOFTWARE_WORDS: Record<Exclude<SoftwareState, 'not_checked'>, string> = {
+    up_to_date: 'Up to date',
+    available: 'Update available',
+    unfinished: 'Update not finished',
+}
 
-/** One processor's state in words. An AI update that stopped part way counts as outdated (#374); one camera's build only is "not ready" (#437). */
-export const firmwareWords = (status: ProcessorStatus): string =>
-    status.isOutdated
-        ? (status.unfinished ? 'Update not finished' : 'Update available')
-        : status.missingVariant ? 'Update not ready' : 'Up to date'
+const SOFTWARE_HELP = 'Whether the camera runs the latest software. Update software installs it in a few minutes; keep the phone near the camera.'
 
 /**
- * Check Firmware: up to date or not, and Update when a processor is behind.
- * People deploying do not need versions (26 October 2026), so they sit under
- * Details in the popup.
+ * Check Software (#529): up to date or not, and Update software when not. No
+ * processors and no versions; those are the Engineer Console's.
  */
-export const FirmwareAction = ({ firmwareStatus, onUpdateFirmware, onShowHelp }: FirmwareProps) => {
+export const SoftwareAction = ({ firmwareStatus, softwareState, onUpdateSoftware, onShowHelp }: SoftwareProps) => {
     const theme = useTheme()
     const [open, setOpen] = useState(false)
-    const [details, setDetails] = useState(false)
-    const { statuses, isChecking, checkStatus, errorMsg } = firmwareStatus
-    const behind = statuses.ble.isOutdated || statuses.himax.isOutdated
-    // Nothing to say until a check has found the latest builds
-    const known = !!statuses.ble.latestVersion || !!statuses.himax.latestVersion
-    const rowResult = !known ? null
-        : behind ? 'Update available'
-            : statuses.ble.missingVariant || statuses.himax.missingVariant ? 'Update not ready' : 'Up to date'
-    const processors = [
-        { key: 'ble' as const, name: 'Bluetooth', status: statuses.ble },
-        { key: 'himax' as const, name: 'AI processor', status: statuses.himax },
-    ]
+    const { isChecking, checkStatus, errorMsg } = firmwareStatus
+    const words = softwareState === 'not_checked' ? null : SOFTWARE_WORDS[softwareState]
+    const behind = softwareState === 'available' || softwareState === 'unfinished'
     const handleOpen = () => {
         setOpen(true)
         if (!isChecking) checkStatus()
@@ -140,44 +132,34 @@ export const FirmwareAction = ({ firmwareStatus, onUpdateFirmware, onShowHelp }:
     return (
         <>
             <ActionRow
-                title="Check Firmware"
+                title="Check Software"
                 onPress={handleOpen}
-                onHelp={() => onShowHelp('Firmware', 'Whether the camera runs the latest firmware. When an update is available, Update installs it.')}
-                result={rowResult}
+                onHelp={() => onShowHelp('Software', SOFTWARE_HELP)}
+                result={words}
                 busy={isChecking}
             />
-            <ActionDialog
-                visible={open}
-                title="Firmware"
-                onClose={() => setOpen(false)}
-                actions={<Button onPress={() => setDetails(d => !d)}>{details ? 'Hide details' : 'Details'}</Button>}
-            >
-                {processors.map(({ key, name, status }, i) => (
-                    <View key={key} style={styles.processor}>
-                        {i > 0 && <Divider />}
-                        <View style={styles.processorRow}>
-                            <Text variant="bodyLarge">{name}</Text>
-                            <Text variant="labelLarge" style={{ color: status.isOutdated ? theme.colors.error : theme.colors.primary }}>
-                                {/* Until a check returns there is no latest build to compare with */}
-                                {status.latestVersion ? firmwareWords(status) : isChecking ? 'Checking…' : 'Not checked'}
-                            </Text>
-                        </View>
-                        {details && (
-                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                                Current {status.currentVersion ?? 'unknown'}, latest {status.latestVersion ?? 'unknown'}
-                            </Text>
-                        )}
-                        {key === 'ble' && bleUpdateWaits(statuses) ? (
-                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>{BLE_WAITS_FOR_AI}</Text>
-                        ) : status.isOutdated && onUpdateFirmware && (
-                            <Button mode="contained" compact icon="download" style={styles.update} onPress={() => onUpdateFirmware(key)}>
-                                Update
-                            </Button>
-                        )}
-                    </View>
-                ))}
-                {errorMsg && !isChecking && (
-                    <Text variant="bodySmall" style={{ color: theme.colors.error }}>{errorMsg}</Text>
+            <ActionDialog visible={open} title="Software" onClose={() => setOpen(false)}>
+                <Text variant="bodyLarge" style={{ color: behind ? theme.colors.error : theme.colors.primary }}>
+                    {words ?? (isChecking ? 'Checking…' : 'Not checked')}
+                </Text>
+                {!words && !isChecking && errorMsg && (
+                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                        The camera did not answer. Wake it, then check again.
+                    </Text>
+                )}
+                {behind && onUpdateSoftware && (
+                    <Button
+                        mode="contained"
+                        icon="download"
+                        style={styles.update}
+                        // Closed first: the popup would stay drawn over the update screen
+                        onPress={() => {
+                            setOpen(false)
+                            onUpdateSoftware()
+                        }}
+                    >
+                        Update software
+                    </Button>
                 )}
             </ActionDialog>
         </>
@@ -185,15 +167,6 @@ export const FirmwareAction = ({ firmwareStatus, onUpdateFirmware, onShowHelp }:
 }
 
 const styles = StyleSheet.create({
-    processor: {
-        gap: 8,
-    },
-    processorRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingTop: 4,
-    },
     update: {
         alignSelf: 'flex-start',
     },

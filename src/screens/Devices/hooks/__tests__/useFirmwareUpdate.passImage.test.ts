@@ -96,7 +96,7 @@ describe('useFirmwareUpdate passImage', () => {
         await act(async () => { await settle() })
         expect(result.current.isPreflightDone).toBe(true)
 
-        let update: Promise<void> = Promise.resolve()
+        let update: Promise<boolean> = Promise.resolve(false)
         await act(async () => {
             update = result.current.startUpdate({ himaxSource: 'download' })
             await settle()

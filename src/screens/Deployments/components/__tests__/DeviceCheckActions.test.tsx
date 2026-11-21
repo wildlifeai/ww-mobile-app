@@ -1,107 +1,57 @@
 import { render, screen, fireEvent } from '@testing-library/react-native'
+import { Dialog } from 'react-native-paper'
 
-import { BatteryAction, FirmwareAction, SdCardAction, firmwareWords } from '../DeviceCheckActions'
+import { BatteryAction, SdCardAction, SoftwareAction } from '../DeviceCheckActions'
 import { batteryLowWarning } from '../../../../utils/initWarnings'
 
-
-const BLE = { type: 'ble', currentVersion: '0.30.58', latestVersion: '0.30.58', latestFirmware: null, isOutdated: false }
-const HIMAX = {
-    type: 'himax', currentVersion: 'WW500_C02 01:06:33 Oct 26 2026', latestVersion: 'WW500_C02 01:06:33 Oct 26 2026',
-    latestFirmware: null, isOutdated: false,
-}
-
-const firmware = (himax: Record<string, unknown> = {}, ble: Record<string, unknown> = {}) => ({
+const firmware = (extra: Record<string, unknown> = {}) => ({
     isChecking: false,
     lastChecked: new Date(),
     errorMsg: null,
     checkStatus: jest.fn(),
-    statuses: { ble: { ...BLE, ...ble }, himax: { ...HIMAX, ...himax } },
+    statuses: {},
+    ...extra,
 }) as any
 
-describe('firmwareWords', () => {
-    // #374: an AI update that stopped part way read as up to date
-    it('says an AI update that stopped part way is not finished', () => {
-        expect(firmwareWords({ ...HIMAX, isOutdated: true, unfinished: { endVariant: 'HM0360', done: 1, total: 2 } } as any))
-            .toBe('Update not finished')
-    })
-
-    it('says an ordinary update is available', () => {
-        expect(firmwareWords({ ...HIMAX, isOutdated: true } as any)).toBe('Update available')
-    })
-
-    // #437: only the other camera's build is published
-    it('says an update with only one camera built is not ready', () => {
-        expect(firmwareWords({ ...HIMAX, missingVariant: true } as any)).toBe('Update not ready')
-    })
-})
-
-describe('FirmwareAction', () => {
+// #529: Check Software says one thing about the camera's software, and offers
+// one Update software; the processors and their versions are the Engineer Console's
+describe('SoftwareAction', () => {
     beforeEach(() => jest.clearAllMocks())
 
-    it('judges nothing until a check has found the latest builds', () => {
-        render(<FirmwareAction firmwareStatus={firmware({ latestVersion: null }, { latestVersion: null })} onShowHelp={jest.fn()} />)
+    it('says nothing on the row until a check has found the latest builds', () => {
+        render(<SoftwareAction firmwareStatus={firmware()} softwareState="not_checked" onShowHelp={jest.fn()} />)
         expect(screen.queryByText('Up to date')).toBeNull()
-        expect(screen.getAllByText('Not checked')).toHaveLength(2)
+        expect(screen.getByText('Not checked')).toBeTruthy()
     })
 
-    it('keeps the versions under Details', () => {
-        render(<FirmwareAction firmwareStatus={firmware()} onShowHelp={jest.fn()} />)
-        expect(screen.queryByText(/0\.30\.58/)).toBeNull()
-        fireEvent.press(screen.getByText('Details'))
-        expect(screen.getByText('Current 0.30.58, latest 0.30.58')).toBeTruthy()
-    })
-
-    it('offers Update for the processor that is behind, and checks again when opened', () => {
-        const status = firmware({ isOutdated: true })
-        const onUpdate = jest.fn()
-        render(<FirmwareAction firmwareStatus={status} onUpdateFirmware={onUpdate} onShowHelp={jest.fn()} />)
-        expect(screen.getAllByText('Update available').length).toBeGreaterThan(0)
-        fireEvent.press(screen.getByText('Update'))
-        expect(onUpdate).toHaveBeenCalledWith('himax')
-        fireEvent.press(screen.getByLabelText('Check Firmware'))
+    it('says up to date with no button and no processors, and checks again when opened', () => {
+        const status = firmware()
+        render(<SoftwareAction firmwareStatus={status} softwareState="up_to_date" onUpdateSoftware={jest.fn()} onShowHelp={jest.fn()} />)
+        expect(screen.getAllByText('Up to date').length).toBeGreaterThan(0)
+        expect(screen.queryByText('Update software')).toBeNull()
+        expect(screen.queryByText(/Bluetooth|AI processor/)).toBeNull()
+        fireEvent.press(screen.getByLabelText('Check Software'))
         expect(status.checkStatus).toHaveBeenCalledTimes(1)
     })
 
-    // #527: across Seeed PR 284 a camera with old AI and new Bluetooth takes no
-    // file, so the Bluetooth update waits until the AI one is at least half done
-    it('offers no Bluetooth update while the AI processor has one waiting', () => {
+    it.each([
+        ['available', 'Update available'],
+        ['unfinished', 'Update not finished'],
+    ] as const)('when %s, offers Update software and closes the popup before it opens', (state, words) => {
         const onUpdate = jest.fn()
-        render(<FirmwareAction
-            firmwareStatus={firmware({ isOutdated: true }, { isOutdated: true, latestVersion: '0.30.61' })}
-            onUpdateFirmware={onUpdate}
-            onShowHelp={jest.fn()}
-        />)
-        expect(screen.getByText('Update the AI processor first')).toBeTruthy()
-        expect(screen.getAllByText('Update')).toHaveLength(1)
-        fireEvent.press(screen.getByText('Update'))
-        expect(onUpdate).toHaveBeenCalledWith('himax')
+        render(<SoftwareAction firmwareStatus={firmware()} softwareState={state} onUpdateSoftware={onUpdate} onShowHelp={jest.fn()} />)
+        expect(screen.getAllByText(words).length).toBeGreaterThan(0)
+        fireEvent.press(screen.getByLabelText('Check Software'))
+        expect(screen.UNSAFE_getByType(Dialog).props.visible).toBe(true)
+        fireEvent.press(screen.getByText('Update software'))
+        expect(onUpdate).toHaveBeenCalledTimes(1)
+        // Left open, it stayed drawn over the update screen
+        expect(screen.UNSAFE_getByType(Dialog).props.visible).toBe(false)
     })
 
-    it('offers the Bluetooth update once the AI update is half done', () => {
-        const onUpdate = jest.fn()
-        render(<FirmwareAction
-            firmwareStatus={firmware(
-                { isOutdated: true, unfinished: { endVariant: 'HM0360', done: 1, total: 2 } },
-                { isOutdated: true, latestVersion: '0.30.61' },
-            )}
-            onUpdateFirmware={onUpdate}
-            onShowHelp={jest.fn()}
-        />)
-        expect(screen.queryByText('Update the AI processor first')).toBeNull()
-        fireEvent.press(screen.getAllByText('Update')[0])
-        expect(onUpdate).toHaveBeenCalledWith('ble')
-    })
-
-    it('still offers the Bluetooth update alone when the AI processor is up to date', () => {
-        const onUpdate = jest.fn()
-        render(<FirmwareAction
-            firmwareStatus={firmware({}, { isOutdated: true, latestVersion: '0.30.61' })}
-            onUpdateFirmware={onUpdate}
-            onShowHelp={jest.fn()}
-        />)
-        expect(screen.queryByText('Update the AI processor first')).toBeNull()
-        fireEvent.press(screen.getByText('Update'))
-        expect(onUpdate).toHaveBeenCalledWith('ble')
+    it('says the camera did not answer when a check found nothing', () => {
+        render(<SoftwareAction firmwareStatus={firmware({ errorMsg: 'timed out' })} softwareState="not_checked" onShowHelp={jest.fn()} />)
+        expect(screen.getByText('The camera did not answer. Wake it, then check again.')).toBeTruthy()
     })
 })
 

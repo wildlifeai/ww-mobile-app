@@ -39,6 +39,8 @@ export interface RootStackParamList extends ParamListBase {
 	LightSensorScreen: { deviceId: string }
 	// engineer: the Engineer Console's view, with the build picker and the step log (#344)
 	FirmwareUpdateScreen: { deviceId: string; target: 'ble' | 'himax'; engineer?: boolean }
+	// Start Monitoring's one Update software: every step the camera needs, in order (#529)
+	SoftwareUpdateScreen: { deviceId: string }
 	FileTransferTestScreen: { deviceId: string }
 	ModelValidationTestScreen: { deviceId: string }
 	FirmwareStatusScreen: { deviceId: string; engineer?: boolean }
