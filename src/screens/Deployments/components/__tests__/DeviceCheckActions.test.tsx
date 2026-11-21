@@ -61,6 +61,48 @@ describe('FirmwareAction', () => {
         fireEvent.press(screen.getByLabelText('Check Firmware'))
         expect(status.checkStatus).toHaveBeenCalledTimes(1)
     })
+
+    // #527: across Seeed PR 284 a camera with old AI and new Bluetooth takes no
+    // file, so the Bluetooth update waits until the AI one is at least half done
+    it('offers no Bluetooth update while the AI processor has one waiting', () => {
+        const onUpdate = jest.fn()
+        render(<FirmwareAction
+            firmwareStatus={firmware({ isOutdated: true }, { isOutdated: true, latestVersion: '0.30.61' })}
+            onUpdateFirmware={onUpdate}
+            onShowHelp={jest.fn()}
+        />)
+        expect(screen.getByText('Update the AI processor first')).toBeTruthy()
+        expect(screen.getAllByText('Update')).toHaveLength(1)
+        fireEvent.press(screen.getByText('Update'))
+        expect(onUpdate).toHaveBeenCalledWith('himax')
+    })
+
+    it('offers the Bluetooth update once the AI update is half done', () => {
+        const onUpdate = jest.fn()
+        render(<FirmwareAction
+            firmwareStatus={firmware(
+                { isOutdated: true, unfinished: { endVariant: 'HM0360', done: 1, total: 2 } },
+                { isOutdated: true, latestVersion: '0.30.61' },
+            )}
+            onUpdateFirmware={onUpdate}
+            onShowHelp={jest.fn()}
+        />)
+        expect(screen.queryByText('Update the AI processor first')).toBeNull()
+        fireEvent.press(screen.getAllByText('Update')[0])
+        expect(onUpdate).toHaveBeenCalledWith('ble')
+    })
+
+    it('still offers the Bluetooth update alone when the AI processor is up to date', () => {
+        const onUpdate = jest.fn()
+        render(<FirmwareAction
+            firmwareStatus={firmware({}, { isOutdated: true, latestVersion: '0.30.61' })}
+            onUpdateFirmware={onUpdate}
+            onShowHelp={jest.fn()}
+        />)
+        expect(screen.queryByText('Update the AI processor first')).toBeNull()
+        fireEvent.press(screen.getByText('Update'))
+        expect(onUpdate).toHaveBeenCalledWith('ble')
+    })
 })
 
 describe('BatteryAction', () => {

@@ -5,6 +5,7 @@ import { useFirmwareStatus } from '../useFirmwareStatus'
 import { createBleSession } from '../../../../ble/session/createBleSession'
 import ReferenceDataService from '../../../../services/ReferenceDataService'
 import type { HimaxUpdateRecord } from '../../../../utils/himaxFirmwareState'
+import { bleUpdateWaits } from '../../../../utils/firmwareOrder'
 
 jest.mock('@react-native-async-storage/async-storage', () => {
     const store = new Map<string, string>()
@@ -144,5 +145,68 @@ describe('useFirmwareStatus with an unfinished update on this phone', () => {
 
         expect(result.current.statuses.himax).toEqual(expect.objectContaining({ isOutdated: false, unfinished: null }))
         expect(await AsyncStorage.getItem(KEY)).toBeNull()
+    })
+
+    // #527, bench of 21 November 2026: an AI processor across Seeed PR 284 with
+    // a BLE processor that is not answers no AI command, so the check runs out
+    // of time. That is where an AI update stops at image 2, and the record is
+    // what releases the Bluetooth update.
+    describe('when the AI processor does not answer before the deadline', () => {
+        const silentAi = () => {
+            ;(createBleSession as jest.Mock).mockImplementation(() => ({
+                execute: jest.fn((make: any) => {
+                    const line: string = make().build()
+                    return line === 'ver' ? Promise.resolve('00.30.58') : new Promise(() => {})
+                }),
+            }))
+        }
+        const runOut = async () => {
+            await act(async () => { await settle() })
+            await act(async () => {
+                jest.advanceTimersByTime(30000)
+                await settle()
+            })
+        }
+
+        beforeEach(() => {
+            jest.useFakeTimers()
+            ;(ReferenceDataService.getLatestFirmware as jest.Mock).mockImplementation(async (type: string) =>
+                (type === 'ble' ? build(null, '0.30.61') : COLOUR_1009))
+        })
+        afterEach(() => jest.useRealTimers())
+
+        it('reads the update as half done from the record and offers the Bluetooth update', async () => {
+            await AsyncStorage.setItem(KEY, JSON.stringify(record(1, 1)))
+            silentAi()
+
+            const { result } = renderHook(() => useFirmwareStatus({ device }))
+            await runOut()
+
+            expect(result.current.errorMsg).toMatch(/timed out/)
+            // With the latest build too, or Check Firmware reads "Not checked"
+            // when this is the first check since the app started
+            expect(result.current.statuses.himax).toEqual(expect.objectContaining({
+                latestVersion: COLOUR_1009.version,
+                isOutdated: true,
+                unfinished: { endVariant: 'HM0360', done: 1, total: 2 },
+            }))
+            expect(result.current.statuses.ble).toEqual(expect.objectContaining({
+                currentVersion: '0.30.58',
+                latestVersion: '0.30.61',
+                isOutdated: true,
+            }))
+            expect(bleUpdateWaits(result.current.statuses)).toBe(false)
+        })
+
+        it('keeps the last verdict when this phone has no record', async () => {
+            silentAi()
+
+            const { result } = renderHook(() => useFirmwareStatus({ device }))
+            await runOut()
+
+            expect(result.current.errorMsg).toMatch(/timed out/)
+            expect(result.current.statuses.himax.unfinished).toBeUndefined()
+            expect(result.current.statuses.ble.latestVersion).toBeNull()
+        })
     })
 })
