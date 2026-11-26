@@ -75,6 +75,7 @@ export const DeploymentService = {
             sdCardAvailableKbAtStart?: number
             lorawanRssiAtStart?: number
             lorawanSnrAtStart?: number
+            lorawanPingMinutes?: number
         }
     ): Promise<Deployment> => {
         log('[DeploymentService] Creating deployment:', data.name)
@@ -161,6 +162,7 @@ export const DeploymentService = {
                     deployment.sdCardAvailableKbAtStart = data.sdCardAvailableKbAtStart
                     deployment.lorawanRssiAtStart = data.lorawanRssiAtStart
                     deployment.lorawanSnrAtStart = data.lorawanSnrAtStart
+                    deployment.lorawanPingMinutes = data.lorawanPingMinutes
 
                     log('[DeploymentService] Preparation function complete')
                 })
