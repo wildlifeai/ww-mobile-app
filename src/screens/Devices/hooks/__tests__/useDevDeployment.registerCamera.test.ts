@@ -19,7 +19,8 @@ const mockState = {
 	authentication: { user: { id: 'user-1' }, currentOrganisation: { id: 'org-1' } },
 }
 const mockProject = { id: 'project-1', name: 'Sinbad Gully', capture_method_id: 1, model_id: null, lorawan_required: false, record_gps_in_images: false }
-const mockExecute = jest.fn(async (command: any): Promise<any> => (command === 'getops' ? Array(37).fill('0') : 80))
+const EUI = '70B3D57ED0070001'
+const mockExecute = jest.fn(async (command: any): Promise<any> => (command === 'getops' ? Array(37).fill('0') : command === 'deveui' ? EUI : 80))
 const mockSession = { execute: mockExecute }
 const mockMonitoring = { isMonitoring: false, setIsMonitoring: jest.fn() }
 const mockCamera = { switchTo: jest.fn(async () => true), refresh: jest.fn(), activeCamera: 'RP3', isBusy: false, stage: null }
@@ -54,7 +55,7 @@ jest.mock('../../../../services/DeviceService', () => ({
 }))
 jest.mock('../../../../hooks/useBleSession', () => ({ useBleSession: () => mockSession }))
 jest.mock('../../../../ble/protocol/commandRegistry', () => ({
-	commandRegistry: { getops: 'getops', battery: 'battery', selftest: 'selftest', setop: jest.fn(), aiflash: jest.fn() },
+	commandRegistry: { getops: 'getops', battery: 'battery', selftest: 'selftest', deveui: 'deveui', setop: jest.fn(), aiflash: jest.fn() },
 }))
 jest.mock('../../../../ble/workflows/checkSdCard', () => ({ checkSdCard: jest.fn(async () => ({ totalSpaceKb: 100, freeSpaceKb: 50 })) }))
 jest.mock('../../../../ble/protocol/selfTestCache', () => ({ selfTestCache: { waitForFresh: jest.fn(async () => ({ bits: 0 })) } }))
@@ -112,10 +113,11 @@ beforeEach(() => {
 })
 
 describe('Dev Deployment of a camera the phone has no row for (#480)', () => {
-	it('registers it, in no organisation (#501), and deploys it under that row', async () => {
+	it('registers it, in no organisation (#501), with its DevEUI (#536), and deploys it under that row', async () => {
 		await mountAndStart()
 
-		expect(deviceService.createDevice).toHaveBeenCalledWith('ble-1', 'WILD-TEST', 'user-1')
+		expect(mockExecute).toHaveBeenCalledWith('deveui')
+		expect(deviceService.createDevice).toHaveBeenCalledWith('ble-1', 'WILD-TEST', 'user-1', EUI)
 		expect(localActive).toHaveBeenCalledWith('device-new')
 		expect(checkServer).toHaveBeenCalledWith('device-new', 'user-1')
 		expect(createDeployment).toHaveBeenCalledWith(expect.objectContaining({ deviceId: 'device-new' }))
@@ -130,7 +132,7 @@ describe('Dev Deployment of a camera the phone has no row for (#480)', () => {
 		expect(createDeployment).toHaveBeenCalledWith(expect.objectContaining({ deviceId: 'device-server' }))
 	})
 
-	it('starts nothing, and touches nothing on the camera, when no row can be saved', async () => {
+	it('starts nothing, and writes nothing to the camera, when no row can be saved', async () => {
 		deviceService.createDevice.mockRejectedValue(new Error('disk full'))
 
 		const { result } = await mountAndStart()
@@ -138,7 +140,8 @@ describe('Dev Deployment of a camera the phone has no row for (#480)', () => {
 		expect(Alert.alert).toHaveBeenCalledWith('Cannot register this camera', expect.stringContaining('could not save a record of this camera'))
 		expect(checkServer).not.toHaveBeenCalled()
 		expect(mockCamera.switchTo).not.toHaveBeenCalled()
-		expect(mockExecute).not.toHaveBeenCalled()
+		// Only the DevEUI was read, for the row that could not be saved
+		expect(mockExecute.mock.calls).toEqual([['deveui']])
 		expect(createDeployment).not.toHaveBeenCalled()
 		expect(result.current.submitting).toBe(false)
 	})

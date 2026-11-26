@@ -205,8 +205,13 @@ export const DeviceService = {
      * Any signed-in account but the demo one may register one, and every such
      * account reads every camera. `devices.organisation_id` is gone from both
      * sides (ww-backend #394, #533).
+     *
+     * `deviceEui` is the camera's LoRaWAN DevEUI as 16 hex digits, read over BLE
+     * by `registerCamera` (#536). The server takes it on insert only; after that
+     * only a ww_admin may change it, so a camera registered without one has none
+     * until a ww_admin sets it.
      */
-    createDevice: async (bluetoothId: string, name: string, userId: string): Promise<Device> => {
+    createDevice: async (bluetoothId: string, name: string, userId: string, deviceEui?: string): Promise<Device> => {
         const devicesCollection = database.get<Device>('devices')
 
         let newDevice: Device | undefined
@@ -215,6 +220,7 @@ export const DeviceService = {
             newDevice = devicesCollection.prepareCreate(device => {
                 device.bluetoothId = bluetoothId
                 device.name = name
+                if (deviceEui) device.deviceEui = deviceEui
             })
 
             const outboxOp = OutboxService.recordOperation({
@@ -225,6 +231,7 @@ export const DeviceService = {
                     id: newDevice.id,
                     bluetooth_id: bluetoothId,
                     name: name,
+                    device_eui: deviceEui ?? null,
                     modified_by: userId
                 }
             })

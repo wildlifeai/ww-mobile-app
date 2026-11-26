@@ -45,7 +45,11 @@ The scanner looks the camera up by its Bluetooth id, on the phone first
    unregistered camera, or one whose row was deleted.
 3. **Otherwise it registers the camera** (`DeviceService.createDevice`), which queues its
    `CREATE`. In no organisation: a camera belongs to none (ww-backend #327), so a field user
-   invited to one project registers the camera in their hand (#501).
+   invited to one project registers the camera in their hand (#501). First it reads the camera's
+   DevEUI with `get deveui` and puts it in the `CREATE` as `device_eui` (#536), the only time the
+   server takes it from the app. A refusal, no answer within 3 s, all zeros or the firmware's
+   built-in default (`00:80:E1:01:01:01:01:01`, shared by every camera not given its own)
+   registers the camera without one; a camera taken from the server in step 2 is asked nothing.
 
 The Engineer Console connects without any of this, so a camera met only through it has no
 device on the phone. The Dev Deployment Test runs the same steps 2 and 3 when Start is pressed on
