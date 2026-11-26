@@ -12,7 +12,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 408,
+    version: 409,
     tables: [
         tableSchema({
             name: 'account_deletion_requests',
@@ -348,6 +348,7 @@ export default appSchema({
                 { name: 'longitude', type: 'number', isOptional: true },
                 { name: 'lorawan_last_verified_at', type: 'number', isOptional: true },
                 { name: 'lorawan_network', type: 'string', isOptional: true },
+                { name: 'lorawan_ping_minutes', type: 'number', isOptional: true },
                 { name: 'lorawan_registration_completed', type: 'boolean' },
                 { name: 'lorawan_rssi_at_start', type: 'number', isOptional: true },
                 { name: 'lorawan_snr_at_start', type: 'number', isOptional: true },
@@ -396,7 +397,6 @@ export default appSchema({
                 { name: 'bluetooth_id', type: 'string', isIndexed: true },
                 { name: 'device_eui', type: 'string', isOptional: true },
                 { name: 'name', type: 'string' },
-                { name: 'organisation_id', type: 'string', isOptional: true, isIndexed: true },
                 // System & Sync Fields
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
@@ -442,12 +442,12 @@ export default appSchema({
                 { name: 'model_name', type: 'string' },
                 { name: 'model_version', type: 'string' },
                 { name: 'project_id', type: 'string', isOptional: true, isIndexed: true },
-                { name: 'qdrant_collection', type: 'string' },
                 { name: 'reduction_method', type: 'string', isOptional: true },
                 { name: 'reduction_params', type: 'string', isOptional: true },
                 { name: 'scope', type: 'string' },
                 { name: 'scope_id', type: 'string', isOptional: true, isIndexed: true },
                 { name: 'status', type: 'string' },
+                { name: 'vector_space', type: 'string' },
                 // System & Sync Fields
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
@@ -537,10 +537,51 @@ export default appSchema({
             ],
         }),
         tableSchema({
+            name: 'label_checks',
+            columns: [
+                { name: 'checked_at', type: 'string', isOptional: true },
+                { name: 'checked_by', type: 'string', isOptional: true },
+                { name: 'computed_at', type: 'string' },
+                { name: 'embedding_run_id', type: 'string', isOptional: true, isIndexed: true },
+                { name: 'kind', type: 'string' },
+                { name: 'label_scientific_name', type: 'string', isOptional: true },
+                { name: 'observation_id', type: 'string', isIndexed: true },
+                { name: 'other_scientific_name', type: 'string', isOptional: true },
+                { name: 'other_taxon_id', type: 'string', isOptional: true, isIndexed: true },
+                { name: 'outcome', type: 'string', isOptional: true },
+                { name: 'project_id', type: 'string', isIndexed: true },
+                { name: 'reference', type: 'string' },
+                { name: 'score', type: 'number' },
+                // System & Sync Fields
+                { name: 'created_at', type: 'number' },
+                { name: 'updated_at', type: 'number' },
+                { name: 'deleted_at', type: 'number' },
+                { name: '_version', type: 'number' },
+                { name: '_custom_sync_status', type: 'string', isOptional: true },
+                { name: 'modified_by', type: 'string' },
+            ],
+        }),
+        tableSchema({
             name: 'log_levels',
             columns: [
                 { name: 'description', type: 'string' },
                 { name: 'value', type: 'string' },
+                // System & Sync Fields
+                { name: 'created_at', type: 'number' },
+                { name: 'updated_at', type: 'number' },
+                { name: 'deleted_at', type: 'number' },
+                { name: '_version', type: 'number' },
+                { name: '_custom_sync_status', type: 'string', isOptional: true },
+                { name: 'modified_by', type: 'string' },
+            ],
+        }),
+        tableSchema({
+            name: 'lorawan_ingest_tokens',
+            columns: [
+                { name: 'label', type: 'string', isOptional: true },
+                { name: 'organisation_id', type: 'string', isIndexed: true },
+                { name: 'revoked_at', type: 'string', isOptional: true },
+                { name: 'token_sha256', type: 'string' },
                 // System & Sync Fields
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
@@ -571,11 +612,27 @@ export default appSchema({
         tableSchema({
             name: 'lorawan_parsed_messages',
             columns: [
+                { name: 'ai_failures', type: 'number', isOptional: true },
                 { name: 'battery_level', type: 'number', isOptional: true },
+                { name: 'battery_mv', type: 'number', isOptional: true },
+                { name: 'battery_raw', type: 'number', isOptional: true },
                 { name: 'device_id', type: 'string', isOptional: true, isIndexed: true },
+                { name: 'hours_since_reset', type: 'number', isOptional: true },
+                { name: 'kind', type: 'string' },
+                { name: 'last_reset_reason', type: 'number', isOptional: true },
                 { name: 'lorawan_message_id', type: 'string', isIndexed: true },
                 { name: 'model_output', type: 'string', isOptional: true },
+                { name: 'nn_detections', type: 'number', isOptional: true },
+                { name: 'nn_positive_count', type: 'number', isOptional: true },
+                { name: 'nn_total_count', type: 'number', isOptional: true },
+                { name: 'op_error', type: 'number', isOptional: true },
+                { name: 'op_index', type: 'number', isOptional: true },
+                { name: 'op_value', type: 'number', isOptional: true },
+                { name: 'reset_count', type: 'number', isOptional: true },
                 { name: 'sd_card_used_capacity', type: 'number', isOptional: true },
+                { name: 'sd_free_pct', type: 'number', isOptional: true },
+                { name: 'self_test_bits', type: 'number', isOptional: true },
+                { name: 'temperature_c', type: 'number', isOptional: true },
                 // System & Sync Fields
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
@@ -597,6 +654,7 @@ export default appSchema({
                 { name: 'file_name', type: 'string', isOptional: true },
                 { name: 'file_path', type: 'string' },
                 { name: 'file_public', type: 'boolean' },
+                { name: 'local_hour', type: 'number', isOptional: true },
                 { name: 'media_comments', type: 'string', isOptional: true },
                 { name: 'timestamp', type: 'string', isOptional: true },
                 { name: 'uploaded_by', type: 'string', isOptional: true },
@@ -644,7 +702,6 @@ export default appSchema({
                 { name: 'embedding_run_id', type: 'string', isOptional: true, isIndexed: true },
                 { name: 'is_outlier', type: 'boolean' },
                 { name: 'media_id', type: 'string', isIndexed: true },
-                { name: 'qdrant_point_id', type: 'string', isOptional: true, isIndexed: true },
                 { name: 'umap_x', type: 'number', isOptional: true },
                 { name: 'umap_y', type: 'number', isOptional: true },
                 // System & Sync Fields
@@ -837,6 +894,7 @@ export default appSchema({
                 { name: 'flash_mode', type: 'string' },
                 { name: 'flash_window_minutes', type: 'number', isOptional: true },
                 { name: 'flash_window_start_minutes_utc', type: 'number', isOptional: true },
+                { name: 'gbif_dataset_key', type: 'string', isOptional: true },
                 { name: 'is_active', type: 'boolean' },
                 { name: 'is_archived', type: 'boolean' },
                 { name: 'is_baited', type: 'boolean', isOptional: true },

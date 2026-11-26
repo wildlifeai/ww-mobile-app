@@ -203,8 +203,8 @@ export const DeviceService = {
      *
      * No organisation: since ww-backend #346 a camera belongs to none (#327).
      * Any signed-in account but the demo one may register one, and every such
-     * account reads every camera. `devices.organisation_id` stays on both
-     * sides until nothing writes it, and nothing here does (#501).
+     * account reads every camera. `devices.organisation_id` is gone from both
+     * sides (ww-backend #394, #533).
      */
     createDevice: async (bluetoothId: string, name: string, userId: string): Promise<Device> => {
         const devicesCollection = database.get<Device>('devices')

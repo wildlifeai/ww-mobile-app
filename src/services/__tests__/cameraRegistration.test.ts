@@ -46,7 +46,7 @@ const PROJECT = 'project-1'
 const SERVER = 'device-server'
 // What the server lists for this account, the camera unless a test says otherwise
 let mockDevicesOnServer: any[] = []
-const mockServerDevice = { id: SERVER, bluetooth_id: 'D4:5E', name: 'WILD-LENT', organisation_id: 'org-other',
+const mockServerDevice = { id: SERVER, bluetooth_id: 'D4:5E', name: 'WILD-LENT',
 	device_eui: null, deleted_at: null, modified_by: null, created_at: '2026-09-01T00:00:00Z', updated_at: '2026-09-02T00:00:00Z' }
 // Every push_changes call, and what the server answers
 const mockPushes: any[] = []
@@ -102,7 +102,7 @@ it("takes the server's row when the scanner asks for a camera the phone lacks", 
 	expect(result.kind).toBe('found')
 	const stored = await database.get<Device>('devices').find(SERVER)
 	expect(stored.bluetoothId).toBe('D4:5E')
-	expect(stored.organisationId).toBe('org-other')
+	expect(stored.name).toBe('WILD-LENT')
 	expect(await outbox('devices')).toEqual([])
 })
 
@@ -146,7 +146,6 @@ describe('registerCamera, shared by the scanner and the Dev Deployment Test (#48
 
 		if (result.kind !== 'registered') throw new Error(`expected registered, got ${result.kind}`)
 		expect(result.device.bluetoothId).toBe('D4:5E')
-		expect(result.device.organisationId ?? null).toBeNull()
 		const [create] = await outbox('devices')
 		expect(create.recordId).toBe(result.device.id)
 		expect(create.operationType).toBe('CREATE')
