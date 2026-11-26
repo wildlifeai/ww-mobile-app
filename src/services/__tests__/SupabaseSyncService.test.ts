@@ -1185,7 +1185,7 @@ describe('a deployment whose device is not on the phone (#411)', () => {
 
 	const movedIn = { id: 'dep-moved', project_id: 'project-1', device_id: 'device-moved', name: 'From the valley',
 		deployment_start: '2026-09-20T00:00:00Z', created_at: '2026-09-20T00:00:00Z', updated_at: '2026-10-08T00:00:00Z' }
-	const itsDevice = { id: 'device-moved', bluetooth_id: 'D4:5E', name: 'WILD-MOVE', organisation_id: 'org-1',
+	const itsDevice = { id: 'device-moved', bluetooth_id: 'D4:5E', name: 'WILD-MOVE',
 		created_at: '2026-09-01T00:00:00Z', updated_at: '2026-09-01T00:00:00Z' }
 
 	it('fetches the device by id after the deployment pull', async () => {
@@ -1308,16 +1308,16 @@ describe('a camera the server has under another id (#451)', () => {
 		details: 'Key (bluetooth_id)=(D4:5E) already exists.',
 		hint: null,
 	}
-	const serverDevice = { id: SERVER, bluetooth_id: 'D4:5E', name: 'WILD-MOVE', organisation_id: 'org-other',
+	const serverDevice = { id: SERVER, bluetooth_id: 'D4:5E', name: 'WILD-MOVE',
 		device_eui: null, created_at: '2026-09-01T00:00:00Z', updated_at: '2026-09-01T00:00:00Z' }
 
 	beforeEach(() => {
 		serverRows.projects = [{ id: 'project-1' }]
 		// The phone's own registration of a camera the server already has
-		seedRows('devices', [{ id: LOCAL, bluetoothId: 'D4:5E', name: 'WILD-MOVE', organisationId: 'org-1' }])
+		seedRows('devices', [{ id: LOCAL, bluetoothId: 'D4:5E', name: 'WILD-MOVE' }])
 		seedRows('deployments', [{ id: 'dep-1', projectId: 'project-1', deviceId: LOCAL }])
 		queue({ id: 'd1', table: 'devices', type: 'CREATE', recordId: LOCAL, userId: USER_B,
-			payload: { bluetooth_id: 'D4:5E', name: 'WILD-MOVE', organisation_id: 'org-1' } })
+			payload: { bluetooth_id: 'D4:5E', name: 'WILD-MOVE' } })
 		queue({ id: 'dep1', table: 'deployments', type: 'CREATE', recordId: 'dep-1', userId: USER_B,
 			payload: { project_id: 'project-1', device_id: LOCAL } })
 		pushHandler = (changes) => {
@@ -1346,7 +1346,7 @@ describe('a camera the server has under another id (#451)', () => {
 
 		expect(op('d1').status).toBe('synced')
 		expect(op('d1').errorMessage).toContain(`replaced: the server already has this camera as ${SERVER}`)
-		expect(rowsIn('devices')).toEqual([expect.objectContaining({ id: SERVER, bluetoothId: 'D4:5E', organisationId: 'org-other' })])
+		expect(rowsIn('devices')).toEqual([expect.objectContaining({ id: SERVER, bluetoothId: 'D4:5E', name: 'WILD-MOVE' })])
 		expect(rowsIn('deployments')).toEqual([expect.objectContaining({ id: 'dep-1', deviceId: SERVER })])
 		expect(JSON.parse(op('dep2').payload).device_id).toBe(SERVER)
 		expect(op('dep2').status).toBe('refused')
@@ -1363,9 +1363,9 @@ describe('a camera the server has under another id (#451)', () => {
 
 	it('settles it on the record-by-record retry when other cameras went up with it', async () => {
 		serverRows.devices = [serverDevice]
-		seedRows('devices', [{ id: 'device-new', bluetoothId: 'AA:01', name: 'WILD-NEW', organisationId: 'org-1' }])
+		seedRows('devices', [{ id: 'device-new', bluetoothId: 'AA:01', name: 'WILD-NEW' }])
 		queue({ id: 'd2', table: 'devices', type: 'CREATE', recordId: 'device-new', userId: USER_B,
-			payload: { bluetooth_id: 'AA:01', name: 'WILD-NEW', organisation_id: 'org-1' } })
+			payload: { bluetooth_id: 'AA:01', name: 'WILD-NEW' } })
 
 		await expect(service.uploadOutbox(USER_B)).resolves.toBeUndefined()
 
@@ -1424,7 +1424,7 @@ describe('a deployment start (#451)', () => {
 		serverRows.projects = [{ id: 'project-1' }]
 		serverRows.devices = [{ id: 'device-1' }]
 		seedRows('projects', [{ id: 'project-1', name: 'Ridge survey' }])
-		const [device] = seedRows('devices', [{ id: 'device-1', bluetoothId: 'D4:5E', name: 'WILD-LENT', organisationId: 'org-other', updatedAt: 1 }])
+		const [device] = seedRows('devices', [{ id: 'device-1', bluetoothId: 'D4:5E', name: 'WILD-LENT', updatedAt: 1 }])
 
 		const deployment = await DeploymentService.createDeployment({
 			name: 'Ridge 1', projectId: 'project-1', deviceId: 'device-1', setupBy: USER_B, locationName: 'Ridge',

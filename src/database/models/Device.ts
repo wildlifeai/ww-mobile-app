@@ -6,7 +6,6 @@ export default class Device extends Model {
 
     @field('bluetooth_id') bluetoothId!: string
     @field('name') name!: string
-    @field('organisation_id') organisationId!: string
     @field('device_eui') deviceEui?: string
     @field('modified_by') modifiedBy!: string
 

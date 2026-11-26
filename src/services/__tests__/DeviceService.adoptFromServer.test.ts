@@ -30,7 +30,7 @@ jest.mock('../supabase', () => ({
 	}),
 }))
 
-const serverRow = { id: 'device-server', bluetooth_id: 'D4:5E', name: 'WILD-LENT', organisation_id: 'org-other',
+const serverRow = { id: 'device-server', bluetooth_id: 'D4:5E', name: 'WILD-LENT',
 	device_eui: null, deleted_at: null, modified_by: null, created_at: '2026-09-01T00:00:00Z', updated_at: '2026-09-02T00:00:00Z' }
 
 /** Let the awaited promises run, timers stay fake */
@@ -52,12 +52,12 @@ describe('DeviceService.adoptFromServer (#451)', () => {
 		expect(mockAsked).toEqual(['devices.bluetooth_id=D4:5E'])
 		expect(result).toEqual({ kind: 'found', device: expect.objectContaining({ id: 'device-server', bluetoothId: 'D4:5E' }) })
 		expect(rowsIn('devices')).toEqual([expect.objectContaining({
-			id: 'device-server', name: 'WILD-LENT', bluetoothId: 'D4:5E', organisationId: 'org-other' })])
+			id: 'device-server', name: 'WILD-LENT', bluetoothId: 'D4:5E' })])
 		expect(rowsIn('sync_outbox')).toEqual([])
 	})
 
 	it('updates the copy the phone already holds under that id', async () => {
-		seedRows('devices', [{ id: 'device-server', bluetoothId: 'D4:5E', name: 'Old name', organisationId: 'org-other' }])
+		seedRows('devices', [{ id: 'device-server', bluetoothId: 'D4:5E', name: 'Old name' }])
 
 		await DeviceService.adoptFromServer('D4:5E')
 
