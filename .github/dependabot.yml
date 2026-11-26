@@ -44,3 +44,12 @@ updates:
       - dependency-name: '@react-native/*'
       - dependency-name: '@react-native-community/*'
       - dependency-name: 'react-native-reanimated'
+      # Babel majors wait for Expo: babel-preset-expo (54 to 58) and @react-native/babel-preset
+      # still pull Babel 7 plugins that peer on @babel/core ^7, and babel-jest 29 calls the sync
+      # loadPartialConfig that Babel 8 removed (#516). Drop this with the Expo SDK that moves.
+      - dependency-name: '@babel/*'
+        update-types: ['version-update:semver-major']
+      # testing-library 14 makes render, renderHook, fireEvent and act async: about 456 test
+      # calls to migrate (#543). Drop this when that lands.
+      - dependency-name: '@testing-library/react-native'
+        update-types: ['version-update:semver-major']
