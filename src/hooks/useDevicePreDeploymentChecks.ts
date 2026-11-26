@@ -4,9 +4,7 @@ import { useBleInitialization } from './useBleInitialization'
 import { createBleSession } from '../ble/session/createBleSession'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
 import { selfTestCache } from '../ble/protocol/selfTestCache'
-import ReferenceDataService from '../services/ReferenceDataService'
 import { log, logWarn } from '../utils/logger'
-import { convertBleToSemanticVersion } from '../utils/versionUtils'
 import { InitPayload } from '../navigation/types'
 import { CRITICAL_AI_MASK, formatSelfTestBits, isProvisional, parseSelfTestBits, PROVISIONAL_BIT, SD_CARD_NOT_CHECKED_WARNING, selfTestWarnings } from '../utils/deviceSelfTest'
 import { batteryLowWarning, sdCardAlmostFullWarning } from '../utils/initWarnings'
@@ -36,7 +34,6 @@ export const useDevicePreDeploymentChecks = () => {
             sdCardStatus: null,
             deviceFirmwareVersion: null,
             himaxFirmwareVersion: null,
-            bleFirmwareUpdateAvailable: false,
             aiProcessorFailed: false,
             initErrors: {}
         }
@@ -177,12 +174,7 @@ export const useDevicePreDeploymentChecks = () => {
             onProgress('Checking firmware...')
             const version = await session.execute(commandRegistry.version)
             payload.deviceFirmwareVersion = version
-            const latest = await ReferenceDataService.getLatestFirmware('ble')
-            const normalizedVersion = convertBleToSemanticVersion(version)
-            // No warning line: Start Monitoring's banner says Update software once (#529)
-            if (latest && normalizedVersion !== latest.version) {
-                payload.bleFirmwareUpdateAvailable = true
-            }
+            // Whether it is behind is Start Monitoring's Update software banner's to say (#529)
         } catch (e) {
             logWarn('[Pre-Deployment] Firmware check failed:', e)
         }

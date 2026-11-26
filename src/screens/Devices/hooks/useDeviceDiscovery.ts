@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { Alert } from 'react-native'
-import { useIsFocused, useNavigation, useRoute, RouteProp } from '@react-navigation/native'
+import { useIsFocused, useNavigation } from '@react-navigation/native'
 
 import { useBleActions } from '../../../providers/BleEngineProvider'
 
@@ -13,7 +13,6 @@ import { createBleSession } from '../../../ble/session/createBleSession'
 import { selectCurrentOrganisation } from '../../../redux/slices/authSlice'
 import { DeploymentService } from '../../../services/DeploymentService'
 import ProjectService from '../../../services/ProjectService'
-import { RootStackParamList } from '../../../navigation/types'
 import { useBleInitialization } from '../../../hooks/useBleInitialization'
 import { getSupabaseClient } from '../../../services/supabase'
 import { log, logError } from '../../../utils/logger'
@@ -23,9 +22,9 @@ import { InitPayload } from '../../../navigation/types'
 import { useAutoConnectStateMachine } from './useAutoConnectStateMachine'
 import { useScanLoop } from '../../../hooks/useScanLoop'
 import { waitForInitialSync } from '../../../services/SyncBarrier'
+import { isKnownOffline } from '../../../services/connectivityWatch'
 
 
-type DeviceDiscoveryScreenRouteProp = RouteProp<RootStackParamList, 'DeviceDiscovery'>
 
 type UseDeviceDiscoveryOptions = {
     isDrawerOpen?: boolean
@@ -46,7 +45,6 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     const isDrawerOpen = options?.isDrawerOpen ?? false
     const isActiveTab = options?.isActiveTab ?? true
     const navigation = useNavigation()
-    const route = useRoute<DeviceDiscoveryScreenRouteProp>()
 
     const { isBleConnecting, stopScan, connectDevice, disconnectDevice } = useBleActions()
     const { runChecks: runPreDeploymentChecks } = useDevicePreDeploymentChecks()
@@ -58,9 +56,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
 
     // Sync readiness — needed for project query gate
     const syncState = useAppSelector((state) => state.sync)
-    const isOnline = useAppSelector((state) => state.network.isOnline)
 
-    const mode = route.params?.mode || 'auto'
 
     // Sort devices by signal strength (RSSI)
     const devicesToDisplay = useMemo(() => {
@@ -213,7 +209,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
             // (e.g. user pressed back arrow, which increments operationIdRef)
             const isCancelled = () => operationIdRef.current !== currentOp
 
-            log(`Device selected: ${device.id}, mode: ${mode}`)
+            log(`Device selected: ${device.id}`)
             setProcessing(true)
             setConnectingDevice(device)
             setConnectionLogs(['Found Wildlife Watcher'])
@@ -229,21 +225,19 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
 
                 // ── CHECKPOINT: abort if user cancelled during connect ──
                 if (isCancelled()) {
-                    log('[handleDeviceSelect] Operation cancelled after connect — aborting')
+                    log('[handleDeviceSelect] Operation cancelled after connect, aborting')
                     if (connectedDevice.connected) await disconnectDevice(device)
                     return
                 }
 
                 if (connectedDevice.connected) {
-                    log(`Proceeding with mode: ${mode}`)
-
                     log(`Checking DB for device ${device.id}...`)
                     await addLog('Retrieving device profile...')
                     let dbDevice = await DeviceService.getDeviceByBluetoothId(device.id)
                     log(`DB Device found: ${!!dbDevice}`)
 
                     if (isCancelled()) {
-                        log('[handleDeviceSelect] Operation cancelled after DB lookup — aborting')
+                        log('[handleDeviceSelect] Operation cancelled after DB lookup, aborting')
                         await disconnectDevice(device)
                         return
                     }
@@ -275,221 +269,159 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                         if (registration.kind === 'registered') dbDevice = registration.device
                     }
 
-                    if (mode === 'auto') {
-                        await addLog('Finding the state of the device...')
+                    await addLog('Finding the state of the device...')
 
-                        // Step 1: Check for active deployment
-                        if (dbDevice) {
-                            const status = await DeviceService.calculateDeviceStatus(dbDevice.id)
+                    // Step 1: Check for active deployment
+                    if (dbDevice) {
+                        const status = await DeviceService.calculateDeviceStatus(dbDevice.id)
 
-                            if (isCancelled()) {
-                                log('[handleDeviceSelect] Operation cancelled after status check — aborting')
-                                await disconnectDevice(device)
-                                return
-                            }
+                        if (isCancelled()) {
+                            log('[handleDeviceSelect] Operation cancelled after status check, aborting')
+                            await disconnectDevice(device)
+                            return
+                        }
 
-                            if (status === 'deployed') {
-                                const activeDeployment = await DeploymentService.getActiveDeploymentForDeviceId(dbDevice.id)
-                                if (activeDeployment) {
-                                    const projectAccess = await ProjectService.getProjectById(activeDeployment.projectId)
+                        if (status === 'deployed') {
+                            const activeDeployment = await DeploymentService.getActiveDeploymentForDeviceId(dbDevice.id)
+                            if (activeDeployment) {
+                                const projectAccess = await ProjectService.getProjectById(activeDeployment.projectId)
 
-                                    if (!projectAccess) {
-                                        // Fetch project name from Supabase directly
-                                        let projectName = 'this project'
-                                        try {
-                                            const { data } = await getSupabaseClient().from('projects').select('name').eq('id', activeDeployment.projectId).single()
-                                            if (data?.name) projectName = data.name
-                                        } catch (e) {
-                                            logError('Failed to fetch project name from supabase', e)
-                                        }
-                                        updateRoutingState('no_access_active_deployment', { projectName })
-                                        return
-                                    } else {
-                                        if (isCancelled()) {
-                                            log('[handleDeviceSelect] Operation cancelled before end-deployment init — aborting')
-                                            await disconnectDevice(device)
-                                            return
-                                        }
-
-                                        // User has access -> Run Checks -> Route to End Deployment
-                                        await addLog('Verifying device health...')
-                                        const initResult = await runBleStandardInit(connectedDevice, {
-                                            onProgress: (step) => addLog(step)
-                                        })
-
-                                        if (isCancelled()) {
-                                            log('[handleDeviceSelect] Operation cancelled after init — aborting')
-                                            await disconnectDevice(device)
-                                            return
-                                        }
-                                        
-                                        const initPayload: InitPayload = {
-                                            batteryLevel: null,
-                                            sdCardStatus: null,
-                                            deviceFirmwareVersion: null,
-                                            himaxFirmwareVersion: null,
-                                            bleFirmwareUpdateAvailable: false,
-                                            aiProcessorFailed: false,
-                                            initErrors: {
-                                                setUtc: initResult.errors?.setUtc,
-                                                deviceHealth: initResult.errors?.deviceHealth || []
-                                            }
-                                        }
-
-                                        autoConnect.transition(device.id, 'ACCEPTED')
-
-                                        ;(navigation as any).navigate('StopMonitoringDetailsStep', {
-                                            deploymentId: activeDeployment.id,
-                                            deviceId: dbDevice.id,
-                                            bleDeviceId: connectedDevice.id,
-                                            initPayload
-                                        })
+                                if (!projectAccess) {
+                                    // Fetch project name from Supabase directly
+                                    let projectName = 'this project'
+                                    try {
+                                        const { data } = await getSupabaseClient().from('projects').select('name').eq('id', activeDeployment.projectId).single()
+                                        if (data?.name) projectName = data.name
+                                    } catch (e) {
+                                        logError('Failed to fetch project name from supabase', e)
                                     }
-                                    return
-                                }
-                            }
-
-                            // Step 2 & 3: Not Deployed -> Check user projects & Auto-route to Start Deployment
-                            await addLog('Checking available projects...')
-                            if (user?.id && currentOrganisation?.id) {
-
-                                // ── Sync readiness barrier ──
-                                if (!syncState.hasCompletedInitialSync && syncState.isGlobalSyncing) {
-                                    await addLog('Syncing project data…')
-                                    await waitForInitialSync()
-                                }
-
-                                if (isCancelled()) {
-                                    log('[handleDeviceSelect] Operation cancelled after sync barrier — aborting')
-                                    await disconnectDevice(device)
-                                    return
-                                }
-
-                                let projects: any[] = []
-                                try {
-                                    projects = await ProjectService.getProjectsForUserInOrganisation(user.id, currentOrganisation.id)
-                                } catch (fetchErr: any) {
-                                    logError('[DeviceDiscovery] Project fetch failed:', fetchErr)
-                                    if (fetchErr.message?.toLowerCase().includes('timeout') || fetchErr.message?.toLowerCase().includes('aborted')) {
-                                        updateRoutingState('loading_timeout')
-                                    } else {
-                                        updateRoutingState('network_error')
-                                    }
-                                    return
-                                }
-
-                                if (projects.length === 0) {
-                                    // Distinguish "genuinely no projects" from "can't know"
-                                    if (!syncState.hasCompletedInitialSync && !isOnline) {
-                                        updateRoutingState('projects_unavailable_offline')
-                                    } else {
-                                        updateRoutingState('no_projects')
-                                    }
+                                    updateRoutingState('no_access_active_deployment', { projectName })
                                     return
                                 } else {
-                                    // Found projects! Select the best default
-                                    const lastEndedDeployment = await DeploymentService.getLastEndedDeploymentForDeviceId(dbDevice.id)
-                                    
-                                    let targetProjectId = projects[0].id // Fallback
-                                    
-                                    if (lastEndedDeployment && projects.some(p => p.id === lastEndedDeployment.projectId)) {
-                                        targetProjectId = lastEndedDeployment.projectId
-                                    }
-
                                     if (isCancelled()) {
-                                        log('[handleDeviceSelect] Operation cancelled before pre-deployment checks — aborting')
+                                        log('[handleDeviceSelect] Operation cancelled before end-deployment init, aborting')
                                         await disconnectDevice(device)
                                         return
                                     }
 
-                                    // Pre-deployment Health Checks
-                                    const initPayload = await runPreDeploymentChecks(connectedDevice, (step) => {
-                                        addLog(step)
+                                    // User has access -> Run Checks -> Route to End Deployment
+                                    await addLog('Verifying device health...')
+                                    const initResult = await runBleStandardInit(connectedDevice, {
+                                        onProgress: (step) => addLog(step)
                                     })
 
                                     if (isCancelled()) {
-                                        log('[handleDeviceSelect] Operation cancelled after pre-deployment checks — aborting')
+                                        log('[handleDeviceSelect] Operation cancelled after init, aborting')
                                         await disconnectDevice(device)
                                         return
                                     }
-                                    await addLog('Ready for deployment')
+                                    
+                                    const initPayload: InitPayload = {
+                                        batteryLevel: null,
+                                        sdCardStatus: null,
+                                        deviceFirmwareVersion: null,
+                                        himaxFirmwareVersion: null,
+                                        aiProcessorFailed: false,
+                                        initErrors: {
+                                            setUtc: initResult.errors?.setUtc,
+                                            deviceHealth: initResult.errors?.deviceHealth || []
+                                        }
+                                    }
 
                                     autoConnect.transition(device.id, 'ACCEPTED')
-                                    
-                                    // Route directly to Start Deployment
-                                    ;(navigation as any).navigate('StartMonitoringDetailsStep', {
-                                        projectId: targetProjectId,
+
+                                    ;(navigation as any).navigate('StopMonitoringDetailsStep', {
+                                        deploymentId: activeDeployment.id,
                                         deviceId: dbDevice.id,
                                         bleDeviceId: connectedDevice.id,
                                         initPayload
                                     })
                                 }
-                            } else {
-                                updateRoutingState('no_projects')
                                 return
                             }
-
-                            return
                         }
-                    }
 
-                    if ((mode as string) === 'end_deployment') {
-                        if (dbDevice) {
-                            await addLog('Checking active deployments...')
-                            const activeDeployment = await DeploymentService.getActiveDeploymentForDeviceId(dbDevice.id)
+                        // Step 2 & 3: Not Deployed -> Check user projects & Auto-route to Start Deployment
+                        await addLog('Checking available projects...')
+                        if (user?.id && currentOrganisation?.id) {
 
-                            if (!activeDeployment) {
-                                log(`Device ${dbDevice.id} has no active deployment.`)
-                                Alert.alert(
-                                    'No Active Deployment',
-                                    'This device is not part of an active deployment.',
-                                    [{ text: 'OK', onPress: () => disconnectDevice(device) }]
-                                )
-                                return
+                            // ── Sync readiness barrier ──
+                            if (!syncState.hasCompletedInitialSync && syncState.isGlobalSyncing) {
+                                await addLog('Syncing project data…')
+                                await waitForInitialSync()
                             }
 
                             if (isCancelled()) {
-                                log('[handleDeviceSelect] Operation cancelled before end-deployment — aborting')
+                                log('[handleDeviceSelect] Operation cancelled after sync barrier, aborting')
                                 await disconnectDevice(device)
                                 return
                             }
 
-                            log(`activeDeployment found: ${activeDeployment.id}. Proceeding to End Deployment details.`);
-                            
-                            await addLog('Verifying device health...')
-                            const initResult = await runBleStandardInit(connectedDevice, {
-                                onProgress: (step) => addLog(step)
-                            })
-
-                            if (isCancelled()) {
-                                log('[handleDeviceSelect] Operation cancelled after end-deployment init — aborting')
-                                await disconnectDevice(device)
-                                return
-                            }
-                            
-                            const initPayload: InitPayload = {
-                                batteryLevel: null,
-                                sdCardStatus: null,
-                                deviceFirmwareVersion: null,
-                                himaxFirmwareVersion: null,
-                                bleFirmwareUpdateAvailable: false,
-                                aiProcessorFailed: false,
-                                initErrors: {
-                                    setUtc: initResult.errors?.setUtc,
-                                    deviceHealth: initResult.errors?.deviceHealth || []
+                            let projects: any[] = []
+                            try {
+                                projects = await ProjectService.getProjectsForUserInOrganisation(user.id, currentOrganisation.id)
+                            } catch (fetchErr: any) {
+                                logError('[DeviceDiscovery] Project fetch failed:', fetchErr)
+                                if (fetchErr.message?.toLowerCase().includes('timeout') || fetchErr.message?.toLowerCase().includes('aborted')) {
+                                    updateRoutingState('loading_timeout')
+                                } else {
+                                    updateRoutingState('network_error')
                                 }
+                                return
                             }
 
-                            autoConnect.transition(device.id, 'ACCEPTED')
+                            if (projects.length === 0) {
+                                // Distinguish "genuinely no projects" from "can't know"
+                                if (!syncState.hasCompletedInitialSync && await isKnownOffline()) {
+                                    updateRoutingState('projects_unavailable_offline')
+                                } else {
+                                    updateRoutingState('no_projects')
+                                }
+                                return
+                            } else {
+                                // Found projects! Select the best default
+                                const lastEndedDeployment = await DeploymentService.getLastEndedDeploymentForDeviceId(dbDevice.id)
+                                
+                                let targetProjectId = projects[0].id // Fallback
+                                
+                                if (lastEndedDeployment && projects.some(p => p.id === lastEndedDeployment.projectId)) {
+                                    targetProjectId = lastEndedDeployment.projectId
+                                }
 
-                            ;(navigation as any).navigate('StopMonitoringDetailsStep', {
-                                deploymentId: activeDeployment.id,
-                                deviceId: dbDevice.id,
-                                bleDeviceId: connectedDevice.id,
-                                initPayload
-                            })
+                                if (isCancelled()) {
+                                    log('[handleDeviceSelect] Operation cancelled before pre-deployment checks, aborting')
+                                    await disconnectDevice(device)
+                                    return
+                                }
+
+                                // Pre-deployment Health Checks
+                                const initPayload = await runPreDeploymentChecks(connectedDevice, (step) => {
+                                    addLog(step)
+                                })
+
+                                if (isCancelled()) {
+                                    log('[handleDeviceSelect] Operation cancelled after pre-deployment checks, aborting')
+                                    await disconnectDevice(device)
+                                    return
+                                }
+                                await addLog('Ready for deployment')
+
+                                autoConnect.transition(device.id, 'ACCEPTED')
+                                
+                                // Route directly to Start Deployment
+                                ;(navigation as any).navigate('StartMonitoringDetailsStep', {
+                                    projectId: targetProjectId,
+                                    deviceId: dbDevice.id,
+                                    bleDeviceId: connectedDevice.id,
+                                    initPayload
+                                })
+                            }
+                        } else {
+                            updateRoutingState('no_projects')
                             return
                         }
+
+                        return
                     }
                 } else {
                     // Connect timed out / failed (connectDevice swallows the error
@@ -535,7 +467,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                 }
             }
         },
-        [connectDevice, disconnectDevice, navigation, currentOrganisation, mode, processing, user?.id, stopScan, addLog, updateRoutingState, runBleStandardInit, runPreDeploymentChecks, autoConnect, syncState.hasCompletedInitialSync, syncState.isGlobalSyncing, isOnline]
+        [connectDevice, disconnectDevice, navigation, currentOrganisation, processing, user?.id, stopScan, addLog, updateRoutingState, runBleStandardInit, runPreDeploymentChecks, autoConnect, syncState.hasCompletedInitialSync, syncState.isGlobalSyncing]
     )
 
 
@@ -592,7 +524,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                 }
             })
         }
-    }, [isFocused, isDrawerOpen, isActiveTab, isAnyDeviceConnecting, isEngineerConsoleActive, devicesToDisplay, mode, processing, handleDeviceSelect, autoConnect, scanSessionState])
+    }, [isFocused, isDrawerOpen, isActiveTab, isAnyDeviceConnecting, isEngineerConsoleActive, devicesToDisplay, processing, handleDeviceSelect, autoConnect, scanSessionState])
 
     const handleDisconnect = useCallback(async (device: ExtendedPeripheral) => {
         log(`Disconnecting from ${device.id}`)
@@ -617,7 +549,6 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
         devicesToDisplay,
         isAnyDeviceConnecting,
         isScanning,
-        mode,
         handleScan,
         handleDeviceSelect,
         handleDisconnect,

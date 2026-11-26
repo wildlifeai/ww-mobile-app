@@ -80,7 +80,7 @@ export const DeviceMonitoringSummaryScreen = () => {
 
     const handleConnectToDevice = useCallback(() => {
         log('[DeviceMonitoringSummary] Navigating to scanner')
-        navigation.navigate('DeviceDiscovery', { mode: 'auto' })
+        navigation.navigate('DeviceDiscovery')
         // Hide the stack header so only the scanner's internal header shows
         navigation.setOptions({ headerShown: false })
     }, [navigation])

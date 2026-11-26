@@ -52,12 +52,13 @@ jest.mock("react-native-paper", () => {
  * #374 is about.
  */
 describe("FirmwareStatusScreen with one camera's build in the catalogue", () => {
-	it("names the camera whose firmware is missing, and offers no update", () => {
+	it("names the camera whose firmware is missing", () => {
 		render(<FirmwareStatusScreen />)
 
 		expect(screen.getByText("9 Oct build. The colour camera's new firmware is not available yet")).toBeTruthy()
 		expect(screen.queryByText(/Up to date: 9 Oct|update available/)).toBeNull()
-		expect(screen.queryByText("Update")).toBeNull()
+		// The Engineer Console keeps Update on each card, to flash a build by hand
+		expect(screen.getAllByText("Update")).toHaveLength(2)
 	})
 })
 
@@ -122,7 +123,8 @@ describe("FirmwareStatusScreen with both processors behind", () => {
 		render(<FirmwareStatusScreen />)
 
 		expect(screen.queryByText("Update the AI processor first")).toBeNull()
-		fireEvent.press(screen.getByText("Update"))
+		// The Bluetooth card comes first
+		fireEvent.press(screen.getAllByText("Update")[0])
 		expect(mockNavigate).toHaveBeenCalledWith("FirmwareUpdateScreen", expect.objectContaining({ target: "ble" }))
 	})
 })

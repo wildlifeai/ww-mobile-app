@@ -17,7 +17,6 @@
 
 import { createClient, SupabaseClient } from "@supabase/supabase-js"
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import EventEmitter from "eventemitter3"
 import type { Database } from "../types/database.types"
 import {
 	getEnvironmentConfig,
@@ -36,12 +35,6 @@ let supabaseClient: SupabaseClient<Database> | null = null
 
 /** Current environment configuration (null if not initialized) */
 let currentEnvironment: EnvironmentConfig | null = null
-
-/** Event emitter for client change notifications */
-const clientEvents = new EventEmitter()
-
-/** Event name for client changes */
-const CLIENT_CHANGED_EVENT = "client-changed"
 
 // ============================================================================
 // Client Lifecycle Management
@@ -147,7 +140,7 @@ export function getSupabaseClient(): SupabaseClient<Database> {
 	if (!supabaseClient) {
 		throw new Error(
 			"Supabase client not initialized. " +
-			"Call initializeSupabaseClient() first or use the useSupabaseClient() hook in React components.",
+			"Call initializeSupabaseClient() first.",
 		)
 	}
 	return supabaseClient
@@ -195,44 +188,11 @@ export async function reconnectSupabase(): Promise<SupabaseClient<Database>> {
 		log("🔄 Reconnecting Supabase client...")
 		const newClient = await initializeSupabaseClient()
 
-		// Step 3: Emit event for React components
-		emitClientChanged()
-
 		log("✅ Supabase client reconnected successfully")
 		return newClient
 	} catch (error) {
 		logError("❌ Failed to reconnect Supabase client:", error)
 		throw error
-	}
-}
-
-/**
- * Registers a callback to be invoked when the Supabase client changes.
- *
- * This enables React components and services to react to environment switches
- * by re-initializing their state or refetching data with the new client.
- *
- * @param callback - Function to call when client changes
- * @returns Unsubscribe function to remove the listener
- *
- * @example
- * ```typescript
- * // In a React component
- * useEffect(() => {
- *   const unsubscribe = onSupabaseClientChange(() => {
- *     // Refetch data or reset state
- *     refetchProjects();
- *   });
- *   return unsubscribe;
- * }, []);
- * ```
- */
-export function onSupabaseClientChange(callback: () => void): () => void {
-	clientEvents.on(CLIENT_CHANGED_EVENT, callback)
-
-	// Return unsubscribe function
-	return () => {
-		clientEvents.off(CLIENT_CHANGED_EVENT, callback)
 	}
 }
 
@@ -261,23 +221,4 @@ export function getCurrentEnvironment(): EnvironmentConfig | null {
 export function resetSupabaseClient(): void {
 	supabaseClient = null
 	currentEnvironment = null
-}
-
-// ============================================================================
-// Internal Helpers
-// ============================================================================
-
-/**
- * Emits the client-changed event to all registered listeners.
- * Handles callback errors gracefully to prevent one broken listener
- * from affecting others.
- *
- * @internal
- */
-function emitClientChanged(): void {
-	try {
-		clientEvents.emit(CLIENT_CHANGED_EVENT)
-	} catch (error) {
-		logError("❌ Error notifying listeners of client change:", error)
-	}
 }

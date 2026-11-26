@@ -83,7 +83,6 @@ export const useStartDeployment = ({
     
     // Refs for DFU
     const isDfuInProgress = useRef(false)
-    const isReconnectingAfterDfu = useRef(false)
 
 
 
@@ -121,7 +120,6 @@ export const useStartDeployment = ({
     // Why this account may not start a deployment in the chosen project, or
     // null: shown under the picker, and again on the press
     const [startRefusalReason, setStartRefusalReason] = useState<string | null>(null)
-    const [captureMethodName, setCaptureMethodName] = useState<string>('')
     const [sensitivityLabel, setSensitivityLabel] = useState<string>('')
     
     // Site Name (Location Name) States
@@ -211,21 +209,11 @@ export const useStartDeployment = ({
                     setDeployableProjects(await projectsToDeployInto(user.id, withoutArchived(projs)))
                 }
 
-                if (proj && proj.capture_method_id) {
-                    log('[DeploymentDetails] Resolving capture method name for ID:', proj.capture_method_id);
-                    const methods = await ReferenceDataService.getCaptureMethods()
-                    const method = methods.find((m: any) => String(m.id) === String(proj.capture_method_id))
-                    log('[DeploymentDetails] Method resolved:', method?.value);
-                    setCaptureMethodName(method ? method.value : 'Unknown')
-
-                    if (proj.activity_detection_sensitivity_id) {
-                        const sensitivities = await ReferenceDataService.getActivitySensitivity()
-                        const sensitivity = sensitivities.find((s: any) => String(s.id) === String(proj.activity_detection_sensitivity_id))
-                        setSensitivityLabel(sensitivity ? sensitivity.value : 'Unknown')
-                    }
-                } else {
-                    log('[DeploymentDetails] No capture method ID on project');
-                    setCaptureMethodName('Not Set')
+                // The sensitivity names a capture method's; no method, no label
+                if (proj?.capture_method_id && proj.activity_detection_sensitivity_id) {
+                    const sensitivities = await ReferenceDataService.getActivitySensitivity()
+                    const sensitivity = sensitivities.find((s: any) => String(s.id) === String(proj.activity_detection_sensitivity_id))
+                    setSensitivityLabel(sensitivity ? sensitivity.value : 'Unknown')
                 }
             } else {
                 logWarn('[DeploymentDetails] No projectId provided');
@@ -346,20 +334,11 @@ export const useStartDeployment = ({
         log('[DeploymentDetails] Project changed by user:', projectId)
         setProject(newProject);
 
-        if (newProject.capture_method_id) {
-            const methods = await ReferenceDataService.getCaptureMethods()
-            const method = methods.find((m: any) => String(m.id) === String(newProject.capture_method_id))
-            setCaptureMethodName(method ? method.value : 'Unknown')
-
-            if (newProject.activity_detection_sensitivity_id) {
-                const sensitivities = await ReferenceDataService.getActivitySensitivity()
-                const sensitivity = sensitivities.find((s: any) => String(s.id) === String(newProject.activity_detection_sensitivity_id))
-                setSensitivityLabel(sensitivity ? sensitivity.value : 'Unknown')
-            } else {
-                setSensitivityLabel('')
-            }
+        if (newProject.capture_method_id && newProject.activity_detection_sensitivity_id) {
+            const sensitivities = await ReferenceDataService.getActivitySensitivity()
+            const sensitivity = sensitivities.find((s: any) => String(s.id) === String(newProject.activity_detection_sensitivity_id))
+            setSensitivityLabel(sensitivity ? sensitivity.value : 'Unknown')
         } else {
-            setCaptureMethodName('Not Set')
             setSensitivityLabel('')
         }
     }, [availableProjects, project?.id]);
@@ -411,7 +390,7 @@ export const useStartDeployment = ({
                     bleSession?.execute(commandRegistry.disconnect).finally(() => disconnectDevice(bleDevice)).catch((err: any) => logWarn('[Deployment] Auto-disconnect failed:', err))
                 }
 
-                navigation.navigate('Home', { initialTab: 'deployment' })
+                navigation.navigate('Home')
             }
         })
 
@@ -420,12 +399,12 @@ export const useStartDeployment = ({
 
     // Robust Connection Lost Alert
     useEffect(() => {
-        if (!isInitializing && !submitting && bleDevice && !bleDevice.connected && !isNavigatingAway.current && !isStartDeploymentInProgress.current && !isDfuInProgress.current && !isReconnectingAfterDfu.current) {
+        if (!isInitializing && !submitting && bleDevice && !bleDevice.connected && !isNavigatingAway.current && !isStartDeploymentInProgress.current && !isDfuInProgress.current) {
             if (monitoring.isMonitoring) {
                 logWarn('[Monitor] Connection lost. Auto-navigating to home.')
                 Alert.alert('Connection Lost', 'Connection lost. The device continues recording.', [{ text: 'OK' }])
                 isNavigatingAway.current = true
-                navigation.navigate('Home', { initialTab: 'deployment' })
+                navigation.navigate('Home')
             } else {
                 Alert.alert(
                     'Connection Lost',
@@ -978,8 +957,8 @@ export const useStartDeployment = ({
     const [deploymentStartTime, setDeploymentStartTime] = useState<Date | null>(null)
 
     return {
-        formState, submitting, project, availableProjects, startRefusalReason, captureMethodName, sensitivityLabel,
-        device, bleDevice, isInitializing, initProgress, initStep, initErrors, setInitErrors, aiProcessorFailed,
+        formState, submitting, project, availableProjects, startRefusalReason, sensitivityLabel,
+        device, bleDevice, isInitializing, initProgress, initStep, initErrors, aiProcessorFailed,
         finishProgress: progress.finishProgress, finishStep: progress.finishStep,
         finishLogs: progress.finishLogs, isFinishing: progress.isFinishing,
         isStartSuccess: progress.isSuccess,

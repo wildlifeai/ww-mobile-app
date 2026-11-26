@@ -39,7 +39,7 @@ export const WWBleDisconnectedBanner = ({ connected, dfuInProgress }: Props) => 
                 compact
                 textColor={colors.error}
                 style={styles.button}
-                onPress={() => navigation.navigate('Home', { initialTab: 'scanner' })}
+                onPress={() => navigation.navigate('Home', { initialTab: 'devices' })}
             >
                 <Text style={{ color: colors.error }}>Go to Scanner</Text>
             </Button>

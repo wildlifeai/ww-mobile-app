@@ -134,7 +134,7 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
                             }
                         }
                         
-                        navigation.navigate('Home', { initialTab: 'deployment' })
+                        navigation.navigate('Home')
                     }
                 }
             ]

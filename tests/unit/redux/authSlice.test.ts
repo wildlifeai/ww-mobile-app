@@ -305,10 +305,5 @@ describe("Enhanced Auth Slice - TDD Tests", () => {
 				canViewProjects: false
 			})
 		})
-
-		test("should handle loading states during authentication", () => {
-			// This test will be implemented when async actions are added
-			expect(true).toBe(true) // Placeholder
-		})
 	})
 })

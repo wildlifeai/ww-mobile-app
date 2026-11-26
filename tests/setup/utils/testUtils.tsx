@@ -11,7 +11,6 @@ import { configureStore } from "@reduxjs/toolkit"
 import authSlice from "../../../src/redux/slices/authSlice"
 import deploymentsSlice from "../../../src/redux/slices/deploymentsSlice"
 import syncSlice from "../../../src/redux/slices/syncSlice"
-import wwAdminSlice from "../../../src/redux/slices/wwAdminSlice"
 import { api } from "../../../src/redux/api"
 
 // Mock navigation object
@@ -32,7 +31,6 @@ export function createTestStore(preloadedState = {}) {
 			authentication: authSlice,
 			deployments: deploymentsSlice,
 			sync: syncSlice,
-			wwAdmin: wwAdminSlice,
 			api: api.reducer,
 		},
 		preloadedState,

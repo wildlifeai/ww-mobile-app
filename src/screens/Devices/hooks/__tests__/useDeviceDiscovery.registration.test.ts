@@ -17,7 +17,6 @@ const mockState: any = {
 	scanning: { isEngineerConsoleActive: false },
 	authentication: { user: { id: 'user-1' }, currentOrganisation: { id: 'org-1' } },
 	sync: { hasCompletedInitialSync: true, isGlobalSyncing: false },
-	network: { isOnline: true },
 }
 const mockNavigation = { navigate: jest.fn(), isFocused: jest.fn(() => true) }
 const mockBleActions = {
@@ -175,5 +174,41 @@ describe('the scanner and a camera this phone has not met (#451)', () => {
 
 		expect(deviceService.adoptFromServer).not.toHaveBeenCalled()
 		expect(deviceService.calculateDeviceStatus).toHaveBeenCalledWith('device-here')
+	})
+})
+
+/**
+ * Before the first sync, no projects on the phone means "can't know yet" only
+ * offline. The scanner read Redux's network flag, which nothing ever set, so an
+ * online phone said its projects were unavailable offline too.
+ */
+describe('the scanner with no projects on the phone before the first sync', () => {
+	const netInfo = require('@react-native-community/netinfo')
+
+	beforeEach(() => {
+		mockState.sync = { hasCompletedInitialSync: false, isGlobalSyncing: false }
+		ProjectService.getProjectsForUserInOrganisation.mockResolvedValue([])
+	})
+	afterEach(() => {
+		mockState.sync = { hasCompletedInitialSync: true, isGlobalSyncing: false }
+		netInfo.__resetNetworkState()
+	})
+
+	const routedTo = async () => {
+		const { result } = renderHook(() => useDeviceDiscovery())
+		await act(async () => {
+			await result.current.handleDeviceSelect({ id: 'ble-1', name: 'WILD-TEST' } as any)
+		})
+		return result.current.routingState
+	}
+
+	it('says the account has no projects when the phone is online', async () => {
+		expect(await routedTo()).toBe('no_projects')
+	})
+
+	it('says the projects cannot be known yet when the phone is offline', async () => {
+		netInfo.__setNetworkState({ isConnected: false })
+
+		expect(await routedTo()).toBe('projects_unavailable_offline')
 	})
 })

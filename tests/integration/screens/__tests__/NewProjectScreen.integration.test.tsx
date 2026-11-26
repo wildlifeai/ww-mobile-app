@@ -2,7 +2,6 @@ import { render, screen, waitFor, fireEvent } from "@testing-library/react-nativ
 import { Provider } from "react-redux"
 import { configureStore } from "@reduxjs/toolkit"
 import { NewProjectScreen } from "../../../../src/screens/Projects/NewProjectScreen"
-import { aiModelsApi } from "../../../../src/redux/api/aiModelsApi"
 import { projectsApi } from "../../../../src/redux/api/projectsApi"
 import authReducer, { UserRole } from "../../../../src/redux/slices/authSlice"
 import type { Database } from "../../../../src/types/database.types"
@@ -26,14 +25,13 @@ jest.mock("@react-navigation/native", () => ({
 const createTestStore = (initialState = {}) => {
 	return configureStore({
 		reducer: {
-			[aiModelsApi.reducerPath]: aiModelsApi.reducer,
 			[projectsApi.reducerPath]: projectsApi.reducer,
 			authentication: authReducer,
 		},
 		middleware: (getDefaultMiddleware) =>
 			getDefaultMiddleware({
 				serializableCheck: false,
-			}).concat(aiModelsApi.middleware).concat(projectsApi.middleware),
+			}).concat(projectsApi.middleware),
 		preloadedState: {
 			authentication: {
 				user: {

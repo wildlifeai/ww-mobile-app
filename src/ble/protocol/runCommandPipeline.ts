@@ -198,12 +198,13 @@ function isRetryable(error: Error): boolean {
 }
 
 /**
- * How long a command the AI processor refused for a cold boot waits for its
- * next Sleep before giving up (#476). The processor sleeps once its inactivity
+ * How long a command the AI processor refused until its next Sleep (a cold
+ * boot, #476, or a Sleep under way, #535) waits for that Sleep before giving
+ * up. The processor sleeps once its inactivity
  * period (op 8) has passed with nothing holding it awake; this allows for a
  * keep-awake hold on top.
  */
-export const FIRST_SLEEP_WAIT_MS = 15000;
+export const SLEEP_REFUSAL_WAIT_MS = 15000;
 
 /** A refusal that asks for the command after the next Sleep, wherever its command put it in the error message. */
 const SLEEP_REFUSAL_IN_MESSAGE = new RegExp(SLEEP_REFUSAL.source.replace(/^\^/, ''), 'i');
@@ -287,7 +288,7 @@ export async function runCommandPipeline<T>(
         // so nothing else wakes the processor in between.
         if (!resentAfterSleep && SLEEP_REFUSAL_IN_MESSAGE.test(error?.message ?? '')) {
           resentAfterSleep = true;
-          const slept = await waitForNextSleep(peripheral.id, FIRST_SLEEP_WAIT_MS, options?.signal);
+          const slept = await waitForNextSleep(peripheral.id, SLEEP_REFUSAL_WAIT_MS, options?.signal);
           if (options?.signal?.aborted) throw new Error('COMMAND_CANCELLED');
           if (slept) {
             // As the transport does after a Sleep: time to enter DPD first

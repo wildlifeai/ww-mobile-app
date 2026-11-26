@@ -24,20 +24,6 @@ export const friendlyVersion = (version?: string | null, withTime = false): stri
 /** "the 30 Sep build" in a sentence; a release number stays bare */
 const inSentence = (version: string): string => version.endsWith(' build') ? `the ${version}` : version
 
-/** The one line before an update: where the camera is, and where the update takes it. */
-export const updateSummary = (current?: string | null, latest?: string | null, upToDate = false): string => {
-    // Two builds of the same day differ only by the time (Dev took two on
-    // 1 October 2026, minutes apart), so then both carry it
-    const sameDay = !upToDate && !!current && !!latest && current.trim() !== latest.trim()
-        && friendlyVersion(current) === friendlyVersion(latest)
-    const from = friendlyVersion(current, sameDay)
-    const to = friendlyVersion(latest, sameDay)
-    if (upToDate) return to ? `Up to date: ${to}.` : 'Up to date.'
-    if (from && from !== 'Unknown' && to) return `Update from ${inSentence(from)} to ${inSentence(to)}.`
-    if (to) return `Update to ${inSentence(to)}.`
-    return 'Update to the latest firmware.'
-}
-
 /** A camera named the way the update screen names the two images, colour and night-IR */
 const cameraWord = (variant: 'RP3' | 'HM0360'): string => variant === 'RP3' ? 'colour' : 'night-IR'
 
@@ -110,12 +96,6 @@ export const updateStep = (
 
 /** Where the Bluetooth update waits for the AI processor's (#527, see utils/firmwareOrder.ts) */
 export const BLE_WAITS_FOR_AI = 'Update the AI processor first'
-
-/** The one result line once an update has finished. */
-export const updateResult = (newVersion?: string | null): string =>
-    newVersion
-        ? `Updated to ${inSentence(friendlyVersion(newVersion))}.`
-        : 'Update sent. The camera finishes it the next time it restarts.'
 
 /**
  * The small line under the log while an image goes to the camera:

@@ -8,7 +8,6 @@ import UserRole from '../database/models/UserRole'
 import Device from '../database/models/Device'
 import Project from '../database/models/Project'
 import NetInfo from '@react-native-community/netinfo'
-import type { RootState } from '../redux'
 import { generateUUID } from '../utils/uuid'
 import type Deployment from '../database/models/Deployment'
 import { log, logError, logWarn } from '../utils/logger'
@@ -261,38 +260,13 @@ class SupabaseSyncService {
             return
         }
 
-        // Check network state - don't sync if offline
-        // Try Redux first (maintained by OfflineService), but fallback to NetInfo if offline
-        // This handles the race condition where Redux hasn't initialized yet
+        // Don't sync offline. A connection NetInfo cannot vouch for yet (null) counts as
+        // offline here
         let isOnline = false
         try {
-            // Use injected store if available, otherwise check NetInfo directly
-            if (this.store) {
-                const state: RootState = this.store.getState()
-                isOnline = state.network.isOnline
-
-                // If Redux says offline, double-check with NetInfo
-                if (!isOnline) {
-                    const netState = await NetInfo.fetch()
-                    if (netState.isConnected === true) {
-                        // log(`🌐 Network check: Redux says OFFLINE but NetInfo says ONLINE - using NetInfo`)
-                        isOnline = true
-                    } else {
-                        // log(`🌐 Network check (Redux): OFFLINE`)
-                    }
-                } else {
-                    // log(`🌐 Network check (Redux): ONLINE`)
-                }
-            } else {
-                // Fallback if store not yet injected
-                const netState = await NetInfo.fetch()
-                isOnline = netState.isConnected === true
-                log(`🌐 Network check (No Store): ${isOnline ? 'ONLINE' : 'OFFLINE'}`)
-            }
+            isOnline = (await NetInfo.fetch()).isConnected === true
         } catch (e) {
             logError('⚠️ Error checking network state:', e)
-            const netState = await NetInfo.fetch()
-            isOnline = netState.isConnected === true
         }
 
         if (!isOnline) {

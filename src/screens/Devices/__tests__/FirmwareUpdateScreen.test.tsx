@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react-native"
+import { render, screen } from "@testing-library/react-native"
 import { FirmwareUpdateScreen } from "../FirmwareUpdateScreen"
 
 const mockParams: { current: any } = { current: {} }
@@ -75,20 +75,8 @@ describe("FirmwareUpdateScreen", () => {
 		mockHook.current = {}
 	})
 
-	it("gives an operator one version line and one button, updating both images from the cloud", () => {
+	it("offers the build picker and the source choice", () => {
 		mockParams.current = { deviceId: "dev-1", target: "himax" }
-		render(<FirmwareUpdateScreen />)
-
-		expect(screen.getByText("Update from the 23 Sep build to the 30 Sep build.")).toBeTruthy()
-		expect(screen.queryByText(/Flash Selected Build|Advanced|MANIFEST|Pre-flight/)).toBeNull()
-		expect(mockSetOptions).toHaveBeenCalledWith({ title: "AI firmware update" })
-
-		fireEvent.press(screen.getByText("Update"))
-		expect(mockStartUpdate).toHaveBeenCalledWith({ himaxSource: "download" })
-	})
-
-	it("keeps the build picker and source choice for the Engineer Console", () => {
-		mockParams.current = { deviceId: "dev-1", target: "himax", engineer: true }
 		render(<FirmwareUpdateScreen />)
 
 		expect(screen.getByText(/Advanced: flash a specific image/)).toBeTruthy()
@@ -99,7 +87,7 @@ describe("FirmwareUpdateScreen", () => {
 	// #436: the card named the build picked under Advanced, R6930K26.IMG here,
 	// while the pair update sent the night image
 	it("names the file the update is sending on the transfer card", () => {
-		mockParams.current = { deviceId: "dev-1", target: "himax", engineer: true }
+		mockParams.current = { deviceId: "dev-1", target: "himax" }
 		mockHook.current = {
 			isUpdating: true, phase: "transferring", pairProgress: { total: 2, done: 0 },
 			fileTransferProgress: { percentage: 40, bytesSent: 200000, totalBytes: 500000, elapsedMs: 25000, estimatedRemainingMs: 30000, phase: "transferring" },
@@ -118,17 +106,8 @@ describe("FirmwareUpdateScreen", () => {
 			mockHook.current = { availableDbFirmwares: [build("fw-hm", "HM0360")] }
 		})
 
-		it("names the missing camera to an operator and does not start", () => {
+		it("names the missing build, without suggesting a sync", () => {
 			mockParams.current = { deviceId: "dev-1", target: "himax" }
-			render(<FirmwareUpdateScreen />)
-
-			expect(screen.getByText("The colour camera's new firmware is not available yet. Try again later.")).toBeTruthy()
-			expect(screen.queryByText(/Connect to the internet/)).toBeNull()
-			expect(screen.getByText("Update")).toBeDisabled()
-		})
-
-		it("names the missing build in the Engineer Console's view, without suggesting a sync", () => {
-			mockParams.current = { deviceId: "dev-1", target: "himax", engineer: true }
 			render(<FirmwareUpdateScreen />)
 
 			expect(screen.getByText(/^No 🎨 Colour \(RP3\) build in the firmware catalogue, and both cameras update together\./)).toBeTruthy()
@@ -160,18 +139,8 @@ describe("FirmwareUpdateScreen", () => {
 			}
 		})
 
-		it("tells an operator what finishing does, and finishes it", () => {
+		it("says what finishing does", () => {
 			mockParams.current = { deviceId: "dev-1", target: "himax" }
-			render(<FirmwareUpdateScreen />)
-
-			expect(screen.getByText(FINISH)).toBeTruthy()
-			expect(screen.queryByText(/Up to date/)).toBeNull()
-			fireEvent.press(screen.getByText("Finish update"))
-			expect(mockStartUpdate).toHaveBeenCalledWith({ himaxSource: "download" })
-		})
-
-		it("says the same in the Engineer Console's view", () => {
-			mockParams.current = { deviceId: "dev-1", target: "himax", engineer: true }
 			render(<FirmwareUpdateScreen />)
 
 			expect(screen.getByText(FINISH)).toBeTruthy()

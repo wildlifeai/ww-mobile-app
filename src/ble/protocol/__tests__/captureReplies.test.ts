@@ -1,6 +1,6 @@
 import { rxRouter } from '../rxRouter';
 import { bleTransport } from '../bleTransportController';
-import { runCommandPipeline, FIRST_SLEEP_WAIT_MS } from '../runCommandPipeline';
+import { runCommandPipeline, SLEEP_REFUSAL_WAIT_MS } from '../runCommandPipeline';
 import { commandRegistry } from '../commandRegistry';
 import { bleEventBus } from '../eventBus';
 import * as transport from '../../transport';
@@ -117,7 +117,7 @@ describe('a command refused before the first sleep (#476)', () => {
     answerWrites([[[20, REFUSAL]]]);
 
     const result = run(() => commandRegistry.capture(1, 500)).catch((e: Error) => e);
-    await jest.advanceTimersByTimeAsync(FIRST_SLEEP_WAIT_MS + 1000);
+    await jest.advanceTimersByTimeAsync(SLEEP_REFUSAL_WAIT_MS + 1000);
     expect(((await result) as Error).message).toBe(REFUSAL);
     expect(mockWrite).toHaveBeenCalledTimes(1);
   });
