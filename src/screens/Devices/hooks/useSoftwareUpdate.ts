@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { classifyHimax, HimaxVariant } from '../../../utils/himaxFirmwareState'
@@ -67,11 +67,14 @@ export function useSoftwareUpdate({ device }: { device: ExtendedPeripheral | und
     const plan = useMemo(() => (isPreflightDone ? softwarePlan(statuses) : []), [isPreflightDone, statuses])
     // The plan as of the latest render, for a run that starts after a fresh read
     const planNow = useRef(plan)
-    planNow.current = plan
-
     // The async run reads the hooks as they are now, not as they were when it began
     const now = useRef({ ble, ai, device, latest })
-    now.current = { ble, ai, device, latest }
+    // Set once each render has committed, never during it: React may replay or
+    // drop a render, and the run must not see one that never reached the screen
+    useLayoutEffect(() => {
+        planNow.current = plan
+        now.current = { ble, ai, device, latest }
+    })
     const unmounted = useRef(false)
     useEffect(() => () => { unmounted.current = true }, [])
 

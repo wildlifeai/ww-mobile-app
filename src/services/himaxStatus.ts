@@ -1,12 +1,11 @@
 import Firmware from '../database/models/Firmware'
-import ReferenceDataService from './ReferenceDataService'
 import { himaxUpdateRecord } from './himaxUpdateRecord'
 import { classifyHimax, HimaxVariant, SlotsReply } from '../utils/himaxFirmwareState'
 
 /**
  * Whether a camera's AI firmware is current, one judgement for every screen
- * that asks (#464): Firmware Status, and the checks Start Monitoring runs on
- * connect. Before it was shared, the connect check compared the camera with
+ * that asks (#464): Firmware Status and Start Monitoring's firmware check.
+ * Before it was shared, the connect check compared the camera with
  * the newest build of either camera and warned of newer AI firmware whenever
  * the other camera's build was newer.
  */
@@ -17,12 +16,6 @@ export interface LatestHimaxBuilds {
     HM0360: Firmware | null
     any: Firmware | null
 }
-
-export const latestHimaxBuilds = async (): Promise<LatestHimaxBuilds> => ({
-    RP3: await ReferenceDataService.getLatestHimaxByVariant('RP3'),
-    HM0360: await ReferenceDataService.getLatestHimaxByVariant('HM0360'),
-    any: await ReferenceDataService.getLatestFirmware('himax'),
-})
 
 /**
  * The camera's `AI ver` reply as it is compared with the catalogue: a release
