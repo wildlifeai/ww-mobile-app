@@ -9,10 +9,10 @@ const mockFetch = jest.fn()
 jest.mock('../../../../services/remoteCheckIns', () => ({
     fetchLatestCheckIns: (ids: string[]) => mockFetch(ids),
 }))
-const mockFind = jest.fn()
+const mockFirmwareRows = jest.fn()
 jest.mock('../../../../database', () => ({
     __esModule: true,
-    default: { get: () => ({ find: (id: string) => mockFind(id) }) },
+    default: { get: () => ({ query: () => ({ fetch: () => mockFirmwareRows() }) }) },
 }))
 jest.mock('../../../../utils/logger', () => ({ log: jest.fn(), logWarn: jest.fn(), logError: jest.fn() }))
 
@@ -44,7 +44,7 @@ const checkIn = (over: Record<string, unknown> = {}) => ({
 describe('the Remote check-in card', () => {
     beforeEach(() => {
         jest.setSystemTime(NOW)
-        mockFind.mockResolvedValue({ version: '00.30.62' })
+        mockFirmwareRows.mockResolvedValue([{ version: '00.30.62' }])
     })
     afterEach(() => netInfo.__resetNetworkState())
 
@@ -60,6 +60,17 @@ describe('the Remote check-in card', () => {
         expect(screen.getByText('41% free')).toBeOnTheScreen()
         expect(await screen.findByText('Bluetooth 0.30.62')).toBeOnTheScreen()
         expect(screen.getByText('OK')).toBeOnTheScreen()
+    })
+
+    it('leaves the firmware out when it is missing from the phone catalogue', async () => {
+        mockFetch.mockResolvedValue({ d1: checkIn() })
+        mockFirmwareRows.mockResolvedValue([])
+
+        render(<RemoteCheckInCard deployment={deployment()} />)
+
+        expect(await screen.findByText('OK')).toBeOnTheScreen()
+        await flush()
+        expect(screen.queryByText('Firmware')).toBeNull()
     })
 
     it('names each fault in the backend words, once', async () => {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { View, StyleSheet } from 'react-native'
 import { Card, Text, useTheme } from 'react-native-paper'
+import { Q } from '@nozbe/watermelondb'
 import database from '../../../database'
 import type Deployment from '../../../database/models/Deployment'
 import type Firmware from '../../../database/models/Firmware'
@@ -23,9 +24,10 @@ const useFirmwareVersion = (id?: string | null): string | null => {
     useEffect(() => {
         if (!id) return
         let live = true
-        database.get<Firmware>('firmware').find(id)
-            .then(f => { if (live) setVersion(friendlyVersion(f.version) || null) })
-            .catch(() => { /* not in the catalogue: no row */ })
+        // A query, not find(): a firmware missing from the catalogue is an empty list, no row
+        database.get<Firmware>('firmware').query(Q.where('id', id)).fetch()
+            .then(rows => { if (live) setVersion(friendlyVersion(rows[0]?.version) || null) })
+            .catch(() => { /* the catalogue could not be read: no row */ })
         return () => { live = false }
     }, [id])
     return id ? version : null
