@@ -209,6 +209,16 @@ The app queries `AI slots` to learn the running variant, then flashes **the othe
 
 A pass that fails with a transient error (`Session Reset`, `DEVICE_DISCONNECTED`, or a timeout; the `AI reset` routinely drops the session) is **retried once** after `waitForAiReady(25000)` hears the device again, and the retry starts with the slot check, so an image whose write landed is not written over the other camera's slot.
 
+### With the Bluetooth firmware behind too
+
+Seeed PR #284 and ww-hardware PR #77 change how the two processors signal each other, and a camera with one of them new and the other old takes no file (#527). So the Bluetooth update is not offered while the AI processor has an update waiting, unless that AI update is already half done ([`utils/firmwareOrder.ts`](../../src/utils/firmwareOrder.ts)); Firmware Status and Start Monitoring's firmware check say "Update the AI processor first" instead. The order that follows:
+
+1. The AI update installs image 1 and restarts into it. Image 2 cannot go across with the old Bluetooth, so the update stops at "1 of 2 images installed".
+2. The Bluetooth update is offered now, and needs no AI processor. In this state the AI processor answers nothing and the firmware check runs out of time, so it is this phone's record of the update that says it is half done (`useFirmwareStatus`). Another phone, without the record, offers neither update.
+3. Finish update writes image 2 with both processors new.
+
+The AI build that contains Seeed PR #284 and Bluetooth 0.30.61 (ww-hardware PR #77) go into the firmware catalogue together: the app cannot tell the AI builds apart, since `AI ver` is only a build stamp.
+
 ### Flashing a file already on the card
 
 The screen offers any image whose 8.3 name is already in `/MANIFEST/`, labelled "· on SD

@@ -4,6 +4,8 @@ import { Button, Divider, Text, useTheme } from 'react-native-paper'
 import { ActionRow } from '../../../components/ui/ActionRow'
 import { ActionDialog } from '../../../components/ui/ActionDialog'
 import { UseFirmwareStatusReturn } from '../../Devices/hooks/useFirmwareStatus'
+import { bleUpdateWaits } from '../../../utils/firmwareOrder'
+import { BLE_WAITS_FOR_AI } from '../../../utils/firmwareWords'
 import { batteryLowWarning } from '../../../utils/initWarnings'
 
 /**
@@ -165,7 +167,9 @@ export const FirmwareAction = ({ firmwareStatus, onUpdateFirmware, onShowHelp }:
                                 Current {status.currentVersion ?? 'unknown'}, latest {status.latestVersion ?? 'unknown'}
                             </Text>
                         )}
-                        {status.isOutdated && onUpdateFirmware && (
+                        {key === 'ble' && bleUpdateWaits(statuses) ? (
+                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>{BLE_WAITS_FOR_AI}</Text>
+                        ) : status.isOutdated && onUpdateFirmware && (
                             <Button mode="contained" compact icon="download" style={styles.update} onPress={() => onUpdateFirmware(key)}>
                                 Update
                             </Button>
