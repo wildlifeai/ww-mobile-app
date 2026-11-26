@@ -1,6 +1,6 @@
 import { bleEventBus, BleEvent } from './eventBus';
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice';
-import { CommandContext, FIRST_SLEEP_REFUSAL } from './commandRegistry';
+import { CommandContext, SLEEP_REFUSAL } from './commandRegistry';
 import { BLE_PROTOCOL_RETRIES, BLE_PROTOCOL_TIMINGS } from './protocolConstants';
 import { bleTransport } from './bleTransportController';
 import { writeToDevice } from '../transport';
@@ -205,8 +205,8 @@ function isRetryable(error: Error): boolean {
  */
 export const FIRST_SLEEP_WAIT_MS = 15000;
 
-/** The cold-boot refusal, wherever its command put it in the error message. */
-const FIRST_SLEEP_REFUSAL_IN_MESSAGE = new RegExp(FIRST_SLEEP_REFUSAL.source.replace(/^\^/, ''), 'i');
+/** A refusal that asks for the command after the next Sleep, wherever its command put it in the error message. */
+const SLEEP_REFUSAL_IN_MESSAGE = new RegExp(SLEEP_REFUSAL.source.replace(/^\^/, ''), 'i');
 
 /** Resolve true on this device's next Sleep, false on timeout or when `signal` aborts. */
 function waitForNextSleep(deviceId: string, timeoutMs: number, signal?: AbortSignal): Promise<boolean> {
@@ -280,12 +280,12 @@ export async function runCommandPipeline<T>(
         return result;
       } catch (error: any) {
         // A capture or light check refused between a cold boot and the first
-        // sleep (#476). The command has woken the processor, so once it has
-        // slept the same command works. Sent again once, here rather than in
+        // sleep (#476), or while the processor was going to sleep (#535).
+        // Once it has slept the same command works. Sent again once, here rather than in
         // every screen, and outside the retry budget, which is 0 for every
         // command that can be refused this way. Still inside this queue task,
         // so nothing else wakes the processor in between.
-        if (!resentAfterSleep && FIRST_SLEEP_REFUSAL_IN_MESSAGE.test(error?.message ?? '')) {
+        if (!resentAfterSleep && SLEEP_REFUSAL_IN_MESSAGE.test(error?.message ?? '')) {
           resentAfterSleep = true;
           const slept = await waitForNextSleep(peripheral.id, FIRST_SLEEP_WAIT_MS, options?.signal);
           if (options?.signal?.aborted) throw new Error('COMMAND_CANCELLED');

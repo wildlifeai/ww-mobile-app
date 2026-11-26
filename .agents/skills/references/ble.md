@@ -206,7 +206,8 @@ day are in [traps.md](traps.md).
   no `Captured`; `capture` and `captureBurst` fail on it (`CAPTURE_FAILED_LINE`) with the
   camera's line as the error message, never retried. Between a cold boot and the first sleep the
   same firmware answers `AI capture` and `AI light` with
-  `Error: no captures until after the first sleep.` (`FIRST_SLEEP_REFUSAL`), and
+  `Error: no captures until after the first sleep.`, and once it is on its way to sleep, with
+  `Error: going to sleep, try again.` (Seeed #296's fix). Both are `SLEEP_REFUSAL`:
   `runCommandPipeline` waits for the next Sleep and sends the command once more, so no flow
   handles it again. A new command that captures adds both to its `failureRegex`, and a flow
   that follows the text stream instead, as the motion test does, ends on the failure line

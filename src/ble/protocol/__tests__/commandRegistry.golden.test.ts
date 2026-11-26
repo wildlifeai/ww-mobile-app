@@ -243,10 +243,27 @@ describe('commandRegistry golden wire format', () => {
         expect(read('OK')).toBe('sent')
         expect(read('Not joined yet.')).toBe('not_joined')
         expect(read('Busy')).toBe('busy')
+        // BLE 0.30.56 and later, with op32 at 0 (#535)
+        expect(read("LoRaWAN is off. Use 'AI setop 32 <minutes>' or 'join'")).toBe('off')
         // The nRF's unprompted LoRaWAN lines, and what the app used to wait for
         for (const line of ['Joined.', 'Already joined', 'Unconfirmed uplink message sent.', 'Pong', 'Not Joined']) {
             expect(commandRegistry.ping().match(line)).toBe(false)
         }
+    })
+
+    // ww-hardware PR #81 relays a server's op get or set by downlink to the AI
+    // processor, and its reply reaches a connected phone unasked (#535)
+    it('takes only the reply for the op it asked about', () => {
+        const getop = commandRegistry.getop(19)
+        expect(getop.match('OpParam 1 = 7')).toBe(false)
+        expect(getop.match('OpParam 190 = 7')).toBe(false)
+        expect(getop.match('OpParam 19 = 1')).toBe(true)
+
+        const setop = commandRegistry.setop({ index: 26, value: 0 })
+        expect(setop.match('Set OpParam 2 = 0')).toBe(false)
+        expect(setop.match('Set OpParam 260 = 0')).toBe(false)
+        expect(setop.match('OpParam 32 = 240')).toBe(false)
+        expect(setop.match('Set OpParam 26 = 0')).toBe(true)
     })
 
     it('names each firmware update error code for the step xip_manager.c returns it from', () => {

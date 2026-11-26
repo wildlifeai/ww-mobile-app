@@ -43,6 +43,9 @@ const ALIASES = {
     AI_PROC: 'AI_PROC_NOT_RESPONDING',
     AI_NO_CAM: 'AI_NO_MAIN_CAMERA',
     AI_NO_MD: 'AI_NO_HM0360',
+    // Bit 12 is CONFIG.TXT damaged on Seeed branch 261125_countersLost, and
+    // still the never-fitted microphone on dev. Remove once that branch merges (#535).
+    AI_PDM_ERROR: 'AI_CONFIG_DAMAGED',
 }
 
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')

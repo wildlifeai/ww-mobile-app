@@ -22,6 +22,8 @@ const peripheral = { id: DEVICE_ID, name: 'Sim', rssi: -50, connected: true } as
 const mockWrite = transport.writeToDevice as jest.Mock;
 
 const REFUSAL = 'Error: no captures until after the first sleep.';
+// Seeed #296's fix, branch 261125_countersLost: refused while on the way to sleep (#535)
+const GOING_TO_SLEEP = 'Error: going to sleep, try again.';
 const FAILED = 'Capture failed after 1 of 3 images: EDM WDT2 timeout';
 
 const reply = (line: string) => rxRouter.handleIncomingBytes(DEVICE_ID, Buffer.from(`${line}\n`));
@@ -78,6 +80,16 @@ describe('a command refused before the first sleep (#476)', () => {
     await expect(run(() => commandRegistry.capture(1, 500))).resolves.toBe('IMAGE001.JPG');
     expect(mockWrite).toHaveBeenCalledTimes(2);
     expect(mockWrite.mock.calls.map((call) => call[1])).toEqual(['AI capture 1 500', 'AI capture 1 500']);
+  });
+
+  it('sends a capture refused while going to sleep again after that Sleep (#535)', async () => {
+    answerWrites([
+      [[20, GOING_TO_SLEEP], [80, 'Sleep']],
+      [[20, 'Captured 1 images. Last is IMAGE002.JPG']],
+    ]);
+
+    await expect(run(() => commandRegistry.capture(1, 500))).resolves.toBe('IMAGE002.JPG');
+    expect(mockWrite).toHaveBeenCalledTimes(2);
   });
 
   it('sends `AI light` again the same way, and never treats the refusal as a missing command', async () => {
