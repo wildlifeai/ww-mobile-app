@@ -49,7 +49,6 @@ jest.mock("../../../../src/services/supabase", () => ({
 	getSupabaseClient: () => mockSupabaseClient,
 	initializeSupabaseClient: () => Promise.resolve(mockSupabaseClient),
 	reconnectSupabase: () => Promise.resolve(mockSupabaseClient),
-	onSupabaseClientChange: jest.fn(() => jest.fn()),
 	resetSupabaseClient: jest.fn(),
 	getCurrentEnvironment: jest.fn(() => null),
 }))

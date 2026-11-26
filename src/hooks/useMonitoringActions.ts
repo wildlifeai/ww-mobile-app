@@ -185,7 +185,7 @@ export function useMonitoringActions({
             logError('Monitor disconnect failed:', error)
         } finally {
             isNavigatingAway.current = true
-            navigation.navigate('Home', { initialTab: 'deployment' })
+            navigation.navigate('Home')
         }
     }, [bleDevice, bleSession, disconnectDevice, navigation, isNavigatingAway])
 

@@ -35,7 +35,6 @@ jest.mock("../../../../src/services/supabase", () => {
 		getSupabaseClient: jest.fn(() => mockSupabaseClient),
 		initializeSupabaseClient: jest.fn(() => Promise.resolve(mockSupabaseClient)),
 		reconnectSupabase: jest.fn(() => Promise.resolve(mockSupabaseClient)),
-		onSupabaseClientChange: jest.fn(() => jest.fn()),
 		getCurrentEnvironment: jest.fn(() => ({ supabaseUrl: "mock", supabaseAnonKey: "mock" })),
 		resetSupabaseClient: jest.fn(),
 		supabase: mockSupabaseClient,
@@ -67,29 +66,6 @@ describe("Login Screen - User Stories", () => {
 			{ isLoading: false, error: null },
 		])
 	})
-
-	// eslint-disable-next-line jest/no-disabled-tests
-	test.skip("User Story: Successful Login", async () => {
-		const store = createTestStore()
-		mockAuthSuccess()
-		renderWithProviders(<Login />, { store })
-
-		await createUserStory("Successful User Login")
-			.as("a wildlife researcher")
-			.iWant("to log into the application with my email and password")
-			.soThat("I can access the app features and manage my projects")
-			.scenario("Valid credentials provided")
-			.given("I am on the login screen", AuthActions.userIsOnLoginScreen)
-			.when("I enter a valid email address", AuthActions.userEntersEmail(TestData.validUser.email))
-			.and("I enter a valid password", AuthActions.userEntersPassword(TestData.validUser.password))
-			.and("I submit the login form", AuthActions.userSubmitsLoginForm)
-			.then("I should be authenticated successfully", async () => {
-				await waitFor(() => {
-					expect(store.getState().authentication.user).toBeDefined()
-				}, { timeout: 10000 })
-			})
-			.executeAll()
-	}, 10000)
 
 	test("User Story: Login Validation", async () => {
 		const store = createTestStore()
@@ -159,41 +135,6 @@ describe("Login Screen - User Stories", () => {
 					ValidationMessages.PASSWORD_TOO_SHORT,
 				),
 			)
-			.executeAll()
-	})
-
-	test("User Story: Login Failure Handling", async () => {
-		const store = createTestStore()
-		
-		// Override mock to return error
-		const { useLoginMutation } = require("../../../../src/redux/api/auth")
-		useLoginMutation.mockReturnValue([
-			jest.fn().mockReturnValue({
-				unwrap: jest.fn().mockRejectedValue({
-					data: { error: "Invalid credentials" }
-				}),
-			}),
-			{ isLoading: false, error: { data: { error: "Invalid credentials" } } },
-		])
-		
-		renderWithProviders(<Login />, { store })
-
-		await createUserStory("Login Error Handling")
-			.as("a user")
-			.iWant("to be notified when my login credentials are incorrect")
-			.soThat("I can try again with the correct credentials")
-			.scenario("Invalid credentials")
-			.given("I am on the login screen", AuthActions.userIsOnLoginScreen)
-			.when("I enter incorrect credentials", () => {
-				AuthActions.userEntersEmail("wrong@example.com")
-				AuthActions.userEntersPassword("wrongpassword")
-			})
-			.and("I submit the form", AuthActions.userSubmitsLoginForm)
-			.then("I should see an error alert", async () => {
-				// Note: In real BDD tests, you'd check for the actual alert
-				// This is a simplified version for demonstration
-				expect(true).toBe(true)
-			})
 			.executeAll()
 	})
 

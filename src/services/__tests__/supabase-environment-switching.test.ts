@@ -17,7 +17,6 @@
 let initializeSupabaseClient: any
 let getSupabaseClient: any
 let reconnectSupabase: any
-let onSupabaseClientChange: any
 let getCurrentEnvironment: any
 let resetSupabaseClient: any
 import {
@@ -86,7 +85,6 @@ describe("Supabase Client Environment Switching", () => {
         initializeSupabaseClient = supabaseModule.initializeSupabaseClient
         getSupabaseClient = supabaseModule.getSupabaseClient
         reconnectSupabase = supabaseModule.reconnectSupabase
-        onSupabaseClientChange = supabaseModule.onSupabaseClientChange
         getCurrentEnvironment = supabaseModule.getCurrentEnvironment
         resetSupabaseClient = supabaseModule.resetSupabaseClient
 
@@ -234,17 +232,6 @@ describe("Supabase Client Environment Switching", () => {
 			)
 		})
 
-		it("should emit client-changed event after reconnection", async () => {
-			await initializeSupabaseClient()
-
-			const mockCallback = jest.fn()
-			onSupabaseClientChange(mockCallback)
-
-			await reconnectSupabase()
-
-			expect(mockCallback).toHaveBeenCalledTimes(1)
-		})
-
 		it("should handle errors during cleanup gracefully", async () => {
 			const client1 = await initializeSupabaseClient()
 			const mockRemoveChannels = (client1 as any).removeAllChannels as jest.Mock
@@ -270,72 +257,6 @@ describe("Supabase Client Environment Switching", () => {
 
 			expect(client).toBeDefined()
 			expect(mockCreateClient).toHaveBeenCalledTimes(1)
-		})
-	})
-
-	describe("onSupabaseClientChange", () => {
-		it("should register callback for client changes", async () => {
-			await initializeSupabaseClient()
-
-			const mockCallback = jest.fn()
-			const unsubscribe = onSupabaseClientChange(mockCallback)
-
-			await reconnectSupabase()
-
-			expect(mockCallback).toHaveBeenCalledTimes(1)
-			expect(typeof unsubscribe).toBe("function")
-		})
-
-		it("should unsubscribe callback when unsubscribe function is called", async () => {
-			await initializeSupabaseClient()
-
-			const mockCallback = jest.fn()
-			const unsubscribe = onSupabaseClientChange(mockCallback)
-
-			unsubscribe()
-
-			await reconnectSupabase()
-
-			expect(mockCallback).not.toHaveBeenCalled()
-		})
-
-		it("should support multiple subscribers", async () => {
-			await initializeSupabaseClient()
-
-			const callback1 = jest.fn()
-			const callback2 = jest.fn()
-
-			onSupabaseClientChange(callback1)
-			onSupabaseClientChange(callback2)
-
-			await reconnectSupabase()
-
-			expect(callback1).toHaveBeenCalledTimes(1)
-			expect(callback2).toHaveBeenCalledTimes(1)
-		})
-
-		it("should handle callback errors gracefully", async () => {
-			await initializeSupabaseClient()
-
-			const errorCallback = jest.fn(() => {
-				throw new Error("Callback error")
-			})
-			const validCallback = jest.fn()
-
-			onSupabaseClientChange(validCallback)
-			onSupabaseClientChange(errorCallback)
-
-			const consoleErrorSpy = jest
-				.spyOn(console, "error")
-				.mockImplementation(() => { })
-
-			await reconnectSupabase()
-
-			expect(errorCallback).toHaveBeenCalledTimes(1)
-			expect(validCallback).toHaveBeenCalledTimes(1)
-			expect(consoleErrorSpy).toHaveBeenCalled()
-
-			consoleErrorSpy.mockRestore()
 		})
 	})
 
@@ -409,15 +330,11 @@ describe("Supabase Client Environment Switching", () => {
 			})
 
 			// Step 3: Reconnect
-			const callback = jest.fn()
-			onSupabaseClientChange(callback)
-
 			const client2 = await reconnectSupabase()
 
 			// Verify cleanup and recreation
 			expect((client1 as any).removeAllChannels).toHaveBeenCalled()
 			expect((client2 as any)._url).toBe("https://cloud.supabase.co")
-			expect(callback).toHaveBeenCalled()
 
 			// Step 4: Verify new client is active
 			const activeClient = getSupabaseClient()
@@ -450,29 +367,6 @@ describe("Supabase Client Environment Switching", () => {
 	})
 
 	describe("Memory management", () => {
-		it("should not leak event listeners on multiple reconnects", async () => {
-			await initializeSupabaseClient()
-
-			const callback = jest.fn()
-			const unsubscribe = onSupabaseClientChange(callback)
-
-			// Multiple reconnects
-			await reconnectSupabase()
-			await reconnectSupabase()
-			await reconnectSupabase()
-
-			// Should be called 3 times (once per reconnect)
-			expect(callback).toHaveBeenCalledTimes(3)
-
-			// Cleanup
-			unsubscribe()
-
-			await reconnectSupabase()
-
-			// Should still be 3 (not called after unsubscribe)
-			expect(callback).toHaveBeenCalledTimes(3)
-		})
-
 		it("should cleanup subscriptions on each reconnect", async () => {
 			const client1 = await initializeSupabaseClient()
 			await reconnectSupabase()

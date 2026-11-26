@@ -80,7 +80,7 @@ export const StartMonitoringDetailsStep = () => {
         navigation.setOptions({ title })
     }, [device?.name, bleDevice?.name, navigation, isMonitoring])
 
-    // Reset DFU flag when this screen regains focus (after returning from FirmwareUpdateScreen)
+    // Reset DFU flag when this screen regains focus (after returning from SoftwareUpdateScreen)
     useEffect(() => {
         const unsubscribe = navigation.addListener('focus', () => {
             if (isDfuInProgress.current) {

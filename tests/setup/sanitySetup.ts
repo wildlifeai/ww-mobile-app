@@ -58,7 +58,6 @@ beforeEach(() => {
         supabaseService.getSupabaseClient.mockImplementation(() => mockClient);
         supabaseService.initializeSupabaseClient.mockImplementation(() => Promise.resolve(mockClient));
         supabaseService.reconnectSupabase.mockImplementation(() => Promise.resolve(mockClient));
-        supabaseService.onSupabaseClientChange.mockImplementation(() => jest.fn());
     }
 });
 
@@ -451,7 +450,6 @@ jest.mock("../../src/services/supabase", () => {
         getSupabaseClient: jest.fn(() => mockClient),
         initializeSupabaseClient: jest.fn(() => Promise.resolve(mockClient)),
         resetSupabaseClient: jest.fn(),
-        onSupabaseClientChange: jest.fn(() => jest.fn()),
         reconnectSupabase: jest.fn(() => Promise.resolve(mockClient)),
         getCurrentEnvironment: jest.fn(() => null),
     };

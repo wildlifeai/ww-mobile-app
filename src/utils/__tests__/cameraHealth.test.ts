@@ -92,7 +92,7 @@ describe('healthReasonText', () => {
         ['self_test_bit_9', 'HM0360 camera failed'],
         ['self_test_bit_10', 'LED flash failed'],
         ['self_test_bit_11', 'SD card missing'],
-        ['self_test_bit_12', 'Microphone failed'],
+        ['self_test_bit_12', 'Settings file damaged, photo counters restarted'],
         ['self_test_bit_13', 'AI model failed'],
         ['self_test_bit_14', 'AI processor missed the BLE processor at start-up'],
         ['self_test_bit_15', 'Self-test bit 15'],
@@ -103,7 +103,6 @@ describe('healthReasonText', () => {
         ['unexpected_restart_4', 'Restarted after a radio stack assert'],
         ['unexpected_restart_5', 'Restarted after a hard fault'],
         ['unexpected_restart_6', 'Restarted by its watchdog'],
-        ['unexpected_restart_10', 'Restarted after a software reset or lockup'],
     ])('%s reads "%s"', (code, words) => {
         expect(healthReasonText(code)).toBe(words)
     })

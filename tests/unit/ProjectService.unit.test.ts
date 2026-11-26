@@ -4,7 +4,6 @@ describe('ProjectService Unit Test', () => {
     let ProjectService: any;
     let database: any;
     let OutboxService: any;
-    let InvitationService: any;
     let mockGetUser: jest.Mock;
     let mockFrom: jest.Mock;
     let mockCollection: any;
@@ -89,14 +88,6 @@ describe('ProjectService Unit Test', () => {
             },
         }));
 
-        // 4. Mock InvitationService
-        jest.mock('../../src/services/InvitationService', () => ({
-            __esModule: true,
-            default: {
-                sendInvitation: jest.fn(() => Promise.resolve('invitation-id')),
-            },
-        }));
-
         // 5. Mock Supabase Client
         // ProjectService reads the user from the stored session (#310), under the
         // client's own storage key, rather than asking auth-js for one.
@@ -116,7 +107,6 @@ describe('ProjectService Unit Test', () => {
             })),
             initializeSupabaseClient: jest.fn(),
             reconnectSupabase: jest.fn(),
-            onSupabaseClientChange: jest.fn(),
             resetSupabaseClient: jest.fn(),
             getCurrentEnvironment: jest.fn(),
         }));
@@ -125,7 +115,6 @@ describe('ProjectService Unit Test', () => {
         ProjectService = require('../../src/services/ProjectService').default;
         database = require('../../src/database').default;
         OutboxService = require('../../src/services/OutboxService').default;
-        InvitationService = require('../../src/services/InvitationService').default;
 
         // Setup default mock responses
         mockGetUser.mockResolvedValue({
@@ -408,13 +397,5 @@ describe('ProjectService Unit Test', () => {
             tableName: 'projects',
             recordId: 'test-project-id',
         }));
-    });
-
-    // #308: looking the address up in public.users told the caller whether an account existed
-    it('should add a member by invitation, without looking the email up', async () => {
-        await ProjectService.addProjectMember('test-project-id', 'tama@ww.org', 'project_member');
-
-        expect(InvitationService.sendInvitation).toHaveBeenCalledWith('test-project-id', 'tama@ww.org', 'project_member');
-        expect(mockFrom).not.toHaveBeenCalled();
     });
 });

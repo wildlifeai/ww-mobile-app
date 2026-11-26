@@ -1,5 +1,5 @@
 import {
-	finishSummary, friendlyVersion, missingFirmware, transferLine, unfinishedLine, updateResult, updateStep, updateSummary,
+	finishSummary, friendlyVersion, missingFirmware, transferLine, unfinishedLine, updateStep,
 } from '../firmwareWords'
 
 // #344: the operator sees builds and releases in words, never raw build strings
@@ -20,28 +20,6 @@ describe('friendlyVersion', () => {
 	})
 })
 
-describe('updateSummary', () => {
-	it('says from which version to which', () => {
-		expect(updateSummary('WW500_C02 04:18:11 Sep 23 2026', 'WW500_C02 20:26:50 Sep 30 2026'))
-			.toBe('Update from the 23 Sep build to the 30 Sep build.')
-	})
-
-	it('gives the times when both builds are from the same day', () => {
-		expect(updateSummary('WW500_C02 00:07:16 Oct  1 2026', 'WW500_C02 03:34:43 Oct  1 2026'))
-			.toBe('Update from the 1 Oct 00:07 build to the 1 Oct 03:34 build.')
-	})
-
-	it('says up to date when it is', () => {
-		expect(updateSummary('00.30.52', '0.30.52', true)).toBe('Up to date: 0.30.52.')
-	})
-
-	it('leaves out a current version it could not read', () => {
-		expect(updateSummary('Unknown', '0.30.52')).toBe('Update to 0.30.52.')
-		expect(updateSummary(null, null)).toBe('Update to the latest firmware.')
-	})
-})
-
-// #437: with one camera's build in the catalogue the update names the camera it waits for
 describe('missingFirmware', () => {
 	it('names the camera the way the update screen names its image', () => {
 		expect(missingFirmware('RP3')).toBe("The colour camera's new firmware is not available yet")
@@ -95,13 +73,6 @@ describe('updateStep', () => {
 		expect(updateStep('ble', 'downloading', null)).toBe('Downloading')
 		expect(updateStep('ble', 'scanning', null)).toBe('Preparing the camera')
 		expect(updateStep('ble', 'flashing', null)).toBe('Installing')
-	})
-})
-
-describe('updateResult', () => {
-	it('gives the new version, or says the camera finishes it on restart', () => {
-		expect(updateResult('WW500_C02 20:26:50 Sep 30 2026')).toBe('Updated to the 30 Sep build.')
-		expect(updateResult(null)).toBe('Update sent. The camera finishes it the next time it restarts.')
 	})
 })
 

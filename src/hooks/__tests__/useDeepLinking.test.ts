@@ -270,35 +270,6 @@ describe("useDeepLinking Hook", () => {
 		})
 	})
 
-	// eslint-disable-next-line jest/no-disabled-tests
-	test.skip("should log appropriate messages for debugging", async () => {
-		const consoleSpy = jest.spyOn(console, "log").mockImplementation()
-
-		renderHook(() => useDeepLinking())
-
-		// Ensure handler was captured
-		expect(capturedURLHandler).toBeDefined()
-
-		// Simulate receiving password reset URL
-		if (capturedURLHandler) {
-			capturedURLHandler({ url: mockDeepLinks.passwordReset })
-		}
-
-		await waitFor(() => {
-			expect(consoleSpy).toHaveBeenCalledWith("useDeepLinking hook initialized")
-			expect(consoleSpy).toHaveBeenCalledWith(
-				"Processing deep link:",
-				mockDeepLinks.passwordReset,
-			)
-			expect(consoleSpy).toHaveBeenCalledWith("Found reset-password in path")
-			expect(consoleSpy).toHaveBeenCalledWith(
-				"Navigating to ForgotPassword with token",
-			)
-		})
-
-		consoleSpy.mockRestore()
-	})
-
 	test("should handle malformed URLs gracefully", async () => {
 		// Mock parse to simulate malformed URL
 		mockLinking.parse.mockReturnValue({

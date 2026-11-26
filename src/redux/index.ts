@@ -9,22 +9,16 @@ import logsReducer from "./slices/logsSlice"
 import scanningReducer from "./slices/scanningSlice"
 import authReducer from "./slices/authSlice"
 import deploymentsReducer from "./slices/deploymentsSlice"
-import wwAdminReducer from "./slices/wwAdminSlice"
 import syncReducer from "./slices/syncSlice"
-import networkReducer from "./slices/networkSlice"
 import locationReducer from "./slices/locationSlice"
 import { Action, ThunkAction, configureStore } from "@reduxjs/toolkit"
 import { api } from "./api"
-import { enhancedApi } from "./api/enhanced"
 import { projectsApi } from "./api/projectsApi"
-import { aiModelsApi } from "./api/aiModelsApi"
 
 const store = configureStore({
 	reducer: {
 		[api.reducerPath]: api.reducer,
-		[enhancedApi.reducerPath]: enhancedApi.reducer,
 		[projectsApi.reducerPath]: projectsApi.reducer,
-		[aiModelsApi.reducerPath]: aiModelsApi.reducer,
 		devices: devicesReducer,
 		logs: logsReducer,
 		scanning: scanningReducer,
@@ -34,9 +28,7 @@ const store = configureStore({
 		androidPermissions: androidPermissionsReducer,
 		authentication: authReducer,
 		deployments: deploymentsReducer,
-		wwAdmin: wwAdminReducer,
 		sync: syncReducer,
-		network: networkReducer,
 		location: locationReducer,
 	},
 	middleware: (getDefaultMiddleware) =>
@@ -47,9 +39,7 @@ const store = configureStore({
 			immutableCheck: { warnAfter: 1000 },
 		}).concat(
 			api.middleware,
-			enhancedApi.middleware,
 			projectsApi.middleware,
-			aiModelsApi.middleware,
 		),
 })
 

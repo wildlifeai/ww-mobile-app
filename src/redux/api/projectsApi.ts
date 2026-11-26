@@ -108,14 +108,12 @@ export const projectsApi = createApi({
 					: [{ type: "Projects", id: "LIST" }],
 		}),
 
-		// Get single project by ID
-		// NOTE: This still uses Supabase view - will be migrated to local DB in future
+		// Get single project by ID, from the phone's database
 		getProjectById: builder.query<ProjectWithDetails | null, string>({
 			queryFn: async (projectId) => {
 				log("📂 RTK Query - getProjectById:", projectId)
 
 				try {
-					// TODO Phase 3.5: Migrate to local database lookup
 					const data = await ProjectService.getProjectById(projectId)
 					return { data }
 				} catch (error) {
@@ -190,35 +188,6 @@ export const projectsApi = createApi({
 			],
 		}),
 
-		// Delete project (soft delete)
-		// PHASE 3: Always deletes locally first, then syncs
-		deleteProject: builder.mutation<void, string>({
-			queryFn: async (projectId) => {
-				log("📤 RTK Query - deleteProject (offline-first):", projectId)
-
-				try {
-					// ProjectService now ALWAYS deletes from local database and queues sync
-					await ProjectService.deleteProject(projectId)
-					log(
-						"✅ RTK Query - deleteProject succeeded (deleted locally)",
-					)
-					return { data: undefined }
-				} catch (error) {
-					logError("❌ RTK Query - deleteProject failed:", error)
-					return {
-						error: {
-							status: "CUSTOM_ERROR",
-							error: error instanceof Error ? error.message : String(error),
-						},
-					}
-				}
-			},
-			invalidatesTags: (result, error, id) => [
-				{ type: "Projects", id },
-				{ type: "Projects", id: "LIST" },
-			],
-		}),
-
 		// Get project members
 		getProjectMembers: builder.query<ProjectMemberWithProfile[], string>({
 			queryFn: async (projectId) => {
@@ -235,29 +204,6 @@ export const projectsApi = createApi({
 				}
 			},
 			providesTags: (result, error, projectId) => [
-				{ type: "ProjectMembers", id: projectId },
-			],
-		}),
-
-		// Add project member
-		addProjectMember: builder.mutation<
-			void,
-			{ projectId: string; email: string; role: 'project_admin' | 'project_member' }
-		>({
-			queryFn: async ({ projectId, email, role }) => {
-				try {
-					await ProjectService.addProjectMember(projectId, email, role)
-					return { data: undefined }
-				} catch (error) {
-					return {
-						error: {
-							status: "CUSTOM_ERROR",
-							error: error instanceof Error ? error.message : String(error),
-						},
-					}
-				}
-			},
-			invalidatesTags: (result, error, { projectId }) => [
 				{ type: "ProjectMembers", id: projectId },
 			],
 		}),
@@ -360,9 +306,7 @@ export const {
 	useGetProjectByIdQuery,
 	useCreateProjectMutation,
 	useUpdateProjectMutation,
-	useDeleteProjectMutation,
 	useGetProjectMembersQuery,
-	useAddProjectMemberMutation,
 	useRemoveProjectMemberMutation,
 	useGetCaptureMethodsQuery,
 	useGetActivitySensitivityQuery,

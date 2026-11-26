@@ -18,8 +18,6 @@ interface FirmwareComponentCardProps {
     spacing: number
     isChecking: boolean
     isConnected: boolean
-    /** Opened from the Engineer Console: Update stays offered when up to date */
-    engineer: boolean
     /**
      * Bluetooth only: the AI processor has an update waiting, not yet half
      * done, so this card offers no update until it has run (#527)
@@ -47,7 +45,7 @@ const statusLine = (status: FirmwareComponentStatus): string => {
     return current ? `Up to date: ${current}` : 'Version unknown'
 }
 
-const FirmwareComponentCard = ({ title, status, colors, spacing, isChecking, isConnected, engineer, waitsForAi, onUpdate }: FirmwareComponentCardProps) => (
+const FirmwareComponentCard = ({ title, status, colors, spacing, isChecking, isConnected, waitsForAi, onUpdate }: FirmwareComponentCardProps) => (
     <View style={[styles.card, { backgroundColor: colors.surfaceVariant, marginBottom: spacing }]}>
         <WWText variant="titleMedium" style={{ color: colors.onSurfaceVariant }}>
             {title}
@@ -60,7 +58,7 @@ const FirmwareComponentCard = ({ title, status, colors, spacing, isChecking, isC
                 {BLE_WAITS_FOR_AI}
             </WWText>
         )}
-        {!waitsForAi && (status.isOutdated || engineer) && (
+        {!waitsForAi && (
             <Button
                 mode="contained"
                 style={styles.marginTop12}
@@ -79,8 +77,6 @@ export const FirmwareStatusScreen = () => {
     const { colors, spacing } = useExtendedTheme()
 
     const deviceId = route.params?.deviceId
-    // Opened from the Engineer Console: the update screens it opens are its view (#344)
-    const engineer: boolean = route.params?.engineer ?? false
     const device = useAppSelector(state => state.devices[deviceId || ''])
     const isFocused = useIsFocused()
 
@@ -124,9 +120,8 @@ export const FirmwareStatusScreen = () => {
                             spacing={spacing}
                             isChecking={isChecking}
                             isConnected={!!device?.connected}
-                            engineer={engineer}
                             waitsForAi={bleUpdateWaits(statuses)}
-                            onUpdate={() => navigation.navigate('FirmwareUpdateScreen', { deviceId, target: 'ble', engineer })}
+                            onUpdate={() => navigation.navigate('FirmwareUpdateScreen', { deviceId, target: 'ble' })}
                         />
                         
                         <FirmwareComponentCard
@@ -136,8 +131,7 @@ export const FirmwareStatusScreen = () => {
                             spacing={spacing}
                             isChecking={isChecking}
                             isConnected={!!device?.connected}
-                            engineer={engineer}
-                            onUpdate={() => navigation.navigate('FirmwareUpdateScreen', { deviceId, target: 'himax', engineer })}
+                            onUpdate={() => navigation.navigate('FirmwareUpdateScreen', { deviceId, target: 'himax' })}
                         />
 
                     </>

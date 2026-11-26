@@ -14,7 +14,6 @@ const mockState = {
 	scanning: { isEngineerConsoleActive: false },
 	authentication: { user: { id: 'user-1' }, currentOrganisation: { id: 'org-1' } },
 	sync: { hasCompletedInitialSync: true, isGlobalSyncing: false },
-	network: { isOnline: true },
 }
 const mockNavigation = { navigate: jest.fn(), isFocused: jest.fn(() => true) }
 const mockBleActions = {

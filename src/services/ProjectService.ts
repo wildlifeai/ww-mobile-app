@@ -20,7 +20,6 @@ import type {
 	CreateProjectInput,
 } from "../types/project"
 import UserRoleService from './UserRoleService'
-import InvitationService from './InvitationService'
 import UserRole from '../database/models/UserRole'
 import { managedOrganisationIds, projectRoleIds, seesEverything, seesOrganisation } from './roleAccess'
 import { log, logError } from '../utils/logger'
@@ -468,29 +467,6 @@ class ProjectService {
 		} catch (error) {
 			logError("Failed to fetch project members:", error)
 			return []
-		}
-	}
-
-	/**
-	 * Add member to project, by inviting their email address
-	 * Goes through the send_project_invitation RPC, which never looks the
-	 * invitee up (#308). Looking them up in public.users told the caller
-	 * whether an account existed, and could not invite anyone who had not
-	 * signed up yet. The invitation waits until that email signs in.
-	 */
-	async addProjectMember(
-		projectId: string,
-		email: string,
-		role: 'project_admin' | 'project_member'
-	): Promise<void> {
-		try {
-			const currentUserId = await this.getCurrentUserId()
-			if (!currentUserId) throw new Error("User not authenticated")
-
-			await InvitationService.sendInvitation(projectId, email, role)
-		} catch (error) {
-			logError("Failed to add project member:", error)
-			throw error
 		}
 	}
 

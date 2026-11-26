@@ -14,7 +14,6 @@ module.exports = {
 	moduleNameMapper: {
 		"^@/(.*)$": "<rootDir>/src/$1",
 		"^@test/(.*)$": "<rootDir>/tests/setup/$1",
-		"expo-updates": "<rootDir>/tests/__mocks__/expo-updates.ts",
 		"expo-secure-store": "<rootDir>/tests/__mocks__/expo-secure-store.ts",
 		"expo-file-system/legacy": "<rootDir>/tests/__mocks__/expo-file-system-legacy.ts",
 		"react-native-drawer-layout": "<rootDir>/tests/__mocks__/react-native-drawer-layout.tsx",
