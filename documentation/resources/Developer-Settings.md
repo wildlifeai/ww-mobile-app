@@ -19,8 +19,9 @@ Closes the two gaps carried over from the July 2026 documentation audit, filed a
 | Developer Settings | `DeveloperSettings` | Settings, then Developer Options, then Developer Settings. The whole section is wrapped in `__DEV__`, so it is invisible in a release build |
 | Dev Build Info | `DevBuildInfo` | The side navigation drawer |
 
-Both are registered in `src/navigation/index.tsx` alongside the ordinary screens. The gate is
-on the entry point, not on the route, so a release build still has the routes compiled in.
+Both routes, and a third, `AuthTestScreen` (Auth Test, also in the drawer), are registered
+inside `__DEV__` in `src/navigation/index.tsx`, and their drawer entries are inside `__DEV__`
+too, so a release build has neither the routes nor the way in.
 
 ## Developer Settings: the environment switcher
 

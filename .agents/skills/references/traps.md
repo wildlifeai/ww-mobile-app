@@ -68,20 +68,13 @@ file is the list of things that look like an app bug and are not, and the revers
   update restarts the camera after each image and checks `AI slots` before each write, and the
   phone that ran it keeps a record so it can be finished; see
   [Himax-Firmware-Update.md](../../../documentation/resources/Himax-Firmware-Update.md#an-update-that-stopped-between-images).
-- **A selected flash does not mean a flash.** op13 only chooses the LED; the firmware fires it
-  on a capture only when its last light decision, op25, was DARK, and the check after every
-  capture rewrites op25. In a lit room the LED never fires whatever the app selected, and that
-  is not an app bug. Before touching the app, isolate it in three console commands:
-  `AI flash 50 500` lights the white LED directly, proving hardware and command path, and
-  quietly stores 500 in op12, the RP3 capture flash length, which the next sleep saves;
-  `AI getop 25` shows the gate; and `AI setop 25 1` followed by `AI capture 1 500` proves the
-  capture path can fire it. Bench-proven 3 September 2026. Capture Picture forces it for now by
-  writing op25 = 1 before a capture with a flash chosen, marked `TODO(flash-mode-op)` in
-  `useCapturePicture.ts`. Do not copy that elsewhere. It is a stand-in for the always-on mode
-  Charles is adding behind a new op parameter, `flash_led_modes_proposal.md` on `ae_review`,
-  proposed from index 32, which this app already uses for `CAM_RESOLUTION` and 33 for
-  `MD_BLOCK_NUM_MAX`. Agree the index before either side ships, Seeed #209, then replace the
-  op25 write with the new parameter.
+- **A selected flash does not mean a flash.** op13 only picks the LED and op34 the mode, and
+  op25, the last light verdict, gates the flash only in the light-sensor mode (op34 = 1). In
+  that mode a lit room never fires the LED, whatever the app selected, and that is not an app bug.
+  Isolate it with the console commands in
+  [Light-Sensor.md](../../../documentation/resources/Light-Sensor.md#how-the-decision-reaches-the-flash-led)
+  before touching the app. `AI flash 50 500` among them also stores 500 in op12, which the next
+  sleep saves.
 - **A sleeping camera whose LED blinks at the motion rate is its STROBE, armed by settings, not a
   fault.** On the way into Deep Power Down the firmware arms the HM0360's STROBE when op11 is
   non-zero, op21 names an LED and the flash is armed with op13 set, and from then on op21's LED
@@ -320,11 +313,11 @@ file is the list of things that look like an app bug and are not, and the revers
   that also submits, a failed submission that shows nothing in the web console until re-run
   from the CLI, and store identifiers that must match EAS's credential records rather than
   memory. Read that guide before dispatching a build or a submission.
-- **Version bumps are six files.** `package.json`, `app.config.ts` twice,
-  `android/app/build.gradle` twice, `strings.xml`, and `package-lock.json`, which is only
-  refreshed by `npm install` and sat three versions behind until August 2026. Because
-  `android/` is tracked, EAS reads the *native* values and ignores `app.config.ts`.
-  `npm run version:check` catches all six.
+- **A version bump is five files, and `package-lock.json` is one of them.** It is refreshed
+  only by `npm install`, so it is the one left behind. Because `android/` is tracked, EAS reads
+  the *native* values and ignores `app.config.ts`. The files are listed in
+  [publishing_guide.md](../../../documentation/resources/publishing_guide.md#release-process),
+  and `npm run version:check` catches a miss.
 - **`supabase gen types` needs auth and lies about failing.** It requires `npx supabase login`
   or `SUPABASE_ACCESS_TOKEN`, and on failure it **exits 0** while printing a JSON error blob to
   stdout. Any `cmd > file` capture therefore writes the error into the file. The script now

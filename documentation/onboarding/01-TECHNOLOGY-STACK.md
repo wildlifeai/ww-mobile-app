@@ -8,13 +8,9 @@ Wildlife Watcher is a React Native mobile app that communicates with wildlife ca
 
 ## Core Framework
 
-| Technology | Version | Source |
-|-----------|---------|--------|
-| React Native | 0.81.5 | [package.json](../../package.json) |
-| React | 19.1.0 | |
-| TypeScript | ~5.9.2 | |
-| Expo SDK | ~54.0.32 | Prebuild ("bare") workflow — `android/` is tracked in git |
-| Node.js | ≥20 | |
+React Native and React, TypeScript, and the Expo SDK in the prebuild ("bare") workflow:
+`android/` is tracked in git. Node.js 22 or later. Every version, Node's `engines` included, is in
+[package.json](../../package.json).
 
 **Key concepts for web developers:**
 - Components render to native views (not DOM) — no CSS files, use `StyleSheet` API
@@ -38,7 +34,7 @@ Wildlife Watcher is a React Native mobile app that communicates with wildlife ca
 
 The app wraps `<MainNavigation />` in a tree of context providers. The nesting order matters — inner providers can access outer ones.
 
-> For the full provider hierarchy diagram, see [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md#srcapptsx--provider-hierarchy).
+> For the full provider hierarchy diagram, see [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md#srcapptsx-provider-hierarchy).
 
 > [!NOTE]
 > `SupabaseSyncService.setStore(store)` is called **before** the provider tree renders. This injects the Redux store into the sync service to avoid a circular dependency.
@@ -49,33 +45,9 @@ The app wraps `<MainNavigation />` in a tree of context providers. The nesting o
 
 ### Redux Toolkit
 
-**Version:** ^2.5.0
-
-**Store:** [redux/index.ts](../../src/redux/index.ts)
-
-| Reducer | Slice | Purpose |
-|---------|-------|---------|
-| `api` | RTK Query | Base API |
-| `enhancedApi` | RTK Query | Auto-generated endpoints |
-| `projectsApi` | RTK Query | Project-specific queries |
-| `aiModelsApi` | RTK Query | AI model queries |
-| `devices` | `devicesSlice` | BLE device state (discovered peripherals) |
-| `logs` | `logsSlice` | In-app logging |
-| `scanning` | `scanningSlice` | BLE scan state |
-| `bleLibrary` | `bleLibrarySlice` | BLE manager init state |
-| `blStatus` | `bluetoothStatusSlice` | Bluetooth adapter status |
-| `locationStatus` | `locationStatusSlice` | GPS availability |
-| `androidPermissions` | `androidPermissionsSlice` | Runtime permissions |
-| `authentication` | `authSlice` | User, token, permissions |
-| `deployments` | `deploymentsSlice` | Deployment state |
-| `wwAdmin` | `wwAdminSlice` | Admin features |
-| `sync` | `syncSlice` | Entity sync status tracking |
-| `network` | `networkSlice` | Network connectivity state |
-| `location` | `locationSlice` | Current GPS fix used for deployment tagging |
-
-13 feature reducers + 4 RTK Query reducers.
-
-**Middleware:** Default RTK middleware + all four API middlewares. Serializable check ignores `persist/PERSIST`. Immutable check warns after 1000ms.
+**Store:** [redux/index.ts](../../src/redux/index.ts) lists every reducer and middleware; the
+slices are in [redux/slices/](../../src/redux/slices). Redux holds session and UI state only,
+see [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md#state-management-redux-vs-watermelondb).
 
 **Typed hooks:**
 ```typescript
@@ -85,18 +57,9 @@ export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector
 
 ### RTK Query
 
-**API Definition:** [redux/api/index.ts](../../src/redux/api/index.ts)
-
-```typescript
-export const api = createApi({
-  reducerPath: "api",
-  baseQuery: extendedBaseQuery,
-  tagTypes: ["User", "Device", "Media", "Observation", "Project", "SensorRecord", "Deployment", "ApiLog"],
-  endpoints: () => ({}),
-})
-```
-
-Endpoints are injected via `enhancedApi` (auto-generated) and `projectsApi` / `aiModelsApi` (manual).
+Two APIs: `api` ([redux/api/index.ts](../../src/redux/api/index.ts)), with the auth endpoints
+injected in `redux/api/auth/`, and `projectsApi`
+([projectsApi.ts](../../src/redux/api/projectsApi.ts)), which answers from the local services.
 
 ### Auth Pattern
 
@@ -119,7 +82,7 @@ Permissions are computed from `UserRole` (`ww_admin`, `project_admin`, `project_
 
 ### WatermelonDB
 
-**Package:** `@nozbe/watermelondb` ^0.28.0
+**Package:** `@nozbe/watermelondb`
 
 High-performance, reactive, offline-first local database built on SQLite. This is the **primary local data store** — all entity data (projects, deployments, devices, etc.) lives here.
 
@@ -128,24 +91,8 @@ High-performance, reactive, offline-first local database built on SQLite. This i
 > [!IMPORTANT]
 > The schema is **auto-generated** by `npm run schema:generate`. Do not edit it manually. The generator reads `src/types/database.types.ts` (Supabase types). The current version and table count are the `version:` field and `tableSchema` entries in [schema.ts](../../src/database/schema.ts) — read them there rather than from this doc, which will drift.
 
-**Models:** [database/models/](../../src/database/models)
-
-| Model | Table | Key Fields |
-|-------|-------|------------|
-| `Project` | `projects` | `name`, `organisationId`, `captureMethodId`, `isActive` |
-| `Deployment` | `deployments` | `name`, `projectId`, `deviceId`, `latitude`, `longitude` |
-| `Device` | `devices` | `name`, `serialNumber`, `type` |
-| `Organisation` | `organisations` | `name` |
-| `SyncOutbox` | `sync_outbox` | `operationId`, `tableName`, `recordId`, `status` |
-| `User` | `users` | `email`, `firstName`, `lastName` |
-| `UserRole` | `user_roles` | `userId`, `projectId`, `role` |
-| `Firmware` | `firmware` | `version`, `fileUrl`, `releaseDate` |
-| `AiModel` | `ai_models` | `name`, `description` |
-| `CaptureMethod` | `capture_methods` | `value`, `description` |
-| `ActivitySensitivity` | `activity_sensitivity` | `value`, `description` |
-| `SamplingDesign` | `sampling_designs` | `value`, `description` |
-| `ProjectInvitation` | `project_invitations` | `projectId`, `email`, `role` |
-| `SyncState` | `sync_state` | Sync tracking metadata |
+**Models:** one class per table in [database/models/](../../src/database/models); read the
+fields there.
 
 **Model pattern:**
 ```typescript
@@ -174,7 +121,7 @@ Components subscribe to WatermelonDB via `withObservables`. This replaces tradit
 
 ### Supabase
 
-**Package:** `@supabase/supabase-js` ^2.53.0
+**Package:** `@supabase/supabase-js`
 
 **Client:** [services/supabase.ts](../../src/services/supabase.ts)
 
@@ -203,15 +150,15 @@ const client = getSupabaseClient()  // Throws if not initialized
 
 Bidirectional sync between WatermelonDB and Supabase, tracking per-entity status via `syncSlice` in Redux. Most local writes ask for a sync 2 s later; starting or ending a deployment asks at once, and a sync asked for while one runs follows it (see [When the outbox is pushed](./03-DATA-AND-SYNC.md#when-the-outbox-is-pushed)).
 
-> For the full sync flow diagrams, push/pull logic, retry behaviour, and conflict resolution, see [03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md#supabasesynservice).
+> For the sync flow, push and pull logic, and retry behaviour, see [03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md#supabasesyncservice).
 
 ---
 
 ## Navigation
 
-### React Navigation 6
+### React Navigation
 
-**Packages:** `@react-navigation/native` ^6.1.12, `@react-navigation/native-stack` ^6.9.20
+**Packages:** `@react-navigation/native`, `@react-navigation/native-stack`
 
 **File:** [navigation/index.tsx](../../src/navigation/index.tsx)
 
@@ -227,9 +174,9 @@ Bidirectional sync between WatermelonDB and Supabase, tracking per-entity status
 | Onboarding | `Tutorial` |
 | Shell | `Home` (BottomTabs: Scanner, Map, Projects), `Notifications`, `Profile`, `Settings` |
 | Projects | `NewProjectScreen`, `ProjectDetailsScreen`, `EditProjectScreen`, `ProjectMembersScreen`, `ProjectDevicesScreen`, `ProjectVisualizationScreen` |
-| Deployment | `DeviceDiscovery`, `DeviceMonitoringSummary` |
-| Engineer Console | `EngineerConsoleScreen`, `CapturePictureScreen`, `StandaloneMotionDetectionScreen`, `LightSensorScreen` |
-| Firmware & transfer | `DfuScreen`, `FirmwareUpdateScreen`, `FirmwareStatusScreen`, `FileTransferTestScreen`, `ModelValidationTestScreen`, `AiModelTransferScreen` |
+| Deployment | `DeviceDiscovery`, `DeviceMonitoringSummary`, `StartMonitoringDetailsStep`, `StopMonitoringDetailsStep`, `SoftwareUpdateScreen` |
+| Engineer Console | `EngineerConsoleScreen`, `CapturePictureScreen`, `StandaloneMotionDetectionScreen`, `LightSensorScreen`, `DeviceResetScreen`, `DeviceCheckScreen`, `DevDeploymentTestScreen` |
+| Firmware and transfer, from the Engineer Console | `DfuScreen`, `FirmwareUpdateScreen`, `FirmwareStatusScreen`, `FileTransferTestScreen`, `ModelValidationTestScreen` |
 
 Dev-only routes (`__DEV__`): `DevBuildInfo`, `AuthTestScreen`, `DeveloperSettings`.
 
@@ -271,7 +218,7 @@ navigation.navigate('ProjectDetailsScreen', { projectId })
 
 ## UI Library
 
-### React Native Paper 5.12.3
+### React Native Paper
 
 Material Design 3 component library. Theme configured in [theme.ts](../../src/theme.ts).
 
@@ -305,24 +252,15 @@ The app has a custom component library in `src/components/ui/`. **Always check h
 
 ## Maps
 
-### React Native Maps 1.20.1
+### React Native Maps
 
 **Provider:** Google Maps (both iOS and Android)
 
 **Location:** [features/maps/](../../src/features/maps)
 
-| Path | Purpose |
-|------|---------|
-| `components/BasicMapView.tsx` | Reusable map component with markers |
-| `components/DeploymentCard.tsx` | Map overlay for deployment details |
-| `components/DeploymentMarker.tsx` | Custom marker for deployments |
-| `components/MapControls.tsx` | Zoom/location controls |
-| `components/LocationPermissionPrompt.tsx` | Permission request UI |
-| `screens/MapScreen.tsx` | Full-screen map view |
-| `hooks/useLocation.ts` | GPS access hook |
-| `hooks/useMapRegion.ts` | Map viewport management |
-
-See [Maps.md](../resources/Maps.md) for the full module layout and API key setup.
+A marker is ringed when its camera's LoRaWAN check-ins need attention, by the states in
+[`cameraHealth.ts`](../../src/utils/cameraHealth.ts) (#546). The module layout and the API key
+setup are in [Maps.md](../resources/Maps.md).
 
 ---
 
@@ -330,7 +268,7 @@ See [Maps.md](../resources/Maps.md) for the full module layout and API key setup
 
 ### Bluetooth Low Energy
 
-**Package:** `react-native-ble-manager` ^11.3.2
+**Package:** `react-native-ble-manager`
 
 Communication with Wildlife Watcher cameras. Uses an event-driven architecture with typed command registry and session-based execution.
 
@@ -346,16 +284,16 @@ Communication with Wildlife Watcher cameras. Uses an event-driven architecture w
 | Workflows | `src/ble/workflows/` | Shared deployment pipeline, OP reset, config verification |
 | UI-only | `src/ble/messageClassifier.ts` | Log categorization for monitoring display |
 
-For the full BLE module tree see [BLE_Architecture.md](../resources/BLE_Architecture.md#file-structure); for the hook inventory see [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md#srchooks--custom-hooks).
+For the full BLE module tree see [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md#srcble-ble-protocol-engine); for the hook inventory see [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md#srchooks-custom-hooks).
 
 > [!IMPORTANT]
-> **Critical timing constraint:** The device enters Deep Power Down (DPD) after 1000ms of inactivity. The `commandQueue` handles serialization automatically. The device has a single-slot command buffer — the queue ensures only one command is in-flight.
+> **Critical timing constraint:** The device enters Deep Power Down (DPD) after 1000ms of inactivity. The device has a single-slot command buffer, so `bleTransportController` serializes commands and only one is in flight at a time.
 
 **See:** [BLE Architecture Guide](../resources/BLE_Architecture.md) for complete patterns and firmware constraints.
 
 ### Firmware Updates (DFU)
 
-**Package:** `@getquip/expo-nordic-dfu` ^2.0.3
+**Package:** `@getquip/expo-nordic-dfu`
 
 Over-the-air firmware updates using Nordic Semiconductor's DFU protocol. Handles DFU mode transitions, bootloader detection, and firmware image upload.
 
@@ -370,9 +308,10 @@ Over-the-air firmware updates using Nordic Semiconductor's DFU protocol. Handles
 
 ### NetInfo
 
-**Package:** `@react-native-community/netinfo` ^11.3.1
+**Package:** `@react-native-community/netinfo`
 
-Monitors network state to trigger sync when transitioning from offline → online.
+Read through `services/connectivityWatch.ts`, which also starts a sync when the connection comes
+back (`reconnectSync.ts`).
 
 ---
 
@@ -409,9 +348,9 @@ Monitors network state to trigger sync when transitioning from offline → onlin
 
 | Tool | Purpose |
 |------|---------|
-| ESLint 8 | Linting |
-| Prettier 2.8.8 | Code formatting |
-| TypeScript 5.9 | Static type checking |
+| ESLint | Linting |
+| Prettier | Code formatting |
+| TypeScript | Static type checking |
 | `tsc --noEmit` | Type-check without emitting (`npm run type-check`) |
 
 ### Build, Deploy & Version Control
@@ -457,7 +396,7 @@ Monitors network state to trigger sync when transitioning from offline → onlin
 | Bluetooth/Location off | Navigation guard shows dedicated problem screens |
 | Sync failures | Debounced retry; per-entity error tracking in `syncSlice` |
 | Offline mode | Full local functionality via WatermelonDB |
-| Sync conflicts | Last-write-wins in `SupabaseSyncService` |
+| Sync conflicts | See [Conflict Resolution](./03-DATA-AND-SYNC.md#conflict-resolution) |
 | Missing permissions | Guided flow via `AndroidPermissionsProvider` |
 
 ---

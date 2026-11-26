@@ -101,10 +101,10 @@ shell boundary, and none of them reproduced in a Linux container.
   `SideNavigation` on a cold run, 0.2 s for the next test (#416, 8 October 2026). Render once in
   a `beforeAll` with its own limit and unmount, as `SideNavigation.signOut.test.tsx` does, rather
   than raising the test timeout.
-- **The coverage floor is a ratchet, not a target.** `quality-gate-validation` fails below
-  20% statements, set just under the 21.29% measured on 21 September 2026. Until then the
-  awk checked `< 10` while the message claimed 70. Raise the floor by hand when coverage
-  has genuinely climbed; never lower it to make a PR pass.
+- **The coverage floor is a ratchet, not a target.** `FLOOR` in
+  `.github/workflows/quality-gate-validation.yml` sets it; the value is in the
+  [Testing Guide](../../../documentation/resources/Testing-Guide.md#cicd)'s CI/CD table. Raise it by
+  hand when coverage has genuinely climbed; never lower it to make a PR pass.
 - `scripts/check-op-indices.js` diffs `OP_PARAMETER` against the firmware enum on Seeed
   `dev`, and `scripts/check-selftest-bits.js` diffs `SelfTestBit` against `selfTest_type_t`
   there. Each runs on PRs touching its app file and on Mondays, and is advisory, because the

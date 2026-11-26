@@ -9,9 +9,9 @@ wildlife-watcher-mobile-app/
 ├── src/                    # All application source code
 ├── tests/                  # Test files (unit, integration, e2e)
 ├── documentation/          # Developer documentation
-├── project-context/        # Project specs and planning
-├── android/                # Android native code (Expo-generated)
-├── ios/                    # iOS native code (Expo-generated)
+├── android/                # Android native code, tracked; there is no tracked ios/
+├── patches/                # patch-package patches, applied on postinstall
+├── plugins/                # Expo config plugins
 ├── supabase/               # Schema files synced from backend
 ├── scripts/                # Build validation and tooling
 ├── package.json            # Dependencies and scripts
@@ -82,9 +82,17 @@ export const App = () => {
 components/
 ├── ui/                    # WW-prefixed generic components (WWButton, WWText, etc.)
 ├── form/                  # Form-specific components
-├── sync/                  # Sync status indicators
+├── device/                # Camera mode and flash selectors, shared by the device screens
 ├── ProjectCard.tsx        # Project list item
 ├── EngineerConnectDialog.tsx # Side-drawer quick BLE connect for engineer console
+├── BleConsoleOutput.tsx   # The Engineer Console's output, one memoised row per line
+├── CommandReferenceModal.tsx # The console's Commands list
+├── commandArgs.ts         # A command's typed arguments, checked before anything is sent
+├── FlowsReferenceModal.tsx # The console's Flows list
+├── DeviceHealthBanner.tsx # Hardware warnings from the self-test bits
+├── FileTransferProgressCard.tsx # A file transfer's progress
+├── ImagePreviewModal.tsx  # A picture in a popup
+├── RefusedChangesItem.tsx # Settings: changes the server refused (#461)
 ├── NavigationBar.tsx      # Header bar
 ├── AppDrawer.tsx          # Side drawer menu
 ├── OrgSwitcher.tsx        # Organisation switcher
@@ -122,8 +130,7 @@ screens/                                  navigation/screens/
 │   ├── DeviceMonitoringSummaryScreen
 │   ├── components/
 │   │   ├── RemoteCheckInCard.tsx         # A deployed camera's last LoRaWAN check-in, live (#518)
-│   │   ├── ScannerRoutingDialog.tsx      # Post-scan routing
-│   │   └── SimpleFirmwareUpdate.tsx      # FirmwareUpdateScreen without engineer (#344), unreached since #529
+│   │   └── ScannerRoutingDialog.tsx      # Post-scan routing
 │   └── hooks/
 │       ├── useDeviceDiscovery.ts         # Scanner auto-connect + routing
 │       ├── useAutoConnectStateMachine.ts
@@ -141,7 +148,7 @@ screens/                                  navigation/screens/
 > The old `PrepareAndTestScreen` has been removed. Device configuration and metrics snapshots are captured directly during Deployment.
 
 > [!NOTE]
-> `navigation/screens/developer/` holds the two developer screens and their twelve sections.
+> `navigation/screens/developer/` holds the three developer screens and their sections.
 > [Developer-Settings.md](../resources/Developer-Settings.md) lists what each one shows, which
 > actions wipe the local database, and how to reach them.
 
@@ -158,7 +165,8 @@ navigation/
 
 The app launches to the **Scanner** tab by default. The **Engineer Console** is accessible from the side drawer (hamburger menu), not from a tab.
 
-The full route table with params is documented in [01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md#route-table).
+Routes are registered in `navigation/index.tsx` and their params typed in `navigation/types.ts`;
+[01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md#route-table) groups them.
 
 ### `src/services/`: Business Logic
 
@@ -173,6 +181,7 @@ services/
 ├── ProjectService.ts          # Project CRUD + outbox
 ├── DeploymentService.ts       # Deployment lifecycle
 ├── DeviceService.ts           # Device record management
+├── goneFromServer.ts          # The mark on a deployment the server no longer has but the phone keeps for unsent work (#411)
 ├── serverDevices.ts           # A camera's server row: read by Bluetooth id, written to the phone (#451)
 ├── cameraRegistration.ts      # A row for a camera the phone lacks, for the scanner and the Dev Deployment Test (#480)
 ├── UserRoleService.ts         # User role management
@@ -237,11 +246,11 @@ hooks/
 ├── useDeviceSettings.ts       # OP_PARAMETER enum, FACTORY_DEFAULTS, quiesce
 ├── useCameraSwitch.ts         # Camera variant switching
 ├── useLightSensor.ts          # Light readings: AI light, the AE register block, op23/24/25, and the flash mode op34
+├── useLightSensorLog.ts       # The Light Sensor screen's saved readings, and their CSV export
 ├── useCameraReadiness.ts      # Is the camera usable: self-test bits + op10
 ├── useOfflineFiles.ts         # Is the project's model / the firmware image on this phone
 ├── useRemoteCheckIns.ts       # Live check-ins online, none offline; a deployment's camera state (#518)
 ├── useSupabaseAuth.ts         # Supabase auth hook
-├── useSupabaseClient.ts       # Supabase client hook
 ├── useUserOrganisations.ts    # Org management
 ├── useGPSLocation.ts          # GPS access
 ├── useAndroidPermissions.ts   # Android runtime permissions
@@ -258,7 +267,7 @@ Screen-scoped hooks live beside their screens, see `src/screens/Devices/hooks/` 
 ble/
 ├── types.ts                    # UI command definitions (CommandNames, COMMANDS for Console)
 ├── transport.ts                # Raw BLE write + service discovery
-├── messageClassifier.ts        # UI-only log categorization for monitoring display
+├── messageClassifier.ts        # classifyForMonitor: device lines to the live monitor's events (UI only)
 ├── emitters.ts                 # Legacy EventEmitter3 (retained for ImageReassembler)
 ├── protocol/                   # Event-driven command engine
 │   ├── eventBus.ts             # bleEventBus, frozen event types
@@ -271,6 +280,8 @@ ble/
 │   ├── textStreamScope.ts      # Text stream scoping for responses
 │   ├── selfTestCache.ts        # Latest `Error bits` per connection, from the wake broadcast
 │   ├── opCache.ts              # Op table cached per device for one wake window; dropped on Wake
+│   ├── sleepState.ts           # Whether each device is in Deep Power Down, from its Sleep and Wake signals
+│   ├── connectionPriority.ts   # Android: the fast connection interval while a photo downloads
 │   ├── lightCheck.ts           # Parser for the `AE light check` telemetry line
 │   ├── awaitAeRegisters.ts     # Wait for the `HM0360 AE regs` block that answers the two-phase `AI light`
 │   └── fileTransfer/           # Chunked file transfer protocol
@@ -329,8 +340,7 @@ types/
 ├── device.ts              # Device-specific types
 ├── project.ts             # Project-specific types
 ├── UserProfile.ts         # User profile types
-├── expo-constants.d.ts    # Typing for the app config extras
-└── expo-updates.d.ts      # Typing for expo-updates
+└── expo-constants.d.ts    # Typing for the app config extras
 ```
 
 **Type Import Pattern:** import a type from the file that defines it, and take anything from
@@ -360,7 +370,7 @@ npm run schema:generate     # Regenerate WatermelonDB schema
 |---------|-------|---------|
 | Domain data | WatermelonDB | Projects, deployments, devices, user roles |
 | Session state | Redux | Auth tokens, user profile, permissions |
-| UI state | Redux | Sync status, network status, loading flags |
+| UI state | Redux | Sync status, loading flags |
 | Data fetching | WatermelonDB observables | `withObservables`, `database.get('projects').query().observe()` |
 | API calls | RTK Query | Non-DB API calls (reference data, user search) |
 
@@ -386,14 +396,13 @@ const projects = useAppSelector(state => state.projects.items);
 
 **Location:** `src/redux/index.ts`
 
-Redux is configured with 16 feature reducers and 4 RTK Query API middlewares. The key slices:
+The file lists every reducer and middleware. The key slices:
 
 | Slice | Purpose |
 |-------|---------|
 | `authSlice` | Auth tokens, user info, current org, permissions |
 | `syncSlice` | Per-entity sync status tracking |
-| `networkSlice` | Online/offline state |
-| `deploymentSlice` | Active deployment session state |
+| `deploymentsSlice` | Active deployment session state |
 | `devicesSlice` | Device discovery + connection state |
 | `logsSlice` | BLE log buffer |
 
@@ -423,7 +432,7 @@ const syncSlice = createSlice({
 
 **DO:**
 - ✅ Use Redux for **session state** (auth, permissions)
-- ✅ Use Redux for **UI state** (sync status, modals, network)
+- ✅ Use Redux for **UI state** (sync status, modals)
 - ✅ Use WatermelonDB for **all domain data**
 - ✅ Use `withObservables` to connect components to data
 - ✅ Write to WatermelonDB directly, the sync engine handles the rest

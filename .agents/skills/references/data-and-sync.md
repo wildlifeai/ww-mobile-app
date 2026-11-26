@@ -63,8 +63,7 @@ version for humans is
   `validated` alone until #290, so a project pointing at a `deployed` model started monitoring
   with no model and only the Himax console said so. Two halves keep it closed: the pull asks for
   both, and `syncAiModel` refuses a project model it cannot resolve, before the deployment is
-  created or anything is written to the device. `aiModelsApi.ts` (the picker) still asks for
-  `validated` only.
+  created or anything is written to the device.
 - **Offline, the user stays signed in until the server says no** (#310). The app opens from
   the session auth-js keeps on disk, and a missing session with that one still stored means the
   refresh could not get through: auth-js removes it only on a real rejection. Never read "no
@@ -77,11 +76,9 @@ version for humans is
   replaces them, and an empty cloud answer is the server's truth. `organisations` is filled only
   by that cloud answer, nothing else writes it. The current organisation is remembered per user
   and reopened while the roles allow it.
-- **Work queued offline uploads on reconnect.** `OfflineService` has a listener for that but is
-  never initialised, which left a deployment in the outbox until the next sign-in. The trigger
-  is `connectivityWatch.ts` and `reconnectSync.ts`, wired in `AppSetupProvider`: 3 s of connection,
-  a valid session, one sync. Redux `network.isOnline` stays false throughout, so read NetInfo, as
-  `SupabaseSyncService.sync()` does.
+- **Work queued offline uploads on reconnect.** The trigger is `connectivityWatch.ts` and
+  `reconnectSync.ts`, wired in `AppSetupProvider`: 3 s of connection, a valid session, one sync.
+  Online or offline is read from NetInfo through `connectivityWatch.ts`; Redux does not hold it.
 - **A sync asked for while one runs is not dropped** (8 October 2026). `sync()` used to return
   and forget it, and the running sync had read the outbox before the change was queued, so a
   deployment started then waited for the next trigger. It now sets `syncAgain` and the running

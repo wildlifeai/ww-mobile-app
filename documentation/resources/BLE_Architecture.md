@@ -100,7 +100,7 @@ The `bleEventBus` emits **7 event types**. This contract is frozen. All events i
 sequenceDiagram
     participant UI as Screen/Hook
     participant Sess as useBleSession
-    participant Queue as commandQueue
+    participant Queue as bleTransport
     participant Run as runCommand
     participant Reg as commandRegistry
     participant TX as transport.ts
@@ -183,7 +183,7 @@ interface CommandContext<T> {
 Deployment workflows (e.g. `useStartDeployment`) execute multiple BLE commands as an ordered pipeline. The failure contract is:
 
 ### Atomic Segments
-Configuration bursts (e.g. `setdid` → `setgps` → `setop` × N → `setutc`) are executed sequentially via `commandQueue`.
+Configuration bursts (e.g. `setdid` → `setgps` → `setop` × N → `setutc`) are executed sequentially via `bleTransportController`.
 
 ### Fail-Fast Boundary
 If **any** step times out or fails (e.g., Step 3 `setop` fails), the entire sequence aborts immediately. The queue does not attempt subsequent commands.
@@ -197,7 +197,7 @@ The UI tracks partial failures explicitly (e.g. `initErrors = { setUtc: "Timeout
 ### Operator Recovery Path
 1. Operator sees the specific error in the UI (e.g. "GPS set failed: Timeout")
 2. Operator can retry the entire deployment flow (which re-runs all steps)
-3. Read-before-write checks (`getAllOperationalParams()`) skip parameters already at the target value
+3. Read-before-write checks (`session.getOps()`) skip parameters already at the target value
 
 > [!IMPORTANT]
 > There is no partial-retry mechanism. The entire configuration burst is re-executed from scratch. The read-before-write pattern ensures this is safe (already-set values are skipped).
@@ -468,7 +468,7 @@ The `scanStoppedEvent` handler calls `BleManager.getDiscoveredPeripherals()` to 
 When `isEngineerConsoleActive` is `true`, the `notFoundAnymore` cleanup is **skipped entirely**. The Engineer Console's auto-connect watches Redux state directly (updated by `BleManagerDiscoverPeripheral`) and doesn't need the native cache reconciliation.
 
 > [!NOTE]
-> The disconnect handler emits the `DISCONNECT` signal **first**, before clearing buffers or updating Redux. This ensures `commandQueue` and `runCommand` reject in-flight commands immediately.
+> The disconnect handler emits the `DISCONNECT` signal **first**, before clearing buffers or updating Redux. This ensures `bleTransportController` and `runCommand` reject in-flight commands immediately.
 
 **File:** [useBleListeners.tsx](../../src/hooks/useBleListeners.tsx)
 
@@ -520,14 +520,12 @@ stateDiagram-v2
 ### 8. Message Classifier (`messageClassifier.ts`)
 
 > [!IMPORTANT]
-> **Scope restriction:** `messageClassifier.ts` is retained exclusively for **UI presentation**. It categorizes raw log lines for display in the deployment monitoring UI (color-coding errors, filtering noise like `Sleep`/`Wake`). It has **no authority** over protocol logic. All command matching is handled by `commandRegistry`.
+> **Scope restriction:** `messageClassifier.ts` is **UI presentation** only. It has **no authority** over protocol logic. All command matching is handled by `commandRegistry`.
 
-| UI Role | Example | Action |
-|---|---|---|
-| Error highlighting | `AI NACK`, `I2C error` | Red text in monitoring log |
-| Response display | `Battery = 3305mV 100%` | Standard log entry |
-| Noise suppression | `Sleep`, `Wake` | Silently discarded from UI |
-| Metric translation | `OpParam 19 = 5` | Displayed as "5 stored images" |
+Its one function, `classifyForMonitor`, turns a raw device line into an event for the live
+deployment monitor's stats and activity log: motion, timelapse, a capture or a failed one, the
+NN verdict, a self-test warning. It drops known noise, such as `Sleep`, `Wake`, command echoes
+and op replies, and passes any other line through as "Device says:".
 
 **File:** [messageClassifier.ts](../../src/ble/messageClassifier.ts)
 
@@ -563,12 +561,12 @@ const gpsSet = await session.execute(() => commandRegistry.setgps(gpsString))
 
 ### DFU (Device Firmware Update)
 
-The app supports over-the-air firmware updates using the **Nordic DFU** protocol via `@getquip/expo-nordic-dfu`. Both **BLE (nRF)** and **Himax AI processor** firmware can be updated.
+The **BLE (nRF)** firmware is updated over the air with the **Nordic DFU** protocol, via `@getquip/expo-nordic-dfu`. The Himax AI processor is not: its image goes to the SD card by file transfer and is flashed with `AI firmware`, see [Himax-Firmware-Update.md](Himax-Firmware-Update.md). `useFirmwareUpdate` drives both, for Start Monitoring's Update software and the Engineer Console's firmware screens.
 
 ```mermaid
 sequenceDiagram
-    participant UI as StartMonitoringScreen
-    participant Sess as useBleSession
+    participant UI as useFirmwareUpdate
+    participant Sess as createBleSession
     participant FW as Firmware (Device)
     participant Scan as BleManager.scan
     participant Boot as DfuTarg (Bootloader)
@@ -598,7 +596,7 @@ sequenceDiagram
 > [!IMPORTANT]
 > During DFU, the device disconnects and re-advertises under a different name (`WW500_DFU` / `DfuTarg`). The app suppresses "Connection Lost" alerts via `setDfuStatus(true)` dispatched to the device's Redux state. The `WWBleDisconnectedBanner` component checks `dfuInProgress` and renders nothing when it is `true`. The flag is cleared via `setDfuStatus(false)` when the update completes or fails.
 
-**Files:** [DfuService.ts](../../src/services/DfuService.ts), [DfuScreen.tsx](../../src/screens/Devices/DfuScreen.tsx)
+**Files:** [useFirmwareUpdate.ts](../../src/screens/Devices/hooks/useFirmwareUpdate.ts), [DfuService.ts](../../src/services/DfuService.ts), [DfuScreen.tsx](../../src/screens/Devices/DfuScreen.tsx)
 
 ---
 
@@ -758,7 +756,7 @@ The **Engineer Console** (`EngineerConsoleScreen.tsx`) has two distinct surfaces
 | Silent BLE failures | `ListenToBleEngineProvider` missing | Verify it exists in the `App.tsx` provider tree. |
 | No events received | `rxRouter` not classifying | Check `rxRouter.ts` for hex-to-text conversion errors. |
 | Can't reconnect after disconnect | Stale `isDeviceReconnecting` guard or Android GATT cleanup race | See Disconnect Resilience section below. |
-| 3-6s stall on disconnect | `commandQueue` and `runCommand` lack disconnect awareness | Ensure `DISCONNECT` signal is emitting correctly. Check `deviceSignals.ts`. |
+| 3-6s stall on disconnect | `bleTransportController` and `runCommand` lack disconnect awareness | Ensure `DISCONNECT` signal is emitting correctly. Check `deviceSignals.ts`. |
 
 ---
 
@@ -774,7 +772,7 @@ Unexpected BLE disconnects (user navigation, device DPD, signal loss) can leave 
 ```
 Native BleManagerDisconnectPeripheral
   → bleEventBus.emitEvent(DEVICE_SIGNAL, DISCONNECT)    ← fail-fast cascade
-    → commandQueue.handleDeviceSignal() → clearAll()    ← rejects all queued commands
+    → bleTransport.handleDeviceSignal() → clearAll()    ← rejects all queued commands
     → runCommand.handleDeviceSignal() → idempotentReject ← kills in-flight command
   → rxRouter.clearBuffer()                              ← clears RX buffers
   → BleManager.removePeripheral() (Android, awaited)    ← GATT cache cleanup
@@ -812,59 +810,7 @@ iOS handles this automatically at the Core Bluetooth level.
 
 ## File Structure
 
-```
-src/
-├── ble/
-│   ├── types.ts                    # UI command definitions (CommandNames, COMMANDS)
-│   ├── transport.ts                # Raw BLE write + binary write + service discovery
-│   ├── messageClassifier.ts        # UI-only log categorization (NOT protocol logic)
-│   ├── emitters.ts                 # Legacy EventEmitter3 instances (retained for ImageReassembler)
-│   ├── protocol/                   # Event-driven command engine
-│   │   ├── eventBus.ts             # BleEventBus — central event dispatcher
-│   │   ├── rxRouter.ts             # Binary/text demux + input sanitisation
-│   │   ├── commandRegistry.ts      # Typed command factories with frozen schema
-│   │   ├── bleTransportController.ts # Unified transport FSM: queue + lock + signal handling
-│   │   ├── runCommandPipeline.ts   # Single-command executor + retry logic
-│   │   ├── protocolConstants.ts    # Timing constants (POST_COMPLETION_DRAIN=10ms, etc.)
-│   │   ├── deviceSignals.ts        # Sleep/Wake/Busy/ConfigError/Disconnect signal types
-│   │   ├── textStreamScope.ts      # Scoped text line listener (auto-cleanup)
-│   │   ├── fileTransfer/           # BLE file transfer to SD card
-│   │   │   ├── runFileTransferPipeline.ts  # Core ACK state machine
-│   │   │   ├── bleFirmwareFloor.ts         # BLE firmware floor for the window, checked before FILE_START
-│   │   │   ├── fileTransferPackets.ts      # Binary packet builders
-│   │   │   ├── fileTransferTypes.ts        # Types, error codes, error messages
-│   │   │   ├── ackMatcher.ts               # Strict ACK validation
-│   │   │   ├── crc16ccitt.ts               # CRC-16/CCITT-FALSE
-│   │   │   ├── filenameValidator.ts        # 8.3 format validation
-│   │   │   └── __tests__/                  # 62 unit tests
-│   │   └── __tests__/              # Protocol unit tests
-│   ├── session/                    # Deterministic workflow API
-│   │   └── createBleSession.ts     # Session factory for deployment workflows
-│   ├── workflows/                  # Reusable BLE workflow functions
-│   │   ├── deploymentPipeline.ts   # syncTime, syncAiModel, configureDevice
-│   │   ├── resetToDefaults.ts      # executeResetToDefaults — shared OP factory reset
-│   │   ├── configVerification.ts   # Post-update CONFIG.TXT handshake
-│   │   └── checkSdCard.ts          # SD card health validation
-│   └── __tests__/                  # messageClassifier, transport
-├── hooks/                          # BLE hooks — full inventory in 02-CODEBASE-GUIDE.md
-├── screens/Devices/hooks/
-│   ├── useDeviceDiscovery.ts       # Main scanner: session timer + auto-connect routing
-│   ├── useAutoConnectStateMachine.ts # Per-device auto-connect eligibility
-│   ├── useFirmwareUpdate.ts        # BLE DFU + Himax variant-pair update orchestration
-│   └── useMotionDetectionStream.ts # MD test lifecycle: direct md write + frame history
-├── providers/
-│   ├── BleEngineProvider.tsx        # React Context for useBle
-│   └── ListenToBleEngineProvider.tsx  # Listener registration
-├── redux/slices/
-│   ├── bleLibrarySlice.ts          # Library init state
-│   ├── devicesSlice.ts             # Device state (clearDiscoveredDevices, signalLost)
-│   ├── scanningSlice.ts            # isScanning, isEngineerConsoleActive
-│   └── syncSlice.ts                # isGlobalSyncing, hasCompletedInitialSync
-├── services/
-│   └── SyncBarrier.ts              # Event-driven sync readiness barrier for routing
-└── utils/
-    └── ImageReassembler.ts         # Binary → JPEG reconstruction
-```
+The BLE modules, and the hooks and providers around them, are listed once, in [02-CODEBASE-GUIDE.md](../onboarding/02-CODEBASE-GUIDE.md#srcble-ble-protocol-engine).
 
 ---
 
@@ -934,16 +880,16 @@ loops reported in field testing (CGP, April 2026).
 
 ### Ownership Map
 
-| Screen                      | Role   | Can Connect | Can Disconnect |
-|-----------------------------|--------|-------------|----------------|
-| DeviceDiscoveryScreen       | Owner  | ✅          | ✅             |
-| StartMonitoringScreen       | Owner  | ✅          | ✅             |
-| StopMonitoringScreen        | Owner  | ✅          | ✅             |
-| EngineerConsoleScreen       | Child  | ❌          | ❌             |
-| HimaxFirmwareUpdateScreen   | Child  | ❌          | ❌             |
-| CapturePictureScreen        | Child  | ❌          | ❌             |
-| StandaloneMotionDetection   | Child  | ❌          | ❌             |
-| AdvancedSettingsSection      | Child  | ❌          | ❌             |
+| Screen | Role |
+|---|---|
+| `DeviceDiscoveryScreen`, `StartMonitoringScreen`, `StopMonitoringScreen` | Owner |
+| `EngineerConsoleScreen` | Owner of the console's connection: its Back disconnects (`useEngineerConsoleActions`) |
+| Every screen the Engineer Console opens, and `SoftwareUpdateScreen` | Child |
+| `AdvancedSettingsSection` (in Start Monitoring) | Child |
+
+One exception: a BLE DFU in `useFirmwareUpdate` disconnects so the nRF can reboot into its
+bootloader, then reconnects (see [DFU](#dfu-device-firmware-update)). The screens are listed in
+[02-CODEBASE-GUIDE.md](../onboarding/02-CODEBASE-GUIDE.md#srcscreens-screen-components).
 
 ### Child Screen Rules
 

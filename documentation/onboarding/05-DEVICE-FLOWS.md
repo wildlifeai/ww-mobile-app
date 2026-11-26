@@ -64,10 +64,9 @@ the server already has under another id is settled by the push
 
 ### ScannerRoutingDialog States
 
-| State | Trigger | User Action |
-|-------|---------|-------------|
-| `no_access_active_deployment` | Device has `status = deployed` but user lacks access to project | "OK" → Dismiss & Disconnect |
-| `no_projects` | User has 0 projects in current org | "Create Project" → New Project screen |
+The states are `ScannerRoutingState` in
+[ScannerRoutingDialog.tsx](../../src/screens/Devices/components/ScannerRoutingDialog.tsx), each
+with its dialog.
 
 ### Direct Deployment Routing
 
@@ -89,13 +88,12 @@ flowchart TD
     B -- "Ready / New" --> D["StartMonitoringDetailsStep Screen"]
     
     D --> E["Load Project & Device data"]
-    E --> F["Silent OP reset on mount"]
-    F --> G["User fills form"]
+    E --> G["User fills form"]
     G --> H{"Software behind?"}
     H -- Yes --> I["Software update banner (optional)"]
     I --> G
     H -- No --> J{"Tap 'Start Monitoring'"}
-    J --> K["Pipeline: Role check → Server check → Time Sync → AI Model → Snapshot → DB Record → Reset OPs → Configure"]
+    J --> K["Pipeline: Role check → Server check → AI Model → Time Sync → Snapshot → DB Record → Reset OPs → Configure"]
     K --> L["Live Monitor (DeploymentMonitorView)"]
     L --> M["User taps 'Disconnect'"]
     M --> N["Navigate to Home"]
@@ -369,16 +367,19 @@ Firmware without the flash mode (OP 34) is left alone: before ae_review OP 32 wa
 
 ## Part 3: Ending a Deployment
 
-**Screen:** `StopMonitoringScreen.tsx` (`EndStartMonitoringDetailsStep`)
-**Entry:** Maps → tap deployed device → "Stop Monitoring", or Devices list, or Deployment details
+**Screen:** `StopMonitoringScreen.tsx` (`StopMonitoringDetailsStep`)
+**Entry:** the scanner, which routes a camera with an open deployment on this phone here ([Part 1](#flow)).
+The Monitoring Summary, opened from a map marker or a project's devices, shows the camera's last
+LoRaWAN check-in (`RemoteCheckInCard`, states in
+[`cameraHealth.ts`](../../src/utils/cameraHealth.ts), #546), and its Connect opens the scanner.
 
 ### Flow
 
 ```mermaid
 flowchart TD
-    A["Device Discovery & BLE Connect"] --> B{"Active deployment?"}
-    B -- No --> C["Alert: 'Not part of an active deployment'"]
-    B -- Yes --> D["EndStartMonitoringDetailsStep Screen"]
+    A["Scanner connects (Part 1)"] --> B{"Active deployment on this phone?"}
+    B -- No --> C["Start Monitoring (Part 2)"]
+    B -- Yes --> D["StopMonitoringDetailsStep Screen"]
     
     D --> E["BLE Initialization (shared hook)"]
     E --> F["Show Deployment Info + Retrieval Notes"]
@@ -412,19 +413,20 @@ start, and the Dev Deployment Test's End deployment, ask the same.
 
 ### End Deployment Sequence
 
-A single [bulk fetch](./04-ENGINEER-CONSOLE.md#op-bulk-fetch-optimization-ai-getop--1) is performed before Step 1, and the cached result is shared with both Step 1 and Step 4.
+A single [bulk fetch](./04-ENGINEER-CONSOLE.md#op-bulk-fetch-optimization-ai-getop--1) is performed before Step 1, and Step 4 diffs against its result.
 
 | Step | Progress | Action | BLE Command |
 |------|----------|--------|-------------|
 | 0 | - | **Bulk Fetch OP Parameters** | `AI getop -1` → cached for steps below |
-| 1 | 0.2 | Clear Deployment ID | Conditional `AI setop 20-27` (retry 3×, 1s delay, skips unchanged) |
-| 2 | - | Clear GPS | `setgps 0 0 0` (non-blocking) |
+| 1 | 0.2 | Clear Deployment ID | `AI setdid` with the all-zero id (`setdid(null)`); a failure is a warning |
+| 2 | - | Clear GPS | `AI setgps` with `formatGPSString(0, 0, 0)`, see A under [Device Configuration](#device-configuration-usedeploymentconfiguration) (non-blocking) |
 | 3 | 0.3 | Update Database | `DeploymentService.endDeployment()` |
-| 4 | 0.6 | Quiesce Device | Conditional `AI setop` (optimised, uses cached ops) |
+| 4 | 0.6 | Quiesce Device | `quiesceDevice` with `isEndDeployment: true`: `AI setop 11 0` and `AI setop 7 0` where the cached ops differ |
 | 5 | 0.8 | Disconnect | `dis` |
 
 > [!IMPORTANT]
-> **Optimised quiesce** (`optimized=true`) only disables the camera. Skips re-enabling, interval clearing, and stabilisation delays.
+> **The end's quiesce** (`isEndDeployment: true`) stops the motion and timelapse triggers and
+> leaves op10 alone: it skips the camera enable `quiesceDevice` otherwise ends with.
 
 > [!NOTE]
 > **The camera's steps are best effort and capped** (#293), through `createEndDeploymentSession` in `src/ble/session/endDeploymentSession.ts`. The bulk fetch is a probe: one attempt, no retry. The first step the Himax does not answer gives up on the camera, and every later `AI` step is skipped without being sent. All of them together get 20 s. `dis` is exempt, because the nRF answers it itself. When the camera is given up on, the dialog says "Camera not answering" at once and ends on "Ended. The camera did not answer, so it keeps taking pictures", held for 6 s instead of 1.5 s: the record is ended, but the camera keeps this deployment's settings and goes on capturing. Before this, a camera asleep in its motion loop cost each step its full timeout and retries, about 40 s under a "Disconnecting" spinner (bench, 5 September 2026).
@@ -474,8 +476,7 @@ If the device is not connected, the user can "Force End (Database Only)":
 
 | Issue | Cause | Fix |
 |-------|-------|-----|
-| "No Active Deployment" | Device not deployed or already ended | Verify correct device; check deployment list |
-| "Failed to Clear Deployment ID" | BLE write failure after 3 retries | Use "Force End"; manually reset via [Engineer Console](./04-ENGINEER-CONSOLE.md) |
+| "Warning: Config clear partially failed" in the log | The camera did not confirm `setdid`; the end carried on | Clear it with the reset in the [Engineer Console](./04-ENGINEER-CONSOLE.md) |
 | "Connection Lost" before end | Device out of range or battery dead | Use "Force End (Database Only)" |
 | "Cannot End This Deployment" | This account [may not end it](./03-DATA-AND-SYNC.md#key-tables) (#450): a viewer, a member ending someone else's, or its creator made a viewer since. The server would refuse the end | The person named, or a project admin, ends it. The camera was not touched. |
 | "Camera not answering" | The Himax did not answer the probe, usually asleep in its motion loop; the record is ended but the camera keeps capturing | Wake the camera with its button, reconnect, and clear it from the [Engineer Console](./04-ENGINEER-CONSOLE.md) |
