@@ -49,7 +49,6 @@ export async function prepareDeviceRow(row: DeviceRow): Promise<Device> {
         return existing.prepareUpdate((rec) => {
             rec.bluetoothId = row.bluetooth_id
             rec.name = row.name
-            rec.organisationId = row.organisation_id ?? ''
             rec.deviceEui = row.device_eui ?? undefined
             rec.updatedAt = new Date(row.updated_at ?? Date.now())
         })
@@ -58,7 +57,6 @@ export async function prepareDeviceRow(row: DeviceRow): Promise<Device> {
         rec._raw.id = row.id
         rec.bluetoothId = row.bluetooth_id
         rec.name = row.name
-        rec.organisationId = row.organisation_id ?? ''
         rec.deviceEui = row.device_eui ?? undefined;
         // Through _raw, past the @readonly decorator
         (rec._raw as any).created_at = new Date(row.created_at ?? Date.now()).getTime()

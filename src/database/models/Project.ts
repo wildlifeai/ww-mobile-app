@@ -36,6 +36,8 @@ export default class Project extends Model {
     /** On-device detection threshold, percent, 50 to 99, written as op16 unchanged (Seeed PR #289) */
     @field('detection_threshold_pct') detectionThresholdPct!: number
     @field('is_archived') isArchived!: boolean
+    /** The project's GBIF dataset, set on the website for the GBF report (ww-backend #329) */
+    @text('gbif_dataset_key') gbifDatasetKey?: string | null
     @text('project_image') projectImage?: string | null
     @text('website') website?: string | null
     @text('created_by') createdBy?: string
