@@ -1308,6 +1308,7 @@ export type Database = {
           longitude: number | null
           lorawan_last_verified_at: string | null
           lorawan_network: string | null
+          lorawan_ping_minutes: number | null
           lorawan_registration_completed: boolean
           lorawan_rssi_at_start: number | null
           lorawan_snr_at_start: number | null
@@ -1358,6 +1359,7 @@ export type Database = {
           longitude?: number | null
           lorawan_last_verified_at?: string | null
           lorawan_network?: string | null
+          lorawan_ping_minutes?: number | null
           lorawan_registration_completed?: boolean
           lorawan_rssi_at_start?: number | null
           lorawan_snr_at_start?: number | null
@@ -1408,6 +1410,7 @@ export type Database = {
           longitude?: number | null
           lorawan_last_verified_at?: string | null
           lorawan_network?: string | null
+          lorawan_ping_minutes?: number | null
           lorawan_registration_completed?: boolean
           lorawan_rssi_at_start?: number | null
           lorawan_snr_at_start?: number | null
@@ -1615,7 +1618,6 @@ export type Database = {
           id: string
           modified_by: string | null
           name: string
-          organisation_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1626,7 +1628,6 @@ export type Database = {
           id?: string
           modified_by?: string | null
           name: string
-          organisation_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1637,53 +1638,9 @@ export type Database = {
           id?: string
           modified_by?: string | null
           name?: string
-          organisation_id?: string | null
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "devices_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["organisation_id"]
-          },
-          {
-            foreignKeyName: "devices_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisation_members_detailed"
-            referencedColumns: ["organisation_id"]
-          },
-          {
-            foreignKeyName: "devices_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisation_summary"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "devices_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "devices_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "project_members_detailed"
-            referencedColumns: ["organisation_id"]
-          },
-          {
-            foreignKeyName: "devices_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "project_summary"
-            referencedColumns: ["organisation_id"]
-          },
-        ]
+        Relationships: []
       }
       ecological_shift_reports: {
         Row: {
@@ -1760,12 +1717,12 @@ export type Database = {
           model_name: string
           model_version: string
           project_id: string | null
-          qdrant_collection: string
           reduction_method: string | null
           reduction_params: Json | null
           scope: string
           scope_id: string | null
           status: string
+          vector_space: string
         }
         Insert: {
           clustering_method?: string | null
@@ -1781,12 +1738,12 @@ export type Database = {
           model_name: string
           model_version: string
           project_id?: string | null
-          qdrant_collection?: string
           reduction_method?: string | null
           reduction_params?: Json | null
           scope?: string
           scope_id?: string | null
           status?: string
+          vector_space?: string
         }
         Update: {
           clustering_method?: string | null
@@ -1802,12 +1759,12 @@ export type Database = {
           model_name?: string
           model_version?: string
           project_id?: string | null
-          qdrant_collection?: string
           reduction_method?: string | null
           reduction_params?: Json | null
           scope?: string
           scope_id?: string | null
           status?: string
+          vector_space?: string
         }
         Relationships: [
           {
@@ -2179,6 +2136,114 @@ export type Database = {
           },
         ]
       }
+      label_checks: {
+        Row: {
+          checked_at: string | null
+          checked_by: string | null
+          computed_at: string
+          embedding_run_id: string | null
+          id: string
+          kind: string
+          label_scientific_name: string | null
+          observation_id: string
+          other_scientific_name: string | null
+          other_taxon_id: string | null
+          outcome: string | null
+          project_id: string
+          reference: string
+          score: number
+        }
+        Insert: {
+          checked_at?: string | null
+          checked_by?: string | null
+          computed_at?: string
+          embedding_run_id?: string | null
+          id?: string
+          kind: string
+          label_scientific_name?: string | null
+          observation_id: string
+          other_scientific_name?: string | null
+          other_taxon_id?: string | null
+          outcome?: string | null
+          project_id: string
+          reference: string
+          score: number
+        }
+        Update: {
+          checked_at?: string | null
+          checked_by?: string | null
+          computed_at?: string
+          embedding_run_id?: string | null
+          id?: string
+          kind?: string
+          label_scientific_name?: string | null
+          observation_id?: string
+          other_scientific_name?: string | null
+          other_taxon_id?: string | null
+          outcome?: string | null
+          project_id?: string
+          reference?: string
+          score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "label_checks_embedding_run_id_fkey"
+            columns: ["embedding_run_id"]
+            isOneToOne: false
+            referencedRelation: "embedding_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "label_checks_observation_id_fkey"
+            columns: ["observation_id"]
+            isOneToOne: false
+            referencedRelation: "observations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "label_checks_other_taxon_id_fkey"
+            columns: ["other_taxon_id"]
+            isOneToOne: false
+            referencedRelation: "taxa"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "label_checks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "label_checks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "label_checks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "label_checks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "label_checks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_with_stats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       log_levels: {
         Row: {
           created_at: string | null
@@ -2205,6 +2270,76 @@ export type Database = {
           value?: string
         }
         Relationships: []
+      }
+      lorawan_ingest_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          label: string | null
+          organisation_id: string
+          revoked_at: string | null
+          token_sha256: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          organisation_id: string
+          revoked_at?: string | null
+          token_sha256: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          organisation_id?: string
+          revoked_at?: string | null
+          token_sha256?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lorawan_ingest_tokens_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "lorawan_ingest_tokens_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "lorawan_ingest_tokens_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lorawan_ingest_tokens_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lorawan_ingest_tokens_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "lorawan_ingest_tokens_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["organisation_id"]
+          },
+        ]
       }
       lorawan_messages: {
         Row: {
@@ -2267,28 +2402,76 @@ export type Database = {
       }
       lorawan_parsed_messages: {
         Row: {
+          ai_failures: number | null
           battery_level: number | null
+          battery_mv: number | null
+          battery_raw: number | null
           device_id: string | null
+          hours_since_reset: number | null
           id: string
+          kind: string
+          last_reset_reason: number | null
           lorawan_message_id: string
           model_output: string | null
+          nn_detections: number | null
+          nn_positive_count: number | null
+          nn_total_count: number | null
+          op_error: number | null
+          op_index: number | null
+          op_value: number | null
+          reset_count: number | null
           sd_card_used_capacity: number | null
+          sd_free_pct: number | null
+          self_test_bits: number | null
+          temperature_c: number | null
         }
         Insert: {
+          ai_failures?: number | null
           battery_level?: number | null
+          battery_mv?: number | null
+          battery_raw?: number | null
           device_id?: string | null
+          hours_since_reset?: number | null
           id?: string
+          kind?: string
+          last_reset_reason?: number | null
           lorawan_message_id: string
           model_output?: string | null
+          nn_detections?: number | null
+          nn_positive_count?: number | null
+          nn_total_count?: number | null
+          op_error?: number | null
+          op_index?: number | null
+          op_value?: number | null
+          reset_count?: number | null
           sd_card_used_capacity?: number | null
+          sd_free_pct?: number | null
+          self_test_bits?: number | null
+          temperature_c?: number | null
         }
         Update: {
+          ai_failures?: number | null
           battery_level?: number | null
+          battery_mv?: number | null
+          battery_raw?: number | null
           device_id?: string | null
+          hours_since_reset?: number | null
           id?: string
+          kind?: string
+          last_reset_reason?: number | null
           lorawan_message_id?: string
           model_output?: string | null
+          nn_detections?: number | null
+          nn_positive_count?: number | null
+          nn_total_count?: number | null
+          op_error?: number | null
+          op_index?: number | null
+          op_value?: number | null
+          reset_count?: number | null
           sd_card_used_capacity?: number | null
+          sd_free_pct?: number | null
+          self_test_bits?: number | null
+          temperature_c?: number | null
         }
         Relationships: [
           {
@@ -2460,7 +2643,6 @@ export type Database = {
           embedding_run_id: string | null
           is_outlier: boolean
           media_id: string
-          qdrant_point_id: string | null
           umap_x: number | null
           umap_y: number | null
           updated_at: string | null
@@ -2478,7 +2660,6 @@ export type Database = {
           embedding_run_id?: string | null
           is_outlier?: boolean
           media_id: string
-          qdrant_point_id?: string | null
           umap_x?: number | null
           umap_y?: number | null
           updated_at?: string | null
@@ -2496,7 +2677,6 @@ export type Database = {
           embedding_run_id?: string | null
           is_outlier?: boolean
           media_id?: string
-          qdrant_point_id?: string | null
           umap_x?: number | null
           umap_y?: number | null
           updated_at?: string | null
@@ -3786,10 +3966,27 @@ export type Database = {
     Views: {
       deployment_latest_lorawan: {
         Row: {
+          ai_failures: number | null
           battery_level: number | null
+          battery_mv: number | null
+          battery_raw: number | null
+          battery_received_at: string | null
+          counts_received_at: string | null
           deployment_id: string | null
+          health_reasons: string[] | null
+          health_received_at: string | null
+          health_state: string | null
+          hours_since_reset: number | null
+          last_reset_reason: number | null
+          lorawan_ping_minutes: number | null
+          nn_positive_count: number | null
+          nn_total_count: number | null
           received_at: string | null
+          reset_count: number | null
           sd_card_used_capacity: number | null
+          sd_free_pct: number | null
+          self_test_bits: number | null
+          temperature_c: number | null
         }
         Relationships: [
           {
@@ -4448,6 +4645,18 @@ export type Database = {
         }[]
       }
       caller_is_demo: { Args: never; Returns: boolean }
+      camera_alert_recipients: {
+        Args: { p_event_type: string; p_project_id: string }
+        Returns: string[]
+      }
+      camera_health_reason_text: { Args: { p_code: string }; Returns: string }
+      camera_health_state: {
+        Args: { p_deployment_id: string; p_until: string }
+        Returns: {
+          reasons: string[]
+          state: string
+        }[]
+      }
       camera_open_deployment: {
         Args: { p_bluetooth_id: string }
         Returns: {
@@ -4459,10 +4668,7 @@ export type Database = {
         Args: { p_project_id: string; p_setup_by: string }
         Returns: boolean
       }
-      can_read_device: {
-        Args: { p_device_id: string; p_organisation_id: string }
-        Returns: boolean
-      }
+      can_read_device: { Args: never; Returns: boolean }
       can_read_project: {
         Args: {
           p_created_by: string
@@ -4527,6 +4733,10 @@ export type Database = {
       ensure_cloud_models: { Args: never; Returns: number }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
       expire_old_invitations: { Args: never; Returns: number }
+      gbf_report_counts: {
+        Args: { p_from: string; p_project_ids: string[]; p_to: string }
+        Returns: Json
+      }
       geometry: { Args: { "": string }; Returns: unknown }
       geometry_above: {
         Args: { geom1: unknown; geom2: unknown }
@@ -4760,6 +4970,13 @@ export type Database = {
           scientific_name: string
         }[]
       }
+      issue_lorawan_ingest_token: {
+        Args: { p_label?: string; p_organisation_id: string }
+        Returns: {
+          token: string
+          token_id: string
+        }[]
+      }
       label_map_problems: { Args: { p_label_map: Json }; Returns: string[] }
       local_hour_of: { Args: { p_ts: string; p_tz: string }; Returns: number }
       longtransactionsenabled: { Args: never; Returns: boolean }
@@ -4795,6 +5012,7 @@ export type Database = {
         }[]
       }
       next_version_number: { Args: { p_family_id: string }; Returns: number }
+      notify_silent_cameras: { Args: never; Returns: number }
       populate_geometry_columns:
         | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
         | { Args: { use_typmod?: boolean }; Returns: string }
@@ -4837,6 +5055,7 @@ export type Database = {
       postgis_wagyu_version: { Args: never; Returns: string }
       pull_changes: { Args: { last_pulled_at: number }; Returns: Json }
       push_changes: { Args: { changes: Json }; Returns: Json }
+      readable_deployment_ids: { Args: never; Returns: string[] }
       remove_project_member: {
         Args: { p_project_id: string; p_removed_by: string; p_user_id: string }
         Returns: Json
@@ -4851,6 +5070,10 @@ export type Database = {
       }
       restore_project: {
         Args: { p_deleted_at: string; p_id: string }
+        Returns: boolean
+      }
+      revoke_lorawan_ingest_token: {
+        Args: { p_token_id: string }
         Returns: boolean
       }
       safe_to_double: { Args: { p_text: string }; Returns: number }

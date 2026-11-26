@@ -33,6 +33,8 @@ export default class Deployment extends Model {
     @field('sd_card_available_kb_at_start') sdCardAvailableKbAtStart?: number
     @field('lorawan_rssi_at_start') lorawanRssiAtStart?: number
     @field('lorawan_snr_at_start') lorawanSnrAtStart?: number
+    // The op 32 ping period written at the start, for silence (ww-backend #372)
+    @field('lorawan_ping_minutes') lorawanPingMinutes?: number
 
     @text('name') name?: string
     @field('setup_by') setupBy!: string

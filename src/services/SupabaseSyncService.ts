@@ -766,7 +766,6 @@ class SupabaseSyncService {
                                                         id: localDevice.id,
                                                         bluetooth_id: localDevice.bluetoothId,
                                                         name: localDevice.name,
-                                                        organisation_id: localDevice.organisationId || null,
                                                         device_eui: localDevice.deviceEui || null,
                                                         modified_by: currentUserId
                                                     })
@@ -1860,6 +1859,7 @@ class SupabaseSyncService {
                         rec.recordGpsInImages = row.record_gps_in_images ?? false
                         rec.lorawanRequired = row.lorawan_required ?? false
                         rec.isArchived = row.is_archived ?? false
+                        rec.gbifDatasetKey = row.gbif_dataset_key ?? null
                         rec.createdBy = row.created_by || ''
                         rec.modifiedBy = row.modified_by || '';
                         // Use _raw to bypass @readonly check
@@ -1894,6 +1894,7 @@ class SupabaseSyncService {
                         rec.recordGpsInImages = row.record_gps_in_images ?? false
                         rec.lorawanRequired = row.lorawan_required ?? false
                         rec.isArchived = row.is_archived ?? false
+                        rec.gbifDatasetKey = row.gbif_dataset_key ?? null
                         rec.createdBy = row.created_by || ''
                         rec.modifiedBy = row.modified_by || '';
                         // Use _raw to bypass @readonly check
@@ -2091,6 +2092,7 @@ class SupabaseSyncService {
                         rec.sdCardAvailableKbAtStart = row.sd_card_available_kb_at_start ?? rec.sdCardAvailableKbAtStart
                         rec.lorawanRssiAtStart = row.lorawan_rssi_at_start ?? rec.lorawanRssiAtStart
                         rec.lorawanSnrAtStart = row.lorawan_snr_at_start ?? rec.lorawanSnrAtStart
+                        rec.lorawanPingMinutes = row.lorawan_ping_minutes ?? rec.lorawanPingMinutes
 
                         rec.name = row.name ?? ''
                         rec.setupBy = row.setup_by || ''
@@ -2148,6 +2150,7 @@ class SupabaseSyncService {
                         rec.sdCardAvailableKbAtStart = row.sd_card_available_kb_at_start ?? undefined
                         rec.lorawanRssiAtStart = row.lorawan_rssi_at_start ?? undefined
                         rec.lorawanSnrAtStart = row.lorawan_snr_at_start ?? undefined
+                        rec.lorawanPingMinutes = row.lorawan_ping_minutes ?? undefined
 
                         rec.name = row.name ?? ''
                         rec.setupBy = row.setup_by || ''
