@@ -18,6 +18,7 @@ import { DeploymentService } from '../DeploymentService'
 import { DeviceService } from '../DeviceService'
 import ProjectService from '../ProjectService'
 import { registerCamera } from '../cameraRegistration'
+import type { CommandContext } from '../../ble/protocol/commandRegistry'
 
 jest.mock('../../database', () => {
 	const { Database } = require('@nozbe/watermelondb')
@@ -150,6 +151,65 @@ describe('registerCamera, shared by the scanner and the Dev Deployment Test (#48
 		expect(create.recordId).toBe(result.device.id)
 		expect(create.operationType).toBe('CREATE')
 		expect(JSON.parse(create.payload)).not.toHaveProperty('organisation_id')
+	})
+
+	describe("the camera's DevEUI (#536)", () => {
+		// A connected camera that answers every command with `reply`, or never
+		const cameraAnswering = (reply: string | Error) => {
+			const sent: string[] = []
+			const session = {
+				execute: async <T>(make: () => CommandContext<T>): Promise<T> => {
+					const cmd = make()
+					sent.push(cmd.build())
+					if (reply instanceof Error) throw reply
+					cmd.collect(reply)
+					return cmd.parser()
+				},
+			}
+			return { sent, session }
+		}
+		const createPayload = async () => JSON.parse((await outbox('devices'))[0].payload)
+
+		beforeEach(() => { mockDevicesOnServer = [] })
+
+		it('reads it with `get deveui` and puts it in the CREATE and on the row', async () => {
+			const { sent, session } = cameraAnswering('DevEui: 70:B3:D5:7E:D0:07:00:01')
+
+			const result = await registerCamera({ ...camera, session })
+
+			if (result.kind !== 'registered') throw new Error(`expected registered, got ${result.kind}`)
+			expect(sent).toEqual(['get deveui'])
+			expect(result.device.deviceEui).toBe('70B3D57ED0070001')
+			expect(await createPayload()).toEqual(expect.objectContaining({ bluetooth_id: 'D4:5E', device_eui: '70B3D57ED0070001' }))
+		})
+
+		it.each([
+			['refuses it', 'Failed 2'],
+			['reports all zeros', 'DevEui: 00:00:00:00:00:00:00:00'],
+			// Every camera not given its own reports the firmware's default
+			['reports the firmware default', 'DevEui: 00:80:E1:01:01:01:01:01'],
+			['does not answer', new Error('deveui: Timeout after 3000ms')],
+		])('registers the camera without one when it %s', async (_, reply) => {
+			const { sent, session } = cameraAnswering(reply)
+
+			const result = await registerCamera({ ...camera, session })
+
+			if (result.kind !== 'registered') throw new Error(`expected registered, got ${result.kind}`)
+			expect(sent).toEqual(['get deveui'])
+			expect(result.device.deviceEui).toBeFalsy()
+			expect((await createPayload()).device_eui).toBeNull()
+		})
+
+		it("asks nothing of a camera the server already has, and keeps the server's row as it is", async () => {
+			mockDevicesOnServer = [mockServerDevice]
+			const { sent, session } = cameraAnswering('DevEui: 70:B3:D5:7E:D0:07:00:01')
+
+			const result = await registerCamera({ ...camera, session })
+
+			expect(result).toEqual({ kind: 'registered', device: expect.objectContaining({ id: SERVER }) })
+			expect(sent).toEqual([])
+			expect((await database.get<Device>('devices').find(SERVER)).deviceEui).toBeFalsy()
+		})
 	})
 
 	it('writes nothing when cancelled after the server lookup', async () => {

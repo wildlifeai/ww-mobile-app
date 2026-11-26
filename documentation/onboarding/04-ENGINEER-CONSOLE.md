@@ -74,7 +74,7 @@ Direct commands handled by the BLE chip, no `AI` prefix.
 
 | Command | Response | Purpose |
 |---------|----------|---------|
-| `get deveui` | `DevEui: XX:XX:...` | Read LoRaWAN DevEUI |
+| `get deveui` | `DevEui: 70:B3:D5:7E:D0:07:00:01` / `Failed N` | Read LoRaWAN DevEUI. Registration records it (#536) |
 | `get appeui` | `AppEui: XX:XX:...` | Read LoRaWAN AppEUI (JoinEUI) |
 | `join` | `Already joined` / `OK` / `Wrong state: ...` | Request LoRaWAN join |
 | `ping` | `OK` / `Not joined yet.` / `Busy` / `LoRaWAN is off. Use 'AI setop 32 <minutes>' or 'join'` (BLE 0.30.56 on, op32 at 0) | Send LoRaWAN test packet |

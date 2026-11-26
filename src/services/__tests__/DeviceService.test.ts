@@ -98,10 +98,30 @@ describe("DeviceService", () => {
 
 			expect(mockCollection.prepareCreate).toHaveBeenCalled()
 			expect(OutboxService.recordOperation).toHaveBeenCalledWith(expect.objectContaining({
-				payload: { id: "new-d1", bluetooth_id: "bt-id", name: "New Device", modified_by: "user-1" },
+				payload: { id: "new-d1", bluetooth_id: "bt-id", name: "New Device", device_eui: null, modified_by: "user-1" },
 			}))
 			// The result will have the properties set in the callback
 			expect(result).toEqual({ ...mockNewDevice, bluetoothId: "bt-id", name: "New Device" })
+		})
+
+		// The server takes device_eui on insert only (#536)
+		it("puts the DevEUI on the row and in the CREATE when registration read one", async () => {
+			;(database.write as jest.Mock).mockImplementation(async (callback) => {
+				await callback()
+			})
+			mockCollection.prepareCreate.mockImplementation((callback) => {
+				const device: any = { id: "new-d1" }
+				callback(device)
+				return device
+			})
+			;(OutboxService.recordOperation as jest.Mock).mockReturnValue("outbox-op")
+
+			const result = await DeviceService.createDevice("bt-id", "New Device", "user-1", "70B3D57ED0070001")
+
+			expect(OutboxService.recordOperation).toHaveBeenCalledWith(expect.objectContaining({
+				payload: expect.objectContaining({ device_eui: "70B3D57ED0070001" }),
+			}))
+			expect(result.deviceEui).toBe("70B3D57ED0070001")
 		})
 	})
 })

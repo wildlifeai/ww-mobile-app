@@ -708,11 +708,20 @@ export const commandRegistry = {
   ),
 
   // -- LoRaWAN Network Commands --
+  /**
+   * The camera's LoRaWAN DevEUI, answered by the nRF itself (`getKey` in
+   * ww-hardware `ble_commands.c`): `DevEui: ` and eight bytes of colon-separated
+   * hex, or `Failed <LoRaMacStatus_t>` when it cannot read it. Returned as 16
+   * hex digits, uppercase and without separators, the form The Things Network
+   * sends and `devices.device_eui` is matched on (#536). Not retried: registration
+   * goes on without it.
+   */
   deveui: createSingleLineCommand<string>(
     'deveui',
     () => 'get deveui',
-    /DevEui\s+(.+)/i,
-    (match) => match[1].trim()
+    /^DevEui:\s*((?:[0-9A-F]{2}:){7}[0-9A-F]{2})\s*$/i,
+    (match) => match[1].replace(/:/g, '').toUpperCase(),
+    { timeoutMs: 3000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Failed -?\d+\s*$/ }
   ),
   
   appeui: createSingleLineCommand<string>(

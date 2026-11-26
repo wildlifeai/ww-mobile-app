@@ -9,6 +9,7 @@ import { useAppSelector } from '../../../redux'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { DeviceService } from '../../../services/DeviceService'
 import { registerCamera } from '../../../services/cameraRegistration'
+import { createBleSession } from '../../../ble/session/createBleSession'
 import { selectCurrentOrganisation } from '../../../redux/slices/authSlice'
 import { DeploymentService } from '../../../services/DeploymentService'
 import ProjectService from '../../../services/ProjectService'
@@ -255,11 +256,13 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                             return
                         }
 
-                        // The server's row, else a new one, in no organisation (#451, #501)
+                        // The server's row, else a new one, in no organisation (#451, #501),
+                        // carrying the DevEUI read from the camera (#536)
                         const registration = await registerCamera({
                             bluetoothId: device.id,
                             name: device.name || 'Unknown Device',
                             userId: user.id,
+                            session: createBleSession(connectedDevice),
                             isCancelled,
                             onStep: addLog,
                         })

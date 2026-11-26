@@ -597,7 +597,8 @@ export const useDevDeployment = ({
         // without the scanner, which is what registers a camera, so one met
         // only through the console has none, and its deployment used to be
         // saved with no camera: never uploaded, and never found again (#480).
-        // This writes the phone's database only, never the camera.
+        // This writes the phone's database only, never the camera; it reads
+        // the camera's DevEUI for a new row (#536).
         let cameraRow = device
         if (!cameraRow) {
             setSubmitting(true)
@@ -605,6 +606,7 @@ export const useDevDeployment = ({
                 bluetoothId: bleDevice.id,
                 name: bleDevice.name || 'Unknown Device',
                 userId: user.id,
+                session: bleSession,
             })
             setSubmitting(false)
             if (registration.kind !== 'registered') {

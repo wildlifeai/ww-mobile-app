@@ -8,7 +8,8 @@ import { DeviceService } from '../../../../services/DeviceService'
  * A camera this phone has not met is asked of the server before the scanner
  * registers it (#451). Since ww-backend #346 a camera belongs to no
  * organisation, so any signed-in account registers one the server lacks, an
- * account with no organisation included (#501).
+ * account with no organisation included (#501), with the DevEUI it reads from
+ * the camera (#536).
  */
 
 const mockState: any = {
@@ -27,6 +28,9 @@ const mockBleActions = {
 }
 const mockAutoConnect = { resetAll: jest.fn(), transition: jest.fn(), canAutoConnect: jest.fn(() => true), resetDevice: jest.fn() }
 const mockRunChecks = jest.fn(async () => ({}))
+const EUI = '70B3D57ED0070001'
+// The camera's session; every command it is sent is answered with the DevEUI
+const mockExecute = jest.fn(async (_make: () => any): Promise<any> => EUI)
 
 jest.mock('@react-navigation/native', () => ({
 	useNavigation: () => mockNavigation,
@@ -40,6 +44,7 @@ jest.mock('../../../../redux/slices/authSlice', () => ({
 jest.mock('../../../../providers/BleEngineProvider', () => ({ useBleActions: () => mockBleActions }))
 jest.mock('../../../../hooks/useDevicePreDeploymentChecks', () => ({ useDevicePreDeploymentChecks: () => ({ runChecks: mockRunChecks }) }))
 jest.mock('../../../../hooks/useBleInitialization', () => ({ useBleInitialization: () => ({ initialize: jest.fn() }) }))
+jest.mock('../../../../ble/session/createBleSession', () => ({ createBleSession: () => ({ execute: mockExecute }) }))
 jest.mock('../../../../services/DeviceService', () => ({
 	DeviceService: {
 		getDeviceByBluetoothId: jest.fn(),
@@ -82,6 +87,8 @@ beforeEach(() => {
 	deviceService.getDeviceByBluetoothId.mockResolvedValue(undefined)
 	deviceService.adoptFromServer.mockResolvedValue({ kind: 'none' })
 	deviceService.createDevice.mockResolvedValue({ id: 'device-new' } as any)
+	mockExecute.mockClear()
+	mockExecute.mockResolvedValue(EUI)
 	deviceService.calculateDeviceStatus.mockResolvedValue('needs_preparation')
 	ProjectService.getProjectsForUserInOrganisation.mockResolvedValue([{ id: 'project-1' }])
 })
@@ -94,6 +101,7 @@ describe('the scanner and a camera this phone has not met (#451)', () => {
 
 		expect(deviceService.adoptFromServer).toHaveBeenCalledWith('ble-1')
 		expect(deviceService.createDevice).not.toHaveBeenCalled()
+		expect(mockExecute).not.toHaveBeenCalled()
 		expect(mockNavigation.navigate).toHaveBeenCalledWith('StartMonitoringDetailsStep', expect.objectContaining({
 			deviceId: 'device-server',
 		}))
@@ -109,10 +117,12 @@ describe('the scanner and a camera this phone has not met (#451)', () => {
 		expect(deviceService.calculateDeviceStatus).toHaveBeenCalledWith('device-server')
 	})
 
-	it('registers it, in no organisation, when the server has none', async () => {
+	it('registers it, in no organisation, with its DevEUI, when the server has none', async () => {
 		await selectCamera()
 
-		expect(deviceService.createDevice).toHaveBeenCalledWith('ble-1', 'WILD-TEST', 'user-1')
+		expect(mockExecute).toHaveBeenCalledTimes(1)
+		expect(mockExecute.mock.calls[0][0]().build()).toBe('get deveui')
+		expect(deviceService.createDevice).toHaveBeenCalledWith('ble-1', 'WILD-TEST', 'user-1', EUI)
 		expect(mockNavigation.navigate).toHaveBeenCalledWith('StartMonitoringDetailsStep', expect.objectContaining({
 			deviceId: 'device-new',
 		}))
@@ -124,7 +134,7 @@ describe('the scanner and a camera this phone has not met (#451)', () => {
 
 		await selectCamera()
 
-		expect(deviceService.createDevice).toHaveBeenCalledWith('ble-1', 'WILD-TEST', 'user-1')
+		expect(deviceService.createDevice).toHaveBeenCalledWith('ble-1', 'WILD-TEST', 'user-1', EUI)
 		expect(alert).not.toHaveBeenCalledWith('Cannot register this camera', expect.anything())
 	})
 
@@ -135,7 +145,18 @@ describe('the scanner and a camera this phone has not met (#451)', () => {
 
 		await selectCamera()
 
-		expect(deviceService.createDevice).toHaveBeenCalledWith('ble-1', 'WILD-TEST', 'user-1')
+		expect(deviceService.createDevice).toHaveBeenCalledWith('ble-1', 'WILD-TEST', 'user-1', EUI)
+	})
+
+	it('registers it without a DevEUI when the camera does not give one (#536)', async () => {
+		mockExecute.mockRejectedValue(new Error('deveui failed: Failed 2'))
+
+		await selectCamera()
+
+		expect(deviceService.createDevice).toHaveBeenCalledWith('ble-1', 'WILD-TEST', 'user-1', undefined)
+		expect(mockNavigation.navigate).toHaveBeenCalledWith('StartMonitoringDetailsStep', expect.objectContaining({
+			deviceId: 'device-new',
+		}))
 	})
 
 	it('asks to sign in, and asks the server nothing, when no one is signed in', async () => {

@@ -51,7 +51,8 @@ const GOLDEN: Record<keyof typeof commandRegistry, Row> = {
     },
     disconnect: { wire: 'dis', accepts: 'Disconnect' },
     flashh: { wire: 'flashh', accepts: 'Flash header ok', rejects: 'Flash error' },
-    deveui: { wire: 'get deveui', accepts: 'DevEui 70B3D57ED0060B7C' },
+    // Word for word from getKey() and acutetech_utils_make_key() in ww-hardware (#536)
+    deveui: { wire: 'get deveui', accepts: 'DevEui: 70:B3:D5:7E:D0:07:00:01', rejects: 'Failed 2' },
     appeui: { wire: 'get appeui', accepts: 'AppEui 0000000000000000' },
     appkey: { wire: 'get appkey', accepts: 'AppKey 00000000000000000000000000000000' },
     selftest: { wire: 'selftest', accepts: 'Error bits = 0x0000' },
@@ -264,6 +265,21 @@ describe('commandRegistry golden wire format', () => {
         expect(setop.match('Set OpParam 260 = 0')).toBe(false)
         expect(setop.match('OpParam 32 = 240')).toBe(false)
         expect(setop.match('Set OpParam 26 = 0')).toBe(true)
+    })
+
+    it('reads the DevEUI as 16 hex digits, the form The Things Network sends (#536)', () => {
+        // Until #536 the pattern wanted a space straight after `DevEui` and
+        // matched no reply the nRF sends
+        const read = (line: string) => {
+            const cmd = commandRegistry.deveui()
+            cmd.collect(line)
+            return cmd.parser()
+        }
+        expect(read('DevEui: 70:B3:D5:7E:D0:07:00:01')).toBe('70B3D57ED0070001')
+        expect(read('DevEui: 70:b3:d5:7e:d0:07:00:01 ')).toBe('70B3D57ED0070001')
+        for (const line of ['DevEui: 70:B3:D5:7E', 'AppEui: 70:B3:D5:7E:D0:07:00:01', 'DevEui 70B3D57ED0060B7C']) {
+            expect(commandRegistry.deveui().match(line)).toBe(false)
+        }
     })
 
     it('names each firmware update error code for the step xip_manager.c returns it from', () => {
