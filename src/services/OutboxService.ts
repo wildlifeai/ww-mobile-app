@@ -324,7 +324,8 @@ class OutboxService {
     /**
      * Watch the operations the server refused for good (#449): 42501, 23P01, or
      * an update or delete it did not apply. They are kept, never sent again,
-     * and error_message holds the server's reason. Settings lists them.
+     * and error_message holds the server's reason. Settings lists them, in
+     * plain words (refusedChanges.ts).
      */
     observeRefusedOperations(): Observable<SyncOutbox[]> {
         return database.get<SyncOutbox>('sync_outbox')

@@ -112,8 +112,8 @@ const isBluetoothIdTaken = (error: { code?: string, message?: string, details?: 
     error.code === '23505' && /bluetooth_id/.test(`${error.message ?? ''} ${error.details ?? ''}`)
 
 /**
- * In error_message, for the Settings line, when the server has the camera under
- * an id this account cannot read. Every signed-in account but the demo one reads
+ * In error_message, for the log (Settings words it plainly, refusedChanges.ts),
+ * when the server has the camera under an id this account cannot read. Every signed-in account but the demo one reads
  * every live camera since ww-backend #346, so that is a row deleted on the
  * server, which keeps its Bluetooth id (#501).
  */
@@ -1016,7 +1016,7 @@ class SupabaseSyncService {
      * When the server shows no such row, the camera's row was deleted there
      * and still holds the Bluetooth id: every other camera is readable since
      * ww-backend #346 (#501). The CREATE is refused for good with a reason
-     * Settings shows as it is, and its deployments keep failing 23503 while the
+     * Settings words plainly, and its deployments keep failing 23503 while the
      * deleted row holds the id. A lookup that fails leaves the CREATE failed, so
      * the next sync asks again.
      */

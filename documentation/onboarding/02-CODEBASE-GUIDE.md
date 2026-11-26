@@ -188,6 +188,7 @@ services/
 ├── DeploymentPhotoService.ts  # Deployment photo capture + upload
 ├── SupabaseSyncService.ts     # Bidirectional WatermelonDB ↔ Supabase sync
 ├── OutboxService.ts           # Queues offline operations for sync
+├── refusedChanges.ts          # A refused change in plain words, its record named, for Settings (#461)
 ├── SyncStateService.ts        # Sync state tracking
 └── SyncBarrier.ts             # Event-driven initial-sync readiness barrier
 ```

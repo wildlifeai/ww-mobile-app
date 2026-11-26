@@ -153,7 +153,9 @@ version for humans is
   not yet uploaded" (the project reconcile, server deletions, the creator's role), `refused`
   counts, so nothing is destroyed; it holds no pull back. Settings
   shows the count under Data Synchronization (`RefusedChangesItem`, from
-  `OutboxService.observeRefusedOperations`), with each reason on a tap. Nothing re-queues a
+  `OutboxService.observeRefusedOperations`), and a tap names each record and gives one plain
+  sentence per code (`refusedChanges.ts`, #461): a new code refused for good needs its sentence
+  there, or it reads as the fallback. Nothing re-queues a
   refused operation, except that a later project or deployment deletion may turn it
   `orphaned`.
 - **Incremental pulls never see a row disappear (#330).** A project deleted on the website,
