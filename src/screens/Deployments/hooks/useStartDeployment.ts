@@ -12,7 +12,6 @@ import ReferenceDataService from '../../../services/ReferenceDataService'
 import Device from '../../../database/models/Device'
 import Deployment from '../../../database/models/Deployment'
 import { DeviceService } from '../../../services/DeviceService'
-import FirmwareService from '../../../services/FirmwareService'
 import { useBleSession } from '../../../hooks/useBleSession'
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { checkSdCard } from '../../../ble/workflows/checkSdCard'
@@ -21,7 +20,7 @@ import { sleep } from '../../../utils/helpers'
 import { selfTestCache } from '../../../ble/protocol/selfTestCache'
 import { parseSelfTestBits, SelfTestBit, SD_CARD_POWER_CYCLE_HINT, HM0360_POWER_CYCLE_HINT, NIGHT_SENSOR_WARNING } from '../../../utils/deviceSelfTest'
 import { useBleActions } from '../../../providers/BleEngineProvider'
-import { useDeploymentConfiguration } from '../../../hooks/useDeploymentConfiguration'
+import { deploymentPingMinutes, useDeploymentConfiguration } from '../../../hooks/useDeploymentConfiguration'
 import { useBle } from '../../../hooks/useBle'
 import { useGPSLocation } from '../../../hooks/useGPSLocation'
 import { useDeviceSettings, OP_PARAMETER } from '../../../hooks/useDeviceSettings'
@@ -543,7 +542,6 @@ export const useStartDeployment = ({
             
             let lorawanRssi: number | undefined
             let lorawanSnr: number | undefined
-            let bleFirmwareId: string | undefined
 
             if (bleDevice && project?.lorawan_required) {
                 try {
@@ -560,20 +558,11 @@ export const useStartDeployment = ({
                 }
             }
 
-            if (bleDevice) {
-                try {
-                    let response = initPayload?.deviceFirmwareVersion
-                    if (!response) {
-                        response = await bleSession?.execute(commandRegistry.version)
-                    }
-                    if (response) {
-                        const resolvedId = await FirmwareService.getFirmwareIdByVersion('ble', response)
-                        if (resolvedId) bleFirmwareId = resolvedId
-                    }
-                } catch (e) {
-                    logWarn('Failed to resolve firmware ID:', e)
-                }
-            }
+            // Both builds the camera runs: the LoRaWAN message no longer says (#534)
+            const firmwareIds = await pipeline.resolveFirmwareIds(bleSession, {
+                bleVersion: initPayload?.deviceFirmwareVersion,
+                aiVersion: initPayload?.himaxFirmwareVersion,
+            })
 
             // 5. Create deployment record
             progress.addLog('Creating deployment record...')
@@ -597,7 +586,10 @@ export const useStartDeployment = ({
                 batteryLevelAtStart: batteryLevel ?? undefined,
                 sdCardTotalKbAtStart: sdCardStatus?.total,
                 sdCardAvailableKbAtStart: sdCardStatus?.free,
-                bleFirmwareId: bleFirmwareId,
+                bleFirmwareId: firmwareIds.bleFirmwareId,
+                himaxFirmwareId: firmwareIds.himaxFirmwareId,
+                // What configuration writes as op32 below, for silence (#532)
+                lorawanPingMinutes: deploymentPingMinutes(project.lorawan_required ?? false, currentOps) ?? undefined,
                 lorawanRssiAtStart: lorawanRssi,
                 lorawanSnrAtStart: lorawanSnr,
                 startComments: formState.notes,
@@ -884,7 +876,7 @@ export const useStartDeployment = ({
             }
             isStartDeploymentInProgress.current = false
         }
-    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total, aiProcessorFailed, initPayload?.deviceFirmwareVersion, initErrors.deviceHealth, deploymentPhotoPaths, sensitivityLabel])
+    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total, aiProcessorFailed, initPayload?.deviceFirmwareVersion, initPayload?.himaxFirmwareVersion, initErrors.deviceHealth, deploymentPhotoPaths, sensitivityLabel])
 
     const handleFinishDismiss = useCallback(() => {
         progress.setIsFinishing(false)

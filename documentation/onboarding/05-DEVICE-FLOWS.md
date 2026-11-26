@@ -194,7 +194,7 @@ When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeplo
 |------|--------|--------|
 | 1 | AI Model Sync | Checks SD card (`dir`) for existing model files before downloading. Only transfers missing files via BLE. Issues `loadmodel` if OPs mismatch, never `erasemodel` first. Retries reference data sync if model not found locally, and **stops the deployment** if the project's model is still missing or has no firmware IDs (#290), or if it is on neither the camera (op14/op15) nor the card and its files cannot be had from the phone's cache or a download (#333), or if the transfer is refused because the camera's BLE firmware is below the [transfer floor](../resources/File-Transfer-Protocol.md#the-ble-firmware-floor) (#289), or if the phone's copy of the model is not a TFLite model, bytes 4 to 7 not `TFL3` (#428). Those four stops come before the deployment is created or anything is written to the device. It also stops when the camera never answers `loadmodel`, after the transfer, because a file the Himax cannot parse halts it (Seeed #241, #428). A failed transfer, or a `loadmodel` the camera refuses, stays a warning. The files are normally already on the phone: the [offline pre-download](./03-DATA-AND-SYNC.md#files-for-the-field) fetches them after each sync. Runs **before** time sync to stay within the firmware's 1000ms IMAGE task inactivity window. |
 | 2 | Time Sync | `setutc`, see [BLE Command Reference](./04-ENGINEER-CONSOLE.md#ble-command-reference). Handled by BLE module (not AI processor). |
-| 3 | Snapshot Data | Reads `battery`, `network` (if LoRaWAN required), `ver` for deployment record metadata |
+| 3 | Snapshot Data | Reads `battery`, `network` (if LoRaWAN required), and both builds for the record: `ver` and `AI ver`, from the connection's reads when it has them. `resolveFirmwareIds` (`deploymentPipeline.ts`) finds their catalogue rows, `ver` unpadded (#534); the LoRaWAN message carries no firmware version, so the record is where the website reads it. A build not in the phone's catalogue (it syncs only active rows) is left out |
 | 4 | Create DB Record | `DeploymentService.createDeployment()` → `OutboxService` → `SupabaseSyncService` |
 | 5 | Reset to Defaults | `pipeline.resetOps()` calls `executeResetToDefaults()`, shared workflow that intelligently resets parameters, skips tracking counters, and clears AI models. |
 | 6 | Configure Device | `pipeline.configureDevice()`, applies [capture method OPs](./04-ENGINEER-CONSOLE.md#capture-method-op-mapping), deployment ID, GPS, the project's capture flash, its pictures per trigger and its detection threshold (C, D and E under [Device Configuration](#device-configuration-usedeploymentconfiguration)). It configures against the op table **`resetOps` returned**, not the pre-reset snapshot |
@@ -346,12 +346,18 @@ threshold the same way.
 (OP 32, `LORAWAN_PING_MINUTES`, agreed with Charles Palmer on 6 October 2026):
 
 ```
-AI setop 32 720   (LoRaWAN required: ping every 12 hours, the factory default)
+AI setop 32 240   (LoRaWAN required: ping every 4 hours, #532)
 AI setop 32 0     (not required: never try to join, so no join failures without a gateway)
 ```
 
-The reset (step 5) has just written 720, so a project that requires LoRaWAN writes
-nothing here. The Dev Deployment Test screen writes its own LoRaWAN switch the same way.
+Every 4 hours is the period ww-hardware PR #81's firmware is designed for: it sends at
+most one detection and one health event per period. The reset (step 5) has just written
+720, the factory default, and a reset still does. `deploymentPingMinutes`
+(`useDeploymentConfiguration.ts`) decides the value, and the deployment record carries the
+same one as `lorawan_ping_minutes`: the camera no longer sends its ping period, and the
+server judges silence from it (ww-backend #372). Firmware without the flash mode (OP 34)
+gets nothing written and records nothing. The Dev Deployment Test screen writes its own
+LoRaWAN switch the same way.
 Firmware without the flash mode (OP 34) is left alone: before ae_review OP 32 was
 `CAM_RESOLUTION`, the hi-res switch, and the reset skips it there too.
 

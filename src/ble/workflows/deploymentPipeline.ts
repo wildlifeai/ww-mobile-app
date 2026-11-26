@@ -12,6 +12,9 @@ import { runFileTransferPipeline } from '../protocol/fileTransfer'
 import { crc16ccitt } from '../protocol/fileTransfer/crc16ccitt'
 import { FileTransferError } from '../protocol/fileTransfer/fileTransferTypes'
 import ReferenceDataService from '../../services/ReferenceDataService'
+import FirmwareService from '../../services/FirmwareService'
+import { himaxVersionOf } from '../../services/himaxStatus'
+import { convertBleToSemanticVersion } from '../../utils/versionUtils'
 import AiModelService from '../../services/AiModelService'
 import AiModel from '../../database/models/AiModel'
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
@@ -499,6 +502,39 @@ export async function syncAiModel(
     } else {
         addLog('No AI model required')
     }
+}
+
+/**
+ * The catalogue rows of the builds the camera runs, for the deployment record.
+ * The LoRaWAN message carries no firmware version since ww-hardware PR #81, so
+ * the deployment is the only record of it, and the website's Realtime page
+ * reads it there (#534). `ver` answers padded ("00.30.61") where the catalogue
+ * writes "0.30.61"; `AI ver` answers the build stamp the catalogue holds. A
+ * reply the caller already has is used, else the camera is asked. Either id is
+ * left out when its build is not in the phone's catalogue.
+ */
+export async function resolveFirmwareIds(
+    session: Pick<BleSession, 'execute'>,
+    known: { bleVersion?: string | null; aiVersion?: string | null } = {},
+): Promise<{ bleFirmwareId?: string; himaxFirmwareId?: string }> {
+    const ids: { bleFirmwareId?: string; himaxFirmwareId?: string } = {}
+    try {
+        const ver = known.bleVersion || await session.execute(() => commandRegistry.version())
+        const id = ver ? await FirmwareService.getFirmwareIdByVersion('ble', convertBleToSemanticVersion(ver)) : null
+        if (id) ids.bleFirmwareId = id
+        else logWarn(`[Deployment] No catalogue row for BLE firmware ${ver ?? '(no reply)'}`)
+    } catch (e) {
+        logWarn('[Deployment] Could not read the BLE firmware version:', e)
+    }
+    try {
+        const aiVer = known.aiVersion || await session.execute(() => commandRegistry.aiver()) as string
+        const id = aiVer ? await FirmwareService.getFirmwareIdByVersion('himax', himaxVersionOf(aiVer).trim()) : null
+        if (id) ids.himaxFirmwareId = id
+        else logWarn(`[Deployment] No catalogue row for AI firmware ${aiVer ?? '(no reply)'}`)
+    } catch (e) {
+        logWarn('[Deployment] Could not read the AI firmware version:', e)
+    }
+    return ids
 }
 
 /**

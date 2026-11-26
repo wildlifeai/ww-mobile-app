@@ -29,7 +29,7 @@ import { registerCamera, CANNOT_REGISTER_TITLE } from '../../../services/cameraR
 import { useBleSession } from '../../../hooks/useBleSession'
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { useBleActions } from '../../../providers/BleEngineProvider'
-import { useDeploymentConfiguration } from '../../../hooks/useDeploymentConfiguration'
+import { deploymentPingMinutes, useDeploymentConfiguration } from '../../../hooks/useDeploymentConfiguration'
 import { useBle } from '../../../hooks/useBle'
 import { useGPSLocation } from '../../../hooks/useGPSLocation'
 import { useDeviceSettings, OP_PARAMETER, FACTORY_DEFAULTS } from '../../../hooks/useDeviceSettings'
@@ -746,6 +746,9 @@ export const useDevDeployment = ({
             progress.setFinishStep('Creating record...')
             progress.setFinishProgress(0.3)
 
+            // Both builds the camera runs: the LoRaWAN message no longer says (#534)
+            const firmwareIds = await pipeline.resolveFirmwareIds(bleSession)
+
             const newDeployment = await DeploymentService.createDeployment({
                 name: locationName || 'Dev Deployment Test',
                 projectId: project.id,
@@ -760,6 +763,10 @@ export const useDevDeployment = ({
                 captureMethodId: effectiveCaptureMethod,
                 aiModelId: aiModelIdOverride || undefined,
                 deviceEui: cameraRow.deviceEui,
+                bleFirmwareId: firmwareIds.bleFirmwareId,
+                himaxFirmwareId: firmwareIds.himaxFirmwareId,
+                // What configuration writes as op32 below, for silence (#532)
+                lorawanPingMinutes: deploymentPingMinutes(lorawanOverride, currentOps) ?? undefined,
                 batteryLevelAtStart: batteryLevel ?? undefined,
                 sdCardTotalKbAtStart: sdCardStatus?.total,
                 sdCardAvailableKbAtStart: sdCardStatus?.free,

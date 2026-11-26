@@ -3,7 +3,7 @@ import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { createBleSession } from '../ble/session/createBleSession'
 import { mdIntervalHold } from '../ble/session/mdIntervalHold'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
-import { OP_PARAMETER, LORAWAN_PING_DEFAULT_MINUTES } from './useDeviceSettings'
+import { OP_PARAMETER, LORAWAN_PING_DEPLOYED_MINUTES } from './useDeviceSettings'
 import { log, logError, logWarn } from '../utils/logger'
 import { describeProjectFlash, ProjectFlashColumns, resolveProjectFlashOps } from '../utils/projectFlash'
 import { DEPLOYMENT_INTERVAL_BEFORE_DPD_MS, ProjectBurstColumns, resolveProjectBurstOps } from '../utils/projectBurst'
@@ -52,13 +52,24 @@ export interface DeploymentConfig {
      */
     detectionThreshold?: ProjectDetectionThresholdColumns
     /**
-     * The project's `lorawan_required`, written as op32: the default ping
+     * The project's `lorawan_required`, written as op32: the deployed ping
      * period when it is on, 0 (never join) when it is off, which also stops
      * the join failures at sites with no gateway. Omitted leaves the reset's
      * default, LoRaWAN on.
      */
     lorawanRequired?: boolean
 }
+
+/**
+ * op32 as a deployment writes it: every 4 hours when the project requires
+ * LoRaWAN (#532), 0 when it does not. Null on firmware without the flash mode
+ * (op34), which predates op32's LoRaWAN meaning: there it was the hi-res
+ * switch, and is left alone. The deployment records the same value, since the
+ * camera no longer sends its ping period and silence is judged from it
+ * (ww-backend #372).
+ */
+export const deploymentPingMinutes = (required: boolean, currentOps: string[]): number | null =>
+    currentOps.length <= OP_PARAMETER.FLASH_MODE ? null : (required ? LORAWAN_PING_DEPLOYED_MINUTES : 0)
 
 export const useDeploymentConfiguration = () => {
 
@@ -277,21 +288,17 @@ export const useDeploymentConfiguration = () => {
         ], currentOps)
     }, [applyUpdates])
 
-    /**
-     * op32 from the project's `lorawan_required`. Firmware without the flash
-     * mode (op34) predates op32's LoRaWAN meaning: there it was the hi-res
-     * switch, so it is left alone.
-     */
+    /** op32 from the project's `lorawan_required`, as `deploymentPingMinutes` decides it */
     const configureLorawan = useCallback(async (
         session: any,
         required: boolean,
         currentOps: string[]
     ): Promise<void> => {
-        if (currentOps.length <= OP_PARAMETER.FLASH_MODE) {
+        const minutes = deploymentPingMinutes(required, currentOps)
+        if (minutes === null) {
             logWarn(`[DeployConfig] Firmware reports ${currentOps.length} parameters, so op32 is not the LoRaWAN ping on it; not writing it`)
             return
         }
-        const minutes = required ? LORAWAN_PING_DEFAULT_MINUTES : 0
         log(`[DeployConfig] LoRaWAN ${required ? `on, ping every ${minutes} min` : 'off'} (op32 ${minutes})`)
         await applyUpdates(session, [{ index: OP_PARAMETER.LORAWAN_PING_MINUTES, value: minutes }], currentOps)
     }, [applyUpdates])

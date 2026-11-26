@@ -76,11 +76,12 @@ jest.mock('../../../../ble/workflows/lorawanPing', () => ({
 }))
 jest.mock('../../../../ble/protocol/selfTestCache', () => ({ selfTestCache: { getFresh: jest.fn() } }))
 jest.mock('../../../../ble/workflows/deploymentPipeline', () => ({
+	resolveFirmwareIds: jest.fn(async () => ({})),
 	syncAiModel: jest.fn(), syncTime: jest.fn(), resetOps: jest.fn(async () => null),
 	configureDevice: jest.fn(), measureLight: jest.fn(),
 }))
 jest.mock('../../../../providers/BleEngineProvider', () => ({ useBleActions: jest.fn() }))
-jest.mock('../../../../hooks/useDeploymentConfiguration', () => ({ useDeploymentConfiguration: () => ({ configure: mockConfigure }) }))
+jest.mock('../../../../hooks/useDeploymentConfiguration', () => ({ useDeploymentConfiguration: () => ({ configure: mockConfigure }), deploymentPingMinutes: () => null }))
 jest.mock('../../../../hooks/useBle', () => ({ useBle: () => ({ disconnectDevice: jest.fn() }) }))
 jest.mock('../../../../hooks/useGPSLocation', () => ({ useGPSLocation: () => ({ getLocation: mockGetLocation, location: null }) }))
 jest.mock('../../../../hooks/useDeviceSettings', () => ({

@@ -326,13 +326,18 @@ class FirmwareService {
         return base64ToUint8Array(base64)
     }
 
+    /**
+     * The catalogue row of a build, by its exact version as the catalogue
+     * writes it ("0.30.61", "WW500_C02 02:53:46 Nov 21 2026"), active or not:
+     * a deployment records what the camera runs (#534). The phone syncs only
+     * active rows, so a retired build finds none.
+     */
     async getFirmwareIdByVersion(type: 'ble' | 'himax' | 'config', version: string): Promise<string | null> {
         try {
             const firmwareCollection = database.get<Firmware>('firmware')
             const firmwares = await firmwareCollection.query(
                 Q.where('type', type),
                 Q.where('version', version),
-                Q.where('is_active', true)
             ).fetch()
 
             return firmwares.length > 0 ? firmwares[0].id : null
