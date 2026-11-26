@@ -1,9 +1,35 @@
 import * as FileSystem from 'expo-file-system/legacy'
+import NetInfo from '@react-native-community/netinfo'
+import { createHash } from 'crypto'
 import AiModelService from '../AiModelService'
 import { getSupabaseClient } from '../supabase'
 
 jest.mock('../../utils/logger', () => ({ log: jest.fn(), logWarn: jest.fn(), logError: jest.fn() }))
-// '../supabase' and 'expo-file-system/legacy' are mocked globally
+// '../supabase', 'expo-file-system/legacy' and NetInfo are mocked globally
+
+/** The phone's files by name, for the tests that need their bytes. */
+const mockPhone = new Map<string, Uint8Array>()
+jest.mock('expo-file-system', () => ({
+    File: class {
+        mockUri: string
+        constructor(mockUri: string) {
+            this.mockUri = mockUri
+        }
+        async bytes() {
+            const bytes = mockPhone.get(this.mockUri.split('/').pop()!)
+            if (!bytes) throw new Error(`No file ${this.mockUri}`)
+            return bytes
+        }
+    },
+}))
+// Plain functions, so the resetAllMocks below leaves them working
+jest.mock('expo-crypto', () => ({
+    CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
+    digest: async (_algorithm: string, data: Uint8Array) => {
+        const hash = jest.requireActual<typeof import('crypto')>('crypto').createHash('sha256').update(data).digest()
+        return hash.buffer.slice(hash.byteOffset, hash.byteOffset + hash.byteLength)
+    },
+}))
 
 const fs = FileSystem as jest.Mocked<typeof FileSystem>
 
@@ -108,5 +134,131 @@ describe('AiModelService cache', () => {
         await Promise.all([first, second])
 
         expect(fs.createDownloadResumable).toHaveBeenCalledTimes(1)
+    })
+
+    /**
+     * #531: the cache name is fixed per row, so a new file at the same
+     * `model_path` lands under the old one's name. On cloud dev the Rat
+     * Detection row had no size, and phones kept the ZIP it held before
+     * 1 October. The two files here are the same size on purpose: only the
+     * hash tells them apart.
+     */
+    describe('size and hash', () => {
+        const OLD = new Uint8Array(72752).fill(1)
+        const NEW = new Uint8Array(72752).fill(2)
+        const sha256 = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex')
+        const ONLINE = { type: 'wifi', isConnected: true, isInternetReachable: true }
+        const NO_SIGNED_URL = { data: null, error: { message: 'Network request failed' } }
+
+        /** A row per test: the service remembers this session's downloads by file name. */
+        const row = (id: string, fields: object) =>
+            ({ id, serverId: id, name: 'Rat Detection', modelPath: 'org/rat.tfl', fileSizeBytes: 0, ...fields }) as any
+
+        /** The phone's files, and a storage that serves `served` at every path. */
+        function given(files: Record<string, Uint8Array>, served: Uint8Array) {
+            mockPhone.clear()
+            for (const [name, bytes] of Object.entries(files)) mockPhone.set(name, bytes)
+            const nameOf = (uri: string) => uri.split('/').pop()!
+            fs.getInfoAsync.mockImplementation(async (uri: string) => {
+                const bytes = mockPhone.get(nameOf(uri))
+                return (bytes ? { exists: true, isDirectory: false, size: bytes.length, uri } : { exists: false, isDirectory: false, uri }) as any
+            })
+            fs.deleteAsync.mockImplementation(async (uri: string) => { mockPhone.delete(nameOf(uri)) })
+            fs.moveAsync.mockImplementation(async ({ from, to }: { from: string, to: string }) => {
+                mockPhone.set(nameOf(to), mockPhone.get(nameOf(from))!)
+                mockPhone.delete(nameOf(from))
+            })
+            fs.createDownloadResumable.mockImplementation(((_url: string, uri: string) => ({
+                downloadAsync: async () => {
+                    mockPhone.set(nameOf(uri), served)
+                    return { uri, status: 200 }
+                },
+            })) as any)
+        }
+        const givenConnection = (state: object) => (NetInfo.fetch as jest.Mock).mockResolvedValue(state)
+
+        beforeEach(() => givenConnection(ONLINE))
+
+        it('replaces a cached model whose hash differs from the row', async () => {
+            const model = row('hash-differs', { fileSizeBytes: NEW.length, fileHash: sha256(NEW) })
+            given({ 'model_hash-differs.tfl': OLD }, NEW)
+            await expect(AiModelService.isDownloaded(model)).resolves.toBe(false)
+
+            await AiModelService.ensureFilesDownloaded(model)
+
+            expect(createSignedUrl).toHaveBeenCalledTimes(1)
+            expect(mockPhone.get('model_hash-differs.tfl')).toBe(NEW)
+            await expect(AiModelService.isDownloaded(model)).resolves.toBe(true)
+        })
+
+        it('keeps a cached model whose hash matches, without asking storage', async () => {
+            const model = row('hash-matches', { fileHash: sha256(NEW).toUpperCase() })
+            given({ 'model_hash-matches.tfl': NEW }, OLD)
+
+            await expect(AiModelService.isDownloaded(model)).resolves.toBe(true)
+            await AiModelService.ensureFilesDownloaded(model)
+
+            expect(createSignedUrl).not.toHaveBeenCalled()
+            expect(mockPhone.get('model_hash-matches.tfl')).toBe(NEW)
+        })
+
+        it('does not keep a download whose hash differs from the row', async () => {
+            const model = row('download-differs', { fileHash: sha256(NEW) })
+            given({}, OLD)
+
+            await expect(AiModelService.ensureFilesDownloaded(model)).rejects.toThrow("not the model's file")
+            expect(mockPhone.has('model_download-differs.tfl')).toBe(false)
+        })
+
+        it('does not use a copy the hash proves wrong, even offline', async () => {
+            const model = row('wrong-offline', { fileHash: sha256(NEW) })
+            given({ 'model_wrong-offline.tfl': OLD }, NEW)
+            givenConnection({ type: 'none', isConnected: false, isInternetReachable: false })
+            createSignedUrl.mockResolvedValue(NO_SIGNED_URL)
+
+            await expect(AiModelService.isDownloaded(model)).resolves.toBe(false)
+            await expect(AiModelService.ensureFilesDownloaded(model)).rejects.toThrow('signed URL')
+        })
+
+        it('downloads a model with no size and no hash again when online, once a session', async () => {
+            const model = row('no-size-online', {})
+            given({ 'model_no-size-online.tfl': OLD }, NEW)
+            await expect(AiModelService.isDownloaded(model)).resolves.toBe(false)
+
+            await AiModelService.ensureFilesDownloaded(model)
+            expect(mockPhone.get('model_no-size-online.tfl')).toBe(NEW)
+            await expect(AiModelService.isDownloaded(model)).resolves.toBe(true)
+
+            await AiModelService.ensureFilesDownloaded(model)
+            expect(createSignedUrl).toHaveBeenCalledTimes(1)
+        })
+
+        it.each([
+            ['no connection', 'none', { type: 'none', isConnected: false, isInternetReachable: false }],
+            ['a connection that reaches nothing', 'unreachable', { type: 'wifi', isConnected: true, isInternetReachable: false }],
+        ])('uses a model with no size and no hash as it is with %s', async (_what, id, state) => {
+            const model = row(`no-size-${id}`, {})
+            const name = `model_no-size-${id}.tfl`
+            given({ [name]: OLD }, NEW)
+            givenConnection(state)
+
+            await expect(AiModelService.isDownloaded(model)).resolves.toBe(true)
+            const files = await AiModelService.ensureFilesDownloaded(model)
+
+            expect(createSignedUrl).not.toHaveBeenCalled()
+            expect(files.modelUri.endsWith(name)).toBe(true)
+            expect(mockPhone.get(name)).toBe(OLD)
+        })
+
+        it('falls back to a copy with no size and no hash when the download fails', async () => {
+            const model = row('no-size-fails', {})
+            given({ 'model_no-size-fails.tfl': OLD }, NEW)
+            createSignedUrl.mockResolvedValue(NO_SIGNED_URL)
+
+            const files = await AiModelService.ensureFilesDownloaded(model)
+
+            expect(files.modelUri.endsWith('model_no-size-fails.tfl')).toBe(true)
+            expect(mockPhone.get('model_no-size-fails.tfl')).toBe(OLD)
+        })
     })
 })

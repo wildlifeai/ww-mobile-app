@@ -589,8 +589,10 @@ file at a time, in the background:
   or "Ask before syncing". In the default automatic mode it uses mobile data too. For scale,
   the rat model is 73 KB, the person model 920 KB and a Himax image about 450 KB, and each is
   fetched once.
-- **A file already there is not fetched again.** The check is the one the consumer makes: the
-  binary's size for a model (labels by presence), the size within 100 bytes for firmware.
+- **A file already there is not fetched again** when it passes the check the consumer makes:
+  for a model, [the row's hash and size](../resources/AI-Model-Integration.md#what-the-app-does-with-them)
+  (labels by presence, and a model whose row has neither is fetched once per app session), the
+  size within 100 bytes for firmware.
   Model files are written to a `.part` name and moved into place, so a file under its final
   name is always whole.
 - **Failures are quiet.** A warning in the log, and the next sync tries again.
