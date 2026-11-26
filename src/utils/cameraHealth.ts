@@ -8,8 +8,8 @@
  * - The reason words are ww-backend `camera_health_reason_text()`
  *   (`supabase/schemas/public/functions/56_camera_alerts.sql`, DATABASE_REFERENCE.md, Camera
  *   health), which the alerts send too. They are the backend's words, not the on-site check's
- *   (`decodeSelfTest`), on purpose (Victor, 27 Nov 2026). Bit 12 still reads "Microphone failed"
- *   there until ww-backend#399 renames it.
+ *   (`decodeSelfTest`), on purpose (Victor, 27 Nov 2026). Bit 12 and restart reason 10 follow
+ *   ww-backend PRs #400 and #401 (ww-backend#399, #398) and ww-website#515.
  *
  * The rules:
  *
@@ -111,20 +111,19 @@ const SELF_TEST_BITS: Record<number, string> = {
     9: 'HM0360 camera failed',
     10: 'LED flash failed',
     11: 'SD card missing',
-    12: 'Microphone failed',
+    12: 'Settings file damaged, photo counters restarted',
     13: 'AI model failed',
     14: 'AI processor missed the BLE processor at start-up',
 }
 
 // Why the camera last restarted, for `unexpected_restart_<reason>`; the reasons that are no
-// warning never reach here.
+// warning never reach here, 10 among them, since every Bluetooth firmware update reports it.
 const RESTART_REASONS: Record<number, string> = {
     2: 'Restarted after a firmware error check',
     3: 'Restarted after an SDK assert',
     4: 'Restarted after a radio stack assert',
     5: 'Restarted after a hard fault',
     6: 'Restarted by its watchdog',
-    10: 'Restarted after a software reset or lockup',
 }
 
 /** One of `health_reasons` in words. */
