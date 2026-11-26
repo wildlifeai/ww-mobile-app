@@ -15,7 +15,6 @@ export interface RootStackParamList extends ParamListBase {
 	Settings: undefined
 	Tutorial: undefined
 	Home: { initialTab?: 'devices' | 'maps'; selectedDeploymentId?: string } | undefined
-	DfuScreen: { deviceId: string }
 	Login: { confirmed?: boolean } | undefined
 	Register: undefined
 	ForgotPassword:

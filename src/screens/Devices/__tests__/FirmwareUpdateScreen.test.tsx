@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react-native"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react-native"
 import { FirmwareUpdateScreen } from "../FirmwareUpdateScreen"
 
 const mockParams: { current: any } = { current: {} }
@@ -33,6 +33,12 @@ jest.mock("../hooks/useFirmwareUpdate", () => ({
 	}),
 }))
 jest.mock("../../../hooks/useOfflineFiles", () => ({ useFirmwareOnPhone: () => null }))
+const mockPick = jest.fn()
+const mockDiscard = jest.fn(async (_file: unknown) => {})
+jest.mock("../../../services/bleFirmwareFile", () => ({
+	pickBleFirmwareFile: () => mockPick(),
+	discardBleFirmwareFile: (file: unknown) => mockDiscard(file),
+}))
 jest.mock("../../../services/ReferenceDataService", () => ({
 	__esModule: true,
 	default: { syncFirmware: jest.fn(() => Promise.resolve()) },
@@ -64,9 +70,8 @@ jest.mock("react-native-paper", () => {
 })
 
 /**
- * #344: the banner and Firmware Status open the simple view; only the Engineer
- * Console's entries open the view with the build picker and the source choice.
- * The banner's path used to land on the picker and "Flash Selected Build".
+ * The Engineer Console's firmware updates (#344): the AI update with its build
+ * picker and source choice, and the Bluetooth update.
  */
 describe("FirmwareUpdateScreen", () => {
 	beforeEach(() => {
@@ -149,5 +154,39 @@ describe("FirmwareUpdateScreen", () => {
 			// The general description would say two passes ending on the camera in use
 			expect(screen.queryByText(/finishes on the camera it is using now/)).toBeNull()
 		})
+	})
+})
+
+/**
+ * A camera in its DFU bootloader opens the Bluetooth update straight from the
+ * Engineer Console, which offers the catalogue's latest or a package picked on
+ * the phone, for a build the catalogue does not have (the old DFU screen's job).
+ */
+describe("FirmwareUpdateScreen, Bluetooth", () => {
+	beforeEach(() => {
+		mockStartUpdate.mockClear()
+		mockHook.current = {}
+		mockParams.current = { deviceId: "dev-1", target: "ble" }
+	})
+
+	it("flashes a package picked on the phone, then drops the copy", async () => {
+		const file = { uri: "file:///cache/ble_firmware_1.zip", name: "ww500_ble_0.30.62.zip" }
+		mockPick.mockResolvedValue(file)
+		render(<FirmwareUpdateScreen />)
+
+		fireEvent.press(screen.getByText("Flash a file from this phone"))
+
+		await waitFor(() => expect(mockStartUpdate).toHaveBeenCalledWith({ bleFile: file }))
+		await waitFor(() => expect(mockDiscard).toHaveBeenCalledWith(file))
+	})
+
+	it("does nothing when the picker is cancelled", async () => {
+		mockPick.mockResolvedValue(null)
+		render(<FirmwareUpdateScreen />)
+
+		fireEvent.press(screen.getByText("Flash a file from this phone"))
+
+		await waitFor(() => expect(mockPick).toHaveBeenCalled())
+		expect(mockStartUpdate).not.toHaveBeenCalled()
 	})
 })
