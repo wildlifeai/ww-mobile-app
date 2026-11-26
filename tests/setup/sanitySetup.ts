@@ -1,8 +1,8 @@
 // Sanity setup loaded
 
-// Registers the built-in matchers (toBeOnTheScreen, toBeDisabled, ...) for Jest and,
-// because tsc compiles this file, their types for every test.
-import "@testing-library/react-native/extend-expect"
+// The built-in matchers (toBeOnTheScreen, toBeDisabled, ...) need no import here: since
+// RNTL 13, importing anything from @testing-library/react-native registers them for Jest
+// and declares their types for the whole tsc program.
 
 // Setup fake timers and handle resetMocks: true
 beforeEach(() => {

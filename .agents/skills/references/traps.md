@@ -366,6 +366,14 @@ file is the list of things that look like an app bug and are not, and the revers
   one. Inside an isolated agent worktree `cmd /c mklink /J` is refused, and PowerShell's
   `New-Item -ItemType Junction` works. Point the junction at an install whose
   `package-lock.json` matches the branch's: the main checkout is not always on a current branch.
+- **A worktree with its own install still borrows the main checkout's packages.** Node, Jest and
+  `tsc` walk up the folders looking for `node_modules`, so a module missing from the worktree's
+  install resolves from the main checkout's instead of failing. RNTL 13 dropped
+  `@testing-library/react-native/extend-expect`; the worktree loaded the main checkout's 12.9
+  copy and passed, while a clean install failed every suite with "Cannot find module" (27
+  November 2026). After a dependency change that removes or moves a file, check that
+  `node -p "require.resolve('<module>')"` points inside the worktree, or verify in a copy outside
+  the checkout (`git ls-files -co --exclude-standard` through `tar`, then `npm ci`).
 - **R8 optimisation breaks Expo's options objects unless Expo's Kotlin layer is kept.** Release
   builds optimise since #513. Without `-keep class expo.modules.kotlin.** { *; }` in
   `proguard-rules.pro`, every Expo call that takes an options object failed, in release builds
