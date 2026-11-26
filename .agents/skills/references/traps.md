@@ -151,6 +151,12 @@ file is the list of things that look like an app bug and are not, and the revers
   reported as a counting bug (#192). op0, the image sequence number, is the running total, but
   it also counts captures whose save was skipped (op18 bit 3, an AE-check wake). A true count
   needs a firmware counter; until then do not present op19 as a total.
+- **The nRF's bootloader is `WW500_DFU`, and it does not wait.** Bootloader 00.01.01 advertises
+  `WW500_DFU`, not Nordic's `DfuTarg` (WILD-SIFK, 27 Nov 2026), so every name check goes through
+  `isDfuBootloader`. A command written to it lands on the DFU control point and is refused
+  (`Init command larger than expected` on the nRF console): never open an ordinary session to it.
+  With valid firmware it restarts into it after two minutes without a flash, and that restart
+  reports reset reason 10.
 
 ## Screens and navigation
 

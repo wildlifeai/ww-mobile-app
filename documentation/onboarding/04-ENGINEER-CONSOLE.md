@@ -17,13 +17,15 @@ The Engineer Console is accessible from the side drawer at any time, independent
 
 ### DFU Recovery (Device Firmware Update)
 
-If a device becomes stuck in Nordic DFU mode (advertising as `DfuTarg` with the `fe59` service UUID), it will be **invisible** to the normal Scanner tab to prevent users from accidentally interrupting operations. 
+A WW500 in its DFU bootloader advertises as `WW500_DFU` (Nordic's default, `DfuTarg`, is recognised too: `isDfuBootloader` in [helpers.ts](../../src/utils/helpers.ts)) with the `fe59` service, and answers no camera command. Holding the middle button for 10 seconds puts a camera there. The Scanner hides it. The Engineer Console finds it and opens the Bluetooth update straight away, without connecting:
 
-To rescue a device in DFU mode:
-1. Open the Engineer Console.
-2. The Engineer Console scanner automatically includes the DFU service UUID in its scan.
-3. When the `DfuTarg` device is discovered, the Engineer Console will immediately intercept it and route you to the **DFU Firmware Update** screen.
-4. From there, you can select a firmware ZIP file from your phone and flash the device back to a working state.
+- **Start Update** flashes the catalogue's latest Bluetooth build, downloaded or already cached by the offline prefetch.
+- **Flash a file from this phone** flashes a `.zip` picked on the phone, for a build the catalogue does not have.
+
+When the flash is done the camera restarts on the new firmware under its own name; connect to it again.
+
+> [!IMPORTANT]
+> With valid firmware on the camera, the bootloader gives up after two minutes without a flash and restarts it (`Inactivity timeout.` on the nRF console), so start the flash within that time. A camera whose firmware is broken stays in the bootloader.
 
 ---
 
@@ -268,7 +270,7 @@ trying to do rather than by the mechanism underneath.
 
 | Flow | What It Does |
 |------|-------------|
-| `UPDATE_BLE_FIRMWARE` | Nordic nRF52 OTA update (ZIP) via the DFU screen. |
+| `UPDATE_BLE_FIRMWARE` | Nordic DFU update of the nRF: the catalogue's latest, or a `.zip` picked on the phone. |
 | `UPDATE_HIMAX_FIRMWARE` | Himax AI processor update (`AI firmware <file> <0xCRC>`, then `AI reset` and `AI dpd`). Normally flashes **both** camera-variant images, see [Himax-Firmware-Update.md](../resources/Himax-Firmware-Update.md#dual-image-update-camera-variant-pair). An update this phone left part way is finished instead, ending on the camera it started on. |
 | `FIRMWARE_STATUS` | One line per chip, up to date or update available, with Update. With one camera's AI build in the catalogue, the AI line names the camera whose firmware is missing instead ([why](../resources/Himax-Firmware-Update.md#one-cameras-build-only)). An AI update this phone ran that stopped between its two images reads "Update not finished", with Finish update ([why](../resources/Himax-Firmware-Update.md#an-update-that-stopped-between-images)). |
 | `MODEL_VALIDATION` | Full AI model lifecycle: validate metadata → download → transfer to SD → `erasemodel` → `loadmodel`. Grouped here rather than under file transfer because the transfer is how it works, not what it is for. |
