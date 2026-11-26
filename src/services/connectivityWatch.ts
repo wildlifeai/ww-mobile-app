@@ -38,3 +38,14 @@ export async function isKnownOffline(): Promise<boolean> {
     const state = await NetInfo.fetch()
     return state.isConnected === false
 }
+
+/**
+ * Whether NetInfo says there is no connection, or that the one there reaches
+ * nothing: a dead hotspot or a captive portal, where a storage download has no
+ * time limit and can wait for minutes (see `supabaseFetch`). Unknown counts as
+ * connected.
+ */
+export async function isKnownWithoutInternet(): Promise<boolean> {
+    const state = await NetInfo.fetch()
+    return state.isConnected === false || state.isInternetReachable === false
+}

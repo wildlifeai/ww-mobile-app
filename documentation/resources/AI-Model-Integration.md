@@ -148,9 +148,10 @@ stops the deployment when it fails, naming the model and saying what the file is
 the bench on 8 October 2026 the dev backend's model `d0000000-0000-4000-8000-0000000000a1` was a
 ZIP archive: the app sent it as `7V1.TFL`, the Himax copied it to flash, could not parse it and
 halted (Seeed #241), and the deployment started on a camera that recorded nothing (#428). The
-phone's cache checks only the size, so it cannot catch this, and a new download brings the same
-file: the fix is the file in storage. For the same reason a `loadmodel` the camera never answers
-stops the deployment and asks for a power cycle, rather than warning and starting it anyway.
+phone's cache cannot catch this, since it checks its copy against the row and the row describes
+the file in storage: a new download brings the same file, and the fix is the file in storage.
+For the same reason a `loadmodel` the camera never answers stops the deployment and asks for a
+power cycle, rather than warning and starting it anyway.
 
 ---
 
@@ -188,13 +189,31 @@ The labels file is then transferred to the SD card `/MANIFEST/` next to the `.TF
 (same BLE file-transfer pipeline), so the firmware can write named NN scores into each
 photo's EXIF.
 
-Both files land under `documentDirectory/aimodels/`. Each is written to a `.part` name and
-moved into place once complete, so a file under its final name is always whole: the labels
-have no size to check them against. A file already there, at the model's `file_size_bytes`
-for the binary, is used without touching the network, which is how a deployment finds its
-model offline. `OfflinePrefetchService` fills this cache after each sync with the model of
-every project on the phone, and `syncAiModel` stops a deployment whose model is on neither
-the camera nor the card when the files are not in it and cannot be downloaded (#333). See
+Both files land under `documentDirectory/aimodels/`, under names fixed per row
+(`model_<server id>.<ext>`), so a new file at the same `model_path` lands under the old one's
+name. Each is written to a `.part` name and moved into place once complete, so a file under its
+final name is always whole: the labels have no size to check them against. A copy already there
+is used without touching the network, which is how a deployment finds its model offline, when
+the row says it is the right file (#531):
+
+| The `ai_models` row has | The binary on the phone is used when |
+|---|---|
+| `file_hash` (SHA-256, hex) | its SHA-256 matches, and its size is within 100 bytes of `file_size_bytes` when there is one |
+| `file_size_bytes` only | its size is within 100 bytes |
+| neither | this app session downloaded it, or no download is possible |
+
+A binary that fails its check is deleted and downloaded again, and a download that fails it is
+not kept, so offline such a model is treated as missing. With neither, "no download is possible"
+means NetInfo reports no connection or one that reaches nothing (`isKnownWithoutInternet`), or
+the download fails: a copy from an earlier session, or one Android Auto Backup put back on a
+reinstall, may be a file storage has since replaced, as the ZIP Rat Detection held before
+1 October 2026 was on cloud dev. The labels are used whenever a whole copy is there.
+`AiModelService.isDownloaded` makes the same check without the network, so the pre-download
+replaces such a copy while it has a connection.
+
+`OfflinePrefetchService` fills this cache after each sync with the model of every project on
+the phone, and `syncAiModel` stops a deployment whose model is on neither the camera nor the
+card when the files are not in it and cannot be downloaded (#333). See
 [Files for the field](../onboarding/03-DATA-AND-SYNC.md#files-for-the-field).
 
 > [!IMPORTANT]

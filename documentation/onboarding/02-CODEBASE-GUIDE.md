@@ -167,7 +167,7 @@ services/
 ├── supabaseFetch.ts           # The client's fetch: 30 s limit on auth and PostgREST reads
 ├── auth.ts                    # Session lifecycle management; offline, the stored session stands
 ├── organisationMembership.ts  # User's organisations and roles, cloud or local; current org remembered
-├── connectivityWatch.ts       # NetInfo: offline and reconnect handlers, isKnownOffline()
+├── connectivityWatch.ts       # NetInfo: offline and reconnect handlers, isKnownOffline(), isKnownWithoutInternet()
 ├── reconnectSync.ts           # One sync per reconnect, on a valid session
 ├── ProjectService.ts          # Project CRUD + outbox
 ├── DeploymentService.ts       # Deployment lifecycle

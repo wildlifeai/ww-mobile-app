@@ -177,7 +177,9 @@ file is the list of things that look like an app bug and are not, and the revers
   `StatusBar.currentHeight`, or a screen will leave room for a status bar the banner sits under.
   A test fails if any other file renders `OfflineIndicator` or calls `useNetInfo`. A screen
   that has to know at a tap, such as Invite refusing to send offline, asks `isKnownOffline()` in
-  `services/connectivityWatch.ts` at that moment instead of following the connection.
+  `services/connectivityWatch.ts` at that moment instead of following the connection. A storage
+  download has no time limit, so code deciding whether to try one asks `isKnownWithoutInternet()`,
+  which also counts a connection NetInfo found reaches nothing.
 - **A paper `Menu` that re-opens with the arrow up and nothing drawn is
   `patches/react-native-paper+5.14.5.patch`, not the screen.** Every `WWSelect` is a
   `react-native-paper-dropdown` over paper's `Menu`, and on Android (Fabric) the Menu's close
