@@ -2420,7 +2420,6 @@ export type Database = {
           op_index: number | null
           op_value: number | null
           reset_count: number | null
-          sd_card_used_capacity: number | null
           sd_free_pct: number | null
           self_test_bits: number | null
           temperature_c: number | null
@@ -2444,7 +2443,6 @@ export type Database = {
           op_index?: number | null
           op_value?: number | null
           reset_count?: number | null
-          sd_card_used_capacity?: number | null
           sd_free_pct?: number | null
           self_test_bits?: number | null
           temperature_c?: number | null
@@ -2468,7 +2466,6 @@ export type Database = {
           op_index?: number | null
           op_value?: number | null
           reset_count?: number | null
-          sd_card_used_capacity?: number | null
           sd_free_pct?: number | null
           self_test_bits?: number | null
           temperature_c?: number | null
@@ -3983,7 +3980,6 @@ export type Database = {
           nn_total_count: number | null
           received_at: string | null
           reset_count: number | null
-          sd_card_used_capacity: number | null
           sd_free_pct: number | null
           self_test_bits: number | null
           temperature_c: number | null
