@@ -28,6 +28,7 @@ import { useDeviceSettings, OP_PARAMETER } from '../../../hooks/useDeviceSetting
 import { useDeploymentProgress } from '../../../hooks/useDeploymentProgress'
 import { useMonitoringActions } from '../../../hooks/useMonitoringActions'
 import * as pipeline from '../../../ble/workflows/deploymentPipeline'
+import { FileTransferError } from '../../../ble/protocol/fileTransfer/fileTransferTypes'
 
 import { log, logError, logWarn } from '../../../utils/logger'
 import { selectCurrentOrganisation } from '../../../redux/slices/authSlice'
@@ -47,6 +48,9 @@ interface UseStartDeploymentParams {
     initPayload?: InitPayload
 }
 
+
+/** A model the camera's Bluetooth processor is too old to receive (#289), in Start Monitoring's words */
+export const SOFTWARE_TOO_OLD_FOR_MODEL = "The camera's software is too old for this model. Update software, then start monitoring."
 export const useStartDeployment = ({
     deviceId,
     bleDeviceId,
@@ -872,7 +876,12 @@ export const useStartDeployment = ({
             // Nothing else clears it: without this a stopped start left the button
             // spinning and the project picker locked until the screen was left
             setSubmitting(false)
-            Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
+            if (error instanceof FileTransferError && error.reason === 'BLE_FIRMWARE_TOO_OLD') {
+                // Said as the page says it: no processors, and the one update for it (#529)
+                Alert.alert('Update software', SOFTWARE_TOO_OLD_FOR_MODEL)
+            } else {
+                Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
+            }
             isStartDeploymentInProgress.current = false
         }
     }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total, aiProcessorFailed, initPayload?.deviceFirmwareVersion, initErrors.deviceHealth, deploymentPhotoPaths, sensitivityLabel])

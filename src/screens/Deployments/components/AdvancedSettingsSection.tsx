@@ -5,7 +5,8 @@ import { WWButton } from '../../../components/ui/WWButton'
 import { WWSelect } from '../../../components/ui/WWSelect'
 import { FieldBox } from '../../../components/ui/FieldBox'
 import { UseFirmwareStatusReturn } from '../../Devices/hooks/useFirmwareStatus'
-import { BatteryAction, FirmwareAction, SdCardAction } from './DeviceCheckActions'
+import { BatteryAction, SdCardAction, SoftwareAction } from './DeviceCheckActions'
+import { SoftwareState } from '../../../utils/softwareUpdate'
 
 interface AdvancedSettingsSectionProps {
     cameraHeight: string
@@ -28,13 +29,14 @@ interface AdvancedSettingsSectionProps {
     bleDeviceConnected: boolean
     onShowHelp: (title: string, content: string) => void
     firmwareStatus: UseFirmwareStatusReturn
-    onUpdateFirmware?: (target: 'ble' | 'himax') => void
+    softwareState: SoftwareState
+    onUpdateSoftware?: () => void
 }
 
 /**
  * Start Monitoring's Advanced settings: one plain row, collapsed by default.
  * Inside, in this order (26 October 2026): Site Name, Camera Height, then the
- * battery, SD card and firmware checks. Test Motion Detection sits on the page.
+ * battery, SD card and software checks. Test Motion Detection sits on the page.
  */
 export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = ({
     cameraHeight,
@@ -54,7 +56,8 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
     bleDeviceConnected,
     onShowHelp,
     firmwareStatus,
-    onUpdateFirmware
+    softwareState,
+    onUpdateSoftware,
 }) => {
     const [expanded, setExpanded] = useState(false)
     const checksBlocked = isInitializing || !bleDeviceConnected
@@ -125,9 +128,10 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
                         disabled={checksBlocked}
                         onShowHelp={onShowHelp}
                     />
-                    <FirmwareAction
+                    <SoftwareAction
                         firmwareStatus={firmwareStatus}
-                        onUpdateFirmware={onUpdateFirmware}
+                        softwareState={softwareState}
+                        onUpdateSoftware={onUpdateSoftware}
                         onShowHelp={onShowHelp}
                     />
                 </View>

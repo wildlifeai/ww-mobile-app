@@ -1,7 +1,7 @@
 import { fireEvent, render } from '@testing-library/react-native'
 
 import { StatusInitializationHeader } from '../InitializationHeader'
-import { batteryLowWarning, NEWER_AI_FIRMWARE } from '../../../../utils/initWarnings'
+import { batteryLowWarning, sdCardAlmostFullWarning } from '../../../../utils/initWarnings'
 
 const theme = { colors: { errorContainer: '#fdd', error: '#c00', onErrorContainer: '#300', primary: '#0a0' } }
 const REPORT = 'You can still start monitoring, but please report these errors.'
@@ -52,9 +52,9 @@ describe('StatusInitializationHeader battery line', () => {
  */
 describe('StatusInitializationHeader Dismiss', () => {
     it('offers Dismiss for minor lines only, lists them without "Hardware:", and hides on the press', () => {
-        const { queryByText, getByText } = show([NEWER_AI_FIRMWARE, batteryLowWarning(12)])
+        const { queryByText, getByText } = show([sdCardAlmostFullWarning(93.25), batteryLowWarning(12)])
 
-        expect(queryByText('• ' + NEWER_AI_FIRMWARE)).toBeTruthy()
+        expect(queryByText('• ' + sdCardAlmostFullWarning(93.25))).toBeTruthy()
         expect(queryByText(/Hardware:/)).toBeNull()
         fireEvent.press(getByText('Dismiss'))
 
@@ -76,7 +76,7 @@ describe('StatusInitializationHeader Dismiss', () => {
         fireEvent.press(getByText('Dismiss'))
         expect(queryByText(/Initialization Warnings/)).toBeNull()
 
-        rerender(<StatusInitializationHeader {...props} initErrors={{ deviceHealth: [batteryLowWarning(12), NEWER_AI_FIRMWARE] }} />)
+        rerender(<StatusInitializationHeader {...props} initErrors={{ deviceHealth: [batteryLowWarning(12), sdCardAlmostFullWarning(93.25)] }} />)
 
         expect(queryByText(/Initialization Warnings/)).toBeTruthy()
     })

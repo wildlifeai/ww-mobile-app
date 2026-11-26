@@ -6,8 +6,7 @@
  * A fault (a camera that did not answer, a failed time sync, an unknown
  * self-test bit) is listed under "Hardware:" with a request to report it. A
  * minor line is something they fix or can ignore and that never blocks a start:
- * a low battery, newer firmware, a card nearly full. Those carry no request to
- * report, and a banner holding only those can be dismissed. Until 26 October
+ * a low battery, a card nearly full. Those carry no request to report, and a banner holding only those can be dismissed. Until 26 October
  * 2026 every line asked for a report, and people reported their batteries.
  *
  * The lines are plain strings, built here and matched here by their start, so
@@ -16,12 +15,10 @@
  */
 
 const BATTERY_LOW = 'Battery is low'
-/** The BLE firmware line; the AI one below does not start with it. */
-export const NEWER_BLE_FIRMWARE = 'Newer firmware available'
-export const NEWER_AI_FIRMWARE = 'Newer AI firmware available'
 const SD_CARD_ALMOST_FULL = 'SD Card is almost full'
+// No firmware lines since #529: Start Monitoring's banner says Update software once
 
-const MINOR = [BATTERY_LOW, NEWER_BLE_FIRMWARE, NEWER_AI_FIRMWARE, SD_CARD_ALMOST_FULL]
+const MINOR = [BATTERY_LOW, SD_CARD_ALMOST_FULL]
 
 /** A low battery is the user's to fix, so the line says what to do. With the level when the app read one. */
 export function batteryLowWarning(level?: number): string {

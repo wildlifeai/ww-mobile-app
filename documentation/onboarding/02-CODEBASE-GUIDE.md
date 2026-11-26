@@ -35,7 +35,7 @@ src/
 ├── database/               # WatermelonDB schema and models
 ├── types/                  # TypeScript type definitions
 ├── hooks/                  # Custom React hooks (BLE, sync, auth)
-├── utils/                  # Utility functions (incl. cameraVariant.ts, firmwareWords.ts, firmwareOrder.ts, himaxFirmwareState.ts, flashCameraMatch.ts, networkErrors.ts)
+├── utils/                  # Utility functions (incl. cameraVariant.ts, firmwareWords.ts, firmwareOrder.ts, softwareUpdate.ts, himaxFirmwareState.ts, flashCameraMatch.ts, networkErrors.ts)
 ├── providers/              # React context providers
 ├── ble/                    # BLE protocol engine (protocol/, session/, command registry)
 ├── features/               # Feature-specific modules (maps)
@@ -109,22 +109,25 @@ screens/                                  navigation/screens/
 │   └── hooks/                            ├── system/
 │       ├── useStartDeployment.ts         ├── developer/       # __DEV__ only
 │       ├── useEndDeployment.ts           └── MapsScreen.tsx
+│       ├── useSoftwareState.ts       # Start Monitoring's word on the software (#529)
 │       └── useDeploymentMonitor.ts
 ├── Devices/
 │   ├── DeviceDiscoveryScreen / EngineerConsoleScreen
 │   ├── DevDeploymentTestScreen / DeviceResetScreen / DeviceCheckScreen
 │   ├── DfuScreen / FirmwareUpdateScreen / FirmwareStatusScreen
+│   ├── SoftwareUpdateScreen              # Start Monitoring's Update software (#529)
 │   ├── FileTransferTestScreen / ModelValidationTestScreen
 │   ├── CapturePictureScreen / LightSensorScreen
 │   ├── StandaloneMotionDetectionScreen
 │   ├── DeviceMonitoringSummaryScreen
 │   ├── components/
 │   │   ├── ScannerRoutingDialog.tsx      # Post-scan routing
-│   │   └── SimpleFirmwareUpdate.tsx      # The operator's firmware update (#344)
+│   │   └── SimpleFirmwareUpdate.tsx      # FirmwareUpdateScreen without engineer (#344), unreached since #529
 │   └── hooks/
 │       ├── useDeviceDiscovery.ts         # Scanner auto-connect + routing
 │       ├── useAutoConnectStateMachine.ts
-│       ├── useFirmwareUpdate.ts          # Himax update orchestration
+│       ├── useFirmwareUpdate.ts          # One processor's update, BLE DFU or the Himax pair
+│       ├── useSoftwareUpdate.ts          # Update software's steps on the two (#529)
 │       ├── useMotionDetectionStream.ts
 │       └── useDeviceCheck.ts             # Screen state for the ship check
 ├── Projects/

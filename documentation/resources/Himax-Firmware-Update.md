@@ -211,11 +211,13 @@ A pass that fails with a transient error (`Session Reset`, `DEVICE_DISCONNECTED`
 
 ### With the Bluetooth firmware behind too
 
-Seeed PR #284 and ww-hardware PR #77 change how the two processors signal each other, and a camera with one of them new and the other old takes no file (#527). So the Bluetooth update is not offered while the AI processor has an update waiting, unless that AI update is already half done ([`utils/firmwareOrder.ts`](../../src/utils/firmwareOrder.ts)); Firmware Status and Start Monitoring's firmware check say "Update the AI processor first" instead. The order that follows:
+Seeed PR #284 and ww-hardware PR #77 change how the two processors signal each other, and a camera with one of them new and the other old takes no file (#527). So the Bluetooth update is not offered while the AI processor has an update waiting, unless that AI update is already half done ([`utils/firmwareOrder.ts`](../../src/utils/firmwareOrder.ts)); Firmware Status, in the Engineer Console, says "Update the AI processor first" instead. The order that follows:
 
 1. The AI update installs image 1 and restarts into it. Image 2 cannot go across with the old Bluetooth, so the update stops at "1 of 2 images installed".
 2. The Bluetooth update is offered now, and needs no AI processor. In this state the AI processor answers nothing and the firmware check runs out of time, so it is this phone's record of the update that says it is half done (`useFirmwareStatus`). Another phone, without the record, offers neither update.
 3. Finish update writes image 2 with both processors new.
+
+Start Monitoring's **Update software** runs this order in one go (#529, [`utils/softwareUpdate.ts`](../../src/utils/softwareUpdate.ts)): with both processors behind, the AI update with `stopAfterFirstImage`, the Bluetooth update, then the AI update again, which finishes from the record. Image 1 is written without the restart: the new Bluetooth firmware resets the AI processor when it boots and the finish restarts the camera first, and across the change that restart only waited out its timeouts (36 s). With one behind, only that one. The order is the same on either side of the change.
 
 The AI build that contains Seeed PR #284 and Bluetooth 0.30.61 (ww-hardware PR #77) go into the firmware catalogue together: the app cannot tell the AI builds apart, since `AI ver` is only a build stamp.
 
@@ -264,7 +266,7 @@ So the phone that runs a pair update keeps a record of it, per device, under `hi
 | Anything else | "Update not finished: 1 of 2 images installed", in the error colour, with Finish update | Kept |
 | No record | Up to date when `AI ver` is the latest build of the camera it runs; when `slots` fails, the latest build of either camera | |
 
-Firmware Status, the update screen and Start Monitoring read it, and Start Monitoring's banner says "AI firmware update not finished". Firmware Status and the check Start Monitoring runs on connect make this judgement through one function, `himaxStatus` (#464): the connect check used to compare `AI ver` with the newest build of either camera, and warned of newer AI firmware whenever the other camera's build was newer. The check Start Monitoring runs on connect sends nothing (#268), so it reads the record against the `AI ver` it already has: unfinished unless the camera runs the end camera's new build.
+Firmware Status, the update screens and Start Monitoring read it, and Start Monitoring's banner says "Software update not finished" (#529). Firmware Status and Start Monitoring's firmware check make this judgement through one function, `himaxStatus` (#464): a check on connect used to compare `AI ver` with the newest build of either camera, and warned of newer AI firmware whenever the other camera's build was newer. That warning line is gone since #529. The check Start Monitoring runs on connect sends nothing (#268), so it reads the record against the `AI ver` it already has: unfinished unless the camera runs the end camera's new build.
 
 **Finishing** is the Update button, and "Try again" after a failed pass is the same: the update reads the record and finishes it. It restarts the camera first, so it runs the slot its selector names, then writes the end camera's image alone when the camera runs the other camera's latest build from its selected slot (one transfer, one `AI firmware`), and both images otherwise, as when a newer pair is out. It ends on the record's end camera. Before #374 "Try again" ran the whole pair ordered by the camera then running, which was image 1's, so it ended on the wrong camera.
 
