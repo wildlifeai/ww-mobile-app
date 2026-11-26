@@ -12,7 +12,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 409,
+    version: 410,
     tables: [
         tableSchema({
             name: 'account_deletion_requests',
@@ -629,7 +629,6 @@ export default appSchema({
                 { name: 'op_index', type: 'number', isOptional: true },
                 { name: 'op_value', type: 'number', isOptional: true },
                 { name: 'reset_count', type: 'number', isOptional: true },
-                { name: 'sd_card_used_capacity', type: 'number', isOptional: true },
                 { name: 'sd_free_pct', type: 'number', isOptional: true },
                 { name: 'self_test_bits', type: 'number', isOptional: true },
                 { name: 'temperature_c', type: 'number', isOptional: true },

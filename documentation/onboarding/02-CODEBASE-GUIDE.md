@@ -35,7 +35,7 @@ src/
 ├── database/               # WatermelonDB schema and models
 ├── types/                  # TypeScript type definitions
 ├── hooks/                  # Custom React hooks (BLE, sync, auth)
-├── utils/                  # Utility functions (incl. cameraVariant.ts, firmwareWords.ts, firmwareOrder.ts, softwareUpdate.ts, himaxFirmwareState.ts, flashCameraMatch.ts, networkErrors.ts)
+├── utils/                  # Utility functions (incl. cameraVariant.ts, firmwareWords.ts, firmwareOrder.ts, softwareUpdate.ts, himaxFirmwareState.ts, flashCameraMatch.ts, networkErrors.ts, cameraHealth.ts)
 ├── providers/              # React context providers
 ├── ble/                    # BLE protocol engine (protocol/, session/, command registry)
 ├── features/               # Feature-specific modules (maps)
@@ -121,6 +121,7 @@ screens/                                  navigation/screens/
 │   ├── StandaloneMotionDetectionScreen
 │   ├── DeviceMonitoringSummaryScreen
 │   ├── components/
+│   │   ├── RemoteCheckInCard.tsx         # A deployed camera's last LoRaWAN check-in, live (#518)
 │   │   ├── ScannerRoutingDialog.tsx      # Post-scan routing
 │   │   └── SimpleFirmwareUpdate.tsx      # FirmwareUpdateScreen without engineer (#344), unreached since #529
 │   └── hooks/
@@ -189,6 +190,7 @@ services/
 ├── SupabaseSyncService.ts     # Bidirectional WatermelonDB ↔ Supabase sync
 ├── OutboxService.ts           # Queues offline operations for sync
 ├── refusedChanges.ts          # A refused change in plain words, its record named, for Settings (#461)
+├── remoteCheckIns.ts          # Each deployment's newest LoRaWAN check-in, read live from deployment_latest_lorawan (#518)
 ├── SyncStateService.ts        # Sync state tracking
 └── SyncBarrier.ts             # Event-driven initial-sync readiness barrier
 ```
@@ -237,6 +239,7 @@ hooks/
 ├── useLightSensor.ts          # Light readings: AI light, the AE register block, op23/24/25, and the flash mode op34
 ├── useCameraReadiness.ts      # Is the camera usable: self-test bits + op10
 ├── useOfflineFiles.ts         # Is the project's model / the firmware image on this phone
+├── useRemoteCheckIns.ts       # Live check-ins online, none offline; a deployment's camera state (#518)
 ├── useSupabaseAuth.ts         # Supabase auth hook
 ├── useSupabaseClient.ts       # Supabase client hook
 ├── useUserOrganisations.ts    # Org management

@@ -24,6 +24,8 @@ import { useExtendedTheme } from "../../../theme"
 import { DeploymentService, DEPLOYMENT_STATUS } from "../../../services/DeploymentService"
 import type Deployment from "../../../database/models/Deployment"
 import { log } from '../../../utils/logger'
+import { useRemoteCheckIns, remoteState } from "../../../hooks/useRemoteCheckIns"
+import { CAMERA_STATE, needsAttention } from "../../../utils/cameraHealth"
 
 
 interface MapState {
@@ -78,6 +80,19 @@ const MapScreenComponent: React.FC<Props> = ({ deployments, selectedDeploymentId
 			d.longitude != null
 		)
 	}, [deployments])
+
+	// A ring for each camera whose last check-in, read live, needs attention (#518)
+	const deploymentIds = useMemo(() => filteredDeployments.map(d => d.id), [filteredDeployments])
+	const remote = useRemoteCheckIns(deploymentIds)
+	const rings = useMemo(() => {
+		const out: Record<string, string> = {}
+		if (!remote) return out
+		for (const d of filteredDeployments) {
+			const cameraState = remoteState(d, remote.checkIns[d.id], remote.readAt)
+			if (needsAttention(cameraState)) out[d.id] = CAMERA_STATE[cameraState].color
+		}
+		return out
+	}, [filteredDeployments, remote])
 
 	// Get selected deployment object for the card
 	const selectedDeployment = useMemo(() => {
@@ -222,6 +237,7 @@ const MapScreenComponent: React.FC<Props> = ({ deployments, selectedDeploymentId
 						key={deployment.id}
 						deployment={deployment}
 						onPress={handleMarkerPress}
+						ring={rings[deployment.id] ?? null}
 					/>
 				))}
 			</BasicMapView>
