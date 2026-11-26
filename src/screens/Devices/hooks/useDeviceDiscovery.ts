@@ -16,7 +16,7 @@ import ProjectService from '../../../services/ProjectService'
 import { useBleInitialization } from '../../../hooks/useBleInitialization'
 import { getSupabaseClient } from '../../../services/supabase'
 import { log, logError } from '../../../utils/logger'
-import { sleep } from '../../../utils/helpers'
+import { isDfuBootloader, sleep } from '../../../utils/helpers'
 import { ScannerRoutingState } from '../components/ScannerRoutingDialog'
 import { InitPayload } from '../../../navigation/types'
 import { useAutoConnectStateMachine } from './useAutoConnectStateMachine'
@@ -68,7 +68,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                 }
                 return -1
             })
-            .filter((device) => !device.signalLost && !device.name?.includes('DfuTarg'))
+            .filter((device) => !device.signalLost && !isDfuBootloader(device.name))
     }, [devices])
 
     const isAnyDeviceConnecting = useMemo(() => {

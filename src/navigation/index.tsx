@@ -52,7 +52,6 @@ import { FileTransferTestScreen } from "../screens/Devices/FileTransferTestScree
 import { ModelValidationTestScreen } from "../screens/Devices/ModelValidationTestScreen"
 import { FirmwareStatusScreen } from "../screens/Devices/FirmwareStatusScreen"
 import { DeviceResetScreen } from "../screens/Devices/DeviceResetScreen"
-import { DfuScreen } from "../screens/Devices/DfuScreen"
 
 // Developer screens
 import { DevBuildInfo } from "./screens/developer/DevBuildInfoScreen"
@@ -167,12 +166,6 @@ export const MainNavigation = () => {
 							name="Tutorial"
 							component={TutorialScreen}
 							options={{ headerShown: false }}
-						/>
-
-						<Stack.Screen
-							name="DfuScreen"
-							component={DfuScreen}
-							options={{ title: "Firmware Update" }}
 						/>
 
 						<Stack.Screen

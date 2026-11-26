@@ -22,6 +22,8 @@ import {
     classifyHimax, HimaxUpdateRecord, HimaxVariant, isRunningFromSelectedSlot, planPair, SlotsReply,
 } from '../../../utils/himaxFirmwareState'
 import { log, logError, logWarn } from '../../../utils/logger'
+import { isDfuBootloader } from '../../../utils/helpers'
+import type { BleFirmwareFile } from '../../../services/bleFirmwareFile'
 import { convertBleToSemanticVersion } from '../../../utils/versionUtils'
 
 // ────────────────────────────────────────────────────────────────────
@@ -55,7 +57,7 @@ export type UpdatePhase =
     | 'preflight'      // Querying battery + version
     | 'downloading'    // BLE only: downloading .zip from Supabase
     | 'entering_dfu'   // BLE only: sending `dfu` command
-    | 'scanning'       // BLE only: scanning for DfuTarg bootloader
+    | 'scanning'       // BLE only: scanning for the DFU bootloader
     | 'transferring'   // Himax only: transferring firmware via BLE file transfer
     | 'sending'        // Himax only: sending aifirmware command
     | 'waking'         // Himax only: AI processor waking
@@ -202,7 +204,7 @@ function parseSdCardFiles(lines: string[]): string[] {
         .filter(name => name && name.endsWith('.IMG'));
 }
 
-/** Scan for the Nordic DFU bootloader (advertises as "WW500_DFU" or "DfuTarg") */
+/** Scan for the Nordic DFU bootloader (see isDfuBootloader for its names) */
 function scanForBootloader(timeoutMs = 10000): Promise<string | null> {
     return new Promise((resolve) => {
         let timeoutHandle: NodeJS.Timeout
@@ -210,7 +212,7 @@ function scanForBootloader(timeoutMs = 10000): Promise<string | null> {
         const listener = BleManager.addListener(
             'BleManagerDiscoverPeripheral',
             (peripheral: Peripheral) => {
-                if (peripheral.name === 'WW500_DFU' || peripheral.name === 'DfuTarg') {
+                if (isDfuBootloader(peripheral.name)) {
                     log('[FW Update] Found bootloader:', peripheral.id)
                     BleManager.stopScan().catch(() => {})
                     clearTimeout(timeoutHandle)
@@ -289,6 +291,8 @@ export interface StartUpdateOptions {
      * software, #529). The record says so, and the next AI update finishes it.
      */
     stopAfterFirstImage?: boolean
+    /** Bluetooth only: flash this package from the phone instead of the catalogue's latest */
+    bleFile?: BleFirmwareFile
 }
 
 /** The image one pass of a Himax update sends: its 8.3 name on the SD card, and its cloud path when it is a release */
@@ -414,7 +418,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
     // ── Pre-flight: run on mount ───────────────────────────────────
 
     useEffect(() => {
-        const isDfuMode = !!device?.name?.includes('DfuTarg')
+        const isDfuMode = isDfuBootloader(device?.name)
 
         // Normal devices must be connected for preflight. DFU devices can skip this requirement.
         if (!device?.connected && !isDfuMode) {
@@ -543,6 +547,8 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
     
     useEffect(() => {
         if (isUpdating && device && !device.connected) {
+            // A camera in its bootloader is never connected: the DFU library connects itself
+            if (isDfuBootloader(device.name)) return
             // Reconnecting and rebooting phases legitimately lose BLE connection
             if (phase === 'reconnecting' || phase === 'rebooting') return
             // Entering DFU, scanning, and flashing phases legitimately lose BLE connection for BLE target
@@ -622,27 +628,36 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
 
     // ── BLE DFU flow ───────────────────────────────────────────────
 
-    const runBleDfu = useCallback(async () => {
+    const runBleDfu = useCallback(async (bleFile?: BleFirmwareFile) => {
         if (!device) throw new Error('No device')
 
-        // 1. Download firmware
-        advancePhase('downloading')
-        appendLog('Downloading firmware package...')
+        // 1. The package: one picked on the phone, or the catalogue's latest
+        let localUri: string
+        let flashing: string
+        if (bleFile) {
+            localUri = bleFile.uri
+            flashing = bleFile.name
+            appendLog(`Flashing ${bleFile.name} from this phone`)
+        } else {
+            advancePhase('downloading')
+            appendLog('Downloading firmware package...')
 
-        if (!latestFirmware) throw new Error('No firmware available for download. Sync reference data first.')
-        
-        const localUri = await FirmwareService.ensureFirmwareDownloaded(latestFirmware, {
-            signal: abortControllerRef.current?.signal,
-            onStateChange: (state) => {
-                if (!unmountedRef.current) setDownloadState(state)
-            },
-            onProgress: (data) => {
-                if (!unmountedRef.current) setDownloadProgress(data)
-            }
-        })
-        appendLog(`Downloaded: ${latestFirmware.version}`)
+            if (!latestFirmware) throw new Error('No firmware available for download. Sync reference data first.')
 
-        const isDfuMode = !!device?.name?.includes('DfuTarg')
+            localUri = await FirmwareService.ensureFirmwareDownloaded(latestFirmware, {
+                signal: abortControllerRef.current?.signal,
+                onStateChange: (state) => {
+                    if (!unmountedRef.current) setDownloadState(state)
+                },
+                onProgress: (data) => {
+                    if (!unmountedRef.current) setDownloadProgress(data)
+                }
+            })
+            flashing = latestFirmware.version
+            appendLog(`Downloaded: ${latestFirmware.version}`)
+        }
+
+        const isDfuMode = isDfuBootloader(device?.name)
         let bootloaderAddr = device.id
 
         // 2. Enter DFU mode (skip if already in DFU)
@@ -702,6 +717,15 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
 
         setDfuProgress(100)
         appendLog('DFU transfer complete.')
+
+        // Started in the bootloader: the camera restarts on the new firmware
+        // under its own name and address, which this screen does not know
+        if (isDfuMode) {
+            if (!unmountedRef.current) setNewVersion(flashing)
+            appendLog('The camera restarts on its new firmware. Connect to it again from the Engineer Console.')
+            advancePhase('complete')
+            return
+        }
 
         // 6. Reboot and reconnect
         advancePhase('rebooting')
@@ -1357,7 +1381,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
 
         try {
             if (target === 'ble') {
-                await runBleDfu()
+                await runBleDfu(options?.bleFile)
             } else {
                 await runHimaxUpdate(options?.himaxSource, options?.selectedFirmware, options?.stopAfterFirstImage)
             }

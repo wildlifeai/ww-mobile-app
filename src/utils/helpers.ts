@@ -63,7 +63,15 @@ export const getStorageData = async <T>(key: string): Promise<T | null> => {
 	}
 }
 
+/**
+ * The nRF's DFU bootloader, by the name it advertises: the WW500's own
+ * (WILD-SIFK, bootloader 00.01.01, bench 27 Nov 2026) or Nordic's default.
+ * It answers no camera command, only a Nordic DFU flash.
+ */
+export const isDfuBootloader = (name?: string | null): boolean =>
+	!!name && (name.includes('WW500_DFU') || name.includes('DfuTarg'))
+
 export const isOurDevice = (name: string) => {
-	return !!DEVICE_NAMES.find((deviceName) => name.includes(deviceName)) || name.includes('DfuTarg')
+	return !!DEVICE_NAMES.find((deviceName) => name.includes(deviceName)) || isDfuBootloader(name)
 }
 

@@ -4,6 +4,7 @@ import {
 	storeDataToStorage,
 	getStorageData,
 	isOurDevice,
+	isDfuBootloader,
 } from "../helpers"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { ExtendedPeripheral } from "../../redux/slices/devicesSlice"
@@ -109,6 +110,21 @@ describe("src/utils/helpers", () => {
 
 		it("should return false for unknown device", () => {
 			expect(isOurDevice("Unknown Device")).toBe(false)
+		})
+	})
+
+	// The WW500's bootloader advertises WW500_DFU (WILD-SIFK, 27 Nov 2026), and
+	// the Engineer Console only knew Nordic's DfuTarg, so it connected to it as
+	// a camera and the rescue ran out of the bootloader's two minutes
+	describe("isDfuBootloader", () => {
+		it("knows the WW500 bootloader and Nordic's default", () => {
+			expect(isDfuBootloader("WW500_DFU")).toBe(true)
+			expect(isDfuBootloader("DfuTarg")).toBe(true)
+		})
+
+		it("is not a camera running its firmware, or no name", () => {
+			expect(isDfuBootloader("WILD-SIFK")).toBe(false)
+			expect(isDfuBootloader(undefined)).toBe(false)
 		})
 	})
 })

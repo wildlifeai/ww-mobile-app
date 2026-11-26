@@ -7,6 +7,7 @@ import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { setEngineerConsoleActive } from '../redux/slices/scanningSlice'
 import { useScanLoop } from './useScanLoop'
 import { log, logError } from '../utils/logger'
+import { isDfuBootloader } from '../utils/helpers'
 
 export type EngineerConnectState = 'idle' | 'scanning' | 'no_devices' | 'connecting' | 'select'
 
@@ -78,8 +79,9 @@ export const useEngineerConnect = () => {
     const selectDevice = useCallback(async (device: ExtendedPeripheral) => {
         if (hasNavigatedRef.current) return // Prevent re-entry
 
-        // Handle DFU recovery interception
-        if (device.name?.includes('DfuTarg')) {
+        // A camera in its DFU bootloader answers no command: straight to the
+        // Bluetooth update, which flashes it without connecting first
+        if (isDfuBootloader(device.name)) {
             log(`[EngineerConnect] DFU Device selected, routing directly to FirmwareUpdateScreen`)
             hasNavigatedRef.current = true
             setDialogState('idle')

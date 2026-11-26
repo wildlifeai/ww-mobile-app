@@ -15,6 +15,8 @@ import { useFirmwareUpdate, FirmwareTarget, HimaxFirmwareSource, firmware83Filen
 import { useFirmwareOnPhone } from '../../hooks/useOfflineFiles'
 import Firmware from '../../database/models/Firmware'
 import { finishSummary } from '../../utils/firmwareWords'
+import { isDfuBootloader } from '../../utils/helpers'
+import { pickBleFirmwareFile, discardBleFirmwareFile } from '../../services/bleFirmwareFile'
 import { classifyHimax } from '../../utils/himaxFirmwareState'
 
 const TARGET_TITLES: Record<FirmwareTarget, string> = {
@@ -23,7 +25,7 @@ const TARGET_TITLES: Record<FirmwareTarget, string> = {
 }
 
 const TARGET_DESCRIPTIONS: Record<FirmwareTarget, string> = {
-    ble: 'Downloads the latest BLE firmware from the cloud and flashes it via Nordic DFU. The device will reboot into a bootloader, apply the update, then reconnect.',
+    ble: 'Flashes the Bluetooth firmware with Nordic DFU: the latest from the catalogue, or a file from this phone. The camera restarts into its bootloader, takes the update, then restarts on the new firmware.',
     himax: 'Updates the camera firmware. The WW500 holds two images - a colour (RP3) and a night-IR (HM0360) camera - and an update flashes both, normally from the MANIFEST folder on the SD card.',
 }
 
@@ -270,11 +272,28 @@ export const FirmwareUpdateScreen = () => {
         }
     }, [selectedOption, himaxSource])
 
-    const isDfuMode = !!device?.name?.includes('DfuTarg')
+    const isDfuMode = isDfuBootloader(device?.name)
 
     // Flashing on a genuinely low battery risks a brick; the user can override
     // when the device is on USB / external power (where the reading is meaningless).
     const batteryGateOk = !isBatteryLow || externalPowerConfirmed
+
+    // Bluetooth: a package picked on the phone, for a build the catalogue does not have
+    const flashPhoneFile = async () => {
+        let file
+        try {
+            file = await pickBleFirmwareFile()
+        } catch (e) {
+            logWarn('[FW Update Screen] Picking a firmware file failed:', e)
+            return
+        }
+        if (!file) return
+        try {
+            await startUpdate({ bleFile: file })
+        } finally {
+            await discardBleFirmwareFile(file)
+        }
+    }
 
     const title = TARGET_TITLES[target]
     const description = TARGET_DESCRIPTIONS[target]
@@ -705,12 +724,23 @@ export const FirmwareUpdateScreen = () => {
                     </Button>
                 )}
 
+                {target === 'ble' && !isComplete && !isUpdating && (
+                    <Button
+                        mode="outlined"
+                        style={styles.marginTop12}
+                        onPress={flashPhoneFile}
+                        disabled={!isPreflightDone || !batteryGateOk}
+                    >
+                        <WWText>Flash a file from this phone</WWText>
+                    </Button>
+                )}
+
                 {isComplete && !isUpdating && (
                     <Button
                         mode="contained"
                         onPress={() => navigation.goBack()}
                     >
-                        <WWText>Back to Firmware Status</WWText>
+                        <WWText>Done</WWText>
                     </Button>
                 )}
 
