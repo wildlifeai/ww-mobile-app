@@ -11,7 +11,7 @@ The screen, service, hook and BLE-module inventories that used to live here have
 |---|---|
 | Folder structure, services, hooks, screens, naming conventions | [02-CODEBASE-GUIDE.md](../onboarding/02-CODEBASE-GUIDE.md) |
 | Routes and navigation | [`src/navigation/index.tsx`](../../src/navigation/index.tsx), grouped in [01-TECHNOLOGY-STACK.md](../onboarding/01-TECHNOLOGY-STACK.md#route-table) |
-| BLE protocol/session/workflow modules | [BLE_Architecture.md](BLE_Architecture.md#file-structure) |
+| BLE protocol/session/workflow modules | [02-CODEBASE-GUIDE.md](../onboarding/02-CODEBASE-GUIDE.md#srcble-ble-protocol-engine) |
 | Data and sync layer | [03-DATA-AND-SYNC.md](../onboarding/03-DATA-AND-SYNC.md) |
 
 What remains below is the part that was genuinely unique to this document: a narrative summary of how the main flows hang together.

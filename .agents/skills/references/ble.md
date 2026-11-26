@@ -84,8 +84,10 @@ day are in [traps.md](traps.md).
 
 ## Operational parameters
 
-- **Read ops through `session.getOps()`, not `execute(getops)`.** `AI getop -1` returns all 32
-  values and almost every hook wants one or two, so the array is cached per device for one wake
+- **Read ops through `session.getOps()`, not `execute(getops)`.** `AI getop -1` returns every op
+  the firmware reports
+  ([the index](../../../documentation/onboarding/04-ENGINEER-CONSOLE.md#op-parameter-index)),
+  and almost every hook wants one or two, so the array is cached per device for one wake
   window, in `ble/protocol/opCache.ts`. A `setop` patches the one value the device confirmed;
   the array is dropped on **Wake** and on disconnect, because the device rewrites its own
   parameters while asleep: automatic day and night switching moves the active slot, and the AE
@@ -171,7 +173,7 @@ day are in [traps.md](traps.md).
   `configureLorawan` do. `getop` now has a `failureRegex` for the out-of-range error and it is
   non-retryable: without it a rejection matched neither success nor failure and burned 8 s,
   then retried, which silently broke a whole flow for 16 s at a time.
-- **The nRF strips the op array out of the Sleep broadcast.** The Himax sends all 32 values on
+- **The nRF strips the op array out of the Sleep broadcast.** The Himax sends every op value on
   every sleep and the nRF logs them as `AI processor sends stats`, then forwards six bytes: the
   word `Sleep`. The app never sees the numbers, so there is nothing to parse and the cache
   above is the only app-side answer. Getting them forwarded is a firmware ask, and it would

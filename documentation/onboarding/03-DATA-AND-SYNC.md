@@ -91,11 +91,13 @@ tableSchema({
 })
 ```
 
-Which projects, devices and deployments a user sees on the phone follows the backend's role
+Which projects and deployments a user sees on the phone follows the backend's role
 rules, in `services/roleAccess.ts` (#351): `ww_admin` is system scope and sees everything, an
 `organisation_manager` sees every project of its organisation, and project roles cover their
 own project only. Sync already sends only what the account may read; the local rule keeps
-another account's unsynced rows out of view on a shared phone.
+another account's unsynced rows out of view on a shared phone. Cameras are not filtered: every
+account reads every camera ([the
+contract](../../.agents/skills/references/cross-repo-contracts.md)).
 
 What a user may do with a deployment follows the backend too, in the same file (#450), from
 ww-backend's `yyy_policies/52_deployments.sql` and `has_project_role`:
@@ -278,7 +280,8 @@ async sync(): Promise<void> {
 }
 ```
 
-Sync tracks per-entity status via `syncSlice` in Redux. See the full sync method table in [01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md#sync-architecture).
+Sync tracks per-entity status via `syncSlice` in Redux. The sync methods are in
+[SupabaseSyncService.ts](../../src/services/SupabaseSyncService.ts).
 
 ### When the outbox is pushed
 
@@ -608,19 +611,13 @@ nor its card and not on the phone, before anything is written to the camera.
 
 ## Conflict Resolution
 
-**Strategy: Last Write Wins** — compares `updated_at` timestamps.
+There is no conflict step. Two rules decide what happens to a record changed on the phone and
+on the server before a sync:
 
-Conflicts occur when the same record is modified both locally (offline) and on the server (by another user) before sync runs.
-
-```typescript
-async resolveConflict(localRecord, serverRecord) {
-  if (serverRecord.updated_at > localRecord.updated_at) {
-    return serverRecord   // Server wins — update local
-  } else {
-    return localRecord    // Local wins — push to server
-  }
-}
-```
+- A pull keeps a local row that still has a change to push ([Pull](#pull), #349).
+- A project or deployment update sends only the columns it changed, so the server keeps every
+  column the phone did not touch
+  ([data-and-sync.md](../../.agents/skills/references/data-and-sync.md), #330, #411).
 
 ---
 

@@ -575,7 +575,7 @@ The seed users live in ww-backend. How to load them into a Supabase project is i
 
 ## Known Issues
 
-- **BLE tests** live in `src/ble/__tests__/` (messageClassifier, transport), `src/ble/protocol/__tests__/` (simulatedTransport) and `src/ble/protocol/fileTransfer/__tests__/` (ackMatcher, crc16ccitt, filenameValidator, fileTransferPackets). There is no `src/ble/session/__tests__/`.
+- **BLE tests** sit in an `__tests__/` folder beside the code they test, in `src/ble/` and each of its subfolders.
 
 ---
 

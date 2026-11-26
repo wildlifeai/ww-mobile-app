@@ -24,7 +24,7 @@ This folder contains six onboarding guides:
 
 | # | Guide | What It Covers |
 |---|-------|----------------|
-| 1 | [01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md) | Framework versions, dependencies, architecture, and patterns |
+| 1 | [01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md) | Dependencies, architecture and patterns |
 | 2 | [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md) | Folder structure, state management, naming conventions |
 | 3 | [03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md) | WatermelonDB, Supabase sync, security model, offline patterns |
 | 4 | [04-ENGINEER-CONSOLE.md](./04-ENGINEER-CONSOLE.md) | BLE commands, OP parameters, hardware testing tools |
@@ -49,7 +49,7 @@ This folder contains six onboarding guides:
 | [WSL2-Setup-Guide.md](../resources/WSL2-Setup-Guide.md) | WSL2 networking, port forwarding, .wslconfig tuning |
 | [Dev-Deployment-Guide.md](../resources/Dev-Deployment-Guide.md) | Developer deployment mode for testing capture, flash, and diagnostic settings |
 | [React-Doctor-Guide.md](../resources/React-Doctor-Guide.md) | React health-score CI check (60+ rules, 0–100 scoring) |
-| [whitelist.md](../resources/whitelist.md) | Source of truth: all active screens, services, hooks, and BLE modules |
+| [whitelist.md](../resources/whitelist.md) | How the main user flows fit together, and where each inventory lives. Not a list of what exists: `src/` is |
 | [AI-Model-Integration.md](../resources/AI-Model-Integration.md) | AI model family/version architecture, firmware ID mapping, BLE transfer safety protocol |
 | [File-Transfer-Protocol.md](../resources/File-Transfer-Protocol.md) | BLE file transfer protocol — packet format, CRC, stop-and-wait, error codes |
 | [Himax-Firmware-Update.md](../resources/Himax-Firmware-Update.md) | Himax AI processor firmware update — A/B slot flash, sequence diagram, error codes |
@@ -120,7 +120,7 @@ This folder contains six onboarding guides:
 To ensure your environment is configured correctly, verify these checkpoints:
 
 1. **Tool Versions**:
-   - `node -v` → should show `v20.x.x` (LTS).
+   - `node -v` → should show `v22.x.x` or later.
    - `eas --version` → should show a recent version.
 2. **Android Connection**:
    - `adb devices` → your device should appear (not "unauthorized").
@@ -143,7 +143,7 @@ To ensure your environment is configured correctly, verify these checkpoints:
 The Wildlife Watcher app is an **offline-first field tool**. It is built on the principle that **connectivity is the exception, not the rule.**
 
 ### The Tech Stack
-- **React Native 0.81.5** + **Expo SDK 54**
+- **React Native** + **Expo**, versions in [package.json](../../package.json)
 - **WatermelonDB**: High-performance local reactive database (the source of truth)
 - **Supabase**: Cloud backend (PostgreSQL, Auth, Sync)
 - **Redux Toolkit**: UI state and session management

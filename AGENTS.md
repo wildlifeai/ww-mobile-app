@@ -104,8 +104,10 @@ a week. The Testing Guide's CI/CD table lists every workflow, what it proves and
 - **Security lives at the sync boundary, not on the client.** Role checks in the app are
   UX; Supabase RLS is the enforcement. Never treat a local query as authoritative for
   data belonging to other users.
-- **Version bumps touch six files.** `npm run version:check` is the gate, because EAS reads the
-  native Android values, not `app.config.ts`.
+- **Version bumps touch five files**, listed in the
+  [publishing guide](documentation/resources/publishing_guide.md#release-process).
+  `npm run version:check` is the gate, because EAS reads the native Android values, not
+  `app.config.ts`.
 - Docs are the record, GitHub issues are the tracker: substantive findings go in
   `documentation/development reports/` as a dated thread folder, open items become issues
   (they auto-add to the [project board](https://github.com/orgs/wildlifeai/projects/3)).

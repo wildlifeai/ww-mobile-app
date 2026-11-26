@@ -26,6 +26,10 @@ src/features/maps/
 └── index.ts                         # Exports MapScreen, the one thing used from outside
 ```
 
+A deployed camera's marker is ringed when its LoRaWAN check-ins, read live, need attention, by
+the states in [`cameraHealth.ts`](../../src/utils/cameraHealth.ts) (#546). The marker's card opens
+the Monitoring Summary, whose Remote check-in card shows the last check-in.
+
 ### Key Design Decisions
 
 - **`PROVIDER_GOOGLE`** on both platforms for visual consistency

@@ -163,7 +163,7 @@ wake, so to photograph with it, let the device sleep first.
 
 ### OP Parameter Index
 
-The complete index (`OP_PARAMETER` enum + `FACTORY_DEFAULTS`) is defined in [`useDeviceSettings.ts`](../../src/hooks/useDeviceSettings.ts). That file is the **single source of truth** for all parameter indices and default values. The range extends well past OP 20 (MD illumination, AE thresholds, white balance, camera resolution); read the enum rather than assuming an upper bound.
+The complete index (`OP_PARAMETER` enum + `FACTORY_DEFAULTS`) is defined in [`useDeviceSettings.ts`](../../src/hooks/useDeviceSettings.ts). That file is the **single source of truth** for all parameter indices and default values. The range extends well past OP 20 (MD illumination, AE thresholds, white balance, LoRaWAN ping, flash mode); read the enum rather than assuming an upper bound.
 
 The following subset is directly used during deployment:
 
@@ -181,7 +181,7 @@ The following subset is directly used during deployment:
 | 14 | `MODEL_PROJECT` | Currently loaded AI model ID |
 | 15 | `MODEL_VERSION` | Currently loaded AI model version |
 | 16 | `MODEL_THRESHOLD` | Detection threshold, a percent (0 to 100) since Seeed PR #289: how sure the model must be of the target. Both deployment flows write the project's `detection_threshold_pct` unchanged (#342, #520), see E under [Device Configuration](./05-DEVICE-FLOWS.md#device-configuration-usedeploymentconfiguration); the reset sets 60, the firmware's default. Older firmware reads it as the raw int8 output, probability (q + 128) / 256 |
-| 17 | `MD_SENSITIVITY` | The project's sensitivity for activity/mixed (low 1, medium 2, high 3; medium when the project has none), 0 for timelapse. Only the HM0360 image applies it until Seeed #211 |
+| 17 | `MD_SENSITIVITY` | The project's sensitivity for activity/mixed (low 1, medium 2, high 3; medium when the project has none). Timelapse leaves it as the reset left it: since Seeed PR #276 it takes 1 to 3 only. Only the HM0360 image applies it until Seeed #211 |
 | 18 | `TEST_MODE_BITS` | Diagnostic bitmask (bit 1 = `TEST_BIT_SAVE_BMP`, bit 3 = `TEST_BIT_SKIP_FILE_CREATION`). Neither deployment writes it since 21 September 2026; the reset leaves it 0 |
 | 19 | `IMAGES_COUNT` | Total images captured (reset on new deployment) |
 | 20 | `IMAGES_FILE_INDEX` | Image subdirectory counter (reset on new deployment) |
@@ -211,9 +211,9 @@ All deployment flows use the **bulk parameter fetch** command to minimize BLE ro
 
 | Method | Commands | Notes |
 |--------|----------|-------|
-| Activity Detection | `setop 17 1`, `setop 11 1000`, `setop 7 0`, `setop 8 1000`, `setop 10 1` | MD on, timelapse off |
-| Timelapse | `setop 17 0`, `setop 11 0`, `setop 7 <secs>`, `setop 8 1000`, `setop 10 1` | MD off, timelapse on |
-| Mixed | `setop 17 1`, `setop 11 1000`, `setop 7 <secs>`, `setop 8 1000`, `setop 10 1` | MD on + timelapse on |
+| Activity Detection | `setop 17 <1 to 3>`, `setop 11 1000`, `setop 7 0`, `setop 8 1000`, `setop 10 1` | MD on at the project's sensitivity, timelapse off |
+| Timelapse | `setop 11 0`, `setop 7 <secs>`, `setop 8 1000`, `setop 10 1` | MD off (op11 = 0; op17 is not written), timelapse on |
+| Mixed | `setop 17 <1 to 3>`, `setop 11 1000`, `setop 7 <secs>`, `setop 8 1000`, `setop 10 1` | MD on + timelapse on |
 
 Camera enable (`setop 10 1`) is always sent **last** to avoid premature triggers. All writes are conditional: unchanged values are skipped. A Start Monitoring burst then raises `setop 8` past the picture interval, see D under [Device Configuration](./05-DEVICE-FLOWS.md#device-configuration-usedeploymentconfiguration).
 
@@ -270,10 +270,11 @@ trying to do rather than by the mechanism underneath.
 |------|-------------|
 | `UPDATE_BLE_FIRMWARE` | Nordic nRF52 OTA update (ZIP) via the DFU screen. |
 | `UPDATE_HIMAX_FIRMWARE` | Himax AI processor update (`AI firmware <file> <0xCRC>`, then `AI reset` and `AI dpd`). Normally flashes **both** camera-variant images, see [Himax-Firmware-Update.md](../resources/Himax-Firmware-Update.md#dual-image-update-camera-variant-pair). An update this phone left part way is finished instead, ending on the camera it started on. |
-| `FIRMWARE_STATUS` | One line per chip, up to date or update available, with Update. With one camera's AI build in the catalogue, the AI line names the camera whose firmware is missing instead ([why](../resources/Himax-Firmware-Update.md#one-cameras-build-only)). An AI update this phone ran that stopped between its two images reads "Update not finished", with Finish update ([why](../resources/Himax-Firmware-Update.md#an-update-that-stopped-between-images)). Also reached from Start Monitoring, so the screen is production code, not only a bench tool. |
+| `FIRMWARE_STATUS` | One line per chip, up to date or update available, with Update. With one camera's AI build in the catalogue, the AI line names the camera whose firmware is missing instead ([why](../resources/Himax-Firmware-Update.md#one-cameras-build-only)). An AI update this phone ran that stopped between its two images reads "Update not finished", with Finish update ([why](../resources/Himax-Firmware-Update.md#an-update-that-stopped-between-images)). |
 | `MODEL_VALIDATION` | Full AI model lifecycle: validate metadata → download → transfer to SD → `erasemodel` → `loadmodel`. Grouped here rather than under file transfer because the transfer is how it works, not what it is for. |
 
-From the console, all three open the **engineer view** of the update screen (`engineer: true`): the build picker, the SD-card or cloud source and the transfer cards. Start Monitoring opens the operator's view, one version line, one button, one bar and one status line with the update's last steps under them, and one result line (#344).
+The firmware screens are reached from the Engineer Console only. The person deploying updates from
+Start Monitoring's **Update software**, see [05-DEVICE-FLOWS.md](./05-DEVICE-FLOWS.md#user-form).
 
 ### ⚙️ Device Configuration
 
@@ -353,30 +354,11 @@ turns motion capture back on, so a restore a dropped link leaves owed is kept on
 the next test on that camera, and a deployment drops it, because it writes op11 itself at the
 same 1000 ms the Start Monitoring card tests at.
 
-### Camera Settings Test Screen
+### Capture Picture Screen
 
-**Screen:** `CapturePictureScreen.tsx`
-**Purpose:** Capture test images with configurable flash parameters to validate LED hardware and exposure settings.
-
-**Features:**
-- **Flash:** Off / White / IR (op13) and `LED Brightness` (op9, 0-100%), via the shared
-  [`FlashSelector`](../../src/components/device/FlashSelector.tsx). Brightness only appears once a
-  flash is chosen, and picking one while op9 reads 0 raises it to 50%: the bench found op13 written
-  and the LED selected while the device reported `Flash brightness: 0%`, so the flash lit nothing
-  and nothing on screen said why. White balance was removed from this flow; op27/op28 remain in
-  `OP_PARAMETER` and are still covered by the factory reset.
-- **Direct Capture:** Triggers via `AI capture 1 1000` (direct command)
-- **DPD Synchronisation:** Before capture, writes `MD_INTERVAL=0` and `TIMELAPSE_INTERVAL=0` alongside flash OPs (9, 12, 13), then waits for Deep Power Down (`Sleep` message). This ensures CONFIG.TXT is committed with new flash parameters and zeroed background triggers.
-- **Post-Capture Cleanup:** Sends `CAMERA_ENABLED=0` (`setop 10 0`) and waits for the resulting sleep cycle, which returns the device to a clean idle state.
-- **Auto Exposure (AE) Data:** Captures console logs (`Integration time`, `Analog gain`, etc.) and renders live AE metrics with a visual AE Mean progress bar (0–255)
-- **Gallery:** Every captured image is stored with its `cameraParams` and `aeData`. Tapping a thumbnail opens a light-box modal showing the exact settings for that frame.
-
-> [!NOTE]
-> This section predates [Capture-Picture.md](../resources/Capture-Picture.md), which is how the
-> flow behaves now. The manual-capture strobe bug it used to warn about is gone: every capture,
-> `AI capture` included, arms the HM0360 STROBE from `ledFlashIsActive()` when it starts the
-> sensor (`configure_image_sensor(CAMERA_CONFIG_RUN)` in the Seeed repo's `image_task.c`, `dev`,
-> 30 September 2026). Whether the LED fires is op13 with the flash mode op34.
+**Screen:** `CapturePictureScreen.tsx`. One picture with a chosen camera and flash, its steps
+and a gallery. What it sends and in what order is in
+[Capture-Picture.md](../resources/Capture-Picture.md).
 
 > [!NOTE]
 > The flash LED hardware is driven by the Himax AI processor (HX6538), not the nRF52 (WW500). The nRF only stores and forwards the OP values; the Himax reads them from CONFIG.TXT during the capture wake cycle.
@@ -519,7 +501,7 @@ Goal: Validate MD triggers when subject is only illuminated by flash.
 | Heartbeat | 30s with nothing sent or received → sends `get heartbeat` (or reads RSSI if UART paused, which does not reach the nRF) |
 | Disconnect Detection | `WWBleDisconnectedBanner` shown on all BLE-dependent screens |
 | DFU Suppression | Banner is hidden when `dfuInProgress` is `true`, since the BLE disconnect during firmware updates is expected |
-| Disconnect Signal | `DEVICE_SIGNAL(DISCONNECT)` → `commandQueue.clearAll()`, which rejects all in-flight commands instantly |
+| Disconnect Signal | `DEVICE_SIGNAL(DISCONNECT)` → `bleTransport.clearAll()`, which rejects all in-flight commands instantly |
 | Navigation Guard | `isNavigatingAway` ref prevents spurious disconnect alerts during screen transitions |
 
 All screens use `bleDeviceRef` (a `useRef`) for device state inside timer callbacks, preventing stale closure bugs.

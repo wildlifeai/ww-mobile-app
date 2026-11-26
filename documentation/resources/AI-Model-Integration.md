@@ -52,15 +52,10 @@ Each version is a unique, immutable path.
 
 ## WatermelonDB Schema
 
-The `AiModel` model in `src/database/models/AiModel.ts`:
-
-```typescript
-@field('model_family_id') modelFamilyId?: string    // UUID FK to ai_model_families
-@field('version_number') versionNumber?: number      // Integer for firmware OP 15
-@field('firmware_model_id') firmwareModelId?: number  // Integer for firmware OP 14
-@field('status') status?: string                     // ai_model_status enum
-@field('file_hash') fileHash?: string                // SHA-256 of the .TFL binary
-```
+The firmware's two ids live on two models: `firmware_model_id`, op14, on the family
+([AiModelFamily.ts](../../src/database/models/AiModelFamily.ts)), and `version_number`, op15, on
+the version ([AiModel.ts](../../src/database/models/AiModel.ts)), which links to its family by
+`model_family_id`. The other fields are in the files.
 
 ### Sync Filtering
 
@@ -235,10 +230,10 @@ file in the model's class order to guarantee this.
 
 | File | Purpose |
 |------|---------|
-| `src/database/models/AiModel.ts` | WatermelonDB model with firmware ID fields |
+| `src/database/models/AiModel.ts`, `src/database/models/AiModelFamily.ts` | The version (op15) and the family (op14) |
 | `src/services/AiModelService.ts` | AI model metadata, label + binary download, registration |
 | `src/services/OfflinePrefetchService.ts` | Downloads every project's model after a sync, so a deployment needs no signal (#333) |
-| `src/ble/workflows/deploymentPipeline.ts` | `syncAiModel` owns model state during a deployment: the app's only model transfer path since the standalone `AiModelTransferScreen` was deleted in Sep 2026, unreachable and superseded by it |
+| `src/ble/workflows/deploymentPipeline.ts` | `syncAiModel` owns model state during a deployment. The Engineer Console's Model Validation test (`ModelValidationTestScreen.tsx`) also transfers a model, on the bench |
 | `src/ble/protocol/fileTransfer/` | File transfer pipeline |
 | `src/ble/protocol/commandRegistry.ts` | `loadmodel`, `erasemodel`, `getop` commands |
 
