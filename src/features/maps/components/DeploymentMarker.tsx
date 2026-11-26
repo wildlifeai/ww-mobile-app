@@ -8,9 +8,11 @@ import type Deployment from '../../../database/models/Deployment'
 interface Props {
     deployment: Deployment
     onPress: (id: string) => void
+    /** Colour of a ring round the marker for a camera that needs attention (#518), none when null */
+    ring?: string | null
 }
 
-const DeploymentMarkerComponent: React.FC<Props> = ({ deployment, onPress }) => {
+const DeploymentMarkerComponent: React.FC<Props> = ({ deployment, onPress, ring = null }) => {
     const markerRef = useRef<any>(null)
 
     // Optimization: Only track view changes for the first render
@@ -18,13 +20,16 @@ const DeploymentMarkerComponent: React.FC<Props> = ({ deployment, onPress }) => 
     const [tracksViewChanges, setTracksViewChanges] = useState(true)
 
     useLayoutEffect(() => {
-        // Stop tracking after initial render (allow time for icon to load)
+        // Track again while a ring arrives or goes: the check-ins are read after the first
+        // render, and an untracked marker keeps its old bitmap on Android
+        setTracksViewChanges(true)
+        // Stop tracking after the render (allow time for icon to load)
         const timer = setTimeout(() => {
             setTracksViewChanges(false)
         }, 500) // 500ms is usually safe for vector icons to render
 
         return () => clearTimeout(timer)
-    }, []) // Only run on mount
+    }, [ring])
 
     // Marker Color Logic
     const getMarkerColor = (statusId?: number | null) => {
@@ -59,14 +64,25 @@ const DeploymentMarkerComponent: React.FC<Props> = ({ deployment, onPress }) => 
             tracksViewChanges={tracksViewChanges}
             tracksInfoWindowChanges={false} // We don't use InfoWindow/Callout
         >
-            <View style={[styles.markerBody, { borderColor: color }]}>
-                <MaterialCommunityIcons name="camera" size={20} color={color} />
+            <View style={ring ? [styles.ring, { borderColor: ring }] : styles.noRing} testID={ring ? 'marker-ring' : undefined}>
+                <View style={[styles.markerBody, { borderColor: color }]}>
+                    <MaterialCommunityIcons name="camera" size={20} color={color} />
+                </View>
             </View>
         </Marker>
     )
 }
 
 const styles = StyleSheet.create({
+    // The ring and its absence take the same room, so a marker does not shift when one arrives
+    ring: {
+        borderRadius: 21,
+        borderWidth: 3,
+        padding: 1,
+    },
+    noRing: {
+        padding: 4,
+    },
     markerBody: {
         backgroundColor: 'white',
         borderRadius: 15, // Circular
@@ -81,12 +97,13 @@ const styles = StyleSheet.create({
 })
 
 // Memoize to prevent re-renders when parent state (like selectedDeploymentId) changes
-// Only re-render if deployment props (like ID or coords/status) change
+// Only re-render if deployment props (like ID or coords/status) or the ring change
 export const DeploymentMarker = memo(DeploymentMarkerComponent, (prev, next) => {
     return (
         prev.deployment.id === next.deployment.id &&
         prev.deployment.latitude === next.deployment.latitude &&
         prev.deployment.longitude === next.deployment.longitude &&
-        prev.deployment.deploymentStatusId === next.deployment.deploymentStatusId
+        prev.deployment.deploymentStatusId === next.deployment.deploymentStatusId &&
+        prev.ring === next.ring
     )
 })

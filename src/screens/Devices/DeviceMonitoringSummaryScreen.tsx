@@ -16,6 +16,7 @@ import { WWText } from '../../components/ui/WWText'
 import { WWButton } from '../../components/ui/WWButton'
 import { WWIcon } from '../../components/ui/WWIcon'
 import { DeploymentPhotoStrip } from '../../components/ui/DeploymentPhotoStrip'
+import { RemoteCheckInCard } from './components/RemoteCheckInCard'
 import { DeviceService } from '../../services/DeviceService'
 import { DeviceWithStatus } from '../../types/device'
 import { useRoute, useNavigation } from '@react-navigation/native'
@@ -232,6 +233,9 @@ export const DeviceMonitoringSummaryScreen = () => {
                         </Card.Content>
                     </Card>
                 )}
+
+                {/* Last LoRaWAN check-in, read live; hidden offline (#518) */}
+                {isActive && <RemoteCheckInCard deployment={activeDeployment} />}
 
                 {/* Connect to Device button */}
                 <View style={styles.footer}>
