@@ -1,42 +1,30 @@
 import { BleSession } from '../session/createBleSession'
 import { commandRegistry, LorawanPingReply } from '../protocol/commandRegistry'
-import { OP_PARAMETER } from '../../hooks/useDeviceSettings'
 import { logWarn } from '../../utils/logger'
 
 /**
- * What a LoRaWAN test found: the nRF's own answer, `off` when it has not
- * joined because the camera's op32 says never to (#407), or `no_answer`.
+ * What a LoRaWAN test found: the nRF's own answer, `off` among them when the
+ * camera's op32 says never to join (#407), or `no_answer`.
  */
-export type LorawanPingResult = LorawanPingReply | 'off' | 'no_answer'
+export type LorawanPingResult = LorawanPingReply | 'no_answer'
 
 /**
  * Ask the camera for a LoRaWAN uplink now, and say what happened. The Signal
  * Test card and Start Monitoring's check both go through here, so the two can
  * never read a reply differently (#348).
  *
- * `off` is the app's reading, not the nRF's: the nRF only says `Not joined
- * yet.`, and op32 (`LORAWAN_PING_MINUTES`) at 0 is why, so the ops are read
- * only then, from the cache when this wake already has them. On firmware
- * without the flash mode (op34) op32 is still the hi-res switch and says
- * nothing about LoRaWAN, and an op read that fails leaves it as not joined.
+ * `off` is the nRF's own answer since BLE 0.30.56, the firmware that made
+ * op32 decide the join. The app used to guess it from op32 after `Not joined
+ * yet.`, which that firmware never sends with op32 at 0, and which older
+ * firmware, ignoring op32, never meant that way (#535).
  */
-export async function pingLorawan(session: Pick<BleSession, 'execute' | 'getOps'>): Promise<LorawanPingResult> {
-    let reply: LorawanPingReply
+export async function pingLorawan(session: Pick<BleSession, 'execute'>): Promise<LorawanPingResult> {
     try {
-        reply = await session.execute(commandRegistry.ping)
+        return await session.execute(commandRegistry.ping)
     } catch (err) {
         logWarn('[LoRaWAN] No answer to ping:', err)
         return 'no_answer'
     }
-    if (reply !== 'not_joined') return reply
-
-    try {
-        const ops = await session.getOps()
-        if (ops.length > OP_PARAMETER.FLASH_MODE && ops[OP_PARAMETER.LORAWAN_PING_MINUTES] === '0') return 'off'
-    } catch (err) {
-        logWarn('[LoRaWAN] Could not read op32 to explain the missing join:', err)
-    }
-    return 'not_joined'
 }
 
 /**

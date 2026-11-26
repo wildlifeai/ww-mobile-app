@@ -80,17 +80,21 @@ export interface CommandDefinitionOptions {
 export const CAPTURE_FAILED_LINE = /^Capture failed after \d+ of \d+ images/i;
 
 /**
- * The reply of `AI capture` and `AI light` between a cold boot and the first
- * sleep, from the same firmware. A cold boot follows power-on, RESET,
- * `AI reset`, `AI switchslot`, a firmware update, and the AI processor
- * resetting itself after a fault. The command has woken the processor, so the
- * same command sent after its next Sleep works: runCommandPipeline waits for
- * that Sleep and sends it once more, so no screen has to (#476).
+ * The replies of `AI capture` and `AI light` that ask for the command again
+ * after the processor's next Sleep:
+ * - `Error: no captures until after the first sleep.`, between a cold boot and
+ *   the first sleep. A cold boot follows power-on, RESET, `AI reset`,
+ *   `AI switchslot`, a firmware update, and the AI processor resetting itself
+ *   after a fault (#476).
+ * - `Error: going to sleep, try again.`, while the processor is already on
+ *   its way to sleep (Seeed #296, branch 261125_countersLost; #535).
+ * runCommandPipeline waits for that Sleep and sends the command once more, so
+ * no screen has to.
  */
-export const FIRST_SLEEP_REFUSAL = /^Error: no captures until after the first sleep/i;
+export const SLEEP_REFUSAL = /^Error: (?:no captures until after the first sleep|going to sleep, try again)/i;
 
 /** Either of the two, for the commands that capture. */
-const CAPTURE_REFUSED = new RegExp(`${CAPTURE_FAILED_LINE.source}|${FIRST_SLEEP_REFUSAL.source}`, 'i');
+const CAPTURE_REFUSED = new RegExp(`${CAPTURE_FAILED_LINE.source}|${SLEEP_REFUSAL.source}`, 'i');
 
 /**
  * Helper to create a simple single-line matching command.
@@ -98,11 +102,14 @@ const CAPTURE_REFUSED = new RegExp(`${CAPTURE_FAILED_LINE.source}|${FIRST_SLEEP_
 export function createSingleLineCommand<T>(
   name: string,
   buildCommand: (...args: any[]) => string,
-  regex: RegExp,
+  // A pattern, or one built from the command's arguments when the reply
+  // names them, as `getop` and `setop` name their op (#535)
+  pattern: RegExp | ((...args: any[]) => RegExp),
   _parseResult: (match: RegExpMatchArray, line?: string) => T,
   options?: CommandDefinitionOptions
 ): (...args: any[]) => CommandContext<T> {
   return (...args: any[]) => {
+    const regex = typeof pattern === 'function' ? pattern(...args) : pattern;
     let matchedString: string | null = null;
     let failedString: string | null = null;
 
@@ -261,19 +268,21 @@ const utcSeconds = (isoDateStr?: string): string =>
   new Date(isoDateStr || Date.now()).toISOString().replace(/\.\d{3}Z$/, 'Z');
 
 /** What the nRF did with a `ping`, the LoRaWAN uplink it sends on request. */
-export type LorawanPingReply = 'sent' | 'not_joined' | 'busy';
+export type LorawanPingReply = 'sent' | 'not_joined' | 'busy' | 'off';
 
 /**
- * The nRF's three answers to `ping`, word for word: processPing() in
- * ww-hardware MokoTech/Workspace/WildlifeWatcher_1/ble_commands.c, on dev in
- * October 2026. `OK` means joined and the uplink is scheduled, `Busy` means
- * joined but the radio is already in use, and nothing is sent for either of
- * the other two.
+ * The nRF's answers to `ping`, word for word: processPing() in ww-hardware
+ * MokoTech/Workspace/WildlifeWatcher_1/ble_commands.c. `OK` means joined and
+ * the uplink is scheduled, `Busy` means joined but the radio is already in
+ * use, and nothing is sent for the other two. `LoRaWAN is off. Use 'AI setop
+ * 32 <minutes>' or 'join'` comes from BLE 0.30.56 on, the firmware that made
+ * op32 decide the join, when op32 is 0 or not reported yet (#535).
  */
 const LORAWAN_PING_REPLIES: Record<string, LorawanPingReply> = {
   'OK': 'sent',
   'Not joined yet.': 'not_joined',
   'Busy': 'busy',
+  'LoRaWAN is off.': 'off',
 };
 
 /**
@@ -462,7 +471,7 @@ export const commandRegistry = {
   ping: createSingleLineCommand<LorawanPingReply>(
     'ping',
     () => 'ping',
-    /^(OK|Not joined yet\.|Busy)$/,
+    /^(OK$|Not joined yet\.$|Busy$|LoRaWAN is off\.)/,
     (match) => LORAWAN_PING_REPLIES[match[1]],
     { retryPolicy: { maxRetries: 0 } }
   ),
@@ -520,7 +529,9 @@ export const commandRegistry = {
   setop: createSingleLineCommand<boolean>(
     'setop',
     ({ index, value }: { index: number, value: number | string }) => `AI setop ${index} ${value}`,
-    /^(?:Set\s+OpParam.*?|Op(?:Param)?(?:\s+|\[)\d+\]?\s*=)/i,
+    // Only this op's reply: a server's op get or set by downlink (ww-hardware
+    // PR #81) sends its reply to a connected phone too, unasked (#535)
+    ({ index }: { index: number }) => new RegExp(`^(?:Set\\s+OpParam\\s+${index}(?!\\d)|Op(?:Param)?(?:\\s+|\\[)${index}\\]?\\s*=)`, 'i'),
     () => true,
     // 8s timeout: DPD wake cycle (boot → selftest → process → respond)
     // takes 3-5s. Default 3s caused premature retries/duplicates.
@@ -546,7 +557,8 @@ export const commandRegistry = {
   getop: createSingleLineCommand<string>(
     'getop',
     (index: number | string) => `AI getop ${index}`,
-    /^Op(?:Param)?(?:\s+|\[)\d+\]?\s*=\s*(.*)$/i,
+    // Only this op's reply, as for setop (#535)
+    (index: number | string) => new RegExp(`^Op(?:Param)?(?:\\s+|\\[)${index}\\]?\\s*=\\s*(.*)$`, 'i'),
     (match) => match[1].trim(),
     // 8s: AI processor may need DPD wake cycle (3-5s)
     //
@@ -604,7 +616,7 @@ export const commandRegistry = {
     // The cold-boot refusal (#476) is a failure too, so it ends the command at
     // once and runCommandPipeline sends it again after the next Sleep. It is
     // never `Unrecognised`, so it cannot reach the fall-back-to-a-capture path.
-    { timeoutMs: 8000, retryPolicy: { maxRetries: 0 }, failureRegex: new RegExp(`^Unrecognised|^Failed to queue light check|${FIRST_SLEEP_REFUSAL.source}`, 'i') },
+    { timeoutMs: 8000, retryPolicy: { maxRetries: 0 }, failureRegex: new RegExp(`^Unrecognised|^Failed to queue light check|${SLEEP_REFUSAL.source}`, 'i') },
   ),
 
   /**

@@ -32,7 +32,10 @@ export enum SelfTestBit {
     AI_NO_HM0360 = 9,
     AI_NO_FLASH = 10,
     AI_NO_SD_CARD = 11,
-    AI_PDM_ERROR = 12,
+    // CONFIG.TXT damaged or unreadable at boot, so the counters (ops 0 to 4)
+    // restarted and a new image folder began. Was the PDM microphone, never
+    // fitted (Seeed branch 261125_countersLost, ww-hardware #83; #535)
+    AI_CONFIG_DAMAGED = 12,
     AI_NN_ERROR = 13,
     // The Himax sets this when the nRF has not read its first message in time
     // after boot, and stops sending to the nRF while it is set (Seeed PR #240).
@@ -145,10 +148,10 @@ const ISSUE_TABLE: Array<Omit<SelfTestIssue, never>> = [
         hint: `The device cannot store images or settings without one. ${SD_CARD_POWER_CYCLE_HINT}`,
     },
     {
-        bit: SelfTestBit.AI_PDM_ERROR,
+        bit: SelfTestBit.AI_CONFIG_DAMAGED,
         severity: 'warning',
-        title: '🎤 Microphone fault',
-        hint: 'The PDM microphone failed its self-test.',
+        title: '📄 Settings file damaged',
+        hint: 'CONFIG.TXT on the SD card was damaged or unreadable when the camera started, so its photo counters restarted and a new image folder began.',
     },
     {
         bit: SelfTestBit.AI_NN_ERROR,
@@ -260,7 +263,7 @@ const WARNING_TEXT: Record<ReportedBit, string> = {
     [SelfTestBit.AI_NO_HM0360]: 'Motion Detector Camera Error (Bit 9). Power cycle the camera, and if it persists, check the HM0360 ribbon',
     [SelfTestBit.AI_NO_FLASH]: 'LED Flash Circuit Failure (Bit 10)',
     [SelfTestBit.AI_NO_SD_CARD]: 'Device has no SD card detected (Bit 11). Power cycle the camera after inserting or reseating a card',
-    [SelfTestBit.AI_PDM_ERROR]: 'PDM Microphone Failure (Bit 12)',
+    [SelfTestBit.AI_CONFIG_DAMAGED]: 'Settings file damaged (Bit 12): the photo counters restarted',
     [SelfTestBit.AI_NN_ERROR]: 'Neural Network Error (Bit 13)',
     [SelfTestBit.AI_NO_BLE]: 'AI processor lost contact with the BLE processor at boot (Bit 14)',
 }
