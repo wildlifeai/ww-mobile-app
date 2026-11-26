@@ -1236,6 +1236,8 @@ describe('a deployment pulled onto another phone (#426)', () => {
 		sdCardAvailableKbAtStart: 30932992,
 		lorawanRssiAtStart: -97,
 		lorawanSnrAtStart: 7.5,
+		// The op32 period written at the start, for silence (#532)
+		lorawanPingMinutes: 240,
 	}
 
 	// The server's row is the starting phone's CREATE: push_changes stores the

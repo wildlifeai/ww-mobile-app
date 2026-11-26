@@ -59,10 +59,11 @@ jest.mock('../../../../ble/protocol/commandRegistry', () => ({
 jest.mock('../../../../ble/workflows/checkSdCard', () => ({ checkSdCard: jest.fn(async () => ({ totalSpaceKb: 100, freeSpaceKb: 50 })) }))
 jest.mock('../../../../ble/protocol/selfTestCache', () => ({ selfTestCache: { waitForFresh: jest.fn(async () => ({ bits: 0 })) } }))
 jest.mock('../../../../ble/workflows/deploymentPipeline', () => ({
+	resolveFirmwareIds: jest.fn(async () => ({})),
 	syncAiModel: jest.fn(), syncTime: jest.fn(), resetOps: jest.fn(async () => null), configureDevice: jest.fn(),
 }))
 jest.mock('../../../../providers/BleEngineProvider', () => ({ useBleActions: jest.fn() }))
-jest.mock('../../../../hooks/useDeploymentConfiguration', () => ({ useDeploymentConfiguration: () => ({ configure: jest.fn() }) }))
+jest.mock('../../../../hooks/useDeploymentConfiguration', () => ({ useDeploymentConfiguration: () => ({ configure: jest.fn() }), deploymentPingMinutes: () => null }))
 jest.mock('../../../../hooks/useBle', () => ({ useBle: () => ({ disconnectDevice: jest.fn() }) }))
 jest.mock('../../../../hooks/useGPSLocation', () => ({ useGPSLocation: () => ({ getLocation: jest.fn(), location: null }) }))
 jest.mock('../../../../hooks/useDeviceSettings', () => ({

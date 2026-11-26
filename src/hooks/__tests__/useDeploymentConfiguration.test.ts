@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react-native'
 
-import { useDeploymentConfiguration } from '../useDeploymentConfiguration'
+import { deploymentPingMinutes, useDeploymentConfiguration } from '../useDeploymentConfiguration'
 import { OP_PARAMETER } from '../useDeviceSettings'
 import { createBleSession } from '../../ble/session/createBleSession'
 import { mdIntervalHold } from '../../ble/session/mdIntervalHold'
@@ -561,8 +561,9 @@ describe('useDeploymentConfiguration detection threshold', () => {
 
 /**
  * op32, the LoRaWAN ping period (Charles Palmer, 6 October 2026): 0 never
- * joins, 720 is the default. A deployment writes it from the project's
- * lorawan_required, after the reset has put the default there.
+ * joins, 720 is the factory default. A deployment writes it from the project's
+ * lorawan_required, after the reset has put the default there: every 4 hours
+ * since #532, the period ww-hardware PR #81's firmware is designed for.
  */
 describe('useDeploymentConfiguration configureLorawan', () => {
     const makeSession = () => {
@@ -586,15 +587,15 @@ describe('useDeploymentConfiguration configureLorawan', () => {
         expect(session.lines).toEqual(['AI setop 32 0'])
     })
 
-    it('turns it on, at the default ping, for a project that requires it', async () => {
+    it('turns it on, pinging every 4 hours, for a project that requires it', async () => {
         const session = makeSession()
-        await configureLorawan()(session, true, ops(37, '0'))
-        expect(session.lines).toEqual(['AI setop 32 720'])
+        await configureLorawan()(session, true, ops(37, '720'))
+        expect(session.lines).toEqual(['AI setop 32 240'])
     })
 
     it('writes nothing when the device already holds it', async () => {
         const session = makeSession()
-        await configureLorawan()(session, true, ops(37, '720'))
+        await configureLorawan()(session, true, ops(37, '240'))
         expect(session.lines).toEqual([])
     })
 
@@ -603,5 +604,19 @@ describe('useDeploymentConfiguration configureLorawan', () => {
         const session = makeSession()
         await configureLorawan()(session, false, ops(34, '0'))
         expect(session.lines).toEqual([])
+    })
+})
+
+// #532: the deployment records what configureLorawan writes
+describe('deploymentPingMinutes', () => {
+    const ops = (length: number) => Array.from({ length }, () => '0')
+
+    it('is 240 when the project requires LoRaWAN, 0 when it does not', () => {
+        expect(deploymentPingMinutes(true, ops(37))).toBe(240)
+        expect(deploymentPingMinutes(false, ops(37))).toBe(0)
+    })
+
+    it('is null on firmware where op32 was the hi-res switch, which is left alone', () => {
+        expect(deploymentPingMinutes(true, ops(34))).toBeNull()
     })
 })
