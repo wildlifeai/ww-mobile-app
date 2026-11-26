@@ -4,35 +4,17 @@ import { List, useTheme } from 'react-native-paper'
 
 import type SyncOutbox from '../database/models/SyncOutbox'
 import OutboxService from '../services/OutboxService'
-import { logWarn } from '../utils/logger'
+import { describeChange, refusalSentence } from '../services/refusedChanges'
+import { log, logWarn } from '../utils/logger'
 
 const AlertIcon = (props: any) => <List.Icon {...props} icon="alert-circle-outline" />
 const ChevronIcon = (props: any) => <List.Icon {...props} icon="chevron-right" />
 
-const THINGS: Record<string, string> = { projects: 'project', devices: 'camera', deployments: 'deployment' }
-
-/** What the change was, e.g. `New deployment "Ridge 2"` */
-const describeChange = (op: SyncOutbox): string => {
-    let name: string | undefined
-    try {
-        name = JSON.parse(op.payload).name || undefined
-    } catch {
-        name = undefined
-    }
-    const thing = THINGS[op.tableName] ?? op.tableName
-    const what = name ? `${thing} "${name}"` : thing
-    switch (op.operationType.toUpperCase()) {
-        case 'CREATE': return `New ${what}`
-        case 'DELETE': return `Removal of ${what}`
-        default: return `Change to ${what}`
-    }
-}
-
 /**
  * The changes the server refused for good (#449), one line under Data
  * Synchronization in Settings, and nothing when there are none. A tap lists
- * each with the server's reason. They stay on the phone and are never sent
- * again; what each reason means is in 03-DATA-AND-SYNC.md.
+ * each, naming its record, with why in one plain sentence (#461); the server's
+ * own text goes to the log. They stay on the phone and are never sent again.
  */
 export const RefusedChangesItem = () => {
     const { colors } = useTheme()
@@ -48,10 +30,13 @@ export const RefusedChangesItem = () => {
 
     if (refused.length === 0) return null
 
-    const showReasons = () => Alert.alert(
-        'Refused by the server',
-        refused.map(op => `${describeChange(op)}\n${op.errorMessage ?? 'No reason given'}`).join('\n\n'),
-    )
+    const showReasons = async () => {
+        const lines = await Promise.all(refused.map(async op => {
+            log(`[Settings] Refused ${op.operationType} ${op.tableName} ${op.recordId}: ${op.errorMessage ?? 'no reason given'}`)
+            return `${await describeChange(op)}\n${refusalSentence(op)}`
+        }))
+        Alert.alert('Refused by the server', lines.join('\n\n'))
+    }
 
     return (
         <List.Item

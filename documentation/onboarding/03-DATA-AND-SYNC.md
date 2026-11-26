@@ -560,8 +560,12 @@ that depend on it. Two kinds of operation are kept but never sent again:
   project or deployment, it turns `orphaned` with the rest of the work there.
 
 Settings, under **Data Synchronization**, shows a line such as `2 changes the server refused`
-while there are any (`RefusedChangesItem`, fed by `OutboxService.observeRefusedOperations`), and
-a tap lists each change with the reason above. `OutboxService.getStatistics()` counts them as
+while there are any (`RefusedChangesItem`, fed by `OutboxService.observeRefusedOperations`). A
+tap lists each change with its record's name, from the change or, for an update that carries
+only the columns it changed, from the phone's own copy, and why in one plain sentence per code
+above, with a fallback for any other (`refusalSentence` in `src/services/refusedChanges.ts`,
+#461). The code and the server's message are not shown; the tap writes them to the app log. A
+new code in this table needs a sentence there. `OutboxService.getStatistics()` counts them as
 `refused`.
 
 ---
