@@ -569,7 +569,7 @@ sequenceDiagram
     participant Sess as createBleSession
     participant FW as Firmware (Device)
     participant Scan as BleManager.scan
-    participant Boot as DfuTarg (Bootloader)
+    participant Boot as Bootloader (WW500_DFU)
     participant DFU as DfuService
 
     UI->>Sess: execute(commandRegistry.dfu)
@@ -596,7 +596,7 @@ sequenceDiagram
 > [!IMPORTANT]
 > During DFU, the device disconnects and re-advertises under a different name (`WW500_DFU` / `DfuTarg`). The app suppresses "Connection Lost" alerts via `setDfuStatus(true)` dispatched to the device's Redux state. The `WWBleDisconnectedBanner` component checks `dfuInProgress` and renders nothing when it is `true`. The flag is cleared via `setDfuStatus(false)` when the update completes or fails.
 
-**Files:** [useFirmwareUpdate.ts](../../src/screens/Devices/hooks/useFirmwareUpdate.ts), [DfuService.ts](../../src/services/DfuService.ts), [DfuScreen.tsx](../../src/screens/Devices/DfuScreen.tsx)
+**Files:** [useFirmwareUpdate.ts](../../src/screens/Devices/hooks/useFirmwareUpdate.ts), [DfuService.ts](../../src/services/DfuService.ts)
 
 ---
 

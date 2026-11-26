@@ -176,7 +176,7 @@ Bidirectional sync between WatermelonDB and Supabase, tracking per-entity status
 | Projects | `NewProjectScreen`, `ProjectDetailsScreen`, `EditProjectScreen`, `ProjectMembersScreen`, `ProjectDevicesScreen`, `ProjectVisualizationScreen` |
 | Deployment | `DeviceDiscovery`, `DeviceMonitoringSummary`, `StartMonitoringDetailsStep`, `StopMonitoringDetailsStep`, `SoftwareUpdateScreen` |
 | Engineer Console | `EngineerConsoleScreen`, `CapturePictureScreen`, `StandaloneMotionDetectionScreen`, `LightSensorScreen`, `DeviceResetScreen`, `DeviceCheckScreen`, `DevDeploymentTestScreen` |
-| Firmware and transfer, from the Engineer Console | `DfuScreen`, `FirmwareUpdateScreen`, `FirmwareStatusScreen`, `FileTransferTestScreen`, `ModelValidationTestScreen` |
+| Firmware and transfer, from the Engineer Console | `FirmwareUpdateScreen`, `FirmwareStatusScreen`, `FileTransferTestScreen`, `ModelValidationTestScreen` |
 
 Dev-only routes (`__DEV__`): `DevBuildInfo`, `AuthTestScreen`, `DeveloperSettings`.
 

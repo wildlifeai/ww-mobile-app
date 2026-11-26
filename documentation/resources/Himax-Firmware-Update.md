@@ -8,7 +8,7 @@ The WW500 device contains two processors with independent firmware:
 
 | Processor | Role | Update Method |
 |-----------|------|---------------|
-| **nRF52840** | BLE radio, relay, power management | Nordic DFU (separate flow via `DfuScreen`) |
+| **nRF52840** | BLE radio, relay, power management | Nordic DFU (the Bluetooth update, see [DFU Recovery](../onboarding/04-ENGINEER-CONSOLE.md#dfu-recovery-device-firmware-update)) |
 | **HX6538** (Himax) | AI inference, camera, SD card | This flow — flash from SD card over BLE |
 
 This document covers the **HX6538 firmware update** — flashing a firmware image (`<filename>.IMG` derived dynamically in 8.3 format or defaulting to `OUTPUT.IMG`) from the device's SD card to the Himax processor's XIP flash.

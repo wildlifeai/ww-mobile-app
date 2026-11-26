@@ -122,7 +122,7 @@ screens/                                  navigation/screens/
 ├── Devices/
 │   ├── DeviceDiscoveryScreen / EngineerConsoleScreen
 │   ├── DevDeploymentTestScreen / DeviceResetScreen / DeviceCheckScreen
-│   ├── DfuScreen / FirmwareUpdateScreen / FirmwareStatusScreen
+│   ├── FirmwareUpdateScreen / FirmwareStatusScreen
 │   ├── SoftwareUpdateScreen              # Start Monitoring's Update software (#529)
 │   ├── FileTransferTestScreen / ModelValidationTestScreen
 │   ├── CapturePictureScreen / LightSensorScreen
@@ -195,6 +195,7 @@ services/
 ├── himaxStatus.ts             # Whether a camera's AI firmware is current, for Firmware Status and the connect check (#464)
 ├── OfflinePrefetchService.ts  # Fills both caches after a sync, for the field (#333)
 ├── DfuService.ts              # Firmware updates (Nordic DFU)
+├── bleFirmwareFile.ts         # A Bluetooth firmware .zip picked on the phone, for the Engineer Console's update
 ├── DeploymentPhotoService.ts  # Deployment photo capture + upload
 ├── SupabaseSyncService.ts     # Bidirectional WatermelonDB ↔ Supabase sync
 ├── OutboxService.ts           # Queues offline operations for sync
@@ -237,7 +238,6 @@ hooks/
 ├── useEngineerConnect.ts      # Console connection management
 ├── useScanLoop.ts             # Shared 3s burst scan loop + cache flush
 ├── useDeviceSelfTest.ts       # Device health from the self-test cache (Capture Picture banner)
-├── useSelectDevice.tsx        # Device selection helper
 ├── useDeploymentConfiguration.ts # Capture method and capture flash → OP mapping
 ├── useDeploymentProgress.ts   # Deployment progress tracking
 ├── useDevicePreDeploymentChecks.ts # Battery/firmware/SD validation
