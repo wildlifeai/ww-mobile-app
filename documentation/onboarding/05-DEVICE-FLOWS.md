@@ -460,8 +460,10 @@ stops checking in once it is in someone's bag. `sendFinalLorawanCheckIn` in `lor
 
 - **The `ping` decides.** The nRF answers `LoRaWAN is off` while op 32 is 0: nothing is sent,
   and the log says nothing about LoRaWAN.
-- **The record ends after the acknowledgement**, so the check-in arrives inside the deployment
-  and ww-backend links it (#406). One that arrives after `deployment_end` stays unlinked.
+- **The record ends after the acknowledgement**, so the check-in has arrived before the end can
+  reach the server, and ww-backend links it (#406). The server links a message to the deployment
+  open when it arrives, so one that arrives after `deployment_end`, but before the phone's sync
+  takes the end there, is linked too.
   `Busy` means the camera is already sending, and that message's acknowledgement does as well.
 - **No acknowledgement ends it anyway.** `NOT acknowledged`, 30 s of silence, `Not joined yet.`
   or no answer: the log says "LoRaWAN: the final check-in did not get through", with the
