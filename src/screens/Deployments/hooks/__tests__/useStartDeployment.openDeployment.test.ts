@@ -4,6 +4,7 @@ import { Alert } from 'react-native'
 import { useStartDeployment, cameraFirmwareFrom } from '../useStartDeployment'
 import { DeploymentService } from '../../../../services/DeploymentService'
 import * as pipeline from '../../../../ble/workflows/deploymentPipeline'
+import { NO_CAPTURE_METHOD } from '../../../../utils/projectCaptureMethod'
 import { resetFakeDatabase, seedRows } from '../../../../../tests/setup/helpers/fakeDatabase'
 
 /**
@@ -17,7 +18,7 @@ const mockState = {
 	devices: { 'ble-1': { id: 'ble-1', name: 'WILD-TEST', connected: true } },
 	authentication: { user: { id: 'user-1' }, currentOrganisation: { id: 'org-1' } },
 }
-const mockProject = { id: 'project-1', name: 'Sinbad Gully', capture_method_id: null, model_id: null, lorawan_required: false }
+const mockProject = { id: 'project-1', name: 'Sinbad Gully', capture_method_id: 1 as number | null, model_id: null, lorawan_required: false }
 const mockExecute = jest.fn(async (command: string): Promise<any> => {
 	if (command === 'getops') return Array(37).fill('0')
 	if (command === 'slots') return { running: 'RP3' }
@@ -117,6 +118,33 @@ beforeEach(() => {
 	resetFakeDatabase()
 	seedRows('user_roles', [{ userId: 'user-1', role: 'project_member', scopeType: 'project', scopeId: 'project-1', isActive: true }])
 	createDeployment.mockResolvedValue({ id: 'dep-new-0001', deploymentStart: new Date() })
+})
+
+// #561: no capture method writes no capture settings, so the camera would never
+// take a picture by itself. The start stops, as for a person without the role.
+describe('a project with no capture method (#561)', () => {
+	afterEach(() => { mockProject.capture_method_id = 1 })
+
+	it('shows the reason as soon as the project is chosen', async () => {
+		mockProject.capture_method_id = null
+		const { result } = await mount()
+
+		expect(result.current.startRefusalReason).toBe(NO_CAPTURE_METHOD)
+	})
+
+	it('stops the start before the server or the camera is asked', async () => {
+		mockProject.capture_method_id = null
+		checkServer.mockResolvedValue({ kind: 'none' })
+		const { result } = await mount()
+
+		await start(result)
+
+		expect(Alert.alert).toHaveBeenCalledWith('Cannot Start Monitoring', NO_CAPTURE_METHOD)
+		expect(checkServer).not.toHaveBeenCalled()
+		expect(mockExecute).not.toHaveBeenCalled()
+		expect(createDeployment).not.toHaveBeenCalled()
+		expect(result.current.submitting).toBe(false)
+	})
 })
 
 describe('Start Monitoring and an open deployment on the server (#448)', () => {

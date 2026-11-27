@@ -8,6 +8,7 @@ import { DeploymentService } from '../../../services/DeploymentService'
 import { DeploymentPhotoService } from '../../../services/DeploymentPhotoService'
 import ProjectService from '../../../services/ProjectService'
 import { projectsToDeployInto, startRefusal, START_REFUSED_TITLE } from '../../../services/deploymentAccess'
+import { captureMethodRefusal } from '../../../utils/projectCaptureMethod'
 import ReferenceDataService from '../../../services/ReferenceDataService'
 import Device from '../../../database/models/Device'
 import Deployment from '../../../database/models/Deployment'
@@ -267,11 +268,13 @@ export const useStartDeployment = ({
             setStartRefusalReason(null)
             return
         }
+        // A project with no capture method would deploy a camera that takes no pictures (#561)
+        const noCapture = captureMethodRefusal(project.capture_method_id)
         startRefusal(user?.id, project.id)
-            .then(reason => { if (isMounted) setStartRefusalReason(reason) })
+            .then(reason => { if (isMounted) setStartRefusalReason(reason ?? noCapture) })
             .catch(err => logWarn('[DeploymentDetails] Role check failed:', err))
         return () => { isMounted = false }
-    }, [project?.id, user?.id])
+    }, [project?.id, project?.capture_method_id, user?.id])
 
     // Location Name logic based on GPS and Project Deployments
     useEffect(() => {
@@ -505,7 +508,10 @@ export const useStartDeployment = ({
         // so a viewer is stopped here, before the server is asked or anything
         // is written to the camera (#450). Asked again at the press, from the
         // phone's roles: a sync may have changed them since the screen opened.
-        const refusal = await startRefusal(user.id, project.id)
+        //
+        // 0a. A project with no capture method writes no capture settings, so
+        // the camera would never take a picture by itself (#561).
+        const refusal = await startRefusal(user.id, project.id) ?? captureMethodRefusal(project.capture_method_id)
         if (refusal) {
             setStartRefusalReason(refusal)
             setSubmitting(false)
