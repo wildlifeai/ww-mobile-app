@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react-native'
 import { Alert } from 'react-native'
 
-import { useStartDeployment } from '../useStartDeployment'
+import { useStartDeployment, cameraFirmwareFrom } from '../useStartDeployment'
 import { DeploymentService } from '../../../../services/DeploymentService'
 import * as pipeline from '../../../../ble/workflows/deploymentPipeline'
 import { resetFakeDatabase, seedRows } from '../../../../../tests/setup/helpers/fakeDatabase'
@@ -96,10 +96,10 @@ const settle = async () => {
 	await act(async () => { for (let i = 0; i < 10; i++) await Promise.resolve() })
 }
 
-const mount = async () => {
+const mount = async (initPayload?: any) => {
 	const navigation = { addListener: jest.fn(() => jest.fn()), navigate: jest.fn(), canGoBack: jest.fn(() => false) }
 	const hook = renderHook(() => useStartDeployment({
-		deviceId: 'device-1', bleDeviceId: 'ble-1', projectId: 'project-1', navigation,
+		deviceId: 'device-1', bleDeviceId: 'ble-1', projectId: 'project-1', navigation, initPayload,
 	}))
 	await settle()
 	expect(hook.result.current.project?.id).toBe('project-1')
@@ -160,5 +160,60 @@ describe('Start Monitoring and an open deployment on the server (#448)', () => {
 		expect(mockExecute).toHaveBeenCalledWith('getops')
 		expect(createDeployment).toHaveBeenCalled()
 		expect(Alert.alert).not.toHaveBeenCalled()
+	})
+})
+
+// #559: Update software on the same visit changes the builds after the
+// connection read them, so the screen passes its own latest reading.
+describe('the builds a deployment records (#559)', () => {
+	const connection = { deviceFirmwareVersion: '00.30.62', himaxFirmwareVersion: 'WW500_C02 01:04:15 Nov 27 2026' }
+
+	beforeEach(() => checkServer.mockResolvedValue({ kind: 'none' }))
+
+	it("uses the screen's reading after an update, not the connection's", async () => {
+		const { result } = await mount(connection)
+		const camera = { bleVersion: '0.30.63', aiVersion: 'WW500_C02 08:07:31 Nov 27 2026' }
+
+		await act(async () => { await result.current.handleStartDeployment(camera) })
+
+		expect(pipeline.resolveFirmwareIds).toHaveBeenCalledWith(mockSession, camera)
+		expect((pipeline.syncAiModel as jest.Mock).mock.calls[0][6]).toBe('0.30.63')
+	})
+
+	it('asks the camera when the screen has no reading', async () => {
+		const { result } = await mount(connection)
+
+		await act(async () => { await result.current.handleStartDeployment({ bleVersion: null, aiVersion: null }) })
+
+		expect(pipeline.resolveFirmwareIds).toHaveBeenCalledWith(mockSession, { bleVersion: null, aiVersion: null })
+	})
+
+	it("keeps the connection's reading when no screen passes one", async () => {
+		const { result } = await mount(connection)
+
+		await start(result)
+
+		expect(pipeline.resolveFirmwareIds).toHaveBeenCalledWith(mockSession, {
+			bleVersion: '00.30.62', aiVersion: 'WW500_C02 01:04:15 Nov 27 2026',
+		})
+	})
+})
+
+describe('cameraFirmwareFrom (#559)', () => {
+	const status = (ble: string | null, himax: string | null, isChecking = false) =>
+		({ isChecking, statuses: { ble: { currentVersion: ble }, himax: { currentVersion: himax } } }) as any
+
+	it('passes the versions the screen read', () => {
+		expect(cameraFirmwareFrom(status('0.30.63', 'WW500_C02 08:07:31 Nov 27 2026')))
+			.toEqual({ bleVersion: '0.30.63', aiVersion: 'WW500_C02 08:07:31 Nov 27 2026' })
+	})
+
+	it('leaves an unknown version to the camera', () => {
+		expect(cameraFirmwareFrom(status('Unknown', null))).toEqual({ bleVersion: null, aiVersion: null })
+	})
+
+	it('leaves both to the camera while the screen is still reading them', () => {
+		expect(cameraFirmwareFrom(status('0.30.62', 'WW500_C02 01:04:15 Nov 27 2026', true)))
+			.toEqual({ bleVersion: null, aiVersion: null })
 	})
 })

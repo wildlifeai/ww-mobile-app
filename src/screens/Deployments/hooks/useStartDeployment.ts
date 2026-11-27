@@ -37,6 +37,7 @@ import { log, logError, logWarn } from '../../../utils/logger'
 import { selectCurrentOrganisation } from '../../../redux/slices/authSlice'
 import { ProjectWithDetails } from '../../../types/project'
 import { InitPayload } from '../../../navigation/types'
+import type { UseFirmwareStatusReturn } from '../../Devices/hooks/useFirmwareStatus'
 import { calculateDistance } from '../../../utils/gpsUtils'
 import { CAMERA_VARIANT_LABELS, CameraVariant, parseVariant } from '../../../utils/cameraVariant'
 import { checkFlashAgainstCamera } from '../../../utils/flashCameraMatch'
@@ -49,6 +50,29 @@ interface UseStartDeploymentParams {
     projectId?: string
     navigation: any
     initPayload?: InitPayload
+}
+
+/**
+ * The builds the screen last read from the camera, for the deployment record
+ * and the model transfer. The screen reads them again after Update software, so
+ * they can differ from the connection's `initPayload` (#559). Null asks the
+ * camera itself.
+ */
+export interface CameraFirmware {
+    bleVersion: string | null
+    aiVersion: string | null
+}
+
+/**
+ * The firmware status's latest reading as a CameraFirmware. It is read again
+ * after Update software; unknown, or still being read, is null, so the start
+ * asks the camera itself (#559).
+ */
+export const cameraFirmwareFrom = (
+    { isChecking, statuses }: Pick<UseFirmwareStatusReturn, 'isChecking' | 'statuses'>,
+): CameraFirmware => {
+    const known = (version: string | null) => (!isChecking && version && version !== 'Unknown' ? version : null)
+    return { bleVersion: known(statuses.ble.currentVersion), aiVersion: known(statuses.himax.currentVersion) }
 }
 
 
@@ -432,7 +456,11 @@ export const useStartDeployment = ({
         }
     }, [bleDevice, submitting, navigation, isInitializing, monitoring.isMonitoring])  
 
-    const handleStartDeployment = useCallback(async () => {
+    const handleStartDeployment = useCallback(async (cameraFirmware?: CameraFirmware) => {
+        // What the camera runs: the screen's latest reading when it passes one,
+        // else what the connection read (#559)
+        const bleVersion = cameraFirmware ? cameraFirmware.bleVersion : initPayload?.deviceFirmwareVersion
+        const aiVersion = cameraFirmware ? cameraFirmware.aiVersion : initPayload?.himaxFirmwareVersion
         if (!bleDevice?.connected) {
             Alert.alert('Device Disconnected', 'Please ensure the device is connected before starting the deployment.', [{ text: 'OK' }])
             return
@@ -520,8 +548,8 @@ export const useStartDeployment = ({
             // a 1000ms inactivity timer that shuts down the IMAGE task. setutc is handled
             // by the BLE module (not the AI processor), so it does NOT reset this timer.
             // If syncTime runs first, the IMAGE task dies before loadmodel arrives.
-            // The pre-deployment checks' `ver` spares the model transfer its own (#289)
-            await pipeline.syncAiModel(bleDevice, bleSession, project.model_id, cb, true, currentOps, initPayload?.deviceFirmwareVersion)
+            // A `ver` reading already held spares the model transfer its own (#289)
+            await pipeline.syncAiModel(bleDevice, bleSession, project.model_id, cb, true, currentOps, bleVersion)
             await pipeline.syncTime(bleSession, cb)
 
             // 4. Gather snapshot data (unique to production deployment)
@@ -548,10 +576,7 @@ export const useStartDeployment = ({
             }
 
             // Both builds the camera runs: the LoRaWAN message no longer says (#534)
-            const firmwareIds = await pipeline.resolveFirmwareIds(bleSession, {
-                bleVersion: initPayload?.deviceFirmwareVersion,
-                aiVersion: initPayload?.himaxFirmwareVersion,
-            })
+            const firmwareIds = await pipeline.resolveFirmwareIds(bleSession, { bleVersion, aiVersion })
 
             // 5. Create deployment record
             progress.addLog('Creating deployment record...')
