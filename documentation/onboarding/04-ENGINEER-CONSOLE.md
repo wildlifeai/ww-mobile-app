@@ -85,8 +85,11 @@ Direct commands handled by the BLE chip, no `AI` prefix.
 The nRF also tells a connected phone about its radio unasked: `Joined.` or `Failed to join.`
 after a join, `Uplink message acknowledged.` or `Uplink message NOT acknowledged.` after each
 confirmed uplink, and `Downlink message. RSSI=-19dBm SNR=15dB. Rx 0 bytes.` for every downlink,
-an acknowledgement included. Start Monitoring's LoRaWAN Signal test reads them
-(`parseLorawanRadioLine` in `commandRegistry.ts`, #552).
+an acknowledgement included. A failed join or uplink is one attempt: the camera tries again by
+itself, up to six times with the wait doubling from 5 s, says `Retrying transmission now.` each
+time, and ends with `Join failed after N retries. ...`, `Uplink failed after N retries. ...` or
+`Empty packet failed after N retries. ...` when it stops. Start Monitoring's LoRaWAN Signal test
+reads them (`parseLorawanRadioLine` in `commandRegistry.ts`, #552, #560).
 
 #### LED Diagnostics
 

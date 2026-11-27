@@ -4,7 +4,7 @@ import { ActionRow } from '../../../components/ui/ActionRow'
 import { ActionDialog } from '../../../components/ui/ActionDialog'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { createBleSession } from '../../../ble/session/createBleSession'
-import { testLorawan, LorawanTestResult, lorawanTestWords } from '../../../ble/workflows/lorawanPing'
+import { testLorawan, LorawanTestResult, lorawanTestWords, lorawanRetryWords } from '../../../ble/workflows/lorawanPing'
 
 interface Props {
     device?: ExtendedPeripheral
@@ -16,14 +16,19 @@ export const LoRaWANAction = ({ device, onShowHelp }: Props) => {
     const theme = useTheme()
     const [open, setOpen] = useState(false)
     const [status, setStatus] = useState<'idle' | 'testing' | LorawanTestResult>('idle')
+    // The camera's attempt while it tries again, 1 until it does (#560)
+    const [attempt, setAttempt] = useState(1)
 
     const test = useCallback(async () => {
         if (!device) return
         setStatus('testing')
-        setStatus(await testLorawan(createBleSession(device), device.id))
+        setAttempt(1)
+        setStatus(await testLorawan(createBleSession(device), device.id, setAttempt))
     }, [device])
 
-    const words = typeof status === 'object' ? lorawanTestWords(status) : null
+    const words = typeof status === 'object'
+        ? lorawanTestWords(status)
+        : status === 'testing' && attempt > 1 ? lorawanRetryWords(attempt) : null
 
     const handleOpen = () => {
         setOpen(true)
@@ -36,7 +41,7 @@ export const LoRaWANAction = ({ device, onShowHelp }: Props) => {
                 title="LoRaWAN Signal"
                 onPress={handleOpen}
                 onHelp={() => onShowHelp('LoRaWAN Signal', 'Checks that a LoRaWAN gateway hears the camera: the camera joins the network if it needs to, sends a test message and waits for the network to answer, then says how strong the signal is. It needs no phone signal.')}
-                result={words?.status}
+                result={typeof status === 'object' ? words?.status : undefined}
                 busy={status === 'testing'}
             />
             <ActionDialog

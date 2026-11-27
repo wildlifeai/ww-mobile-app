@@ -308,13 +308,22 @@ export type LorawanJoinReply = 'joining' | 'already_joined' | 'wrong_state';
  *   every downlink the camera receives, an acknowledgement included: the
  *   strength of the gateway's signal at the camera. On Charles's bench (Nov
  *   2026) it followed each `acknowledged` line by about 12 ms.
+ * - `Retrying transmission now.`, stateMachine.c onRetryTimerEvent(): the camera
+ *   tries a failed join or uplink again by itself, up to six times, the wait
+ *   doubling from 5 s. `Failed to join.` and `Uplink message NOT acknowledged.`
+ *   are each one attempt, not the result (#560).
+ * - `Join failed after N retries. ...`, `Uplink failed after N retries. ...`
+ *   (stateMachine.c reportRetriesFinished()) and `Empty packet failed after N
+ *   retries. ...`: the camera has stopped trying.
  */
 export type LorawanRadioEvent =
   | { kind: 'joined' }
   | { kind: 'join_failed' }
   | { kind: 'acknowledged' }
   | { kind: 'not_acknowledged' }
-  | { kind: 'downlink'; rssi: number; snr: number };
+  | { kind: 'downlink'; rssi: number; snr: number }
+  | { kind: 'retrying' }
+  | { kind: 'gave_up'; retries: number };
 
 const LORAWAN_RADIO_LINES: [RegExp, (match: RegExpMatchArray) => LorawanRadioEvent][] = [
   [/^Joined\.\s*$/, () => ({ kind: 'joined' })],
@@ -322,6 +331,8 @@ const LORAWAN_RADIO_LINES: [RegExp, (match: RegExpMatchArray) => LorawanRadioEve
   [/^Uplink message acknowledged\.\s*$/, () => ({ kind: 'acknowledged' })],
   [/^Uplink message NOT acknowledged\.\s*$/, () => ({ kind: 'not_acknowledged' })],
   [/^Downlink message\. RSSI=(-?\d+)dBm SNR=(-?\d+)dB\./, (m) => ({ kind: 'downlink', rssi: parseInt(m[1], 10), snr: parseInt(m[2], 10) })],
+  [/^Retrying transmission now\.\s*$/, () => ({ kind: 'retrying' })],
+  [/^(?:Join|Uplink|Empty packet) failed after (\d+) retries\./, (m) => ({ kind: 'gave_up', retries: parseInt(m[1], 10) })],
 ];
 
 /** One of the nRF's unasked LoRaWAN lines (`LorawanRadioEvent`), or null for any other line. */
