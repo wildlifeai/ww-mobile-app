@@ -87,7 +87,8 @@ export const CAPTURE_FAILED_LINE = /^Capture failed after \d+ of \d+ images/i;
  *   `AI switchslot`, a firmware update, and the AI processor resetting itself
  *   after a fault (#476).
  * - `Error: going to sleep, try again.`, while the processor is already on
- *   its way to sleep (Seeed #296, branch 261125_countersLost; #535).
+ *   its way to sleep (Seeed #296; #535). Since Seeed #207 `setop`, `setdid`,
+ *   `setgps` and `md` give it too, and their `^Error:` patterns catch it.
  * runCommandPipeline waits for that Sleep and sends the command once more, so
  * no screen has to.
  */
@@ -570,12 +571,18 @@ export const commandRegistry = {
   ),
 
   // -- Deployment & Operations --
+  //
+  // `^Error:` on setdid and setgps, as on setop and md: since Seeed #207 all
+  // four reply `Error: going to sleep, try again.` while the camera saves its
+  // settings for sleep, and set nothing. runCommandPipeline waits for that
+  // Sleep and sends the command again. Without the pattern the refusal matched
+  // nothing and the command sat out its 8 s before a retry.
   setdid: createSingleLineCommand<boolean>(
     'setdid',
     (uuid: string | null) => `AI setdid ${uuid || '00000000-0000-0000-0000-000000000000'}`,
     /^Deployment ID set to/i,
     () => true,
-    { timeoutMs: 8000, failureRegex: /invalid/i, retryPolicy: { maxRetries: 3 } }
+    { timeoutMs: 8000, failureRegex: /invalid|^Error:/i, retryPolicy: { maxRetries: 3 } }
   ),
 
   setgps: createSingleLineCommand<boolean>(
@@ -583,7 +590,7 @@ export const commandRegistry = {
     (gpsString: string) => `AI setgps ${gpsString}`,
     /^Device GPS set/i,
     () => true,
-    { timeoutMs: 8000, failureRegex: /format error/i }
+    { timeoutMs: 8000, failureRegex: /format error|^Error:/i }
   ),
 
   setop: createSingleLineCommand<boolean>(

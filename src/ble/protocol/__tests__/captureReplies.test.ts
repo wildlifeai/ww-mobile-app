@@ -92,6 +92,27 @@ describe('a command refused before the first sleep (#476)', () => {
     expect(mockWrite).toHaveBeenCalledTimes(2);
   });
 
+  // Seeed #207: the commands that change saved settings are refused the same
+  // way while the camera saves them for sleep, and nothing is set
+  it.each([
+    ['setop', () => commandRegistry.setop({ index: 32, value: 0 }), 'Set OpParam 32 = 0'],
+    ['setdid', () => commandRegistry.setdid(null), 'Deployment ID set to 00000000-0000-0000-0000-000000000000'],
+    ['setgps', () => commandRegistry.setgps('0 0 N 0 0 E 0 Above'), 'Device GPS set'],
+    ['md', () => commandRegistry.md(2), 'MD sensitivity set to 2'],
+  ])('sends `%s` refused while going to sleep again after that Sleep (Seeed #207)', async (_name, command, done) => {
+    answerWrites([
+      [[20, GOING_TO_SLEEP], [80, 'Sleep']],
+      [[20, done]],
+    ]);
+    const started = Date.now();
+
+    await expect(run(command)).resolves.toBe(true);
+    expect(mockWrite).toHaveBeenCalledTimes(2);
+    expect(mockWrite.mock.calls[1][1]).toBe(mockWrite.mock.calls[0][1]);
+    // Sent again on the Sleep, not after sitting out the 8 s timeout
+    expect(Date.now() - started).toBeLessThan(4000);
+  });
+
   it('sends `AI light` again the same way, and never treats the refusal as a missing command', async () => {
     answerWrites([
       [[20, REFUSAL], [80, 'Sleep']],

@@ -281,11 +281,12 @@ export async function runCommandPipeline<T>(
         return result;
       } catch (error: any) {
         // A capture or light check refused between a cold boot and the first
-        // sleep (#476), or while the processor was going to sleep (#535).
-        // Once it has slept the same command works. Sent again once, here rather than in
-        // every screen, and outside the retry budget, which is 0 for every
-        // command that can be refused this way. Still inside this queue task,
-        // so nothing else wakes the processor in between.
+        // sleep (#476), or one of those or a setting (setop, setdid, setgps,
+        // md; Seeed #207) refused while the processor was going to sleep
+        // (#535). Once it has slept the same command works. Sent again once,
+        // here rather than in every screen, and outside the retry budget.
+        // Still inside this queue task, so nothing else wakes the processor
+        // in between.
         if (!resentAfterSleep && SLEEP_REFUSAL_IN_MESSAGE.test(error?.message ?? '')) {
           resentAfterSleep = true;
           const slept = await waitForNextSleep(peripheral.id, SLEEP_REFUSAL_WAIT_MS, options?.signal);
