@@ -241,7 +241,7 @@ hooks/
 ├── useDeploymentConfiguration.ts # Capture method and capture flash → OP mapping
 ├── useDeploymentProgress.ts   # Deployment progress tracking
 ├── useDevicePreDeploymentChecks.ts # Battery/firmware/SD validation
-├── useMonitoringActions.ts    # Deployment monitoring commands
+├── useMonitoringActions.ts    # Deployment monitoring commands and the end sequence, endDeploymentSequence
 ├── useCapturePreview.ts       # Image capture flow
 ├── useDeviceSettings.ts       # OP_PARAMETER enum, FACTORY_DEFAULTS, quiesce
 ├── useCameraSwitch.ts         # Camera variant switching
@@ -305,7 +305,7 @@ ble/
     ├── checkSdCard.ts          # SD card health validation
     ├── deviceCheck.ts          # The ship check's steps (rules in utils/deviceCheck/)
     ├── downloadPhoto.ts        # One photo off the SD card, outside a screen
-    └── lorawanPing.ts          # LoRaWAN test: does the network hear the camera (join, acknowledgement, signal), its words and warnings
+    └── lorawanPing.ts          # LoRaWAN test: does the network hear the camera (join, acknowledgement, signal), its words and warnings; the first and final check-ins
 ```
 
 ### `src/providers/`: Context Providers

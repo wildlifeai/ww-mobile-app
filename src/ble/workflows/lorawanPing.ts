@@ -179,6 +179,63 @@ export function describeLorawanCheckIn(reply: LorawanPingReply | null): string {
     }
 }
 
+/**
+ * What became of the final check-in Stop Monitoring asks for (#557):
+ * - `received`: the network acknowledged it.
+ * - `off`: LoRaWAN is off on the camera, so there was nothing to send.
+ * - `not_heard`: sent, and no gateway acknowledged it.
+ * - `not_joined`: LoRaWAN is on, but the camera is not on the network.
+ * - `no_answer`: the camera did not answer the request.
+ */
+export type LorawanFinalCheckIn = 'received' | 'off' | 'not_heard' | 'not_joined' | 'no_answer'
+
+/**
+ * Ask the camera for a final check-in as a deployment ends, and wait for the
+ * network's acknowledgement, so the website learns of the collection now rather
+ * than at the phone's next sync (#557). The caller ends the record only after
+ * this, so the check-in falls inside the deployment. `ping` decides whether
+ * there is one: the nRF answers `LoRaWAN is off` while op 32 is 0. `Busy`
+ * means the camera is already sending, and that message's acknowledgement does
+ * as well. `onSent` fires once a message is on its way, before the wait.
+ */
+export async function sendFinalLorawanCheckIn(
+    session: TestSession,
+    deviceId: string,
+    onSent?: () => void,
+): Promise<LorawanFinalCheckIn> {
+    // Listening before anything is sent: the camera's lines can follow its reply at once
+    const radio = listenToRadio(deviceId)
+    try {
+        const reply = await ask(session, commandRegistry.ping)
+        log(`[LoRaWAN] final check-in request: ${reply ?? 'no answer'}`)
+        if (reply === null) return 'no_answer'
+        if (reply === 'off' || reply === 'not_joined') return reply
+
+        onSent?.()
+        const result = await radio.next(['acknowledged', 'not_acknowledged'], LORAWAN_SILENCE_GIVE_UP_MS)
+        log(`[LoRaWAN] final check-in: ${result?.kind ?? 'nothing'}`)
+        return result?.kind === 'acknowledged' ? 'received' : 'not_heard'
+    } finally {
+        radio.close()
+    }
+}
+
+/** The deployment log's line for a final check-in, or null when LoRaWAN is off. */
+export function describeFinalLorawanCheckIn(outcome: LorawanFinalCheckIn): string | null {
+    switch (outcome) {
+        case 'received':
+            return 'LoRaWAN: final check-in received'
+        case 'off':
+            return null
+        case 'not_heard':
+            return 'LoRaWAN: the final check-in did not get through, no gateway acknowledged it'
+        case 'not_joined':
+            return 'LoRaWAN: the final check-in did not get through, the camera is not on the network'
+        case 'no_answer':
+            return 'LoRaWAN: the final check-in did not get through, the camera did not answer'
+    }
+}
+
 /** A command's answer, or null when the camera gave none. */
 async function ask<T>(session: TestSession, command: () => CommandContext<T>): Promise<T | null> {
     try {

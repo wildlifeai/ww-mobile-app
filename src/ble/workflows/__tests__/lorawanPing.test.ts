@@ -1,5 +1,6 @@
 import {
-    testLorawan, lorawanTestWords, requestLorawanCheckIn, describeLorawanCheckIn, lorawanRequiredWarning, lorawanRegistrationWarning, LorawanTestResult,
+    testLorawan, lorawanTestWords, requestLorawanCheckIn, describeLorawanCheckIn, sendFinalLorawanCheckIn, describeFinalLorawanCheckIn,
+    LorawanFinalCheckIn, lorawanRequiredWarning, lorawanRegistrationWarning, LorawanTestResult,
     LORAWAN_REQUIRED_WARNING, LORAWAN_REGISTRATION_WARNING, LORAWAN_SILENCE_GIVE_UP_MS, LORAWAN_SIGNAL_GIVE_UP_MS,
 } from '../lorawanPing'
 import { bleEventBus } from '../../protocol/eventBus'
@@ -200,6 +201,56 @@ describe('what each result tells the operator', () => {
 })
 
 // The deployment's last step: the first check-in on the new deployment
+describe('sendFinalLorawanCheckIn (#557)', () => {
+    /** The outcome 10 ms after it starts, or undefined while it still waits. */
+    const outcomeSoon = async (checkIn: Promise<LorawanFinalCheckIn>) => {
+        let outcome: LorawanFinalCheckIn | undefined
+        checkIn.then(o => { outcome = o })
+        await jest.advanceTimersByTimeAsync(10)
+        return outcome
+    }
+
+    it('is received when the network acknowledges the ping', async () => {
+        const { session, sent } = camera([{ reply: 'OK', then: [downlink(-85, 7), ACK] }])
+        const onSent = jest.fn()
+        expect(await outcomeSoon(sendFinalLorawanCheckIn(session, CAMERA, onSent))).toBe('received')
+        expect(sent).toEqual(['ping'])
+        expect(onSent).toHaveBeenCalledTimes(1)
+    })
+
+    it('waits for the acknowledgement of a camera already sending', async () => {
+        const { session } = camera([{ reply: 'Busy', then: [ACK] }])
+        expect(await outcomeSoon(sendFinalLorawanCheckIn(session, CAMERA))).toBe('received')
+    })
+
+    it('is not heard when nothing acknowledges the ping, or nothing comes back', async () => {
+        expect(await outcomeSoon(sendFinalLorawanCheckIn(camera([{ reply: 'OK', then: [NACK] }]).session, CAMERA))).toBe('not_heard')
+
+        let outcome: LorawanFinalCheckIn | undefined
+        sendFinalLorawanCheckIn(camera([{ reply: 'OK' }]).session, CAMERA).then(o => { outcome = o })
+        await jest.advanceTimersByTimeAsync(LORAWAN_SILENCE_GIVE_UP_MS - 10)
+        expect(outcome).toBeUndefined()
+        await jest.advanceTimersByTimeAsync(20)
+        expect(outcome).toBe('not_heard')
+    })
+
+    it('sends and waits for nothing while LoRaWAN is off or not joined, or when the camera does not answer', async () => {
+        for (const [reply, expected] of [[OFF, 'off'], ['Not joined yet.', 'not_joined'], [new Error('TIMEOUT'), 'no_answer']] as const) {
+            const onSent = jest.fn()
+            expect(await outcomeSoon(sendFinalLorawanCheckIn(camera([{ reply }]).session, CAMERA, onSent))).toBe(expected)
+            expect(onSent).not.toHaveBeenCalled()
+        }
+    })
+
+    it('logs nothing while LoRaWAN is off, and says when the check-in did not get through', () => {
+        expect(describeFinalLorawanCheckIn('received')).toBe('LoRaWAN: final check-in received')
+        expect(describeFinalLorawanCheckIn('off')).toBeNull()
+        for (const outcome of ['not_heard', 'not_joined', 'no_answer'] as const) {
+            expect(describeFinalLorawanCheckIn(outcome)).toMatch(/^LoRaWAN: the final check-in did not get through, /)
+        }
+    })
+})
+
 describe('requestLorawanCheckIn', () => {
     it("sends a ping and returns the camera's reply, without waiting for the acknowledgement", async () => {
         const { session, sent } = camera([{ reply: 'OK' }])

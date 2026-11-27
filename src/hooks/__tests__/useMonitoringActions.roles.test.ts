@@ -27,6 +27,10 @@ jest.mock('../../ble/session/endDeploymentSession', () => ({ createEndDeployment
 jest.mock('../../ble/protocol/commandRegistry', () => ({
 	commandRegistry: { getops: 'getops', setdid: jest.fn(), setgps: jest.fn(), disconnect: 'disconnect' },
 }))
+jest.mock('../../ble/workflows/lorawanPing', () => ({
+	sendFinalLorawanCheckIn: jest.fn(async () => 'off'),
+	describeFinalLorawanCheckIn: () => null,
+}))
 jest.mock('../../utils/logger', () => ({ log: jest.fn(), logWarn: jest.fn(), logError: jest.fn() }))
 
 const getDeploymentById = DeploymentService.getDeploymentById as jest.Mock
