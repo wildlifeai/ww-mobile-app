@@ -158,7 +158,7 @@ From the top:
 | Model readiness line | | Only when the project has a model: "Model ready on this phone", or "Model not downloaded: connect to download". Offline, a start with a model the phone lacks stops unless the camera already carries it (#333). Refreshes when the pre-download lands the files. |
 | Camera View | Action | The Watcher's own picture, to aim it (`useCapturePreview`, the same capture as Capture Picture). Tapping takes the picture at once; the popup shows it with Take Another, and the row keeps it as a thumbnail. |
 | Test Motion Detection | Action | Activity Detection projects only. Tapping starts a 20-frame test at the project's sensitivity, at the motion interval the deployment writes; the popup shows the 16×16 grid live, and the row then says Motion seen or No motion (a frame counts only if it would have woken the camera, #500). The firmware runs the capture, so it cannot be stopped: Close leaves it running. |
-| LoRaWAN Signal | Action | Only if `project.lorawan_required`. Tapping tests whether the network hears the camera, with no phone signal needed and no setting changed: `ping`, and a one-off `join` first when LoRaWAN is off or not joined; the camera's own lines then say whether the network answered and how strong its signal was at the camera. The row says Heard by the network, Weak signal, No gateway answered, Not heard, Busy or No answer, and the popup gives the RSSI and SNR. The screen runs the same test once per connection once the project is chosen, and warns unless the network heard the camera well; a warning never stops the start (#552). It also warns, connected or not, when the camera's record has no DevEUI, because its messages would then reach no project. Both read `src/ble/workflows/lorawanPing.ts` (#348) and share a test already under way; the nRF's lines are in the [console guide](04-ENGINEER-CONSOLE.md). Each test sends a real uplink, whose acknowledgement is one of the camera's 10 downlinks a day on The Things Network. |
+| LoRaWAN Signal | Action | Only if `project.lorawan_required`. Tapping tests whether the network hears the camera, with no phone signal needed and no setting changed: `ping`, and a one-off `join` first when LoRaWAN is off or not joined; the camera's own lines then say whether the network answered and how strong its signal was at the camera. The row says Heard by the network, Weak signal, No gateway answered, Not heard, Busy or No answer, and the popup gives the RSSI and SNR. The screen runs the same test once per connection once the project is chosen, and warns unless the network heard the camera well; a warning never stops the start (#552). It also warns, connected or not, when the camera's record has no DevEUI, because its messages would then reach no project. Both read `src/ble/workflows/lorawanPing.ts` (#348) and share a test already under way; the nRF's lines are in the [console guide](04-ENGINEER-CONSOLE.md). Each test sends a real uplink, whose acknowledgement is one of the camera's 10 downlinks a day on The Things Network. Its messages arrive before the deployment starts, so they stay off the deployment; the deployment asks for its own first check-in at the end (step F). |
 | Notes | Input | Free text: deployment conditions, observations, bait used. |
 | Site Photo | Action | The phone's picture of the Watcher in place, so anyone in the project can find the camera again. Tapping opens the phone camera at once (no gallery since 26 October 2026), and the popup then lists the shots, up to five, with delete. They are stored on the deployment record. |
 | Advanced settings | Plain row | Collapsed by default. Contents below. |
@@ -367,6 +367,15 @@ gets nothing written and records nothing. The Dev Deployment Test screen writes 
 LoRaWAN switch the same way, at the selected project's period.
 Firmware without the flash mode (OP 34) is left alone: before ae_review OP 32 was
 `CAM_RESOLUTION`, the hi-res switch, and the reset skips it there too.
+
+The last step of a deployment that requires LoRaWAN, in both flows, is a `ping`
+(`requestLorawanCheckIn` in `lorawanPing.ts`), so the camera's first check-in lands on the
+new deployment. Without it a camera that had already joined, through the LoRaWAN Signal
+test's one-off join or an earlier deployment, would only restart its check-in timer when
+OP 32 changed (`handleLorawanConfigChange` in ww-hardware `stateMachine.c`), and send its
+first check-in a whole period later. A camera that has not joined answers `LoRaWAN is off`
+or `Not joined yet.` and sends its first check-in itself straight after it joins. Only the
+reply is awaited, and it never fails the deployment (Victor, 27 November 2026).
 
 ---
 

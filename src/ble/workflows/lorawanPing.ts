@@ -1,6 +1,6 @@
 import { BleSession } from '../session/createBleSession'
 import { bleEventBus, BleEvent } from '../protocol/eventBus'
-import { commandRegistry, CommandContext, LorawanRadioEvent, parseLorawanRadioLine } from '../protocol/commandRegistry'
+import { commandRegistry, CommandContext, LorawanPingReply, LorawanRadioEvent, parseLorawanRadioLine } from '../protocol/commandRegistry'
 import { log, logWarn } from '../../utils/logger'
 
 /** The gateway's signal at the camera, from the downlink that acknowledged its message. */
@@ -144,6 +144,39 @@ async function uplinkResult(radio: RadioListener): Promise<{ acknowledged?: bool
     const downlink = before?.kind === 'downlink' ? before : await radio.next(['downlink'], LORAWAN_SIGNAL_GIVE_UP_MS)
     if (downlink) log(`[LoRaWAN] signal: RSSI ${downlink.rssi} dBm, SNR ${downlink.snr} dB`)
     return { acknowledged: true, signal: downlink ? { rssi: downlink.rssi, snr: downlink.snr } : undefined }
+}
+
+/**
+ * Ask the camera for a check-in now, as the last step of a deployment that
+ * requires LoRaWAN, so its first check-in lands on the new deployment (Victor,
+ * 27 Nov 2026). Start Monitoring's LoRaWAN test joins a camera whose LoRaWAN is
+ * off before the deployment exists, and a camera can be joined from before;
+ * when the deployment then turns LoRaWAN on, the nRF only restarts its check-in
+ * timer (handleLorawanConfigChange in ww-hardware stateMachine.c), so without
+ * this the first check-in would come a whole period later. A camera not joined
+ * yet answers `LoRaWAN is off` or `Not joined yet.`, and sends its first
+ * check-in itself straight after it joins. Only the reply is awaited, never the
+ * acknowledgement, and nothing here can fail the deployment.
+ */
+export async function requestLorawanCheckIn(session: TestSession): Promise<LorawanPingReply | null> {
+    const reply = await ask(session, commandRegistry.ping)
+    log(`[LoRaWAN] check-in request: ${reply ?? 'no answer'}`)
+    return reply
+}
+
+/** The deployment log's line for `requestLorawanCheckIn`'s answer. */
+export function describeLorawanCheckIn(reply: LorawanPingReply | null): string {
+    switch (reply) {
+        case 'sent':
+            return 'LoRaWAN: first check-in sent'
+        case 'busy':
+            return 'LoRaWAN: the camera is already sending'
+        case 'off':
+        case 'not_joined':
+            return 'LoRaWAN: the camera sends its first check-in once it joins the network'
+        case null:
+            return 'LoRaWAN: no answer to the check-in request'
+    }
 }
 
 /** A command's answer, or null when the camera gave none. */

@@ -17,6 +17,7 @@ import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { checkSdCard } from '../../../ble/workflows/checkSdCard'
 import {
     testLorawan, lorawanRequiredWarning, LORAWAN_REQUIRED_WARNING, lorawanRegistrationWarning, LORAWAN_REGISTRATION_WARNING,
+    requestLorawanCheckIn, describeLorawanCheckIn,
 } from '../../../ble/workflows/lorawanPing'
 import { sleep } from '../../../utils/helpers'
 import { selfTestCache } from '../../../ble/protocol/selfTestCache'
@@ -836,6 +837,12 @@ export const useStartDeployment = ({
                 }
             } catch (verifyError) {
                 logWarn('[Deployment] Model verification read failed (non-fatal):', verifyError)
+            }
+
+            // Last: the camera's first check-in now, on this deployment, rather
+            // than a whole period later when the LoRaWAN test joined it already
+            if (project.lorawan_required && bleSession) {
+                progress.addLog(describeLorawanCheckIn(await requestLorawanCheckIn(bleSession)))
             }
 
             progress.setFinishStep('Complete')
