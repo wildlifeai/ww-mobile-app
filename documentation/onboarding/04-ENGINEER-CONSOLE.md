@@ -78,9 +78,15 @@ Direct commands handled by the BLE chip, no `AI` prefix.
 |---------|----------|---------|
 | `get deveui` | `DevEui: 70:B3:D5:7E:D0:07:00:01` / `Failed N` | Read LoRaWAN DevEUI. Registration records it (#536) |
 | `get appeui` | `AppEui: XX:XX:...` | Read LoRaWAN AppEUI (JoinEUI) |
-| `join` | `Already joined` / `OK` / `Wrong state: ...` | Request LoRaWAN join |
-| `ping` | `OK` / `Not joined yet.` / `Busy` / `LoRaWAN is off. Use 'AI setop 32 <minutes>' or 'join'` (BLE 0.30.56 on, op32 at 0) | Send LoRaWAN test packet |
+| `join` | `Already joined` / `OK` / `OK (one-off join, LoRaWAN is off)` (BLE 0.30.56 on, op32 at 0) / `Wrong state: ...` | Request LoRaWAN join. While LoRaWAN is off it joins once and leaves op32 as it is. Ends in `Joined.` or `Failed to join.` |
+| `ping` | `OK` / `Not joined yet.` / `Busy` / `LoRaWAN is off. Use 'AI setop 32 <minutes>' or 'join'` (BLE 0.30.56 on, op32 at 0) | Send LoRaWAN test packet, a confirmed uplink: `Uplink message acknowledged.` or `Uplink message NOT acknowledged.` follows |
 | `network` | `RSSI: -85dB, SNR: 7dB, PER: 0%. Last seen 3 minutes ago.` | Most recent LoRaWAN signal quality |
+
+The nRF also tells a connected phone about its radio unasked: `Joined.` or `Failed to join.`
+after a join, `Uplink message acknowledged.` or `Uplink message NOT acknowledged.` after each
+confirmed uplink, and `Downlink message. RSSI=-19dBm SNR=15dB. Rx 0 bytes.` for every downlink,
+an acknowledgement included. Start Monitoring's LoRaWAN Signal test reads them
+(`parseLorawanRadioLine` in `commandRegistry.ts`, #552).
 
 #### LED Diagnostics
 

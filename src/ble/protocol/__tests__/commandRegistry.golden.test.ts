@@ -1,4 +1,4 @@
-import { commandRegistry } from '../commandRegistry'
+import { commandRegistry, parseLorawanRadioLine } from '../commandRegistry'
 
 /**
  * Golden wire-format tests: one row per command in the registry.
@@ -43,6 +43,7 @@ const GOLDEN: Record<keyof typeof commandRegistry, Row> = {
     // October 2026). `Not joined yet.` from WILD-7VQI, nRF 0.30.52, on the
     // bench on 1 October 2026 (#348); `OK` and `Busy` from the source only.
     ping: { wire: 'ping', accepts: ['OK', 'Not joined yet.', 'Busy'] },
+    join: { wire: 'join', accepts: ['OK (one-off join, LoRaWAN is off)', 'OK', 'Already joined', 'Wrong state: JOINING'] },
     network: { wire: 'network', accepts: ['RSSI: -80dB, SNR: 5dB', 'No network comms yet'] },
     setutc: {
         args: ['2026-09-20T05:17:54.123Z'],
@@ -247,8 +248,40 @@ describe('commandRegistry golden wire format', () => {
         // BLE 0.30.56 and later, with op32 at 0 (#535)
         expect(read("LoRaWAN is off. Use 'AI setop 32 <minutes>' or 'join'")).toBe('off')
         // The nRF's unprompted LoRaWAN lines, and what the app used to wait for
-        for (const line of ['Joined.', 'Already joined', 'Unconfirmed uplink message sent.', 'Pong', 'Not Joined']) {
+        for (const line of ['Joined.', 'Already joined', 'Unconfirmed uplink message sent.', 'Pong', 'Not Joined',
+            'Uplink message acknowledged.', 'Downlink message. RSSI=-19dBm SNR=15dB. Rx 0 bytes.']) {
             expect(commandRegistry.ping().match(line)).toBe(false)
+        }
+    })
+
+    // processJoin() in ww-hardware ble_commands.c; the one-off join is BLE 0.30.56 on (#552)
+    it('reads each join reply, and not the join result that follows it', () => {
+        const read = (line: string) => {
+            const cmd = commandRegistry.join()
+            cmd.collect(line)
+            return cmd.parser()
+        }
+        expect(read('OK (one-off join, LoRaWAN is off)')).toBe('joining')
+        expect(read('OK')).toBe('joining')
+        expect(read('Already joined')).toBe('already_joined')
+        expect(read('Wrong state: JOINING')).toBe('wrong_state')
+        for (const line of ['Joined.', 'Failed to join.', 'Not joined yet.', 'OK then']) {
+            expect(commandRegistry.join().match(line)).toBe(false)
+        }
+    })
+
+    // The nRF's unasked radio lines, word for word from ww-hardware
+    // lorawan_actions.c and as Charles's bench logged them (Nov 2026)
+    it('reads the LoRaWAN lines the nRF sends unasked, and nothing else', () => {
+        expect(parseLorawanRadioLine('Joined.')).toEqual({ kind: 'joined' })
+        expect(parseLorawanRadioLine('Failed to join.')).toEqual({ kind: 'join_failed' })
+        expect(parseLorawanRadioLine('Uplink message acknowledged.')).toEqual({ kind: 'acknowledged' })
+        expect(parseLorawanRadioLine('Uplink message NOT acknowledged.')).toEqual({ kind: 'not_acknowledged' })
+        expect(parseLorawanRadioLine('Downlink message. RSSI=-19dBm SNR=15dB. Rx 0 bytes.')).toEqual({ kind: 'downlink', rssi: -19, snr: 15 })
+        expect(parseLorawanRadioLine('Downlink message. RSSI=-118dBm SNR=-9dB. Rx 5 bytes.')).toEqual({ kind: 'downlink', rssi: -118, snr: -9 })
+        for (const line of ['Already joined', 'Not joined yet.', 'Unconfirmed uplink message sent.', 'OK',
+            'RSSI: -80dB, SNR: 5dB, PER: 0%. Last seen 3 minutes ago.', 'Sensor: enabled. LoRaWan: Joined. Seq: 12']) {
+            expect(parseLorawanRadioLine(line)).toBeNull()
         }
     })
 
