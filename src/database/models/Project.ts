@@ -21,6 +21,8 @@ export default class Project extends Model {
     @field('timelapse_interval_seconds') timelapseIntervalSeconds?: number | null
     @field('record_gps_in_images') recordGpsInImages!: boolean
     @field('lorawan_required') lorawanRequired!: boolean
+    /** Minutes between LoRaWAN check-ins, written as op32 when LoRaWAN is required (#551). Set on the website. */
+    @field('lorawan_ping_minutes') lorawanPingMinutes!: number
     /** Capture flash mode written to the device as op34: off | light_sensor | always_on | time_of_day */
     @text('flash_mode') flashMode!: string
     /** LED the capture flash uses, written as op13: white | ir */

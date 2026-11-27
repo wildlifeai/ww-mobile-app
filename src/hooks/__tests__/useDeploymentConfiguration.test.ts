@@ -583,26 +583,33 @@ describe('useDeploymentConfiguration configureLorawan', () => {
 
     it('turns LoRaWAN off for a project that does not require it', async () => {
         const session = makeSession()
-        await configureLorawan()(session, false, ops(37, '720'))
+        await configureLorawan()(session, false, 240, ops(37, '720'))
         expect(session.lines).toEqual(['AI setop 32 0'])
     })
 
     it('turns it on, pinging every 4 hours, for a project that requires it', async () => {
         const session = makeSession()
-        await configureLorawan()(session, true, ops(37, '720'))
+        await configureLorawan()(session, true, 240, ops(37, '720'))
         expect(session.lines).toEqual(['AI setop 32 240'])
+    })
+
+    // #551: the period is the project's, set on the website
+    it("pings at the project's own check-in period", async () => {
+        const session = makeSession()
+        await configureLorawan()(session, true, 360, ops(37, '240'))
+        expect(session.lines).toEqual(['AI setop 32 360'])
     })
 
     it('writes nothing when the device already holds it', async () => {
         const session = makeSession()
-        await configureLorawan()(session, true, ops(37, '240'))
+        await configureLorawan()(session, true, 240, ops(37, '240'))
         expect(session.lines).toEqual([])
     })
 
     it('leaves op32 alone on firmware where it was the hi-res switch', async () => {
         // Before ae_review the table stopped at op33 and op32 was CAM_RESOLUTION
         const session = makeSession()
-        await configureLorawan()(session, false, ops(34, '0'))
+        await configureLorawan()(session, false, 240, ops(34, '0'))
         expect(session.lines).toEqual([])
     })
 })
@@ -611,12 +618,13 @@ describe('useDeploymentConfiguration configureLorawan', () => {
 describe('deploymentPingMinutes', () => {
     const ops = (length: number) => Array.from({ length }, () => '0')
 
-    it('is 240 when the project requires LoRaWAN, 0 when it does not', () => {
-        expect(deploymentPingMinutes(true, ops(37))).toBe(240)
-        expect(deploymentPingMinutes(false, ops(37))).toBe(0)
+    it("is the project's check-in period when the project requires LoRaWAN, 0 when it does not", () => {
+        expect(deploymentPingMinutes(true, 240, ops(37))).toBe(240)
+        expect(deploymentPingMinutes(true, 720, ops(37))).toBe(720)
+        expect(deploymentPingMinutes(false, 720, ops(37))).toBe(0)
     })
 
     it('is null on firmware where op32 was the hi-res switch, which is left alone', () => {
-        expect(deploymentPingMinutes(true, ops(34))).toBeNull()
+        expect(deploymentPingMinutes(true, 240, ops(34))).toBeNull()
     })
 })

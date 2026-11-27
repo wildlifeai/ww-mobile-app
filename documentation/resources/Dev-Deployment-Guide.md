@@ -158,6 +158,7 @@ The flash goes to the device as the project's four columns, through the same `co
 | [`useDeploymentConfiguration.ts`](../../src/hooks/useDeploymentConfiguration.ts) | Shared capture method and flash → OP parameter mapping |
 | [`projectFlash.ts`](../../src/utils/projectFlash.ts) | The flash columns, their option lists and their op values |
 | [`projectDetectionThreshold.ts`](../../src/utils/projectDetectionThreshold.ts) | The detection threshold column and its op16 value |
+| [`projectLorawanPing.ts`](../../src/utils/projectLorawanPing.ts) | The LoRaWAN check-in period column, written as op32 |
 | [`useDeviceSettings.ts`](../../src/hooks/useDeviceSettings.ts) | `OP_PARAMETER` enum, `FACTORY_DEFAULTS`, `RESET_PRESERVED_OPS` |
 
 ---

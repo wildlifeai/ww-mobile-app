@@ -26,6 +26,7 @@ import { log, logError } from '../utils/logger'
 import { DEFAULT_FLASH_LED, DEFAULT_FLASH_MODE } from '../utils/projectFlash'
 import { DEFAULT_PHOTO_INTERVAL_MS, DEFAULT_PHOTOS_PER_TRIGGER, resolveProjectBurst } from '../utils/projectBurst'
 import { DEFAULT_DETECTION_THRESHOLD_PCT, resolveDetectionThresholdPct } from '../utils/projectDetectionThreshold'
+import { DEFAULT_LORAWAN_PING_MINUTES, resolveLorawanPingMinutes } from '../utils/projectLorawanPing'
 
 
 class ProjectService {
@@ -252,6 +253,8 @@ class ProjectService {
 					project.photoIntervalMilliseconds = DEFAULT_PHOTO_INTERVAL_MS
 					// The detection threshold likewise (#342): 57%, written as op16 57
 					project.detectionThresholdPct = DEFAULT_DETECTION_THRESHOLD_PCT
+					// And the LoRaWAN check-in period (#551): every 4 hours
+					project.lorawanPingMinutes = DEFAULT_LORAWAN_PING_MINUTES
 				})
 
 
@@ -362,11 +365,13 @@ class ProjectService {
 				const changed = Object.fromEntries(
 					Object.entries(after).filter(([key, value]) => value !== (before as Record<string, unknown>)[key])
 				)
-				// The burst columns (#317) and the detection threshold (#342) never
-				// go out on an update: the website is their only editor
+				// The burst columns (#317), the detection threshold (#342) and the
+				// LoRaWAN check-in period (#551) never go out on an update: the
+				// website is their only editor
 				delete changed.photos_per_trigger
 				delete changed.photo_interval_milliseconds
 				delete changed.detection_threshold_pct
+				delete changed.lorawan_ping_minutes
 				const outboxOp = OutboxService.recordOperation({
 					operation: 'UPDATE',
 					tableName: 'projects',
@@ -566,6 +571,7 @@ class ProjectService {
 				project_image: model.projectImage || null,
 				record_gps_in_images: model.recordGpsInImages || false,
 				lorawan_required: model.lorawanRequired || false,
+				lorawan_ping_minutes: lorawanPingColumn(model),
 				is_archived: model.isArchived || false,
 				flash_mode: model.flashMode || DEFAULT_FLASH_MODE,
 				flash_led: model.flashLed || DEFAULT_FLASH_LED,
@@ -612,6 +618,7 @@ class ProjectService {
 			project_image: model.projectImage || null,
 			record_gps_in_images: model.recordGpsInImages || false,
 			lorawan_required: model.lorawanRequired || false,
+			lorawan_ping_minutes: lorawanPingColumn(model),
 			is_archived: model.isArchived || false,
 			flash_mode: model.flashMode || DEFAULT_FLASH_MODE,
 			flash_led: model.flashLed || DEFAULT_FLASH_LED,
@@ -640,5 +647,9 @@ const burstColumns = (model: Project): { photos_per_trigger: number, photo_inter
 /** The detection threshold off a local record, inside the CHECK range for the same reason (#342). */
 const detectionThresholdColumn = (model: Project): number =>
 	resolveDetectionThresholdPct({ detection_threshold_pct: model.detectionThresholdPct })
+
+/** The LoRaWAN check-in period off a local record, inside the CHECK range for the same reason (#551). */
+const lorawanPingColumn = (model: Project): number =>
+	resolveLorawanPingMinutes({ lorawan_ping_minutes: model.lorawanPingMinutes })
 
 export default new ProjectService()

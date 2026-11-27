@@ -344,22 +344,27 @@ deployment. It is written whatever the model; with none on the device the
 firmware never reads it. The Dev Deployment Test screen writes the selected project's
 threshold the same way.
 
-**F. Configure LoRaWAN:** the project's `lorawan_required`, as the LoRaWAN ping period
-(OP 32, `LORAWAN_PING_MINUTES`, agreed with Charles Palmer on 6 October 2026):
+**F. Configure LoRaWAN:** the project's `lorawan_required` and its check-in period
+`lorawan_ping_minutes`, as the LoRaWAN ping period (OP 32, `LORAWAN_PING_MINUTES`, agreed
+with Charles Palmer on 6 October 2026):
 
 ```
-AI setop 32 240   (LoRaWAN required: ping every 4 hours, #532)
+AI setop 32 240   (LoRaWAN required: the project's period, every 4 hours by default, #532, #551)
 AI setop 32 0     (not required: never try to join, so no join failures without a gateway)
 ```
 
-Every 4 hours is the period ww-hardware PR #81's firmware is designed for: it sends at
-most one detection and one health event per period. The reset (step 5) has just written
-720, the factory default, and a reset still does. `deploymentPingMinutes`
+The period is set on the website, 60 to 1440 minutes, and the app's project form has no
+control for it, so a project made in the app gets the column default, 240 (ww-backend
+#407). Every 4 hours is the period ww-hardware PR #81's firmware is designed for: it sends
+at most one detection and one health event per period. A missing or out-of-range value
+deploys as 240 ([`src/utils/projectLorawanPing.ts`](../../src/utils/projectLorawanPing.ts)).
+The reset (step 5) has just written 720, the factory default, and a reset still does.
+`deploymentPingMinutes`
 (`useDeploymentConfiguration.ts`) decides the value, and the deployment record carries the
 same one as `lorawan_ping_minutes`: the camera no longer sends its ping period, and the
 server judges silence from it (ww-backend #372). Firmware without the flash mode (OP 34)
 gets nothing written and records nothing. The Dev Deployment Test screen writes its own
-LoRaWAN switch the same way.
+LoRaWAN switch the same way, at the selected project's period.
 Firmware without the flash mode (OP 34) is left alone: before ae_review OP 32 was
 `CAM_RESOLUTION`, the hi-res switch, and the reset skips it there too.
 

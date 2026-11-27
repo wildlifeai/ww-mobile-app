@@ -73,6 +73,8 @@ export interface CreateProjectInput {
 	capture_method_id?: number
 	record_gps_in_images?: boolean
 	lorawan_required?: boolean
+	/** Minutes between LoRaWAN check-ins, 60 to 1440, default 240; set on the website (#551) */
+	lorawan_ping_minutes?: number
 	// Capture flash (op34/op13/op35/op36). Omitted means the table defaults:
 	// light_sensor with the IR LED.
 	flash_mode?: string
