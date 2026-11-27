@@ -23,7 +23,7 @@ import { FinishProgressDialog } from '../Devices/components/FinishProgressDialog
 import { AdvancedSettingsSection } from './components/AdvancedSettingsSection'
 import { DeploymentMonitorView } from './components/DeploymentMonitorView'
 
-import { useStartDeployment } from './hooks/useStartDeployment'
+import { useStartDeployment, cameraFirmwareFrom } from './hooks/useStartDeployment'
 import { useFirmwareStatus } from '../Devices/hooks/useFirmwareStatus'
 import { useSoftwareState } from './hooks/useSoftwareState'
 import { useModelOnPhone } from '../../hooks/useOfflineFiles'
@@ -418,7 +418,7 @@ export const StartMonitoringDetailsStep = () => {
                 <View style={styles.footer}>
                     <WWButton
                         mode="contained"
-                        onPress={handleStartDeployment}
+                        onPress={() => handleStartDeployment(cameraFirmwareFrom(firmwareStatus))}
                         loading={submitting}
                         disabled={aiProcessorFailed}
                         style={styles.deployButton}
