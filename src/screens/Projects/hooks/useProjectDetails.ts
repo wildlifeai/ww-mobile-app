@@ -14,6 +14,7 @@ import {
 	useGetSamplingDesignsQuery,
 } from "../../../redux/api/projectsApi"
 import { formatUtcMinutes, parseUtcMinutes, resolveProjectFlash } from "../../../utils/projectFlash"
+import { captureMethodLabel } from '../../../utils/captureMethodLabel'
 
 export interface ProjectFormData {
 	name: string
@@ -138,7 +139,7 @@ export const useProjectDetails = (projectId: string, initialEditMode = false) =>
 
 	// Options for Select components
 	const captureMethodOptions = useMemo(() =>
-		captureMethods?.map(cm => ({ label: cm.value, value: cm.id.toString() })) || [],
+		captureMethods?.map(cm => ({ label: captureMethodLabel(cm.value), value: cm.id.toString() })) || [],
 		[captureMethods]
 	)
 

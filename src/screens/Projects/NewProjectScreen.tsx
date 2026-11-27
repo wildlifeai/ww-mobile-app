@@ -25,6 +25,7 @@ import { log, logError } from '../../utils/logger'
 import { NewProjectBasicInfoSection } from './components/NewProjectBasicInfoSection'
 import { NewProjectSettingsSection } from './components/NewProjectSettingsSection'
 import { parseUtcMinutes } from '../../utils/projectFlash'
+import { captureMethodLabel } from '../../utils/captureMethodLabel'
 
 
 interface ProjectFormData {
@@ -133,7 +134,7 @@ export const NewProjectScreen = () => {
 	const captureMethodOptions = useMemo(
 		() =>
 			captureMethods?.map((cm) => ({
-				label: cm.value,
+				label: captureMethodLabel(cm.value),
 				value: cm.id.toString(),
 			})) || [],
 		[captureMethods],

@@ -42,6 +42,9 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
     const [intervalText, setIntervalText] = useState(DEFAULT_INTERVAL_SEC)
     const [intervalError, setIntervalError] = useState<string | undefined>(undefined)
     const [photosText, setPhotosText] = useState(DEFAULT_PHOTOS)
+    // Image 1 is the reference and has no grid, so N photos give N - 1 frames,
+    // as Frame History counts them (#563)
+    const framesExpected = Math.max((parseInt(photosText, 10) || 1) - 1, 1)
     const [photosError, setPhotosError] = useState<string | undefined>(undefined)
     // Null until the camera reports a threshold, and on firmware without one,
     // where the field is not shown and the test works as before.
@@ -432,7 +435,7 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                                 </WWText>
                             </View>
                             <ProgressBar
-                                progress={frameCount / Math.max(parseInt(photosText, 10) || 1, 1)}
+                                progress={frameCount / framesExpected}
                                 color={theme.colors.primary}
                                 style={styles.progressBar}
                             />
@@ -440,7 +443,7 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
 
                         {/* Frame count + blocks info */}
                         <WWText variant="bodySmall" style={styles.blocksText}>
-                            Frame {frameCount}/{photosText} · Motion in {mdBlocksCount} blocks
+                            Frame {frameCount}/{framesExpected} · Motion in {mdBlocksCount} blocks
                             {wakeThreshold !== null && (mdBlocksCount > wakeThreshold ? ' · would wake' : ` · wakes above ${wakeThreshold}`)}
                         </WWText>
 
