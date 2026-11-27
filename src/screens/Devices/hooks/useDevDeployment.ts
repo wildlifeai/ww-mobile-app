@@ -30,6 +30,7 @@ import { useBleSession } from '../../../hooks/useBleSession'
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { useBleActions } from '../../../providers/BleEngineProvider'
 import { deploymentPingMinutes, useDeploymentConfiguration } from '../../../hooks/useDeploymentConfiguration'
+import { resolveLorawanPingMinutes } from '../../../utils/projectLorawanPing'
 import { useBle } from '../../../hooks/useBle'
 import { useGPSLocation } from '../../../hooks/useGPSLocation'
 import { useDeviceSettings, OP_PARAMETER, FACTORY_DEFAULTS } from '../../../hooks/useDeviceSettings'
@@ -768,7 +769,7 @@ export const useDevDeployment = ({
                 bleFirmwareId: firmwareIds.bleFirmwareId,
                 himaxFirmwareId: firmwareIds.himaxFirmwareId,
                 // What configuration writes as op32 below, for silence (#532)
-                lorawanPingMinutes: deploymentPingMinutes(lorawanOverride, currentOps) ?? undefined,
+                lorawanPingMinutes: deploymentPingMinutes(lorawanOverride, resolveLorawanPingMinutes(project), currentOps) ?? undefined,
                 batteryLevelAtStart: batteryLevel ?? undefined,
                 sdCardTotalKbAtStart: sdCardStatus?.total,
                 sdCardAvailableKbAtStart: sdCardStatus?.free,
@@ -801,8 +802,9 @@ export const useDevDeployment = ({
                 // screen is tried at the threshold the project would deploy it at.
                 detectionThreshold: project,
                 // LoRaWAN on or off (op32) from this screen's switch, the
-                // value it saves to the project
+                // value it saves to the project, at the project's check-in period (#551)
                 lorawanRequired: lorawanOverride,
+                lorawanPingMinutes: resolveLorawanPingMinutes(project),
             }, cb, opsAfterReset)
 
             // 7. Flash brightness, dev only (the LED and the mode went in above).

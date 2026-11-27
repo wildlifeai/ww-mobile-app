@@ -3,7 +3,8 @@ import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { createBleSession } from '../ble/session/createBleSession'
 import { mdIntervalHold } from '../ble/session/mdIntervalHold'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
-import { OP_PARAMETER, LORAWAN_PING_DEPLOYED_MINUTES } from './useDeviceSettings'
+import { OP_PARAMETER } from './useDeviceSettings'
+import { DEFAULT_LORAWAN_PING_MINUTES } from '../utils/projectLorawanPing'
 import { log, logError, logWarn } from '../utils/logger'
 import { describeProjectFlash, ProjectFlashColumns, resolveProjectFlashOps } from '../utils/projectFlash'
 import { DEPLOYMENT_INTERVAL_BEFORE_DPD_MS, ProjectBurstColumns, resolveProjectBurstOps } from '../utils/projectBurst'
@@ -52,24 +53,26 @@ export interface DeploymentConfig {
      */
     detectionThreshold?: ProjectDetectionThresholdColumns
     /**
-     * The project's `lorawan_required`, written as op32: the deployed ping
-     * period when it is on, 0 (never join) when it is off, which also stops
-     * the join failures at sites with no gateway. Omitted leaves the reset's
-     * default, LoRaWAN on.
+     * The project's `lorawan_required`, written as op32: the project's
+     * check-in period when it is on, 0 (never join) when it is off, which also
+     * stops the join failures at sites with no gateway. Omitted leaves the
+     * reset's default, LoRaWAN on.
      */
     lorawanRequired?: boolean
+    /** The project's check-in period, `resolveLorawanPingMinutes` (#551). Omitted is the default, 240. */
+    lorawanPingMinutes?: number
 }
 
 /**
- * op32 as a deployment writes it: every 4 hours when the project requires
- * LoRaWAN (#532), 0 when it does not. Null on firmware without the flash mode
- * (op34), which predates op32's LoRaWAN meaning: there it was the hi-res
- * switch, and is left alone. The deployment records the same value, since the
- * camera no longer sends its ping period and silence is judged from it
- * (ww-backend #372).
+ * op32 as a deployment writes it: the project's check-in period when the
+ * project requires LoRaWAN (#532, #551), 0 when it does not. Null on firmware
+ * without the flash mode (op34), which predates op32's LoRaWAN meaning: there
+ * it was the hi-res switch, and is left alone. The deployment records the same
+ * value, since the camera no longer sends its ping period and silence is
+ * judged from it (ww-backend #372).
  */
-export const deploymentPingMinutes = (required: boolean, currentOps: string[]): number | null =>
-    currentOps.length <= OP_PARAMETER.FLASH_MODE ? null : (required ? LORAWAN_PING_DEPLOYED_MINUTES : 0)
+export const deploymentPingMinutes = (required: boolean, periodMinutes: number, currentOps: string[]): number | null =>
+    currentOps.length <= OP_PARAMETER.FLASH_MODE ? null : (required ? periodMinutes : 0)
 
 export const useDeploymentConfiguration = () => {
 
@@ -288,13 +291,14 @@ export const useDeploymentConfiguration = () => {
         ], currentOps)
     }, [applyUpdates])
 
-    /** op32 from the project's `lorawan_required`, as `deploymentPingMinutes` decides it */
+    /** op32 from the project's `lorawan_required` and check-in period, as `deploymentPingMinutes` decides it */
     const configureLorawan = useCallback(async (
         session: any,
         required: boolean,
+        periodMinutes: number,
         currentOps: string[]
     ): Promise<void> => {
-        const minutes = deploymentPingMinutes(required, currentOps)
+        const minutes = deploymentPingMinutes(required, periodMinutes, currentOps)
         if (minutes === null) {
             logWarn(`[DeployConfig] Firmware reports ${currentOps.length} parameters, so op32 is not the LoRaWAN ping on it; not writing it`)
             return
@@ -363,7 +367,7 @@ export const useDeploymentConfiguration = () => {
 
             // 6. LoRaWAN on or off (op32), likewise
             if (config.lorawanRequired !== undefined) {
-                await configureLorawan(session, config.lorawanRequired, currentOps)
+                await configureLorawan(session, config.lorawanRequired, config.lorawanPingMinutes ?? DEFAULT_LORAWAN_PING_MINUTES, currentOps)
             }
 
             log('[DeployConfig] Deployment configuration complete (Atomic)')

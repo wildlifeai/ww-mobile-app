@@ -23,6 +23,7 @@ import { selfTestCache } from '../../../ble/protocol/selfTestCache'
 import { parseSelfTestBits, SelfTestBit, SD_CARD_POWER_CYCLE_HINT, HM0360_POWER_CYCLE_HINT, NIGHT_SENSOR_WARNING } from '../../../utils/deviceSelfTest'
 import { useBleActions } from '../../../providers/BleEngineProvider'
 import { deploymentPingMinutes, useDeploymentConfiguration } from '../../../hooks/useDeploymentConfiguration'
+import { resolveLorawanPingMinutes } from '../../../utils/projectLorawanPing'
 import { useBle } from '../../../hooks/useBle'
 import { useGPSLocation } from '../../../hooks/useGPSLocation'
 import { useDeviceSettings, OP_PARAMETER } from '../../../hooks/useDeviceSettings'
@@ -576,7 +577,7 @@ export const useStartDeployment = ({
                 bleFirmwareId: firmwareIds.bleFirmwareId,
                 himaxFirmwareId: firmwareIds.himaxFirmwareId,
                 // What configuration writes as op32 below, for silence (#532)
-                lorawanPingMinutes: deploymentPingMinutes(project.lorawan_required ?? false, currentOps) ?? undefined,
+                lorawanPingMinutes: deploymentPingMinutes(project.lorawan_required ?? false, resolveLorawanPingMinutes(project), currentOps) ?? undefined,
                 lorawanRssiAtStart: lorawanRssi,
                 lorawanSnrAtStart: lorawanSnr,
                 startComments: formState.notes,
@@ -628,9 +629,10 @@ export const useStartDeployment = ({
                     // The detection threshold (op16), from the project since
                     // #342. The reset sets op16 to 60, the firmware's default.
                     detectionThreshold: project,
-                    // LoRaWAN on or off (op32) as the project asks: the 720 min
-                    // ping when it is required, 0 (never join) when not
+                    // LoRaWAN on or off (op32) as the project asks: its check-in
+                    // period when it is required (#551), 0 (never join) when not
                     lorawanRequired: project.lorawan_required ?? false,
+                    lorawanPingMinutes: resolveLorawanPingMinutes(project),
                 }, cb, opsAfterReset)
             } catch (configError) {
                 logError('[Deployment] Configuration failed:', configError)

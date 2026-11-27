@@ -99,14 +99,6 @@ export const OP_PARAMETER = {
 export const LORAWAN_PING_DEFAULT_MINUTES = 720
 
 /**
- * op32 a deployment writes when its project requires LoRaWAN: every 4 hours,
- * the period the firmware of ww-hardware PR #81 is designed for, which sends
- * at most one detection and one health event per period (decided 25 November
- * 2026, #532).
- */
-export const LORAWAN_PING_DEPLOYED_MINUTES = 240
-
-/**
  * op33 MD_BLOCK_THRESHOLD as the device reports it, or null when its firmware
  * has no threshold.
  *

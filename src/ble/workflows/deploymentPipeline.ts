@@ -563,6 +563,8 @@ export async function configureDevice(
         detectionThreshold?: ProjectDetectionThresholdColumns | null
         /** op32 from the project's LoRaWAN setting. Omitted leaves the reset's default, on. */
         lorawanRequired?: boolean
+        /** The project's check-in period for op32 (#551) */
+        lorawanPingMinutes?: number
     },
     { addLog, setStep, setProgress }: ProgressCallbacks,
     currentOps?: string[]
@@ -595,6 +597,7 @@ export async function configureDevice(
         recordRawBmp: config.recordRawBmp,
         detectionThreshold: config.detectionThreshold ?? undefined,
         lorawanRequired: config.lorawanRequired,
+        lorawanPingMinutes: config.lorawanPingMinutes,
     }, currentOps)
 
     if (config.flash !== undefined) addLog(`Capture flash: ${describeProjectFlash(config.flash)}`)

@@ -15,6 +15,7 @@ import { logCloudFailure } from '../utils/networkErrors'
 import { DEFAULT_FLASH_LED, DEFAULT_FLASH_MODE } from '../utils/projectFlash'
 import { DEFAULT_PHOTO_INTERVAL_MS, DEFAULT_PHOTOS_PER_TRIGGER } from '../utils/projectBurst'
 import { DEFAULT_DETECTION_THRESHOLD_PCT } from '../utils/projectDetectionThreshold'
+import { DEFAULT_LORAWAN_PING_MINUTES } from '../utils/projectLorawanPing'
 import { GONE_FROM_SERVER, isGoneFromServer } from './goneFromServer'
 import { DeviceRow, fetchDeviceRowByBluetoothId, prepareDeviceRow, serverShowsDevice } from './serverDevices'
 
@@ -1832,6 +1833,8 @@ class SupabaseSyncService {
                         // reached the phone, so its deployments zeroed GPS regardless
                         rec.recordGpsInImages = row.record_gps_in_images ?? false
                         rec.lorawanRequired = row.lorawan_required ?? false
+                        // The check-in period, written as op32 (#551)
+                        rec.lorawanPingMinutes = row.lorawan_ping_minutes ?? DEFAULT_LORAWAN_PING_MINUTES
                         rec.isArchived = row.is_archived ?? false
                         rec.gbifDatasetKey = row.gbif_dataset_key ?? null
                         rec.createdBy = row.created_by || ''
@@ -1867,6 +1870,8 @@ class SupabaseSyncService {
                         // reached the phone, so its deployments zeroed GPS regardless
                         rec.recordGpsInImages = row.record_gps_in_images ?? false
                         rec.lorawanRequired = row.lorawan_required ?? false
+                        // The check-in period, written as op32 (#551)
+                        rec.lorawanPingMinutes = row.lorawan_ping_minutes ?? DEFAULT_LORAWAN_PING_MINUTES
                         rec.isArchived = row.is_archived ?? false
                         rec.gbifDatasetKey = row.gbif_dataset_key ?? null
                         rec.createdBy = row.created_by || ''
