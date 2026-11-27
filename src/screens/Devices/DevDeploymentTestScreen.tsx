@@ -45,6 +45,7 @@ import {
 // 21 September 2026; see the commented-out block in the Pictures card.
 //   import { TEST_BIT_SAVE_BMP } from '../../hooks/useDeviceSettings'
 import { useExtendedTheme } from '../../theme'
+import { captureMethodLabel } from '../../utils/captureMethodLabel'
 
 /** The AI model dropdown's "None" entry; WWSelect ignores an empty value. */
 const NO_MODEL = '__none__'
@@ -244,7 +245,7 @@ export const DevDeploymentTestScreen = () => {
                         <WWSelect
                             label="Capture Method"
                             value={captureMethodOverride?.toString() || ''}
-                            options={captureMethodOptions.map(m => ({ label: m.value, value: m.id.toString() }))}
+                            options={captureMethodOptions.map(m => ({ label: captureMethodLabel(m.value), value: m.id.toString() }))}
                             onChange={(val) => setCaptureMethodOverride(parseInt(val, 10))}
                             disabled={submitting}
                         />

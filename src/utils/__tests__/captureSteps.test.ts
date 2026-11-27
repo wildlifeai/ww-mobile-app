@@ -77,6 +77,14 @@ describe('captureSteps', () => {
         expect(detail(s, 'light')).toBe('Not needed, flash off')
     })
 
+    it('says the flash is on when the picture had the flash and no check (#563)', () => {
+        // Flash held on for the visit: the firmware fires it without a light check.
+        let s = settingsApplied(begin(), true, 'Written, flash armed for this visit', true)
+        s = deviceLine(s, 'Captured 1 images. Last is B094F8E0.JPG (File write 0ms avg.)', T0)
+        expect(status(s, 'light')).toBe('done')
+        expect(detail(s, 'light')).toBe('Not needed, flash on')
+    })
+
     it('notes the wake only while the capture is waiting for it', () => {
         const waiting = settingsApplied(begin(), true)
         expect(detail(deviceWoke(waiting), 'capture')).toBe('Camera awake')

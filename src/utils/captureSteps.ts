@@ -38,6 +38,8 @@ export interface CaptureStepsState {
     transfer: Transfer | null
     /** True from `begin` until the image is saved or something fails */
     running: boolean
+    /** The flash is set to fire on this picture, so no light check is needed for it (#563) */
+    flashOn: boolean
 }
 
 /**
@@ -66,6 +68,7 @@ export const idleState = (): CaptureStepsState => ({
     steps: ORDER.map(key => ({ key, label: LABELS[key], status: 'pending' })),
     transfer: null,
     running: false,
+    flashOn: false,
 })
 
 const update = (state: CaptureStepsState, key: StepKey, patch: Partial<Step>): CaptureStepsState => ({
@@ -80,10 +83,14 @@ const statusOf = (state: CaptureStepsState, key: StepKey): StepStatus =>
 export const begin = (): CaptureStepsState =>
     update({ ...idleState(), running: true }, 'settings', { status: 'active', detail: 'Reading the camera’s settings' })
 
-/** The app has written (or confirmed) the flash settings; the capture is next. `note` overrides the detail. */
-export const settingsApplied = (state: CaptureStepsState, changed: boolean, note?: string): CaptureStepsState => {
+/**
+ * The app has written (or confirmed) the flash settings; the capture is next.
+ * `note` overrides the detail. `flashOn` says the flash will fire on this
+ * picture, which is why no light check follows (#563).
+ */
+export const settingsApplied = (state: CaptureStepsState, changed: boolean, note?: string, flashOn = false): CaptureStepsState => {
     const detail = note ?? (changed ? 'Written to the camera' : 'Already as chosen')
-    const s = update(state, 'settings', { status: 'done', detail })
+    const s = update({ ...state, flashOn }, 'settings', { status: 'done', detail })
     return update(s, 'capture', { status: 'active', detail: 'Waiting for the camera to sleep, then waking it' })
 }
 
@@ -116,8 +123,9 @@ export const deviceLine = (state: CaptureStepsState, line: string, now: number):
     if (captured) {
         let s = update(state, 'capture', { status: 'done', detail: captured[2] })
         if (statusOf(s, 'light') === 'pending') {
-            // No light check on this capture: the flash is off and auto-switch is off.
-            s = update(s, 'light', { status: 'done', detail: 'Not needed, flash off' })
+            // No light check on this capture: the flash fires anyway, or is off,
+            // and auto-switch is off (#563)
+            s = update(s, 'light', { status: 'done', detail: s.flashOn ? 'Not needed, flash on' : 'Not needed, flash off' })
         }
         return update(s, 'transfer', { status: 'active', detail: 'Asking for the file' })
     }

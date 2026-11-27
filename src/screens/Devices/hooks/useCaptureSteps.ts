@@ -20,7 +20,7 @@ export interface UseCaptureStepsReturn {
     /** A run has started: the app is about to read and write the flash settings */
     begin: () => void
     /** The flash settings are on the device (or were already right); `note` replaces the step's detail */
-    markSettingsApplied: (changed: boolean, note?: string) => void
+    markSettingsApplied: (changed: boolean, note?: string, flashOn?: boolean) => void
     /** A command or the transfer failed; the step in progress shows the reason */
     markFailed: (message: string) => void
     reset: () => void
@@ -76,7 +76,7 @@ export const useCaptureSteps = ({ device }: UseCaptureStepsOptions): UseCaptureS
     }, [transferring])
 
     const begin = useCallback(() => { setNow(Date.now()); setState(beginSteps()) }, [])
-    const markSettingsApplied = useCallback((changed: boolean, note?: string) => setState(s => settingsApplied(s, changed, note)), [])
+    const markSettingsApplied = useCallback((changed: boolean, note?: string, flashOn?: boolean) => setState(s => settingsApplied(s, changed, note, flashOn)), [])
     const markFailed = useCallback((message: string) => setState(s => failed(s, message)), [])
     const reset = useCallback(() => setState(idleState()), [])
 

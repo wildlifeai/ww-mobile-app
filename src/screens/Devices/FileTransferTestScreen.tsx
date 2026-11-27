@@ -65,7 +65,7 @@ function generateTestFiles(): TestFile[] {
         description: '1000 bytes: ~5 packets, verifies multi-packet flow',
     }
 
-    // 4. Binary: 500 bytes of deterministic pattern (not random, so Steve can verify)
+    // 4. Binary: 500 bytes of deterministic pattern (not random, so the copy on the card can be checked)
     const binData = new Uint8Array(500)
     for (let i = 0; i < binData.length; i++) {
         // eslint-disable-next-line no-bitwise
@@ -368,7 +368,7 @@ export const FileTransferTestScreen = () => {
                 </WWText>
                 <WWText variant="bodySmall" style={styles.descriptionText}>
                     Select a file to send to the device's SD card via BLE.
-                    Steve can compare these on the SD card to verify integrity.
+                    Each file's CRC is shown, to compare with the copy on the card.
                 </WWText>
 
                 {/* Transfer Mode Selector */}

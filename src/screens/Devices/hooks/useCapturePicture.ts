@@ -261,7 +261,7 @@ export const useCapturePicture = ({ device }: UseCapturePictureOptions) => {
                     : flashForced
                         ? 'Written, flash forced on for this picture'
                         : undefined
-            captureSteps.markSettingsApplied(changed || flashForced, flashNote)
+            captureSteps.markSettingsApplied(changed || flashForced, flashNote, cameraParams.flashLed > 0)
 
             // Wait for the device to enter DPD (Sleep). The firmware selects the
             // flash LED and brightness when it wakes, so a capture that skipped
