@@ -23,13 +23,14 @@ jest.mock('../../../../database', () => ({
 	default: require('../../../../../tests/setup/helpers/fakeDatabase').fakeDatabase,
 }))
 jest.mock('../../../../services/DeploymentService', () => ({ DeploymentService: { endDeployment: jest.fn(async () => {}) } }))
+jest.mock('../../../../ble/session/createBleSession', () => ({ createBleSession: jest.fn(() => mockSession) }))
 jest.mock('../../../../ble/session/endDeploymentSession', () => ({ createEndDeploymentSession: jest.fn(() => mockSession) }))
 jest.mock('../../../../ble/protocol/commandRegistry', () => ({
 	commandRegistry: { getops: 'getops', setdid: jest.fn(), setgps: jest.fn(), disconnect: 'disconnect' },
 }))
-jest.mock('../../../../hooks/useMonitoringActions', () => ({
-	END_DEPLOYMENT_CAMERA_COPY: { step: '', gaveUp: '', notStopped: '', finalStep: '', endedInApp: '' },
-	END_DEPLOYMENT_NOT_ANSWERING_DISMISS_MS: 6000,
+jest.mock('../../../../ble/workflows/lorawanPing', () => ({
+	sendFinalLorawanCheckIn: jest.fn(async () => 'off'),
+	describeFinalLorawanCheckIn: () => null,
 }))
 jest.mock('../../../../utils/logger', () => ({ log: jest.fn(), logWarn: jest.fn(), logError: jest.fn() }))
 

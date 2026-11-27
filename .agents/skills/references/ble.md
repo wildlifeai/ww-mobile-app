@@ -64,9 +64,11 @@ day are in [traps.md](traps.md).
 - **Ending a deployment does not wait on a sleeping camera.** While monitoring, the Himax may not
   answer the wake at all, and every step then sat out its timeout and retries: about 40 s under a
   "Disconnecting" spinner (#293). `session/endDeploymentSession.ts` probes once, skips every later
-  `AI` command after the first timeout, caps the lot at 20 s, and lets `dis` through because the
-  nRF answers it. The operator is told the camera was left running. Reuse it for any other flow
-  whose device steps are optional.
+  `AI` command after the first timeout, caps the lot at 20 s, and lets `ping` and `dis` through
+  because the nRF answers them. The 20 s start at the first `AI` command, so a wait on the nRF
+  goes before it: the final LoRaWAN check-in (#557) comes ahead of the bulk fetch for that reason.
+  The operator is told the camera was left running. Reuse it for any other flow whose device
+  steps are optional.
 - **A stale scan entry will hang you.** Auto-connect only trusts a device seen in the current
   scan session, the `lastSeen` gate. A just-disconnected device lingers in cache and
   connecting to it hangs until timeout.

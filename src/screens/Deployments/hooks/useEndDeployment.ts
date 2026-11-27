@@ -2,15 +2,12 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { Alert } from 'react-native'
 import { DeploymentService } from '../../../services/DeploymentService'
 import { endRefusal, END_REFUSED_TITLE } from '../../../services/deploymentAccess'
-import { log, logError, logWarn } from '../../../utils/logger'
+import { logError, logWarn } from '../../../utils/logger'
 
-import { createEndDeploymentSession, EndDeploymentSession } from '../../../ble/session/endDeploymentSession'
-import { commandRegistry } from '../../../ble/protocol/commandRegistry'
-import { formatGPSString } from '../../../utils/gpsUtils'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { QuiesceOptions } from '../../../hooks/useDeviceSettings'
 import { useDeploymentProgress } from '../../../hooks/useDeploymentProgress'
-import { END_DEPLOYMENT_CAMERA_COPY, END_DEPLOYMENT_NOT_ANSWERING_DISMISS_MS } from '../../../hooks/useMonitoringActions'
+import { END_DEPLOYMENT_CAMERA_COPY, END_DEPLOYMENT_NOT_ANSWERING_DISMISS_MS, endDeploymentSequence } from '../../../hooks/useMonitoringActions'
 
 interface UseEndDeploymentParams {
     deployment: any
@@ -114,94 +111,19 @@ export const useEndDeployment = ({
         progress.addLog('Preparing to stop monitoring...')
 
         try {
-            // Pre-fetch all ops once for the entire end-deployment sequence
-            let cachedOps: string[] | null = null
-            let session: EndDeploymentSession | null = null
-            if (storeDevice) {
-                try {
-                    progress.addLog('Reading device parameters...')
-                    // One budget for the camera's steps, and none after the first it
-                    // does not answer (#293). `dis` still goes: the nRF answers it.
-                    session = createEndDeploymentSession(storeDevice, {
-                        onGiveUp: () => {
-                            progress.setFinishStep(END_DEPLOYMENT_CAMERA_COPY.step)
-                            progress.addLog(END_DEPLOYMENT_CAMERA_COPY.gaveUp)
-                        },
-                    })
-                    cachedOps = await session.execute(commandRegistry.getops)
-                    progress.addLog('Device parameters read')
-                    log('[EndDeployment] Pre-fetched bulk ops for end-deployment')
-                } catch (err) {
-                    logWarn('[EndDeployment] Bulk ops fetch failed, proceeding without cache', err)
-                    progress.addLog('Warning: Could not read device parameters')
-                }
-            }
-
-            // 1. Clear Configuration (ID and GPS)
-            if (storeDevice && session) {
-                progress.addLog('Clearing configuration...')
-                progress.setFinishStep('Clearing config...')
-                progress.setFinishProgress(0.2)
-                
-                log('[EndDeployment] Clearing Deployment ID...')
-                try {
-                    await session.execute(() => commandRegistry.setdid(null))
-                    log('[EndDeployment] ID cleared')
-                    progress.addLog('Configuration cleared')
-                } catch (e) {
-                    logWarn(`[EndDeployment] Clear ID failed:`, e)
-                    progress.addLog('Warning: Config clear partially failed')
-                }
-
-                // 2. Clear GPS (Legacy/Safety)
-                try {
-                    const gpsStr = formatGPSString(0, 0, 0)
-                    await session.execute(() => commandRegistry.setgps(gpsStr))
-                } catch (e) {
-                    logWarn('[EndDeployment] Failed to clear GPS:', e)
-                }
-            }
-
-            // 2. Update DB
-            progress.addLog('Updating monitoring record...')
-            progress.setFinishStep('Updating record...')
-            progress.setFinishProgress(0.3)
-            
-            const userId = user?.id || null
-            await DeploymentService.endDeployment(deployment.id, userId, retrievalNotes)
-            progress.addLog('Record updated successfully')
-
-            // 3. Quiesce Device (Final Stop)
-            if (storeDevice && session) {
-                progress.addLog('Finalizing stop...')
-                progress.setFinishStep('Finalizing...')
-                progress.setFinishProgress(0.6)
-                
-                try {
-                    await quiesceDevice(storeDevice, { isEndDeployment: true, cachedOps, sessionScope: session })
-                    progress.addLog(session.cameraNotAnswering() ? END_DEPLOYMENT_CAMERA_COPY.notStopped : 'Device stopped')
-                } catch (e) {
-                    logWarn('[EndDeployment] Final stop warning:', e)
-                    progress.addLog('Warning: Final stop incomplete')
-                }
-            }
-
-            // 4. Disconnect
-            progress.addLog('Disconnecting...')
-            progress.setFinishStep('Disconnecting...')
-            progress.setFinishProgress(0.8)
-            
-            if (storeDevice && session) {
-                try {
-                    await session.execute(commandRegistry.disconnect)
-                    progress.addLog('Device disconnected')
-                } catch (e) {
-                    logWarn('[EndDeployment] Disconnect error:', e)
-                }
-            }
+            // The camera's steps and the record's end, shared with the live
+            // monitor's Stop Monitoring and the Dev Deployment Test (#557)
+            const { cameraAnswered } = await endDeploymentSequence({
+                bleDevice: storeDevice,
+                deploymentId: deployment.id,
+                userId: user?.id || null,
+                notes: retrievalNotes,
+                quiesceDevice,
+                progress,
+                disconnect: true,
+            })
 
             // Success State
-            const cameraAnswered = !session?.cameraNotAnswering()
             progress.setFinishStep(cameraAnswered ? 'Complete' : END_DEPLOYMENT_CAMERA_COPY.finalStep)
             progress.setFinishProgress(1.0)
             progress.setIsSuccess(true)

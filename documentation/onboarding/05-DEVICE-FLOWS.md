@@ -400,10 +400,12 @@ flowchart TD
     F --> G{"Tap 'Stop Monitoring'"}
     G --> H{"Device connected?"}
     H -- No --> I["Offer 'Force End (DB Only)'"]
-    H -- Yes --> J["Clear Deployment ID"]
+    H -- Yes --> J0["Final LoRaWAN check-in"]
+    J0 --> J["Clear Deployment ID"]
     J --> K["Clear GPS"]
     K --> L["Update DB Record"]
-    L --> M["Quiesce Device"]
+    L --> L2["Turn LoRaWAN off"]
+    L2 --> M["Quiesce Device"]
     M --> N["Disconnect"]
     N --> O["Navigate to Home"]
     
@@ -427,23 +429,48 @@ start, and the Dev Deployment Test's End deployment, ask the same.
 
 ### End Deployment Sequence
 
-A single [bulk fetch](./04-ENGINEER-CONSOLE.md#op-bulk-fetch-optimization-ai-getop--1) is performed before Step 1, and Step 4 diffs against its result.
+`endDeploymentSequence` in `useMonitoringActions.ts`, for Stop Monitoring here and on the live
+monitor after a start, and for the Dev Deployment Test's End deployment, which skips step 8.
+A single [bulk fetch](./04-ENGINEER-CONSOLE.md#op-bulk-fetch-optimization-ai-getop--1) in step 2
+is cached, and steps 6 and 7 read it.
 
 | Step | Progress | Action | BLE Command |
 |------|----------|--------|-------------|
-| 0 | - | **Bulk Fetch OP Parameters** | `AI getop -1` → cached for steps below |
-| 1 | 0.2 | Clear Deployment ID | `AI setdid` with the all-zero id (`setdid(null)`); a failure is a warning |
-| 2 | - | Clear GPS | `AI setgps` with `formatGPSString(0, 0, 0)`, see A under [Device Configuration](#device-configuration-usedeploymentconfiguration) (non-blocking) |
-| 3 | 0.3 | Update Database | `DeploymentService.endDeployment()` |
-| 4 | 0.6 | Quiesce Device | `quiesceDevice` with `isEndDeployment: true`: `AI setop 11 0` and `AI setop 7 0` where the cached ops differ |
-| 5 | 0.8 | Disconnect | `dis` |
+| 1 | 0.1 | Final LoRaWAN check-in | `ping`, then wait for `Uplink message acknowledged.`, [below](#the-final-lorawan-check-in) |
+| 2 | - | **Bulk Fetch OP Parameters** | `AI getop -1` → cached for steps below |
+| 3 | 0.2 | Clear Deployment ID | `AI setdid` with the all-zero id (`setdid(null)`); a failure is a warning |
+| 4 | - | Clear GPS | `AI setgps` with `formatGPSString(0, 0, 0)`, see A under [Device Configuration](#device-configuration-usedeploymentconfiguration) (non-blocking) |
+| 5 | 0.3 | Update Database | `DeploymentService.endDeployment()` |
+| 6 | 0.6 | Turn LoRaWAN off | `AI setop 32 0`, only where the cached op 32 is above 0 |
+| 7 | 0.6 | Quiesce Device | `quiesceDevice` with `isEndDeployment: true`: `AI setop 11 0` and `AI setop 7 0` where the cached ops differ |
+| 8 | 0.8 | Disconnect | `dis` |
 
 > [!IMPORTANT]
 > **The end's quiesce** (`isEndDeployment: true`) stops the motion and timelapse triggers and
 > leaves op10 alone: it skips the camera enable `quiesceDevice` otherwise ends with.
 
 > [!NOTE]
-> **The camera's steps are best effort and capped** (#293), through `createEndDeploymentSession` in `src/ble/session/endDeploymentSession.ts`. The bulk fetch is a probe: one attempt, no retry. The first step the Himax does not answer gives up on the camera, and every later `AI` step is skipped without being sent. All of them together get 20 s. `dis` is exempt, because the nRF answers it itself. When the camera is given up on, the dialog says "Camera not answering" at once and ends on "Ended. The camera did not answer, so it keeps taking pictures", held for 6 s instead of 1.5 s: the record is ended, but the camera keeps this deployment's settings and goes on capturing. Before this, a camera asleep in its motion loop cost each step its full timeout and retries, about 40 s under a "Disconnecting" spinner (bench, 5 September 2026).
+> **The camera's steps are best effort and capped** (#293), through `createEndDeploymentSession` in `src/ble/session/endDeploymentSession.ts`. The bulk fetch is a probe: one attempt, no retry. The first step the Himax does not answer gives up on the camera, and every later `AI` step is skipped without being sent. All of them together get 20 s, counted from the bulk fetch. `ping` and `dis` are exempt, because the nRF answers them itself. When the camera is given up on, the dialog says "Camera not answering" at once and ends on "Ended. The camera did not answer, so it keeps taking pictures", held for 6 s instead of 1.5 s: the record is ended, but the camera keeps this deployment's settings and goes on capturing. Before this, a camera asleep in its motion loop cost each step its full timeout and retries, about 40 s under a "Disconnecting" spinner (bench, 5 September 2026).
+
+### The final LoRaWAN check-in
+
+A deployment with LoRaWAN on ends with a final check-in, then LoRaWAN off (#557), so the
+website learns of the collection at once instead of at the phone's next sync, and the camera
+stops checking in once it is in someone's bag. `sendFinalLorawanCheckIn` in `lorawanPing.ts`:
+
+- **The `ping` decides.** The nRF answers `LoRaWAN is off` while op 32 is 0: nothing is sent,
+  and the log says nothing about LoRaWAN.
+- **The record ends after the acknowledgement**, so the check-in has arrived before the end can
+  reach the server, and ww-backend links it (#406). The server links a message to the deployment
+  open when it arrives, so one that arrives after `deployment_end`, but before the phone's sync
+  takes the end there, is linked too.
+  `Busy` means the camera is already sending, and that message's acknowledgement does as well.
+- **No acknowledgement ends it anyway.** `NOT acknowledged`, 30 s of silence, `Not joined yet.`
+  or no answer: the log says "LoRaWAN: the final check-in did not get through", with the
+  reason, the end carries on and turns LoRaWAN off, and the website learns of the end at the
+  next sync.
+- **Each final check-in is one of the camera's 10 downlinks a day** on The Things Network.
+  Starting a deployment writes op 32 again ([step F](#device-configuration-usedeploymentconfiguration)).
 
 ### Force End (Disconnected Device)
 
@@ -493,6 +520,8 @@ If the device is not connected, the user can "Force End (Database Only)":
 | "Warning: Config clear partially failed" in the log | The camera did not confirm `setdid`; the end carried on | Clear it with the reset in the [Engineer Console](./04-ENGINEER-CONSOLE.md) |
 | "Connection Lost" before end | Device out of range or battery dead | Use "Force End (Database Only)" |
 | "Cannot End This Deployment" | This account [may not end it](./03-DATA-AND-SYNC.md#key-tables) (#450): a viewer, a member ending someone else's, or its creator made a viewer since. The server would refuse the end | The person named, or a project admin, ends it. The camera was not touched. |
+| "LoRaWAN: the final check-in did not get through" | No gateway in range where the camera was collected, or the camera not on the network | Nothing to do: the deployment ended and LoRaWAN is off. The website shows the end after the phone's next sync |
+| "Warning: LoRaWAN not turned off" | The camera did not confirm `AI setop 32 0` | The camera keeps checking in. Send `AI setop 32 0` from the [Engineer Console](./04-ENGINEER-CONSOLE.md) |
 | "Camera not answering" | The Himax did not answer the probe, usually asleep in its motion loop; the record is ended but the camera keeps capturing | Wake the camera with its button, reconnect, and clear it from the [Engineer Console](./04-ENGINEER-CONSOLE.md) |
 
 ---

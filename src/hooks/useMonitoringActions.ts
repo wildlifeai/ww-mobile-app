@@ -7,8 +7,9 @@ import { createEndDeploymentSession, EndDeploymentSession } from '../ble/session
 import { commandRegistry } from '../ble/protocol/commandRegistry'
 import { formatGPSString } from '../utils/gpsUtils'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
-import { QuiesceOptions } from './useDeviceSettings'
+import { OP_PARAMETER, QuiesceOptions } from './useDeviceSettings'
 import { DeploymentProgress } from './useDeploymentProgress'
+import { describeFinalLorawanCheckIn, sendFinalLorawanCheckIn } from '../ble/workflows/lorawanPing'
 import { log, logError, logWarn } from '../utils/logger'
 
 interface UseMonitoringActionsParams {
@@ -35,8 +36,8 @@ interface EndDeploymentSequenceParams {
 
 /**
  * What the operator is told when the camera does not answer while a deployment
- * ends (#293). Shared with Stop Monitoring's own copy of the sequence in
- * `useEndDeployment`.
+ * ends (#293). Also read by `useEndDeployment`, Stop Monitoring on the
+ * deployment's own screen.
  */
 export const END_DEPLOYMENT_CAMERA_COPY = {
     step: 'Camera not answering',
@@ -49,14 +50,25 @@ export const END_DEPLOYMENT_CAMERA_COPY = {
 /** How long the finished dialog stays up when it has that to say, against 1.5 s normally. */
 export const END_DEPLOYMENT_NOT_ANSWERING_DISMISS_MS = 6000
 
+/** True when the camera's op table has LoRaWAN on, op 32 above 0. */
+const lorawanIsOn = (ops: string[] | null): boolean => Number(ops?.[OP_PARAMETER.LORAWAN_PING_MINUTES]) > 0
+
 /**
- * What ending a deployment means, on the device and in the database, in the
- * order Stop Monitoring has always done it: read the ops, clear the deployment
- * id and the GPS, end the record, quiesce, and disconnect when asked. Every
- * device step is best effort and logged; the record is the one step that
- * throws. Shared with the Dev Deployment Test's "End deployment" (22 September
- * 2026), which ends the deployment a device already carries and keeps the link
- * so a new one can be started straight after.
+ * What ending a deployment means, on the device and in the database, in this
+ * order: a final LoRaWAN check-in, read the ops, clear the deployment id and the
+ * GPS, end the record, turn LoRaWAN off, quiesce, and disconnect when asked.
+ * Every device step is best effort and logged; the record is the one step that
+ * throws. Stop Monitoring on the deployment's own screen and on the live
+ * monitor after a start both come here, and so does the Dev Deployment Test's
+ * "End deployment" (22 September 2026), which ends the deployment a device
+ * already carries and keeps the link so a new one can be started straight
+ * after.
+ *
+ * The final check-in comes first and the record's end after it, so the check-in
+ * falls inside the deployment, and LoRaWAN goes off after the record (#557).
+ * The check-in is a `ping`, which the nRF answers itself, so its wait for the
+ * network stays out of the camera's budget, which starts at the first `AI `
+ * command, the op table.
  *
  * The camera's steps share one budget and stop at the first one it does not
  * answer (`createEndDeploymentSession`, #293). Resolves `cameraAnswered: false`
@@ -68,14 +80,22 @@ export async function endDeploymentSequence({
     let cachedOps: string[] | null = null
     let session: EndDeploymentSession | null = null
     if (bleDevice) {
+        session = createEndDeploymentSession(bleDevice, {
+            onGiveUp: () => {
+                progress.setFinishStep(END_DEPLOYMENT_CAMERA_COPY.step)
+                progress.addLog(END_DEPLOYMENT_CAMERA_COPY.gaveUp)
+            },
+        })
+        const checkIn = await sendFinalLorawanCheckIn(session, bleDevice.id, () => {
+            progress.addLog('Sending a final LoRaWAN check-in...')
+            progress.setFinishStep('Final check-in...')
+            progress.setFinishProgress(0.1)
+        })
+        const checkInLine = describeFinalLorawanCheckIn(checkIn)
+        if (checkInLine) progress.addLog(checkInLine)
+
         try {
             progress.addLog('Reading device parameters...')
-            session = createEndDeploymentSession(bleDevice, {
-                onGiveUp: () => {
-                    progress.setFinishStep(END_DEPLOYMENT_CAMERA_COPY.step)
-                    progress.addLog(END_DEPLOYMENT_CAMERA_COPY.gaveUp)
-                },
-            })
             cachedOps = await session.execute(commandRegistry.getops)
             progress.addLog('Device parameters read')
             log('[StopMonitoring] Pre-fetched bulk ops')
@@ -115,11 +135,21 @@ export async function endDeploymentSequence({
     await DeploymentService.endDeployment(deploymentId, userId, notes)
     progress.addLog('Record updated successfully')
 
-    // Quiesce device
+    // LoRaWAN off, then quiesce the device
     if (bleDevice && session) {
         progress.addLog('Finalizing stop...')
         progress.setFinishStep('Finalizing...')
         progress.setFinishProgress(0.6)
+        if (lorawanIsOn(cachedOps)) {
+            // Starting a deployment writes op 32 again
+            try {
+                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.LORAWAN_PING_MINUTES, value: '0' }))
+                progress.addLog('LoRaWAN turned off')
+            } catch (e) {
+                logWarn('[StopMonitoring] Turning LoRaWAN off failed:', e)
+                progress.addLog('Warning: LoRaWAN not turned off')
+            }
+        }
         try {
             await quiesceDevice(bleDevice, { isEndDeployment: true, cachedOps, sessionScope: session })
             progress.addLog(session.cameraNotAnswering() ? END_DEPLOYMENT_CAMERA_COPY.notStopped : 'Device stopped')
