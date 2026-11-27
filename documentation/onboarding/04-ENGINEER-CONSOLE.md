@@ -162,7 +162,7 @@ so rather than the button failing:
 | `Captured 1 images. Last is` with an old name or none, and no new file | op18 bit 3, `TEST_BIT_SKIP_FILE_CREATION`, was left set by a motion test that did not finish | `AI setop 18 0` |
 | `Capture failed after N of M images: <reason>` | AI firmware from Seeed PR #275 on abandons a capture after a camera datapath fault (`EDM WDT2 timeout`, `No frame`) and no longer retries by itself. N photos were saved | Tap again. The app's own flows show this line instead of waiting out a timeout (#476) |
 | `Error: no captures until after the first sleep.` | The same firmware takes no capture or light check between a cold boot (power-on, RESET, `AI reset`, `AI switchslot`, a firmware update, a reset after a fault) and its first sleep | Wait for `Sleep`, then tap again. The app's own flows do this by themselves (#476) |
-| `Error: going to sleep, try again.` | Firmware with the fix for Seeed #296 (branch `261125_countersLost`) takes no capture or light check once it is on its way to sleep | The same: wait for `Sleep`, then tap again. The app's own flows do this by themselves (#535) |
+| `Error: going to sleep, try again.` | AI firmware from Seeed #296 takes no capture or light check once it is on its way to sleep, and from Seeed #207 no `setop`, `setdid`, `setgps` or `md` either: its settings are already saved, so nothing was set | The same: wait for `Sleep`, then tap again. The app's own flows do this by themselves (#535) |
 
 It is a real capture in every other way: it counts toward op19, runs the AI model if one is
 loaded, and when automatic camera switching (op26) is on, its light check can schedule a slot

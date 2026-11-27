@@ -211,11 +211,12 @@ day are in [traps.md](traps.md).
   camera's line as the error message, never retried. Between a cold boot and the first sleep the
   same firmware answers `AI capture` and `AI light` with
   `Error: no captures until after the first sleep.`, and once it is on its way to sleep, with
-  `Error: going to sleep, try again.` (Seeed #296's fix). Both are `SLEEP_REFUSAL`:
-  `runCommandPipeline` waits for the next Sleep and sends the command once more, so no flow
-  handles it again. A new command that captures adds both to its `failureRegex`, and a flow
-  that follows the text stream instead, as the motion test does, ends on the failure line
-  itself.
+  `Error: going to sleep, try again.` (Seeed #296's fix). Since Seeed #207 `setop`, `setdid`,
+  `setgps` and `md` give the second one too, and their `^Error:` patterns catch it. Both are
+  `SLEEP_REFUSAL`: `runCommandPipeline` waits for the next Sleep and sends the command once
+  more, so no flow handles it again. A new command that captures, or that changes a saved
+  setting, adds both to its `failureRegex` (`^Error:` does), and a flow that follows the text
+  stream instead, as the motion test does, ends on the failure line itself.
 - **The focus lens forgets its position when the AI processor sleeps.** `AI vcm` only holds
   while the processor is awake, because the camera powers off with it, so a photo at a lens
   position must follow its `vcm` inside one keepAwake hold. Below about 256 the lens does not
