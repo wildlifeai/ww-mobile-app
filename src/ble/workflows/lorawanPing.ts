@@ -34,6 +34,15 @@ export interface LorawanTestResult {
 export const LORAWAN_SILENCE_GIVE_UP_MS = 30_000
 
 /**
+ * How long a wait follows a failed attempt before giving up on the camera. The
+ * camera tries a failed join or uplink again by itself, up to six times, the
+ * wait doubling from 5 s to 80 s (ww-hardware stateMachine.c RETRYINTERVAL),
+ * and says `Retrying transmission now.` as it does, so this allows for the
+ * longest wait. Only reached when the camera says nothing (#560).
+ */
+export const LORAWAN_RETRY_GIVE_UP_MS = 120_000
+
+/**
  * How long the test waits for the downlink line after an acknowledgement, which
  * followed it by about 12 ms on the bench. Without it the result has no signal.
  */
@@ -52,8 +61,18 @@ export const isWeakSignal = ({ rssi, snr }: LorawanSignal): boolean => rssi < WE
 
 type TestSession = Pick<BleSession, 'execute'>
 
+/** Told the attempt number each time the camera tries again: 2 for its first retry (#560). */
+export type LorawanRetryListener = (attempt: number) => void
+
+interface RunningTest {
+    result: Promise<LorawanTestResult>
+    listeners: Set<LorawanRetryListener>
+    /** The attempt under way, 1 until the camera retries */
+    attempt: number
+}
+
 /** The test under way for each camera, so a second caller waits for it instead of starting another. */
-const running = new Map<string, Promise<LorawanTestResult>>()
+const running = new Map<string, RunningTest>()
 
 /**
  * Test whether the LoRaWAN network hears the camera, with no phone internet and
@@ -69,18 +88,36 @@ const running = new Map<string, Promise<LorawanTestResult>>()
  *    signal.
  *
  * Each step waits for the camera's line, never a set time; the give-ups are
- * only for a camera that says nothing. Each acknowledgement is one of the
- * camera's 10 downlinks a day on The Things Network.
+ * only for a camera that says nothing. A failed join or uplink is one attempt:
+ * the camera tries again by itself and says so, and the test follows it to
+ * `Joined.`, `Uplink message acknowledged.` or `... failed after N retries`
+ * (#560). `onRetry` hears each new attempt, also of a test another caller
+ * started. Each acknowledgement is one of the camera's 10 downlinks a day on
+ * The Things Network.
  */
-export function testLorawan(session: TestSession, deviceId: string): Promise<LorawanTestResult> {
-    const already = running.get(deviceId)
-    if (already) return already
-    const test = runTest(session, deviceId).finally(() => running.delete(deviceId))
-    running.set(deviceId, test)
-    return test
+export function testLorawan(session: TestSession, deviceId: string, onRetry?: LorawanRetryListener): Promise<LorawanTestResult> {
+    let test = running.get(deviceId)
+    if (!test) {
+        const created: RunningTest = { listeners: new Set(), attempt: 1, result: Promise.resolve({ outcome: 'no_answer' }) }
+        const tell: LorawanRetryListener = attempt => {
+            created.attempt = attempt
+            created.listeners.forEach(listener => listener(attempt))
+        }
+        created.result = runTest(session, deviceId, tell).finally(() => running.delete(deviceId))
+        running.set(deviceId, created)
+        test = created
+    }
+    if (onRetry) {
+        const listeners = test.listeners
+        listeners.add(onRetry)
+        if (test.attempt > 1) onRetry(test.attempt)
+        const stop = () => { listeners.delete(onRetry) }
+        test.result.then(stop, stop)
+    }
+    return test.result
 }
 
-async function runTest(session: TestSession, deviceId: string): Promise<LorawanTestResult> {
+async function runTest(session: TestSession, deviceId: string, onRetry: LorawanRetryListener): Promise<LorawanTestResult> {
     // Listening before anything is sent: the camera's lines can follow its reply at once
     const radio = listenToRadio(deviceId)
     try {
@@ -92,17 +129,17 @@ async function runTest(session: TestSession, deviceId: string): Promise<LorawanT
             case 'busy':
                 return { outcome: 'busy' }
             case 'sent':
-                return await heardOrNot(radio)
+                return await heardOrNot(radio, onRetry)
             case 'off':
             case 'not_joined':
-                return await joinAndListen(session, radio)
+                return await joinAndListen(session, radio, onRetry)
         }
     } finally {
         radio.close()
     }
 }
 
-async function joinAndListen(session: TestSession, radio: RadioListener): Promise<LorawanTestResult> {
+async function joinAndListen(session: TestSession, radio: RadioListener, onRetry: LorawanRetryListener): Promise<LorawanTestResult> {
     const join = await ask(session, commandRegistry.join)
     log(`[LoRaWAN] join: ${join ?? 'no answer'}`)
     if (join === null) return { outcome: 'no_answer' }
@@ -111,25 +148,77 @@ async function joinAndListen(session: TestSession, radio: RadioListener): Promis
         // The MAC says joined although the ping said not: ask once more
         const ping = await ask(session, commandRegistry.ping)
         log(`[LoRaWAN] ping after "Already joined": ${ping ?? 'no answer'}`)
-        if (ping === 'sent') return await heardOrNot(radio)
+        if (ping === 'sent') return await heardOrNot(radio, onRetry)
         if (ping === null) return { outcome: 'no_answer' }
         return { outcome: ping === 'busy' ? 'busy' : 'no_gateway' }
     }
 
     // `joining`, or `wrong_state` while a join is already under way
-    const joined = await radio.next(['joined', 'join_failed'], LORAWAN_SILENCE_GIVE_UP_MS)
-    log(`[LoRaWAN] join result: ${joined?.kind ?? 'nothing'}`)
-    if (joined?.kind !== 'joined') return { outcome: 'no_gateway' }
+    const joined = await finalResult(radio, 'joined', 'join_failed', { onRetry })
+    log(`[LoRaWAN] join result: ${joined.outcome}`)
+    if (joined.outcome !== 'ok') return { outcome: 'no_gateway' }
 
     // Heard already; the camera's first packets after the join bring the signal
     const after = await uplinkResult(radio)
     return { outcome: 'heard', signal: after.signal }
 }
 
-async function heardOrNot(radio: RadioListener): Promise<LorawanTestResult> {
-    const result = await uplinkResult(radio)
-    if (result.acknowledged === undefined) return { outcome: 'no_answer' }
-    return result.acknowledged ? { outcome: 'heard', signal: result.signal } : { outcome: 'not_heard' }
+async function heardOrNot(radio: RadioListener, onRetry: LorawanRetryListener): Promise<LorawanTestResult> {
+    const result = await finalResult(radio, 'acknowledged', 'not_acknowledged', { onRetry })
+    log(`[LoRaWAN] uplink result: ${result.outcome}`)
+    if (result.outcome === 'silent') return { outcome: 'no_answer' }
+    if (result.outcome === 'failed') return { outcome: 'not_heard' }
+    return { outcome: 'heard', signal: await signalOf(radio) }
+}
+
+/**
+ * What a join or an uplink came to, following the camera's own retries (#560):
+ * - `ok`: `Joined.` or `Uplink message acknowledged.`, on any attempt.
+ * - `failed`: `... failed after N retries`, `maxFailures` failed attempts, or
+ *   silence after a failed attempt.
+ * - `silent`: nothing at all.
+ * Each `Retrying transmission now.` is a new attempt, told to `onRetry`.
+ */
+type FinalResult = { outcome: 'ok' } | { outcome: 'failed' } | { outcome: 'silent' }
+
+async function finalResult(
+    radio: RadioListener,
+    ok: 'joined' | 'acknowledged',
+    failed: 'join_failed' | 'not_acknowledged',
+    { onRetry, maxFailures = Infinity, afterFailureGiveUpMs = LORAWAN_RETRY_GIVE_UP_MS }: {
+        onRetry?: LorawanRetryListener
+        maxFailures?: number
+        afterFailureGiveUpMs?: number
+    } = {},
+): Promise<FinalResult> {
+    let failures = 0
+    let attempt = 1
+    let afterFailure = false
+    for (;;) {
+        const event = await radio.next([ok, failed, 'retrying', 'gave_up'], afterFailure ? afterFailureGiveUpMs : LORAWAN_SILENCE_GIVE_UP_MS)
+        if (!event) return failures > 0 ? { outcome: 'failed' } : { outcome: 'silent' }
+        if (event.kind === ok) return { outcome: 'ok' }
+        if (event.kind === 'gave_up') return { outcome: 'failed' }
+        if (event.kind === 'retrying') {
+            afterFailure = false
+            attempt++
+            log(`[LoRaWAN] the camera tries again, attempt ${attempt}`)
+            onRetry?.(attempt)
+            continue
+        }
+        // One failed attempt: the camera says when it tries again
+        failures++
+        if (failures >= maxFailures) return { outcome: 'failed' }
+        afterFailure = true
+    }
+}
+
+/** The signal of the downlink that acknowledged the camera's message: just before the acknowledgement, or the next line. */
+async function signalOf(radio: RadioListener): Promise<LorawanSignal | undefined> {
+    const before = radio.justBefore()
+    const downlink = before?.kind === 'downlink' ? before : await radio.next(['downlink'], LORAWAN_SIGNAL_GIVE_UP_MS)
+    if (downlink) log(`[LoRaWAN] signal: RSSI ${downlink.rssi} dBm, SNR ${downlink.snr} dB`)
+    return downlink ? { rssi: downlink.rssi, snr: downlink.snr } : undefined
 }
 
 /** The camera's next uplink result, and the signal of the downlink that acknowledged it. */
@@ -138,12 +227,7 @@ async function uplinkResult(radio: RadioListener): Promise<{ acknowledged?: bool
     log(`[LoRaWAN] uplink: ${result?.kind ?? 'nothing'}`)
     if (!result) return {}
     if (result.kind === 'not_acknowledged') return { acknowledged: false }
-
-    // The acknowledgement's own downlink line: just before it, or else the next one
-    const before = radio.justBefore()
-    const downlink = before?.kind === 'downlink' ? before : await radio.next(['downlink'], LORAWAN_SIGNAL_GIVE_UP_MS)
-    if (downlink) log(`[LoRaWAN] signal: RSSI ${downlink.rssi} dBm, SNR ${downlink.snr} dB`)
-    return { acknowledged: true, signal: downlink ? { rssi: downlink.rssi, snr: downlink.snr } : undefined }
+    return { acknowledged: true, signal: await signalOf(radio) }
 }
 
 /**
@@ -196,7 +280,10 @@ export type LorawanFinalCheckIn = 'received' | 'off' | 'not_heard' | 'not_joined
  * this, so the check-in falls inside the deployment. `ping` decides whether
  * there is one: the nRF answers `LoRaWAN is off` while op 32 is 0. `Busy`
  * means the camera is already sending, and that message's acknowledgement does
- * as well. `onSent` fires once a message is on its way, before the wait.
+ * as well. `onSent` fires once a message is on its way, before the wait. A
+ * first `NOT acknowledged` waits for the camera's one retry, about 5 s later,
+ * then the stop carries on whatever it brings (Victor, 27 Nov 2026, #560): the
+ * stop turns LoRaWAN off, which ends any further retries.
  */
 export async function sendFinalLorawanCheckIn(
     session: TestSession,
@@ -212,9 +299,12 @@ export async function sendFinalLorawanCheckIn(
         if (reply === 'off' || reply === 'not_joined') return reply
 
         onSent?.()
-        const result = await radio.next(['acknowledged', 'not_acknowledged'], LORAWAN_SILENCE_GIVE_UP_MS)
-        log(`[LoRaWAN] final check-in: ${result?.kind ?? 'nothing'}`)
-        return result?.kind === 'acknowledged' ? 'received' : 'not_heard'
+        const result = await finalResult(radio, 'acknowledged', 'not_acknowledged', {
+            maxFailures: 2,
+            afterFailureGiveUpMs: LORAWAN_SILENCE_GIVE_UP_MS,
+        })
+        log(`[LoRaWAN] final check-in: ${result.outcome}`)
+        return result.outcome === 'ok' ? 'received' : 'not_heard'
     } finally {
         radio.close()
     }
@@ -332,6 +422,14 @@ export function lorawanTestWords(result: LorawanTestResult): { status: string; d
     }
 }
 
+/** The LoRaWAN Signal popup's words while the camera tries again (#560). */
+export function lorawanRetryWords(attempt: number): { status: string; detail: string } {
+    return {
+        status: 'Not heard yet',
+        detail: `The camera is trying again (attempt ${attempt}). It keeps trying for a few minutes and says when it gets through or stops. You can close this: the result shows on the row.`,
+    }
+}
+
 /** Every Start Monitoring warning about the LoRaWAN test starts with this, so the screen can clear its own. */
 export const LORAWAN_REQUIRED_WARNING = 'LoRaWAN is required'
 
@@ -356,6 +454,11 @@ export function lorawanRequiredWarning(result: LorawanTestResult): string | null
         case 'no_answer':
             return `${LORAWAN_REQUIRED_WARNING} but the camera did not answer the network test.`
     }
+}
+
+/** Start Monitoring's warning while the camera tries again to reach the network; the result replaces it (#560). */
+export function lorawanRetryingWarning(attempt: number): string {
+    return `${LORAWAN_REQUIRED_WARNING} and the network has not answered yet: the camera is trying again (attempt ${attempt}).`
 }
 
 /** Start Monitoring's warning for a camera with no DevEUI on its record starts with this. */

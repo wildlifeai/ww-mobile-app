@@ -2,8 +2,10 @@ import {
     testLorawan, lorawanTestWords, requestLorawanCheckIn, describeLorawanCheckIn, sendFinalLorawanCheckIn, describeFinalLorawanCheckIn,
     LorawanFinalCheckIn, lorawanRequiredWarning, lorawanRegistrationWarning, LorawanTestResult,
     LORAWAN_REQUIRED_WARNING, LORAWAN_REGISTRATION_WARNING, LORAWAN_SILENCE_GIVE_UP_MS, LORAWAN_SIGNAL_GIVE_UP_MS,
+    LORAWAN_RETRY_GIVE_UP_MS, lorawanRetryWords, lorawanRetryingWarning,
 } from '../lorawanPing'
 import { bleEventBus } from '../../protocol/eventBus'
+import { parseLorawanRadioLine } from '../../protocol/commandRegistry'
 
 jest.mock('../../../utils/logger', () => ({
     log: jest.fn(),
@@ -42,11 +44,15 @@ const ACK = 'Uplink message acknowledged.'
 const NACK = 'Uplink message NOT acknowledged.'
 const downlink = (rssi: number, snr: number) => `Downlink message. RSSI=${rssi}dBm SNR=${snr}dB. Rx 0 bytes.`
 const OFF = "LoRaWAN is off. Use 'AI setop 32 <minutes>' or 'join'"
+// The nRF's own retries (ww-hardware stateMachine.c, #560)
+const RETRY = 'Retrying transmission now.'
+const JOIN_GAVE_UP = 'Join failed after 6 retries. Pings are off, so no automatic retry.'
+const UPLINK_GAVE_UP = 'Uplink failed after 6 retries. Ping timer will try again in 4h.'
 
 // Every test runs on fake timers (tests/setup/sanitySetup.ts)
 afterEach(async () => {
     // Let a test still waiting on its camera finish, so the next one is not handed it
-    await jest.advanceTimersByTimeAsync(3 * LORAWAN_SILENCE_GIVE_UP_MS)
+    await jest.advanceTimersByTimeAsync(3 * LORAWAN_RETRY_GIVE_UP_MS)
 })
 
 /**
@@ -72,9 +78,36 @@ describe('testLorawan', () => {
         expect(await resultSoon(testLorawan(session, CAMERA))).toEqual({ outcome: 'heard', signal: { rssi: -90, snr: 4 } })
     })
 
-    it('is not heard when nothing acknowledges the test message', async () => {
-        const { session } = camera([{ reply: 'OK', then: [NACK] }])
+    it('is not heard when the camera stops trying without an acknowledgement', async () => {
+        const { session } = camera([{ reply: 'OK', then: [NACK, RETRY, NACK, UPLINK_GAVE_UP] }])
         expect(await resultSoon(testLorawan(session, CAMERA))).toEqual({ outcome: 'not_heard' })
+    })
+
+    // #560: each NOT acknowledged is one attempt; the camera tries again by itself
+    it('follows the camera to an acknowledgement on a later attempt, and tells each attempt', async () => {
+        const { session } = camera([{ reply: 'OK', then: [NACK, RETRY, ACK, downlink(-69, 9)] }])
+        const onRetry = jest.fn()
+        expect(await resultSoon(testLorawan(session, CAMERA, onRetry))).toEqual({ outcome: 'heard', signal: { rssi: -69, snr: 9 } })
+        expect(onRetry).toHaveBeenCalledWith(2)
+    })
+
+    it('waits out the camera\'s retry interval after a failed attempt, not the 30 s for silence', async () => {
+        const { session } = camera([{ reply: 'OK', then: [NACK] }])
+        let result: LorawanTestResult | undefined
+        testLorawan(session, CAMERA).then(r => { result = r })
+        await jest.advanceTimersByTimeAsync(LORAWAN_SILENCE_GIVE_UP_MS + 1000)
+        expect(result).toBeUndefined()
+        say(RETRY)
+        say(ACK)
+        await jest.advanceTimersByTimeAsync(LORAWAN_SIGNAL_GIVE_UP_MS + 1)
+        expect(result).toEqual({ outcome: 'heard', signal: undefined })
+    })
+
+    it('is not heard when the camera says nothing more after a failed attempt', async () => {
+        const { session } = camera([{ reply: 'OK', then: [NACK] }])
+        const test = testLorawan(session, CAMERA)
+        await jest.advanceTimersByTimeAsync(LORAWAN_RETRY_GIVE_UP_MS + 1)
+        expect(await test).toEqual({ outcome: 'not_heard' })
     })
 
     it('joins once a camera whose LoRaWAN is off, and is heard on the join, with the signal of its next packet', async () => {
@@ -86,9 +119,19 @@ describe('testLorawan', () => {
         expect(sent).toEqual(['ping', 'join'])
     })
 
-    it('says no gateway answered when the join fails', async () => {
-        const { session } = camera([{ reply: 'Not joined yet.' }, { reply: 'OK', then: ['Failed to join.'] }])
+    it('says no gateway answered when the camera stops trying to join', async () => {
+        const { session } = camera([{ reply: 'Not joined yet.' }, { reply: 'OK', then: ['Failed to join.', JOIN_GAVE_UP] }])
         expect(await resultSoon(testLorawan(session, CAMERA))).toEqual({ outcome: 'no_gateway' })
+    })
+
+    it('is heard when the camera joins on a later attempt (#560)', async () => {
+        const { session } = camera([
+            { reply: OFF },
+            { reply: 'OK (one-off join, LoRaWAN is off)', then: ['Failed to join.', RETRY, 'Joined.', ACK, downlink(-68, 9)] },
+        ])
+        const onRetry = jest.fn()
+        expect(await resultSoon(testLorawan(session, CAMERA, onRetry))).toEqual({ outcome: 'heard', signal: { rssi: -68, snr: 9 } })
+        expect(onRetry).toHaveBeenCalledWith(2)
     })
 
     it('waits for a join already under way', async () => {
@@ -154,9 +197,21 @@ describe('testLorawan', () => {
         expect(sent).toEqual(['ping'])
     })
 
+    it('tells a second caller the attempts of the test it shares', async () => {
+        const { session } = camera([{ reply: 'OK', then: [NACK, RETRY] }])
+        const first = testLorawan(session, CAMERA)
+        await jest.advanceTimersByTimeAsync(10)
+        const lateCaller = jest.fn()
+        expect(testLorawan(session, CAMERA, lateCaller)).toBe(first)
+        expect(lateCaller).toHaveBeenCalledWith(2)
+        say(ACK)
+        await jest.advanceTimersByTimeAsync(LORAWAN_SIGNAL_GIVE_UP_MS + 1)
+        expect((await first).outcome).toBe('heard')
+    })
+
     it('stops listening when the test ends', async () => {
         const before = bleEventBus.listenerCount('textLine')
-        expect(await resultSoon(testLorawan(camera([{ reply: 'OK', then: [NACK] }]).session, CAMERA))).toEqual({ outcome: 'not_heard' })
+        expect(await resultSoon(testLorawan(camera([{ reply: 'OK', then: [NACK, UPLINK_GAVE_UP] }]).session, CAMERA))).toEqual({ outcome: 'not_heard' })
         expect(bleEventBus.listenerCount('textLine')).toBe(before)
     })
 })
@@ -193,6 +248,19 @@ describe('what each result tells the operator', () => {
         expect(new Set(warnings).size).toBe(4)
     })
 
+    it('says the camera is trying again, and the warning is replaced by the result (#560)', () => {
+        expect(lorawanRetryWords(3)).toEqual({ status: 'Not heard yet', detail: expect.stringContaining('attempt 3') })
+        expect(lorawanRetryingWarning(2).startsWith(LORAWAN_REQUIRED_WARNING)).toBe(true)
+        expect(lorawanRetryingWarning(2)).toContain('attempt 2')
+    })
+
+    it('reads the camera\'s retry and give-up lines', () => {
+        expect(parseLorawanRadioLine(RETRY)).toEqual({ kind: 'retrying' })
+        expect(parseLorawanRadioLine(JOIN_GAVE_UP)).toEqual({ kind: 'gave_up', retries: 6 })
+        expect(parseLorawanRadioLine(UPLINK_GAVE_UP)).toEqual({ kind: 'gave_up', retries: 6 })
+        expect(parseLorawanRadioLine('Empty packet failed after 6 retries. Sending a ping in 5s.')).toEqual({ kind: 'gave_up', retries: 6 })
+    })
+
     it('warns about a camera with no DevEUI on its record', () => {
         expect(lorawanRegistrationWarning(undefined)?.startsWith(LORAWAN_REGISTRATION_WARNING)).toBe(true)
         expect(lorawanRegistrationWarning('')?.startsWith(LORAWAN_REGISTRATION_WARNING)).toBe(true)
@@ -223,9 +291,23 @@ describe('sendFinalLorawanCheckIn (#557)', () => {
         expect(await outcomeSoon(sendFinalLorawanCheckIn(session, CAMERA))).toBe('received')
     })
 
-    it('is not heard when nothing acknowledges the ping, or nothing comes back', async () => {
-        expect(await outcomeSoon(sendFinalLorawanCheckIn(camera([{ reply: 'OK', then: [NACK] }]).session, CAMERA))).toBe('not_heard')
+    // #560, Victor 27 Nov 2026: one retry, then the stop carries on
+    it('waits for the camera\'s one retry after a first NOT acknowledged', async () => {
+        expect(await outcomeSoon(sendFinalLorawanCheckIn(camera([{ reply: 'OK', then: [NACK, RETRY, ACK] }]).session, CAMERA))).toBe('received')
+    })
 
+    it('is not heard when the retry fails too, and waits for no more', async () => {
+        expect(await outcomeSoon(sendFinalLorawanCheckIn(camera([{ reply: 'OK', then: [NACK, RETRY, NACK] }]).session, CAMERA))).toBe('not_heard')
+    })
+
+    it('carries on after 30 s when no retry comes', async () => {
+        let outcome: LorawanFinalCheckIn | undefined
+        sendFinalLorawanCheckIn(camera([{ reply: 'OK', then: [NACK] }]).session, CAMERA).then(o => { outcome = o })
+        await jest.advanceTimersByTimeAsync(LORAWAN_SILENCE_GIVE_UP_MS + 20)
+        expect(outcome).toBe('not_heard')
+    })
+
+    it('is not heard when nothing comes back', async () => {
         let outcome: LorawanFinalCheckIn | undefined
         sendFinalLorawanCheckIn(camera([{ reply: 'OK' }]).session, CAMERA).then(o => { outcome = o })
         await jest.advanceTimersByTimeAsync(LORAWAN_SILENCE_GIVE_UP_MS - 10)

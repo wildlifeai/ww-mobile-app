@@ -16,7 +16,7 @@ import { useBleSession } from '../../../hooks/useBleSession'
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { checkSdCard } from '../../../ble/workflows/checkSdCard'
 import {
-    testLorawan, lorawanRequiredWarning, LORAWAN_REQUIRED_WARNING, lorawanRegistrationWarning, LORAWAN_REGISTRATION_WARNING,
+    testLorawan, lorawanRequiredWarning, lorawanRetryingWarning, LORAWAN_REQUIRED_WARNING, lorawanRegistrationWarning, LORAWAN_REGISTRATION_WARNING,
     requestLorawanCheckIn, describeLorawanCheckIn,
 } from '../../../ble/workflows/lorawanPing'
 import { sleep } from '../../../utils/helpers'
@@ -365,7 +365,10 @@ export const useStartDeployment = ({
         const checkLorawan = async () => {
              if (project?.lorawan_required && bleDevice?.connected && bleSession) {
                   log('[Deployment] Project requires LoRaWAN. Testing the network...')
-                  const result = await testLorawan(bleSession, bleDevice.id)
+                  // While the camera tries again the warning says so; the result replaces it (#560)
+                  const result = await testLorawan(bleSession, bleDevice.id, attempt => {
+                      if (isMounted) setOwnWarning(LORAWAN_REQUIRED_WARNING, lorawanRetryingWarning(attempt))
+                  })
                   log(`[Deployment] LoRaWAN test: ${result.outcome}${result.signal ? `, RSSI ${result.signal.rssi} dBm, SNR ${result.signal.snr} dB` : ''}`)
                   if (isMounted) setOwnWarning(LORAWAN_REQUIRED_WARNING, lorawanRequiredWarning(result))
              } else if (!project?.lorawan_required) {
