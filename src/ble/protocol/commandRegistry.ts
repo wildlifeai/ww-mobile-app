@@ -286,6 +286,53 @@ const LORAWAN_PING_REPLIES: Record<string, LorawanPingReply> = {
 };
 
 /**
+ * What the nRF did with a `join`: processJoin() in ww-hardware ble_commands.c.
+ * `joining` is `OK`, or `OK (one-off join, LoRaWAN is off)`, the one-off join
+ * for field testing that BLE 0.30.56 and later make while op32 is 0, leaving
+ * op32 as it is. `wrong_state` is `Wrong state: <state>`, for instance a join
+ * already under way. A join ends in `Joined.` or `Failed to join.` (#552).
+ */
+export type LorawanJoinReply = 'joining' | 'already_joined' | 'wrong_state';
+
+/**
+ * What the nRF tells a connected phone about its radio unasked (#552), word for
+ * word from ww-hardware lorawan_actions.c:
+ * - `Joined.` and `Failed to join.`, OnJoinRequest(). A join accept comes from
+ *   the network server itself, so `Joined.` means a gateway heard the camera
+ *   and the network knows it.
+ * - `Uplink message acknowledged.` and `Uplink message NOT acknowledged.`,
+ *   OnTxData(), after each confirmed uplink: a `ping`, a check-in, and the
+ *   empty packets the camera sends right after it joins.
+ * - `Downlink message. RSSI=-19dBm SNR=15dB. Rx 0 bytes.`, OnRxData(), for
+ *   every downlink the camera receives, an acknowledgement included: the
+ *   strength of the gateway's signal at the camera. On Charles's bench (Nov
+ *   2026) it followed each `acknowledged` line by about 12 ms.
+ */
+export type LorawanRadioEvent =
+  | { kind: 'joined' }
+  | { kind: 'join_failed' }
+  | { kind: 'acknowledged' }
+  | { kind: 'not_acknowledged' }
+  | { kind: 'downlink'; rssi: number; snr: number };
+
+const LORAWAN_RADIO_LINES: [RegExp, (match: RegExpMatchArray) => LorawanRadioEvent][] = [
+  [/^Joined\.\s*$/, () => ({ kind: 'joined' })],
+  [/^Failed to join\.\s*$/, () => ({ kind: 'join_failed' })],
+  [/^Uplink message acknowledged\.\s*$/, () => ({ kind: 'acknowledged' })],
+  [/^Uplink message NOT acknowledged\.\s*$/, () => ({ kind: 'not_acknowledged' })],
+  [/^Downlink message\. RSSI=(-?\d+)dBm SNR=(-?\d+)dB\./, (m) => ({ kind: 'downlink', rssi: parseInt(m[1], 10), snr: parseInt(m[2], 10) })],
+];
+
+/** One of the nRF's unasked LoRaWAN lines (`LorawanRadioEvent`), or null for any other line. */
+export function parseLorawanRadioLine(line: string): LorawanRadioEvent | null {
+  for (const [pattern, read] of LORAWAN_RADIO_LINES) {
+    const match = line.match(pattern);
+    if (match) return read(match);
+  }
+  return null;
+}
+
+/**
  * The BLE processor's record of the fault it last reset itself after, the reply
  * to `fault` (ww-hardware PR #73, MokoTech/Workspace/_Documentation/Fault_Handling.md,
  * "Telling the app"). One line, at most 100 characters:
@@ -466,13 +513,26 @@ export const commandRegistry = {
    * is the command failing: callers go through `workflows/lorawanPing.ts`,
    * which says what each one means. Until #348 the Signal Test waited for
    * `Pong`, which the nRF never sends, so every test timed out. Never retried,
-   * because a lost `OK` still sent an uplink.
+   * because a lost `OK` still sent an uplink. Whether the network heard it
+   * comes afterwards, unasked (`parseLorawanRadioLine`).
    */
   ping: createSingleLineCommand<LorawanPingReply>(
     'ping',
     () => 'ping',
     /^(OK$|Not joined yet\.$|Busy$|LoRaWAN is off\.)/,
     (match) => LORAWAN_PING_REPLIES[match[1]],
+    { retryPolicy: { maxRetries: 0 } }
+  ),
+  /**
+   * Ask the nRF to join the LoRaWAN network now (`LorawanJoinReply`). While
+   * LoRaWAN is off it joins once without turning it on. Never retried: a lost
+   * `OK` still started a join.
+   */
+  join: createSingleLineCommand<LorawanJoinReply>(
+    'join',
+    () => 'join',
+    /^(?:(OK)(?: \(one-off join, LoRaWAN is off\))?\s*$|(Already joined)\s*$|(Wrong state): )/,
+    (match) => (match[1] ? 'joining' : match[2] ? 'already_joined' : 'wrong_state'),
     { retryPolicy: { maxRetries: 0 } }
   ),
   network: createSingleLineCommand<{ rssi: number; snr: number; joined: boolean }>(

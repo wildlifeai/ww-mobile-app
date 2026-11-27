@@ -4,30 +4,30 @@ import { ActionRow } from '../../../components/ui/ActionRow'
 import { ActionDialog } from '../../../components/ui/ActionDialog'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { createBleSession } from '../../../ble/session/createBleSession'
-import { pingLorawan, LorawanPingResult, LORAWAN_PING_WORDS } from '../../../ble/workflows/lorawanPing'
+import { testLorawan, LorawanTestResult, lorawanTestWords } from '../../../ble/workflows/lorawanPing'
 
 interface Props {
     device?: ExtendedPeripheral
     onShowHelp: (title: string, content: string) => void
 }
 
-/** LoRaWAN Signal, for projects that require LoRaWAN: opening the popup asks the camera to send one test message. */
+/** LoRaWAN Signal, for projects that require LoRaWAN: opening the popup tests whether the network hears the camera. */
 export const LoRaWANAction = ({ device, onShowHelp }: Props) => {
     const theme = useTheme()
     const [open, setOpen] = useState(false)
-    const [status, setStatus] = useState<'idle' | 'testing' | LorawanPingResult>('idle')
+    const [status, setStatus] = useState<'idle' | 'testing' | LorawanTestResult>('idle')
 
-    const ping = useCallback(async () => {
+    const test = useCallback(async () => {
         if (!device) return
         setStatus('testing')
-        setStatus(await pingLorawan(createBleSession(device)))
+        setStatus(await testLorawan(createBleSession(device), device.id))
     }, [device])
 
-    const words = status === 'idle' || status === 'testing' ? null : LORAWAN_PING_WORDS[status]
+    const words = typeof status === 'object' ? lorawanTestWords(status) : null
 
     const handleOpen = () => {
         setOpen(true)
-        if (status !== 'testing') ping()
+        if (status !== 'testing') test()
     }
 
     return (
@@ -35,7 +35,7 @@ export const LoRaWANAction = ({ device, onShowHelp }: Props) => {
             <ActionRow
                 title="LoRaWAN Signal"
                 onPress={handleOpen}
-                onHelp={() => onShowHelp('LoRaWAN Signal', 'Asks the camera to send one test message over LoRaWAN now. It can only send once it has joined a network through a gateway, so the result also tells you whether it has.')}
+                onHelp={() => onShowHelp('LoRaWAN Signal', 'Checks that a LoRaWAN gateway hears the camera: the camera joins the network if it needs to, sends a test message and waits for the network to answer, then says how strong the signal is. It needs no phone signal.')}
                 result={words?.status}
                 busy={status === 'testing'}
             />
@@ -44,13 +44,15 @@ export const LoRaWANAction = ({ device, onShowHelp }: Props) => {
                 title="LoRaWAN Signal"
                 onClose={() => setOpen(false)}
                 actions={
-                    <Button onPress={ping} disabled={!device || status === 'testing'}>
+                    <Button onPress={test} disabled={!device || status === 'testing'}>
                         Test Again
                     </Button>
                 }
             >
-                <Text variant="titleMedium">{words ? words.status : 'Sending a test message…'}</Text>
-                {words && <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>{words.detail}</Text>}
+                <Text variant="titleMedium">{words ? words.status : 'Testing the network…'}</Text>
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                    {words ? words.detail : 'The camera joins the network if it needs to, then sends a test message and waits for the answer. This can take up to a minute.'}
+                </Text>
             </ActionDialog>
         </>
     )

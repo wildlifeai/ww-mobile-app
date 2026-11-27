@@ -15,7 +15,9 @@ import { DeviceService } from '../../../services/DeviceService'
 import { useBleSession } from '../../../hooks/useBleSession'
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { checkSdCard } from '../../../ble/workflows/checkSdCard'
-import { pingLorawan, lorawanRequiredWarning, LORAWAN_REQUIRED_WARNING } from '../../../ble/workflows/lorawanPing'
+import {
+    testLorawan, lorawanRequiredWarning, LORAWAN_REQUIRED_WARNING, lorawanRegistrationWarning, LORAWAN_REGISTRATION_WARNING,
+} from '../../../ble/workflows/lorawanPing'
 import { sleep } from '../../../utils/helpers'
 import { selfTestCache } from '../../../ble/protocol/selfTestCache'
 import { parseSelfTestBits, SelfTestBit, SD_CARD_POWER_CYCLE_HINT, HM0360_POWER_CYCLE_HINT, NIGHT_SENSOR_WARNING } from '../../../utils/deviceSelfTest'
@@ -343,34 +345,40 @@ export const useStartDeployment = ({
         }
     }, [availableProjects, project?.id]);
 
-    // Validate LoRaWAN connectivity if required, reading the same result as
-    // the Signal Test card (#348)
+    /** Replace the device-health warnings that start with `prefix` by `warning`, or drop them for null. */
+    const setOwnWarning = useCallback((prefix: string, warning: string | null) => {
+        setInitErrors(prev => {
+            const others = (prev.deviceHealth || []).filter(msg => !msg.startsWith(prefix))
+            return { ...prev, deviceHealth: warning ? [...others, warning] : others }
+        })
+    }, [])
+
+    // Test whether the LoRaWAN network hears the camera, once per connection,
+    // with the same test as the LoRaWAN Signal row (#348, #552). A failure
+    // warns and never stops the deployment. Keyed on the camera's id, not its
+    // record, which changes often: each test uses one of the camera's 10
+    // downlinks a day on The Things Network.
     useEffect(() => {
         let isMounted = true;
         const checkLorawan = async () => {
              if (project?.lorawan_required && bleDevice?.connected && bleSession) {
-                  log('[Deployment] Project requires LoRaWAN. Pinging network...')
-                  const result = await pingLorawan(bleSession)
-                  log(`[Deployment] LoRaWAN ping: ${result}`)
-                  const warning = lorawanRequiredWarning(result)
-                  if (isMounted) {
-                      setInitErrors(prev => {
-                          const others = (prev.deviceHealth || []).filter(msg => !msg.startsWith(LORAWAN_REQUIRED_WARNING))
-                          return { ...prev, deviceHealth: warning ? [...others, warning] : others }
-                      })
-                  }
+                  log('[Deployment] Project requires LoRaWAN. Testing the network...')
+                  const result = await testLorawan(bleSession, bleDevice.id)
+                  log(`[Deployment] LoRaWAN test: ${result.outcome}${result.signal ? `, RSSI ${result.signal.rssi} dBm, SNR ${result.signal.snr} dB` : ''}`)
+                  if (isMounted) setOwnWarning(LORAWAN_REQUIRED_WARNING, lorawanRequiredWarning(result))
              } else if (!project?.lorawan_required) {
-                 if (isMounted) {
-                      setInitErrors(prev => ({
-                          ...prev,
-                          deviceHealth: (prev.deviceHealth || []).filter(msg => !msg.startsWith(LORAWAN_REQUIRED_WARNING))
-                      }))
-                 }
+                 if (isMounted) setOwnWarning(LORAWAN_REQUIRED_WARNING, null)
              }
         }
         checkLorawan()
         return () => { isMounted = false }
-    }, [project?.lorawan_required, bleDevice?.connected, bleDevice]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [project?.lorawan_required, bleDevice?.connected, bleDevice?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    // A camera with no DevEUI on its record sends messages that reach no
+    // project (#552). Needs no connection.
+    useEffect(() => {
+        setOwnWarning(LORAWAN_REGISTRATION_WARNING, project?.lorawan_required && device ? lorawanRegistrationWarning(device.deviceEui) : null)
+    }, [project?.lorawan_required, device, device?.deviceEui, setOwnWarning])
 
     // Navigation Interceptor
     useEffect(() => {

@@ -90,6 +90,11 @@ shell boundary, and none of them reproduced in a Linux container.
   fails on the text `console.log` anywhere in `src/` outside `__tests__/` and `logger.ts`, so a
   comment that names it fails CI exactly like a call. #337's first run failed on a comment in
   `utils/networkErrors.ts`. Describe it in other words in prose.
+- **Every test runs on fake timers.** The root `beforeEach` in `tests/setup/sanitySetup.ts`
+  calls `jest.useFakeTimers()`, so a test that awaits anything behind a `setTimeout` waits out
+  the 15 s test limit instead. Advance them (`await jest.advanceTimersByTimeAsync(ms)`), as
+  `lorawanPing.test.ts` does; a small advance that returns the result also proves the code acted
+  on a message rather than a give-up (#552, 27 November 2026).
 - **"Accessing the Jest environment after it has been torn down" after a button press.** The
   root `afterEach` in `tests/setup/sanitySetup.ts` switches to real timers before RNTL's
   cleanup unmounts, so the store notification RTK auto-batches for the unmounted mutation goes
