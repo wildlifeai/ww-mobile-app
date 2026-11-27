@@ -25,6 +25,7 @@ import { describeProjectFlash, ProjectFlashColumns } from '../../utils/projectFl
 import { describeProjectBurst, ProjectBurstColumns } from '../../utils/projectBurst'
 import { describeDetectionThreshold, ProjectDetectionThresholdColumns } from '../../utils/projectDetectionThreshold'
 import { describeModelFile, isTfliteModel } from '../../utils/tfliteModel'
+import { captureMethodOf } from '../../utils/projectCaptureMethod'
 
 interface ProgressCallbacks {
     addLog: (msg: string) => void
@@ -573,10 +574,7 @@ export async function configureDevice(
     setStep('Configuring device...')
     setProgress(0.5)
 
-    let method: 'activity' | 'timelapse' | 'mixed' | 'unknown' = 'unknown'
-    if (config.captureMethodId === 1) method = 'activity'
-    else if (config.captureMethodId === 2) method = 'timelapse'
-    else if (config.captureMethodId === 3) method = 'mixed'
+    const method = captureMethodOf(config.captureMethodId)
 
     log('[Deployment] Configuring device via standardized hook...')
 

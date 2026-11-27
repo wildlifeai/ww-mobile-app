@@ -19,7 +19,7 @@ const mockState = {
 	devices: { 'ble-1': { id: 'ble-1', name: 'WILD-TEST', connected: true } },
 	authentication: { user: { id: 'user-1' }, currentOrganisation: { id: 'org-1' } },
 }
-const project = (id: string, name: string) => ({ id, name, capture_method_id: null, model_id: null, lorawan_required: false })
+const project = (id: string, name: string) => ({ id, name, capture_method_id: 1, model_id: null, lorawan_required: false })
 const mockProjects = [project('project-1', 'Sinbad Gully'), project('project-2', 'Orokonui'), project('project-3', 'Zealandia')]
 const mockExecute = jest.fn(async (command: string): Promise<any> => {
 	if (command === 'getops') return Array(37).fill('0')
