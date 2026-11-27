@@ -1,4 +1,5 @@
 import { renderHook, act } from '@testing-library/react-native'
+import { BackHandler } from 'react-native'
 
 import { useEngineerConsoleActions, FORMAT_CONFIRM_TIMEOUT_MS } from '../useEngineerConsoleActions'
 import { useBle } from '../../../../hooks/useBle'
@@ -104,5 +105,50 @@ describe('useEngineerConsoleActions format', () => {
             type: 'APPEND_HISTORY',
             payload: expect.objectContaining({ type: 'error', content: expect.stringMatching(/not confirmed/) }),
         }))
+    })
+})
+
+// #562: a flow opened from the console sits above it with the console still
+// mounted; the system back there goes back to the console, connected.
+describe('useEngineerConsoleActions system back', () => {
+    let onBack: (() => boolean | null | undefined) | undefined
+
+    beforeEach(() => {
+        jest.clearAllMocks()
+        onBack = undefined
+        jest.spyOn(BackHandler, 'addEventListener').mockImplementation(((_event: string, handler: () => boolean) => {
+            onBack = handler
+            return { remove: jest.fn() }
+        }) as any)
+    })
+
+    const mountWith = (focused: boolean) => {
+        const disconnectDevice = jest.fn(async () => {})
+        ;(useBle as jest.Mock).mockReturnValue({ writeRaw: jest.fn(), disconnectDevice, connectDevice: jest.fn() })
+        const navigation = { navigate: jest.fn(), isFocused: jest.fn(() => focused) }
+        renderHook(() => useEngineerConsoleActions({ device, consoleState: { inputText: '' }, dispatch: jest.fn(), navigation }))
+        return { disconnectDevice, navigation }
+    }
+
+    it('leaves the back to the flow screen on top, and stays connected', async () => {
+        const { disconnectDevice, navigation } = mountWith(false)
+
+        let handled: boolean | null | undefined
+        await act(async () => { handled = onBack?.() })
+
+        expect(handled).toBe(false)
+        expect(disconnectDevice).not.toHaveBeenCalled()
+        expect(navigation.navigate).not.toHaveBeenCalled()
+    })
+
+    it('still disconnects and goes home on the console itself', async () => {
+        const { disconnectDevice, navigation } = mountWith(true)
+
+        let handled: boolean | null | undefined
+        await act(async () => { handled = onBack?.() })
+
+        expect(handled).toBe(true)
+        expect(disconnectDevice).toHaveBeenCalledWith(device)
+        expect(navigation.navigate).toHaveBeenCalledWith('Home', { initialTab: 'devices' })
     })
 })

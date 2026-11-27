@@ -52,17 +52,21 @@ export const useEngineerConsoleActions = ({
         navigation.navigate('Home', { initialTab: 'devices' })
     }, [device, disconnectDevice, navigation])
 
-    // Handle Hardware Back Button
+    // Handle Hardware Back Button, only while the console is on top. A flow
+    // opened from it (Capture Picture, Motion Detection, Light Sensor) sits
+    // above the console, which stays mounted: the system back there must go
+    // back to the console, as the header arrow does, not disconnect (#562).
     useEffect(() => {
         const backHandler = BackHandler.addEventListener(
             'hardwareBackPress',
             () => {
+                if (!navigation.isFocused()) return false
                 handleBack()
                 return true
             }
         )
         return () => backHandler.remove()
-    }, [handleBack])
+    }, [handleBack, navigation])
 
     const handleSend = async (cmd?: string) => {
         const commandToSend = cmd || consoleState.inputText.trim()
