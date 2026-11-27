@@ -1,5 +1,5 @@
 import {
-    testLorawan, lorawanTestWords, lorawanRequiredWarning, lorawanRegistrationWarning, LorawanTestResult,
+    testLorawan, lorawanTestWords, requestLorawanCheckIn, describeLorawanCheckIn, lorawanRequiredWarning, lorawanRegistrationWarning, LorawanTestResult,
     LORAWAN_REQUIRED_WARNING, LORAWAN_REGISTRATION_WARNING, LORAWAN_SILENCE_GIVE_UP_MS, LORAWAN_SIGNAL_GIVE_UP_MS,
 } from '../lorawanPing'
 import { bleEventBus } from '../../protocol/eventBus'
@@ -196,5 +196,25 @@ describe('what each result tells the operator', () => {
         expect(lorawanRegistrationWarning(undefined)?.startsWith(LORAWAN_REGISTRATION_WARNING)).toBe(true)
         expect(lorawanRegistrationWarning('')?.startsWith(LORAWAN_REGISTRATION_WARNING)).toBe(true)
         expect(lorawanRegistrationWarning('3B4AFAFEFFDA68D8')).toBeNull()
+    })
+})
+
+// The deployment's last step: the first check-in on the new deployment
+describe('requestLorawanCheckIn', () => {
+    it("sends a ping and returns the camera's reply, without waiting for the acknowledgement", async () => {
+        const { session, sent } = camera([{ reply: 'OK' }])
+        expect(await requestLorawanCheckIn(session)).toBe('sent')
+        expect(sent).toEqual(['ping'])
+    })
+
+    it('never throws: no answer is null', async () => {
+        expect(await requestLorawanCheckIn(camera([{ reply: new Error('TIMEOUT') }]).session)).toBeNull()
+    })
+
+    it('logs what each reply means for the first check-in', () => {
+        expect(describeLorawanCheckIn('sent')).toBe('LoRaWAN: first check-in sent')
+        expect(describeLorawanCheckIn('off')).toBe(describeLorawanCheckIn('not_joined'))
+        expect(describeLorawanCheckIn('off')).toMatch(/once it joins/)
+        expect(new Set((['sent', 'busy', 'off', null] as const).map(describeLorawanCheckIn)).size).toBe(4)
     })
 })

@@ -74,6 +74,7 @@ jest.mock('../../../../ble/workflows/checkSdCard', () => ({ checkSdCard: jest.fn
 jest.mock('../../../../ble/workflows/lorawanPing', () => ({
 	testLorawan: jest.fn(), lorawanRequiredWarning: jest.fn(), LORAWAN_REQUIRED_WARNING: 'LoRaWAN',
 	lorawanRegistrationWarning: jest.fn(), LORAWAN_REGISTRATION_WARNING: 'This camera',
+	requestLorawanCheckIn: jest.fn(async () => 'sent'), describeLorawanCheckIn: jest.fn(() => 'LoRaWAN: first check-in sent'),
 }))
 jest.mock('../../../../ble/protocol/selfTestCache', () => ({ selfTestCache: { getFresh: jest.fn() } }))
 jest.mock('../../../../ble/workflows/deploymentPipeline', () => ({

@@ -31,6 +31,7 @@ import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { useBleActions } from '../../../providers/BleEngineProvider'
 import { deploymentPingMinutes, useDeploymentConfiguration } from '../../../hooks/useDeploymentConfiguration'
 import { resolveLorawanPingMinutes } from '../../../utils/projectLorawanPing'
+import { requestLorawanCheckIn, describeLorawanCheckIn } from '../../../ble/workflows/lorawanPing'
 import { useBle } from '../../../hooks/useBle'
 import { useGPSLocation } from '../../../hooks/useGPSLocation'
 import { useDeviceSettings, OP_PARAMETER, FACTORY_DEFAULTS } from '../../../hooks/useDeviceSettings'
@@ -832,7 +833,12 @@ export const useDevDeployment = ({
             await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.NUM_PICTURES, value: numPictures }))
             progress.addLog(`Pictures per trigger: ${numPictures}`)
 
-            // 8. Done
+            // 8. The camera's first check-in now, on this deployment, as Start Monitoring asks for it
+            if (lorawanOverride) {
+                progress.addLog(describeLorawanCheckIn(await requestLorawanCheckIn(session)))
+            }
+
+            // 9. Done
             progress.setFinishStep('Complete')
             progress.setFinishProgress(1.0)
             progress.setIsSuccess(true)
