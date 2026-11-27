@@ -2271,6 +2271,90 @@ export type Database = {
         }
         Relationships: []
       }
+      lorawan_downlinks: {
+        Row: {
+          answered_at: string | null
+          deployment_id: string
+          device_id: string
+          error: string | null
+          id: string
+          kind: string
+          op_index: number
+          op_value: number | null
+          reply_message_id: string | null
+          requested_at: string
+          requested_by: string | null
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          answered_at?: string | null
+          deployment_id: string
+          device_id: string
+          error?: string | null
+          id?: string
+          kind: string
+          op_index: number
+          op_value?: number | null
+          reply_message_id?: string | null
+          requested_at?: string
+          requested_by?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          answered_at?: string | null
+          deployment_id?: string
+          device_id?: string
+          error?: string | null
+          id?: string
+          kind?: string
+          op_index?: number
+          op_value?: number | null
+          reply_message_id?: string | null
+          requested_at?: string
+          requested_by?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lorawan_downlinks_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["deployment_id"]
+          },
+          {
+            foreignKeyName: "lorawan_downlinks_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lorawan_downlinks_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["device_id"]
+          },
+          {
+            foreignKeyName: "lorawan_downlinks_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lorawan_downlinks_reply_message_id_fkey"
+            columns: ["reply_message_id"]
+            isOneToOne: false
+            referencedRelation: "lorawan_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lorawan_ingest_tokens: {
         Row: {
           created_at: string
@@ -2350,6 +2434,7 @@ export type Database = {
           processed_at: string | null
           raw_payload: Json
           received_at: string | null
+          token_organisation_id: string | null
         }
         Insert: {
           deployment_id?: string | null
@@ -2359,6 +2444,7 @@ export type Database = {
           processed_at?: string | null
           raw_payload: Json
           received_at?: string | null
+          token_organisation_id?: string | null
         }
         Update: {
           deployment_id?: string | null
@@ -2368,6 +2454,7 @@ export type Database = {
           processed_at?: string | null
           raw_payload?: Json
           received_at?: string | null
+          token_organisation_id?: string | null
         }
         Relationships: [
           {
@@ -3542,6 +3629,7 @@ export type Database = {
           is_archived: boolean
           is_baited: boolean | null
           is_monitoring_marked_individuals: boolean | null
+          lorawan_ping_minutes: number
           lorawan_required: boolean
           model_id: string | null
           modified_by: string | null
@@ -3574,6 +3662,7 @@ export type Database = {
           is_archived?: boolean
           is_baited?: boolean | null
           is_monitoring_marked_individuals?: boolean | null
+          lorawan_ping_minutes?: number
           lorawan_required?: boolean
           model_id?: string | null
           modified_by?: string | null
@@ -3606,6 +3695,7 @@ export type Database = {
           is_archived?: boolean
           is_baited?: boolean | null
           is_monitoring_marked_individuals?: boolean | null
+          lorawan_ping_minutes?: number
           lorawan_required?: boolean
           model_id?: string | null
           modified_by?: string | null
@@ -4271,6 +4361,7 @@ export type Database = {
           is_baited: boolean | null
           is_monitoring_marked_individuals: boolean | null
           lorawan_device_count: number | null
+          lorawan_ping_minutes: number | null
           lorawan_required: boolean | null
           member_count: number | null
           model_id: string | null
@@ -4308,6 +4399,7 @@ export type Database = {
           is_baited?: boolean | null
           is_monitoring_marked_individuals?: boolean | null
           lorawan_device_count?: never
+          lorawan_ping_minutes?: number | null
           lorawan_required?: boolean | null
           member_count?: never
           model_id?: string | null
@@ -4345,6 +4437,7 @@ export type Database = {
           is_baited?: boolean | null
           is_monitoring_marked_individuals?: boolean | null
           lorawan_device_count?: never
+          lorawan_ping_minutes?: number | null
           lorawan_required?: boolean | null
           member_count?: never
           model_id?: string | null
@@ -4728,7 +4821,15 @@ export type Database = {
       enablelongtransactions: { Args: never; Returns: string }
       ensure_cloud_models: { Args: never; Returns: number }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      expire_lorawan_downlinks: {
+        Args: { p_device_id?: string }
+        Returns: number
+      }
       expire_old_invitations: { Args: never; Returns: number }
+      finish_lorawan_downlink: {
+        Args: { p_error?: string; p_id: string }
+        Returns: string
+      }
       gbf_report_counts: {
         Args: { p_from: string; p_project_ids: string[]; p_to: string }
         Returns: Json
@@ -4976,6 +5077,11 @@ export type Database = {
       label_map_problems: { Args: { p_label_map: Json }; Returns: string[] }
       local_hour_of: { Args: { p_ts: string; p_tz: string }; Returns: number }
       longtransactionsenabled: { Args: never; Returns: boolean }
+      lorawan_downlink_key_name: {
+        Args: { p_application_id: string; p_cluster_address: string }
+        Returns: string
+      }
+      lorawan_ttn_id_valid: { Args: { p_id: string }; Returns: boolean }
       match_media_embeddings: {
         Args: {
           match_count?: number
@@ -5052,8 +5158,22 @@ export type Database = {
       pull_changes: { Args: { last_pulled_at: number }; Returns: Json }
       push_changes: { Args: { changes: Json }; Returns: Json }
       readable_deployment_ids: { Args: never; Returns: string[] }
+      remove_lorawan_downlink_key: {
+        Args: { p_application_id: string; p_cluster_address: string }
+        Returns: boolean
+      }
       remove_project_member: {
         Args: { p_project_id: string; p_removed_by: string; p_user_id: string }
+        Returns: Json
+      }
+      request_lorawan_downlink: {
+        Args: {
+          p_deployment_id: string
+          p_kind: string
+          p_op_index: number
+          p_op_value?: number
+          p_user_id: string
+        }
         Returns: Json
       }
       respond_to_invitation: {
@@ -5675,6 +5795,14 @@ export type Database = {
       storage_can_upload_model: {
         Args: { bucket_id: string; object_name: string }
         Returns: boolean
+      }
+      store_lorawan_downlink_key: {
+        Args: {
+          p_api_key: string
+          p_application_id: string
+          p_cluster_address: string
+        }
+        Returns: string
       }
       sync_deleted_ids: { Args: { since: string }; Returns: Json }
       to_timestamp_ms: { Args: { epoch_ms: number }; Returns: string }

@@ -12,7 +12,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 410,
+    version: 411,
     tables: [
         tableSchema({
             name: 'account_deletion_requests',
@@ -576,6 +576,30 @@ export default appSchema({
             ],
         }),
         tableSchema({
+            name: 'lorawan_downlinks',
+            columns: [
+                { name: 'answered_at', type: 'string', isOptional: true },
+                { name: 'deployment_id', type: 'string', isIndexed: true },
+                { name: 'device_id', type: 'string', isIndexed: true },
+                { name: 'error', type: 'string', isOptional: true },
+                { name: 'kind', type: 'string' },
+                { name: 'op_index', type: 'number' },
+                { name: 'op_value', type: 'number', isOptional: true },
+                { name: 'reply_message_id', type: 'string', isOptional: true, isIndexed: true },
+                { name: 'requested_at', type: 'string' },
+                { name: 'requested_by', type: 'string', isOptional: true },
+                { name: 'sent_at', type: 'string', isOptional: true },
+                { name: 'status', type: 'string' },
+                // System & Sync Fields
+                { name: 'created_at', type: 'number' },
+                { name: 'updated_at', type: 'number' },
+                { name: 'deleted_at', type: 'number' },
+                { name: '_version', type: 'number' },
+                { name: '_custom_sync_status', type: 'string', isOptional: true },
+                { name: 'modified_by', type: 'string' },
+            ],
+        }),
+        tableSchema({
             name: 'lorawan_ingest_tokens',
             columns: [
                 { name: 'label', type: 'string', isOptional: true },
@@ -600,6 +624,7 @@ export default appSchema({
                 { name: 'processed_at', type: 'string', isOptional: true },
                 { name: 'raw_payload', type: 'string' },
                 { name: 'received_at', type: 'string', isOptional: true },
+                { name: 'token_organisation_id', type: 'string', isOptional: true, isIndexed: true },
                 // System & Sync Fields
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
@@ -898,6 +923,7 @@ export default appSchema({
                 { name: 'is_archived', type: 'boolean' },
                 { name: 'is_baited', type: 'boolean', isOptional: true },
                 { name: 'is_monitoring_marked_individuals', type: 'boolean', isOptional: true },
+                { name: 'lorawan_ping_minutes', type: 'number' },
                 { name: 'lorawan_required', type: 'boolean' },
                 { name: 'model_id', type: 'string', isOptional: true, isIndexed: true },
                 { name: 'name', type: 'string' },
