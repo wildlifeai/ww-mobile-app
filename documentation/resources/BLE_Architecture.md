@@ -591,8 +591,10 @@ sequenceDiagram
     Note over FW: Device reboots with new firmware
     UI->>Scan: scanForOriginalDevice(deviceId)
     Scan-->>UI: Device rediscovered
-    UI->>Sess: reconnect + verify version
+    UI->>Sess: reconnect, setutc, verify version
 ```
+
+The restart clears the BLE processor's clock: it comes back at 2024-01-01 and passes that to the AI processor at its next wake. A normal connection sends `setutc`, but this reconnect does not go through it, so `afterBleRestart` sets the clock before reading the version (#578).
 
 > [!IMPORTANT]
 > During DFU, the device disconnects and re-advertises under a different name (`WW500_DFU` / `DfuTarg`). The app suppresses "Connection Lost" alerts via `setDfuStatus(true)` dispatched to the device's Redux state. The `WWBleDisconnectedBanner` component checks `dfuInProgress` and renders nothing when it is `true`. The flag is cleared via `setDfuStatus(false)` when the update completes or fails.
