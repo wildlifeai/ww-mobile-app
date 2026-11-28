@@ -167,7 +167,7 @@ Inside Advanced settings:
 
 | Element | Kind | Notes |
 |---------|------|-------|
-| Site Name | Input | Dropdown of nearby past deployment locations (auto-selected closest), or free text for a new site. Used as both `name` and `locationName` for the deployment record. |
+| Site Name | Input | Dropdown of the project's three past deployment sites nearest the phone, or free text for a new site. The nearest is selected by itself only when it is within 200 m of the phone; otherwise the field starts empty and "Select from nearby locations instead" opens the list (#572). Used as both `name` and `locationName` for the deployment record, "Automated Deployment" when left empty. |
 | Camera Height (cm) | Input | Height of the lens from the ground |
 | Check Battery Level | Action | The row shows the level read at connection; tapping reads `battery` again. The popup warns at or below 30%. |
 | Check SD Card | Action | The row shows the free space; tapping reads `aiinfo` again. The popup says nearly full at or below 10% free. |
