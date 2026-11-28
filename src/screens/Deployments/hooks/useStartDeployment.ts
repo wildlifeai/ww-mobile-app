@@ -79,6 +79,15 @@ export const cameraFirmwareFrom = (
 
 /** A model the camera's Bluetooth processor is too old to receive (#289), in Start Monitoring's words */
 export const SOFTWARE_TOO_OLD_FOR_MODEL = "The camera's software is too old for this model. Update software, then start monitoring."
+
+/**
+ * Site Name fills in by itself only from an earlier site this close to the
+ * phone, in metres as calculateDistance returns. Farther ones are offered,
+ * never chosen: a camera 150 km from the nearest site was saved under that
+ * site's name (#572).
+ */
+const SITE_AUTOFILL_RADIUS_M = 200
+
 export const useStartDeployment = ({
     deviceId,
     bleDeviceId,
@@ -339,10 +348,14 @@ export const useStartDeployment = ({
                 const ops = sorted.map(([name]) => ({ label: name, value: name }))
                 setAvailableLocations(ops)
 
-                // Autofill closest
-                if (ops.length > 0) {
-                    setLocationName(ops[0].value)
+                const [closestName, closestMetres] = sorted[0]
+                if (closestMetres <= SITE_AUTOFILL_RADIUS_M) {
+                    setLocationName(closestName)
                     setIsCustomLocation(false)
+                } else {
+                    // None that close: start empty, and drop a name filled in before the phone moved
+                    setLocationName('')
+                    setIsCustomLocation(true)
                 }
             } catch (err) {
                 logError('[Deployment] Failed to calculate closest locations', err)
