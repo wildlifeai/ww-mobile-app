@@ -55,7 +55,7 @@ export const ERROR_MESSAGES: Record<number, string> = {
   [FileTxErrorCode.BAD_FILENAME]:     'Invalid filename. Use 8.3 format with uppercase letters and digits.',
   [FileTxErrorCode.I2C_FAIL]:         'Communication with AI processor failed. Try again.',
   [FileTxErrorCode.HX_BAD_FILENAME]:  'AI processor rejected the filename. Use 8.3 format (e.g. OUTPUT.IMG).',
-  [FileTxErrorCode.FILE_OPEN_FAIL]:   'Failed to open or create file on SD card. Check the SD card.',
+  [FileTxErrorCode.FILE_OPEN_FAIL]:   'The camera could not open the file on its SD card. Check the card is in, then power cycle the camera.',
   [FileTxErrorCode.SD_WRITE_FAIL]:    'SD card write failed. Check the SD card and try again.',
   [FileTxErrorCode.SEQUENCE_ERROR]:   'Packet arrived out of order. Transfer aborted.',
   [FileTxErrorCode.CRC_MISMATCH]:     'File corrupted during transfer (CRC mismatch). Try again.',

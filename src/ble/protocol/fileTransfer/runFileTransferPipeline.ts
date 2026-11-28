@@ -26,6 +26,8 @@ import BleManager from 'react-native-ble-manager'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { writeBinaryToDevice } from '../../transport'
 import { bleEventBus, BleEvent } from '../eventBus'
+import { DeviceSignal } from '../deviceSignals'
+import { SLEEP_REFUSAL_WAIT_MS, waitForNextSleep } from '../deviceSleep'
 import { bleTransport } from '../bleTransportController'
 import { TextStreamScope } from '../textStreamScope'
 import { crc16ccitt } from './crc16ccitt'
@@ -49,6 +51,8 @@ import {
   MIN_TRANSFER_WINDOW,
   ACK_TIMEOUT_MS,
   SILENCE_TIMEOUT_MS,
+  FileTxErrorCode,
+  getErrorMessage,
 } from './fileTransferTypes'
 import { log, logError, logWarn } from '../../../utils/logger'
 
@@ -103,6 +107,11 @@ const MAX_SESSION_RETRIES = 2
 /** Delay before retrying a full session (ms). Gives the device time to
  *  finish its sleep/wake cycle after a failed transfer. */
 const SESSION_RETRY_DELAY_MS = 3_000
+
+/** What the person reads for an `ftx err N`: the words for N, with the line kept for whoever reads the log (#555) */
+function deviceErrorMessage(line: string, code: number): string {
+  return `${getErrorMessage(code)} (${line.trim()})`
+}
 
 // ─── Main Pipeline ───────────────────────────────────────────────────
 
@@ -282,6 +291,11 @@ export async function runFileTransferPipeline(
     return 'No transfer response for 15 seconds, device may be stuck'
   }
 
+  let sleptSinceFileStart = false
+  const sleepHandler = (event: BleEvent & { type: 'DEVICE_SIGNAL' }) => {
+    if (event.deviceId === peripheral.id && event.signal === DeviceSignal.SLEEP) sleptSinceFileStart = true
+  }
+
   const silencePromise = new Promise<never>((_resolve, reject) => {
     silenceReject = reject
   })
@@ -358,7 +372,7 @@ export async function runFileTransferPipeline(
       const result = matchAck(line, expected)
       if (result.type === 'accept') return true
       if (result.type === 'error') {
-        throw new FileTransferError('DEVICE_ERROR', `Device error: ${line}`, result.code)
+        throw new FileTransferError('DEVICE_ERROR', deviceErrorMessage(line, result.code), result.code)
       }
       if (result.type === 'ignore' && __DEV__) {
         logIgnoredAck(result)
@@ -415,12 +429,17 @@ export async function runFileTransferPipeline(
     bleEventBus.on('textLine', silenceHandler)
     resetSilenceTimer()
 
+    // Whether the camera said Sleep since the last FILE_START. A file it
+    // refused as it went to sleep is started once more after that Sleep (#555).
+    bleEventBus.on('deviceSignal', sleepHandler)
+
     // ── Session retry loop ─────────────────────────────────────────
     // On ftx err 7 (SD write fail), the device closes the file and
     // enters DPD. The only recovery is a full restart from FILE_START.
     // This is typically caused by the Himax 1000ms inactivity timer
     // firing between packets when the BLE round-trip is too slow.
     let sessionAttempt = 0
+    let startedAgainAfterSleep = false
 
     while (true) {
       // Reset progress state for this attempt
@@ -440,6 +459,7 @@ export async function runFileTransferPipeline(
         const fileStartT0 = Date.now()
         const startAckPromise = prepareAckWait({ phase: 'start' }, FILE_START_ACK_TIMEOUT_MS)
         if (isDisconnected) throw new FileTransferError('DISCONNECTED', 'Device disconnected before FILE_START')
+        sleptSinceFileStart = false
         await writeBinaryToDevice(peripheral, startPacket, writeWithResponse, WRITE_TIMEOUT_MS)
         log(`[FileTransfer] FILE_START sent: ${filename} (${data.length} bytes) [attempt ${sessionAttempt + 1}]`)
 
@@ -521,7 +541,7 @@ export async function runFileTransferPipeline(
             wake?.()
           } else if (line.startsWith('ftx err ')) {
             const code = parseInt(line.split(' ')[2], 10)
-            streamErr = new FileTransferError('DEVICE_ERROR', `Device error: ${line}`, code)
+            streamErr = new FileTransferError('DEVICE_ERROR', deviceErrorMessage(line, code), code)
             wake?.()
           }
         }
@@ -641,6 +661,28 @@ export async function runFileTransferPipeline(
 
         sessionAttempt++
 
+        // ftx err 6: the AI processor could not open the file. One that had
+        // begun to sleep has unmounted the card and refuses it, then says
+        // Sleep; a new FILE_START wakes it with the card mounted. Started once
+        // more after that Sleep, never on a timer (#555). A card that is
+        // really missing refuses again, and that refusal is the one shown.
+        const refusedOpen = isFileTransferError && hasDeviceErrorReason && sessionErr?.errorCode === FileTxErrorCode.FILE_OPEN_FAIL
+        if (refusedOpen && !startedAgainAfterSleep) {
+          startedAgainAfterSleep = true
+          const slept = sleptSinceFileStart || await waitForNextSleep(peripheral.id, SLEEP_REFUSAL_WAIT_MS, abortSignal)
+          if (disconnectOccurred) {
+            throw new FileTransferError('DISCONNECTED', 'Device disconnected while waiting for it to sleep')
+          }
+          if (abortSignal?.aborted) {
+            throw new FileTransferError('ABORTED', 'Transfer cancelled while waiting for the device to sleep')
+          }
+          if (slept) {
+            log(`[FileTransfer] ${filename} refused as the camera went to sleep (ftx err 6); starting it again after its Sleep`)
+            emitProgress('starting')
+            continue
+          }
+        }
+
         if (isRecoverable && sessionAttempt <= MAX_SESSION_RETRIES) {
           log(`[FileTransfer] ⚠️ ftx err 7 (SD write fail) — retrying full session (attempt ${sessionAttempt + 1}/${MAX_SESSION_RETRIES + 1})`)
           log(`[FileTransfer] Waiting ${SESSION_RETRY_DELAY_MS}ms for device to complete sleep/wake cycle...`)
@@ -691,6 +733,7 @@ export async function runFileTransferPipeline(
     stream.destroy()
     if (silenceTimer) clearTimeout(silenceTimer)
     bleEventBus.removeListener('textLine', silenceHandler)
+    bleEventBus.removeListener('deviceSignal', sleepHandler)
     disconnectCleanup?.()
     if (abortSignal && abortHandler) {
       abortSignal.removeEventListener('abort', abortHandler)

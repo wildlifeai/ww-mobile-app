@@ -170,7 +170,7 @@ Augment:    2 bytes of 0x00 appended after data
 | FILE_DATA | `writeWithoutResponse()` | No per-packet retry; the silence timeout aborts a stalled session |
 | FILE_END | `write()` (with BLE response) | BLE-level confirmation; no app retries |
 
-**Session-level retry:** on `ftx err 7` (SD write fail) the device closes the file, so the app restarts the whole session from `FILE_START`, up to `MAX_SESSION_RETRIES` (2) additional attempts. A write timeout is retried the same way. Any other `ftx err` ends the transfer; `isRecoverable` in [`runFileTransferPipeline.ts`](../../src/ble/protocol/fileTransfer/runFileTransferPipeline.ts) is the whole policy.
+**Session-level retry:** on `ftx err 7` (SD write fail) the device closes the file, so the app restarts the whole session from `FILE_START`, up to `MAX_SESSION_RETRIES` (2) additional attempts. A write timeout is retried the same way. `ftx err 6` at `FILE_START` is started once more, after the camera's next `Sleep`: an AI processor that has begun to sleep has unmounted the card and refuses the file (Seeed `dev` 56870445, `fatfs_task.c`), and a new `FILE_START` reaching it asleep makes the nRF wake it with the card mounted (#555). The `Sleep` is the signal, not a timer; with no `Sleep` within `SLEEP_REFUSAL_WAIT_MS` the refusal stands. Any other `ftx err` ends the transfer; `isRecoverable` and the `ftx err 6` branch in [`runFileTransferPipeline.ts`](../../src/ble/protocol/fileTransfer/runFileTransferPipeline.ts) are the whole policy.
 
 ### Timeout Values
 
@@ -213,7 +213,7 @@ Per-phone variance is expected and large; a per-handset timing table is tracked 
 | 3 | nRF52 | Bad filename (not 8.3 uppercase) | Never retry |
 | 4 | nRF52 | I2C send to HX6538 failed | Operator retry |
 | 5 | HX6538 | Filename validation failed on AI processor | Never retry |
-| 6 | HX6538 | Failed to open or create file on SD card | Operator retry |
+| 6 | HX6538 | Failed to open or create file on SD card | Once after the camera's next `Sleep`, then operator retry |
 | 7 | HX6538 | SD card write failed | Operator retry |
 | 8 | HX6538 | Packet sequence mismatch (out-of-order) | Never retry |
 | 9 | HX6538 | CRC mismatch (file corrupted) | Auto-retry once |
