@@ -31,11 +31,25 @@ import ReferenceDataService from './ReferenceDataService'
 import { log, logWarn } from '../utils/logger'
 
 /**
- * Where the Settings screen keeps its sync mode: 'auto' (the default), 'wifi'
- * ("Sync on Wi-Fi only") or 'ask'. On mobile data the pre-download runs only
- * in 'auto', since it cannot ask in the background.
+ * Where Settings keeps its "Download camera software on mobile data" switch,
+ * on by default. The key and values are those of the three sync choices it
+ * replaced (#573), so an earlier choice carries over: 'auto', or nothing, is
+ * on, and 'wifi' or 'ask' is off. The switch writes 'auto' or 'wifi'.
  */
 export const SYNC_MODE_KEY = '@settings_sync_mode'
+
+/** Whether the pre-download may use mobile data. An unreadable setting reads as on, the default. */
+export async function mobileDataDownloadsAllowed(): Promise<boolean> {
+    try {
+        return ((await AsyncStorage.getItem(SYNC_MODE_KEY)) ?? 'auto') === 'auto'
+    } catch {
+        return true
+    }
+}
+
+export async function setMobileDataDownloadsAllowed(allowed: boolean): Promise<void> {
+    await AsyncStorage.setItem(SYNC_MODE_KEY, allowed ? 'auto' : 'wifi')
+}
 
 const TAG = '[OfflineCache]'
 const HIMAX_VARIANTS = ['RP3', 'HM0360'] as const
@@ -97,13 +111,7 @@ async function checkConnection(): Promise<Connection> {
     if (state.isConnected !== true || state.isInternetReachable === false) return 'offline'
     const metered = state.type === 'cellular' || (state.details as { isConnectionExpensive?: boolean } | null)?.isConnectionExpensive === true
     if (!metered) return 'ok'
-    let mode: string | null = null
-    try {
-        mode = await AsyncStorage.getItem(SYNC_MODE_KEY)
-    } catch {
-        // Unreadable preference: the default applies
-    }
-    return (mode ?? 'auto') === 'auto' ? 'ok' : 'metered'
+    return (await mobileDataDownloadsAllowed()) ? 'ok' : 'metered'
 }
 
 function describeFirmware(fw: Firmware): string {
@@ -177,7 +185,7 @@ class OfflinePrefetchService {
                 return summary
             }
             if (summary.connection === 'metered') {
-                log(`${TAG} On mobile data and Settings asks for Wi-Fi only, nothing fetched (${reason})`)
+                log(`${TAG} On mobile data and Settings keeps downloads to Wi-Fi, nothing fetched (${reason})`)
                 return summary
             }
 

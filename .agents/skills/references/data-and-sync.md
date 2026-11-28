@@ -149,7 +149,7 @@ version for humans is
   `CREATE` refused `23505` follows the camera rule above. Where the code asks "is there work
   not yet uploaded" (the project reconcile, server deletions, the creator's role), `refused`
   counts, so nothing is destroyed; it holds no pull back. Settings
-  shows the count under Data Synchronization (`RefusedChangesItem`, from
+  shows the count under Data (`RefusedChangesItem`, from
   `OutboxService.observeRefusedOperations`), and a tap names each record and gives one plain
   sentence per code (`refusedChanges.ts`, #461): a new code refused for good needs its sentence
   there, or it reads as the fallback. Nothing re-queues a

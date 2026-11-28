@@ -106,6 +106,10 @@ shell boundary, and none of them reproduced in a Linux container.
   `SideNavigation` on a cold run, 0.2 s for the next test (#416, 8 October 2026). Render once in
   a `beforeAll` with its own limit and unmount, as `SideNavigation.signOut.test.tsx` does, rather
   than raising the test timeout.
+- **The shared `react-native-paper` mock renders a `List.Item`'s title and children only.**
+  The one in `tests/setup/sanitySetup.ts` drops `description`, `left` and `right`, so a switch
+  or radio on the right of a row never renders. Mock paper in the test file, as
+  `SettingsScreen.test.tsx` does (#573, 28 November 2026).
 - **The coverage floor is a ratchet, not a target.** `FLOOR` in
   `.github/workflows/quality-gate-validation.yml` sets it; the value is in the
   [Testing Guide](../../../documentation/resources/Testing-Guide.md#cicd)'s CI/CD table. Raise it by
