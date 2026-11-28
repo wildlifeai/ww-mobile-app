@@ -51,7 +51,7 @@ This folder contains six onboarding guides:
 | [React-Doctor-Guide.md](../resources/React-Doctor-Guide.md) | React health-score CI check (60+ rules, 0–100 scoring) |
 | [whitelist.md](../resources/whitelist.md) | How the main user flows fit together, and where each inventory lives. Not a list of what exists: `src/` is |
 | [AI-Model-Integration.md](../resources/AI-Model-Integration.md) | AI model family/version architecture, firmware ID mapping, BLE transfer safety protocol |
-| [File-Transfer-Protocol.md](../resources/File-Transfer-Protocol.md) | BLE file transfer protocol — packet format, CRC, stop-and-wait, error codes |
+| [File-Transfer-Protocol.md](../resources/File-Transfer-Protocol.md) | BLE file transfer protocol: packet format, CRC, sliding window, error codes |
 | [Himax-Firmware-Update.md](../resources/Himax-Firmware-Update.md) | Himax AI processor firmware update — A/B slot flash, sequence diagram, error codes |
 
 ---

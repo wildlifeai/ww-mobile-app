@@ -19,9 +19,8 @@ import { log, logWarn } from '../../../utils/logger'
  * dropped with a log line on the nRF console and no `ftx err` to the app, and
  * one that arrives during a relay resets their AI state machine to SLEEP, so
  * the ack in flight is lost too. A windowed transfer then hangs until the
- * silence timeout. Stop-and-wait would suit them, but it stalls on 0.30.47
- * and later, which ack every 4th packet, so the app refuses rather than
- * falling back.
+ * silence timeout. The app has no stop-and-wait fallback (it stalls on 0.30.47
+ * and later, which ack every 4th packet, #574), so it refuses older firmware.
  *
  * runFileTransferPipeline.ts and File-Transfer-Protocol.md cite this constant.
  * Change the floor here and nowhere else.

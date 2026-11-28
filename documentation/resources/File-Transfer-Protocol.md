@@ -6,14 +6,14 @@
 
 The mobile app sends files over BLE NUS as chunked binary packets through the nRF52, which relays them via I2C to the HX6538 for SD card storage.
 
-The default transport is **credit-based streaming with cumulative ACKs**: the app keeps up to `windowSize` packets in flight and the device acknowledges in order, cumulatively. It needs BLE (nRF) firmware at or above the floor below, and the app refuses a transfer to anything older. Stop-and-wait (`windowSize: 1`) is not a fallback: it is for protocol testing only.
+The default transport is **credit-based streaming with cumulative ACKs**: the app keeps up to `windowSize` packets in flight and the device acknowledges in order, cumulatively. It needs BLE (nRF) firmware at or above the floor below, and the app refuses a transfer to anything older. There is no stop-and-wait mode to fall back to (#574).
 
 | | Value | Source |
 |---|---|---|
 | Default window | **12** | [`runFileTransferPipeline.ts`](../../src/ble/protocol/fileTransfer/runFileTransferPipeline.ts), `requestedWindowSize ?? 12` |
 | ACK mode | cumulative, in order | same file, DATA phase |
 | BLE firmware floor | **0.30.47** | `MIN_BLE_FIRMWARE_FOR_TRANSFER` in [`bleFirmwareFloor.ts`](../../src/ble/protocol/fileTransfer/bleFirmwareFloor.ts) |
-| Stop-and-wait | only when a caller passes `windowSize: 1` | `runFileTransferPipeline.ts` |
+| Smallest window | **5**, a smaller one is refused | `MIN_TRANSFER_WINDOW` in [`fileTransferTypes.ts`](../../src/ble/protocol/fileTransfer/fileTransferTypes.ts) |
 
 **Protocol version:** v1 (no version byte in packets). Wire format is unchanged between window sizes, and only the app's send pacing differs, so nothing in the packets tells the app which relay it is talking to. The `ver` string is the only signal, which is why the floor below reads it.
 
@@ -22,9 +22,9 @@ The default transport is **credit-based streaming with cumulative ACKs**: the ap
 
 ### The BLE firmware floor
 
-0.30.47 (ww-hardware #27) is the first BLE firmware with the 16-slot relay FIFO and cumulative acks. Older firmware, such as 0.23.x on ww-hardware `main`, has one relay slot. A windowed app against it does **not** complete, slowly or otherwise: the nRF drops the packets its slot cannot take with a console log line only, no `ftx err`, the next packet during a relay resets its AI state machine to SLEEP and loses the ack in flight, and the transfer hangs until the silence timeout (#289). The windowed path has no per-packet ACK timeout to retry with. Stop-and-wait would suit that firmware, but it stalls on 0.30.47 and later, which ack every 4th packet, so the app gates on the version instead of falling back.
+0.30.47 (ww-hardware #27) is the first BLE firmware with the 16-slot relay FIFO and cumulative acks. Older firmware, such as 0.23.x on ww-hardware `main`, has one relay slot. A windowed app against it does **not** complete, slowly or otherwise: the nRF drops the packets its slot cannot take with a console log line only, no `ftx err`, the next packet during a relay resets its AI state machine to SLEEP and loses the ack in flight, and the transfer hangs until the silence timeout (#289). The windowed path has no per-packet ACK timeout to retry with. Stop-and-wait would suit that firmware, but it stalls on 0.30.47 and later, which ack every 4th packet, so the app gates on the version and has no stop-and-wait at all.
 
-Before `FILE_START`, for any window above 1, the pipeline decides on the camera's BLE firmware version:
+Before `FILE_START` the pipeline decides on the camera's BLE firmware version:
 
 - **The caller's reading clears the floor** (`bleFirmwareVersion`, such as the pre-deployment checks' `ver`): it streams, with no extra command.
 - **Otherwise it sends one `ver`**, with no retry, and the answer wins over the caller's reading. A reading can be stale: Start Monitoring keeps its pre-deployment one across a BLE update made from that screen. If `ver` goes unanswered, the caller's reading stands.
@@ -66,9 +66,8 @@ App                          nRF52                        HX6538
 | **Cumulative ACKs** | `ftx ack <N>` acknowledges every packet up to and including N, not just N |
 | **Duplicate tolerance** | BLE may retry at the link layer — duplicate and stale ACKs are ignored |
 | **Silence watchdog** | No `ftx`-prefixed activity for `SILENCE_TIMEOUT_MS` aborts the session |
-| **Abort on repeat timeout** | 3 consecutive ACK timeouts abort the transfer |
 
-Setting `windowSize: 1` restores strict stop-and-wait: one packet, then wait for its ACK. It skips the BLE firmware check, since it is the one mode firmware below the floor can take, and it stalls on 0.30.47 and later, which ack every 4th packet. Only the File Transfer Test screen offers it.
+A window below 5 is refused with `VALIDATION_FAILED` before anything is sent: 0.30.47 and later ack every 4th packet, so a smaller window waits for an ack that never comes. Stop-and-wait, a window of 1, stalled that way, and went in #574 with the File Transfer Test's mode choice. That screen now sends with the default window, as every other transfer does.
 
 ---
 
@@ -157,18 +156,18 @@ Augment:    2 bytes of 0x00 appended after data
 6. **Acquires exclusive transport lock**, rejecting all other BLE commands
 7. **Sends FILE_START** with `write()` (with BLE response confirmation)
 8. **Streams FILE_DATA chunks** with `writeWithoutResponse()`, keeping ≤ `windowSize` packets unacknowledged
-9. **Retries** on ACK timeout in stop-and-wait only, aborting after 3 consecutive timeouts. The window has no per-packet ACK timeout: the silence timeout ends a stalled stream
+9. **Has no per-packet ACK timeout** on FILE_DATA: the silence timeout ends a stalled stream
 10. **Sends FILE_END** with `write()` (with BLE response confirmation)
 11. **Waits for `ftx done`** before declaring success
 12. **Releases lock, resumes heartbeat** in `finally` block
-13. **Aborts immediately** on disconnect, user cancel, or 3 consecutive timeouts
+13. **Aborts immediately** on disconnect or user cancel
 
 ### Retry Behavior
 
 | Packet | Write Mode | Retry Policy |
 |--------|-----------|--------------|
 | FILE_START | `write()` (with BLE response) | BLE-level confirmation; no app retries |
-| FILE_DATA | `writeWithoutResponse()` | Session aborts after 3 consecutive ACK timeouts |
+| FILE_DATA | `writeWithoutResponse()` | No per-packet retry; the silence timeout aborts a stalled session |
 | FILE_END | `write()` (with BLE response) | BLE-level confirmation; no app retries |
 
 **Session-level retry:** on `ftx err 7` (SD write fail) the device closes the file, so the app restarts the whole session from `FILE_START`, up to `MAX_SESSION_RETRIES` (2) additional attempts. A write timeout is retried the same way. Any other `ftx err` ends the transfer; `isRecoverable` in [`runFileTransferPipeline.ts`](../../src/ble/protocol/fileTransfer/runFileTransferPipeline.ts) is the whole policy.
@@ -177,9 +176,8 @@ Augment:    2 bytes of 0x00 appended after data
 
 | Timeout | Duration |
 |---------|----------|
-| ACK timeout | 10 seconds |
+| ACK timeout, FILE_START and FILE_END | 10 seconds |
 | Silence timeout | 15 seconds (no `ftx`-prefixed UART activity) |
-| Max consecutive timeouts | 3 (auto-abort) |
 
 ### Packet Number Wrapping
 
@@ -305,4 +303,4 @@ fileTx AI resp: 'ack end' state=1     ← CRC verified → "ftx done"
 
 ---
 
-*Last Updated: September 30, 2026*
+*Last Updated: November 28, 2026*
