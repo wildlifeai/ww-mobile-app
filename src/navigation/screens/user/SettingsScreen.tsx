@@ -2,12 +2,12 @@ import { useState, useEffect } from "react"
 import { StyleSheet, ScrollView, Linking } from "react-native"
 import { useNavigation } from "@react-navigation/native"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
-import { List, Divider, RadioButton } from "react-native-paper"
+import { List, Divider, Switch } from "react-native-paper"
 import { WWScreenView } from "../../../components/ui/WWScreenView"
 import { RootStackParamList } from "../../types"
 import { useExtendedTheme } from "../../../theme"
 import { RefusedChangesItem } from "../../../components/RefusedChangesItem"
-import AsyncStorage from "@react-native-async-storage/async-storage"
+import { mobileDataDownloadsAllowed, setMobileDataDownloadsAllowed } from "../../../services/OfflinePrefetchService"
 import * as Application from "expo-application"
 
 type SettingsNavigationProp = NativeStackNavigationProp<
@@ -17,9 +17,7 @@ type SettingsNavigationProp = NativeStackNavigationProp<
 
 const DevIcon = (props: any) => <List.Icon {...props} icon="developer-board" />
 const ChevronIcon = (props: any) => <List.Icon {...props} icon="chevron-right" />
-const SyncIcon = (props: any) => <List.Icon {...props} icon="sync" />
-const WifiIcon = (props: any) => <List.Icon {...props} icon="wifi" />
-const QuestionIcon = (props: any) => <List.Icon {...props} icon="help-circle-outline" />
+const DownloadIcon = (props: any) => <List.Icon {...props} icon="cellphone-arrow-down" />
 const InfoIcon = (props: any) => <List.Icon {...props} icon="information-outline" />
 const SecurityIcon = (props: any) => <List.Icon {...props} icon="shield-check-outline" />
 const TutorialIcon = (props: any) => <List.Icon {...props} icon="school" />
@@ -29,24 +27,17 @@ export const Settings = () => {
 	const navigation = useNavigation<SettingsNavigationProp>()
 	const { spacing, colors } = useExtendedTheme()
 	
-	const [syncMode, setSyncMode] = useState('auto')
+	// On by default, as OfflinePrefetchService reads it (#573)
+	const [mobileDownloads, setMobileDownloads] = useState(true)
 
 	useEffect(() => {
-		const loadSettings = async () => {
-			try {
-				const savedMode = await AsyncStorage.getItem('@settings_sync_mode')
-				if (savedMode) setSyncMode(savedMode)
-			} catch (e) {
-				// ignore
-			}
-		}
-		loadSettings()
+		mobileDataDownloadsAllowed().then(setMobileDownloads)
 	}, [])
 
-	const handleSyncModeChange = async (value: string) => {
-		setSyncMode(value)
+	const handleMobileDownloadsChange = async (allowed: boolean) => {
+		setMobileDownloads(allowed)
 		try {
-			await AsyncStorage.setItem('@settings_sync_mode', value)
+			await setMobileDataDownloadsAllowed(allowed)
 		} catch (e) {
 			// ignore
 		}
@@ -65,33 +56,18 @@ export const Settings = () => {
 			<ScrollView contentContainerStyle={styles.container}>
 				
 				<List.Section>
-					<List.Subheader>Data Synchronization</List.Subheader>
+					<List.Subheader>Data</List.Subheader>
 					<RefusedChangesItem />
-					<RadioButton.Group onValueChange={handleSyncModeChange} value={syncMode}>
-						<List.Item
-							title="Automatic sync"
-							description="Automatically sync data in the background"
-							left={SyncIcon}
-							right={() => <RadioButton value="auto" />}
-							onPress={() => handleSyncModeChange("auto")}
-						/>
-						
-						<List.Item
-							title="Sync on Wi-Fi only"
-							description="Prevent using mobile data for uploads"
-							left={WifiIcon}
-							right={() => <RadioButton value="wifi" />}
-							onPress={() => handleSyncModeChange("wifi")}
-						/>
-						
-						<List.Item
-							title="Ask before syncing"
-							description="Show confirmation before large uploads"
-							left={QuestionIcon}
-							right={() => <RadioButton value="ask" />}
-							onPress={() => handleSyncModeChange("ask")}
-						/>
-					</RadioButton.Group>
+					<List.Item
+						title="Download camera software on mobile data"
+						titleNumberOfLines={2}
+						description="Firmware and AI models download in the background. Off: only on Wi-Fi."
+						descriptionNumberOfLines={3}
+						left={DownloadIcon}
+						right={() => <Switch value={mobileDownloads} onValueChange={handleMobileDownloadsChange} />}
+						onPress={() => handleMobileDownloadsChange(!mobileDownloads)}
+						testID="mobile-data-downloads"
+					/>
 				</List.Section>
 
 				<Divider style={{ marginVertical: spacing }} />

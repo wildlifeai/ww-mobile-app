@@ -1,6 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import NetInfo from '@react-native-community/netinfo'
-import OfflinePrefetchService, { firmwareFilesToRemove, SYNC_MODE_KEY } from '../OfflinePrefetchService'
+import OfflinePrefetchService, {
+    firmwareFilesToRemove,
+    mobileDataDownloadsAllowed,
+    setMobileDataDownloadsAllowed,
+    SYNC_MODE_KEY,
+} from '../OfflinePrefetchService'
 import AiModelService from '../AiModelService'
 import FirmwareService from '../FirmwareService'
 import ReferenceDataService from '../ReferenceDataService'
@@ -50,6 +55,7 @@ const OLD_RP3 = cacheName(fw('himax', 'B1', 'RP3'))
 const OLD_HM0360 = cacheName(fw('himax', 'B1', 'HM0360'))
 
 const WIFI = { type: 'wifi', isConnected: true, isInternetReachable: true, details: { isConnectionExpensive: false } }
+const CELLULAR = { type: 'cellular', isConnected: true, isInternetReachable: true, details: { isConnectionExpensive: true } }
 const givenConnection = (state: object) => (NetInfo.fetch as jest.Mock).mockResolvedValue(state)
 const givenSyncMode = (mode: string | null) =>
     (AsyncStorage.getItem as jest.Mock).mockImplementation(async (key: string) => (key === SYNC_MODE_KEY ? mode : null))
@@ -168,18 +174,36 @@ describe('OfflinePrefetchService', () => {
         expect(models.ensureFilesDownloaded).toHaveBeenCalled()
     })
 
-    it('uses mobile data by default, and not when Settings asks for Wi-Fi only', async () => {
-        givenConnection({ type: 'cellular', isConnected: true, isInternetReachable: true, details: { isConnectionExpensive: true } })
-        await OfflinePrefetchService.runOnce('test')
-        expect(models.ensureFilesDownloaded).toHaveBeenCalled()
+    it.each([null, 'auto'])('uses mobile data while the Settings switch is on (stored %p)', async mode => {
+        givenConnection(CELLULAR)
+        givenSyncMode(mode)
 
-        jest.clearAllMocks()
-        givenSyncMode('wifi')
+        const summary = await OfflinePrefetchService.runOnce('test')
+
+        expect(summary.connection).toBe('ok')
+        expect(models.ensureFilesDownloaded).toHaveBeenCalled()
+        expect(firmware.ensureFirmwareDownloaded).toHaveBeenCalled()
+    })
+
+    // 'ask' is left from the three sync choices the switch replaced (#573)
+    it.each(['wifi', 'ask'])('fetches nothing on mobile data while the switch is off (stored %p)', async mode => {
+        givenConnection(CELLULAR)
+        givenSyncMode(mode)
+
         const summary = await OfflinePrefetchService.runOnce('test')
 
         expect(summary.connection).toBe('metered')
         expect(models.ensureFilesDownloaded).not.toHaveBeenCalled()
         expect(firmware.ensureFirmwareDownloaded).not.toHaveBeenCalled()
+    })
+
+    it('still fetches on Wi-Fi while the switch is off', async () => {
+        givenSyncMode('wifi')
+
+        const summary = await OfflinePrefetchService.runOnce('test')
+
+        expect(summary.connection).toBe('ok')
+        expect(models.ensureFilesDownloaded).toHaveBeenCalled()
     })
 
     it('runs one pass at a time and goes round once more for a request made during it', async () => {
@@ -198,6 +222,23 @@ describe('OfflinePrefetchService', () => {
         await OfflinePrefetchService.whenIdle()
 
         expect(runOnce.mock.calls.map(([reason]) => reason)).toEqual(['sync', 'sync'])
+    })
+})
+
+describe('the mobile data switch in Settings', () => {
+    it('reads as on when nothing is stored or the store fails, as before the switch', async () => {
+        givenSyncMode(null)
+        await expect(mobileDataDownloadsAllowed()).resolves.toBe(true)
+
+        ;(AsyncStorage.getItem as jest.Mock).mockRejectedValue(new Error('storage unavailable'))
+        await expect(mobileDataDownloadsAllowed()).resolves.toBe(true)
+    })
+
+    it('stores on and off as the old sync modes, so an older build reads the same choice', async () => {
+        await setMobileDataDownloadsAllowed(false)
+        await setMobileDataDownloadsAllowed(true)
+
+        expect((AsyncStorage.setItem as jest.Mock).mock.calls).toEqual([[SYNC_MODE_KEY, 'wifi'], [SYNC_MODE_KEY, 'auto']])
     })
 })
 

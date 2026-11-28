@@ -11,8 +11,8 @@ const AlertIcon = (props: any) => <List.Icon {...props} icon="alert-circle-outli
 const ChevronIcon = (props: any) => <List.Icon {...props} icon="chevron-right" />
 
 /**
- * The changes the server refused for good (#449), one line under Data
- * Synchronization in Settings, and nothing when there are none. A tap lists
+ * The changes the server refused for good (#449), one line under Data in
+ * Settings, and nothing when there are none. A tap lists
  * each, naming its record, with why in one plain sentence (#461); the server's
  * own text goes to the log. They stay on the phone and are never sent again.
  */

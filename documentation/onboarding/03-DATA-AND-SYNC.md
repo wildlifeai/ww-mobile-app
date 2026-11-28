@@ -562,7 +562,7 @@ that depend on it. Two kinds of operation are kept but never sent again:
   is fixed on the server, the change has to be made again. If the server later deletes its
   project or deployment, it turns `orphaned` with the rest of the work there.
 
-Settings, under **Data Synchronization**, shows a line such as `2 changes the server refused`
+Settings, under **Data**, shows a line such as `2 changes the server refused`
 while there are any (`RefusedChangesItem`, fed by `OutboxService.observeRefusedOperations`). A
 tap lists each change with its record's name, from the change or, for an update that carries
 only the columns it changed, from the phone's own copy, and why in one plain sentence per code
@@ -588,8 +588,11 @@ file at a time, in the background:
 | AI models | The model of every active project in the local database, which holds what RLS let this user sync. Skips a model not in the reference data or without firmware IDs, since the deployment refuses those anyway (#290) | `documentDirectory/aimodels/`, through `AiModelService.ensureFilesDownloaded` |
 | Firmware | The latest BLE image, and the latest Himax image per camera variant (RP3, HM0360): the images the update screen flashes. Older images of a variant are deleted once its new one is complete, never while an update holds the cache | `documentDirectory/firmware/`, through `FirmwareService.ensureFirmwareDownloaded` |
 
-- **Nothing runs offline**, and nothing on mobile data when Settings says "Sync on Wi-Fi only"
-  or "Ask before syncing". In the default automatic mode it uses mobile data too. For scale,
+- **Nothing runs offline**, and nothing on mobile data while the Settings switch "Download
+  camera software on mobile data" is off. It is on by default, so mobile data is used too. The
+  switch is stored under `@settings_sync_mode`, the key of the three sync choices it replaced
+  (#573): `auto`, or nothing, is on, and `wifi` or `ask` is off. It decides only this
+  pre-download; sync and uploads use any connection. For scale,
   the rat model is 73 KB, the person model 920 KB and a Himax image about 450 KB, and each is
   fetched once.
 - **A file already there is not fetched again** when it passes the check the consumer makes:
