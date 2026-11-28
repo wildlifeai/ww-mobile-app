@@ -29,6 +29,8 @@ import { isKnownOffline } from '../../../services/connectivityWatch'
 type UseDeviceDiscoveryOptions = {
     isDrawerOpen?: boolean
     isActiveTab?: boolean
+    /** Start a search once, as soon as the screen can, instead of waiting for Search for Devices (#575) */
+    autoScan?: boolean
 }
 
 /**
@@ -44,6 +46,7 @@ export type ScanSessionState = 'idle' | 'active' | 'expired'
 export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     const isDrawerOpen = options?.isDrawerOpen ?? false
     const isActiveTab = options?.isActiveTab ?? true
+    const autoScan = options?.autoScan ?? false
     const navigation = useNavigation()
 
     const { isBleConnecting, stopScan, connectDevice, disconnectDevice } = useBleActions()
@@ -189,6 +192,15 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
 
         return () => clearInterval(interval)
     }, [scanSessionId, scanSessionState, isActuallyFocused, processing, stopScan, updateScanSessionState])
+
+    // Opened to connect to a camera, from its deployment page: search once on
+    // arrival. Coming back after leaving still waits for Search Again (#575).
+    const autoScanStartedRef = useRef(false)
+    useEffect(() => {
+        if (!autoScan || autoScanStartedRef.current || !isActuallyFocused || !isReadyToScan) return
+        autoScanStartedRef.current = true
+        startScanSession()
+    }, [autoScan, isActuallyFocused, isReadyToScan, startScanSession])
 
     const handleScan = useCallback(() => {
         startScanSession()

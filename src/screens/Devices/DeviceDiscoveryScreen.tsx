@@ -2,16 +2,20 @@ import { View, StyleSheet } from 'react-native'
 import { ActivityIndicator, Button, Text, IconButton, ProgressBar, useTheme } from 'react-native-paper'
 import { Image } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import type { RouteProp } from '@react-navigation/native'
 import { useAppDrawer } from '../../components/AppDrawer'
 
 import { useDeviceDiscovery } from './hooks/useDeviceDiscovery'
 import { ScannerRoutingDialog } from './components/ScannerRoutingDialog'
+import { RootStackParamList } from '../../navigation/types'
 
 interface Props {
     isActiveTab?: boolean
+    /** Set when opened as a stack screen; the Scanner tab has none */
+    route?: RouteProp<RootStackParamList, 'DeviceDiscovery'>
 }
 
-export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
+export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab, route }) => {
     const theme = useTheme()
     const { setIsOpen, isOpen } = useAppDrawer()
 
@@ -29,7 +33,7 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
         routingIsProcessing,
         handleRoutingCreateProject,
         handleRoutingDismiss,
-    } = useDeviceDiscovery({ isDrawerOpen: isOpen, isActiveTab })
+    } = useDeviceDiscovery({ isDrawerOpen: isOpen, isActiveTab, autoScan: route?.params?.autoScan })
 
 
 

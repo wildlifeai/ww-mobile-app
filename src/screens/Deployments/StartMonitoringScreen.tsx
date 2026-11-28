@@ -31,6 +31,7 @@ import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
 import { resolveProjectFlash, shortFlashLabel } from '../../utils/projectFlash'
 import { SD_CARD_POWER_CYCLE_HINT, HM0360_POWER_CYCLE_HINT, NIGHT_SENSOR_WARNING } from '../../utils/deviceSelfTest'
 import { shortBurstLabel } from '../../utils/projectBurst'
+import { motionSensitivityLabel } from '../../utils/motionSensitivityLabel'
 
 
 type StartMonitoringDetailsRouteProp = RouteProp<RootStackParamList, 'StartMonitoringDetailsStep'>;
@@ -299,7 +300,7 @@ export const StartMonitoringDetailsStep = () => {
                                 <View style={styles.featureIcon}>
                                     <WWIcon source="motion-sensor" size={22} color={theme.colors.onSurfaceVariant} />
                                     <Text variant="labelSmall" style={styles.featureLabel}>
-                                        {sensitivityLabel || 'Motion'}
+                                        {motionSensitivityLabel(sensitivityLabel) || 'Motion'}
                                     </Text>
                                 </View>
                             )}

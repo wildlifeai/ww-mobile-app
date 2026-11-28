@@ -444,7 +444,7 @@ This is a compile-time setting. BMP output (via `SAVEBMP`) provides uncompressed
 **Camera Settings Test Screen** (single captures, manual parameter adjustment):
 1. Connect via Engineer Console
 2. Navigate to Flows → Camera Settings Test
-3. Select flash type (Off / Visible / IR) and brightness
+3. Select flash type (Off / White / IR) and brightness
 4. Tap "Capture Image". The image and its AE data are saved to the gallery
 5. Adjust settings and repeat. The gallery preserves per-image metadata for comparison
 

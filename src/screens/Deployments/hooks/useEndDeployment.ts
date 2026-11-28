@@ -6,7 +6,7 @@ import { logError, logWarn } from '../../../utils/logger'
 
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { QuiesceOptions } from '../../../hooks/useDeviceSettings'
-import { useDeploymentProgress } from '../../../hooks/useDeploymentProgress'
+import { FINISH_STEP_COMPLETE, useDeploymentProgress } from '../../../hooks/useDeploymentProgress'
 import { END_DEPLOYMENT_CAMERA_COPY, END_DEPLOYMENT_NOT_ANSWERING_DISMISS_MS, endDeploymentSequence } from '../../../hooks/useMonitoringActions'
 
 interface UseEndDeploymentParams {
@@ -124,7 +124,7 @@ export const useEndDeployment = ({
             })
 
             // Success State
-            progress.setFinishStep(cameraAnswered ? 'Complete' : END_DEPLOYMENT_CAMERA_COPY.finalStep)
+            progress.setFinishStep(cameraAnswered ? FINISH_STEP_COMPLETE : END_DEPLOYMENT_CAMERA_COPY.finalStep)
             progress.setFinishProgress(1.0)
             progress.setIsSuccess(true)
             progress.addLog(cameraAnswered ? 'Monitoring stopped successfully' : END_DEPLOYMENT_CAMERA_COPY.endedInApp)

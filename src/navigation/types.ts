@@ -28,7 +28,8 @@ export interface RootStackParamList extends ParamListBase {
 	DevBuildInfo: undefined
 	AuthTestScreen: undefined
 	DeveloperSettings: undefined
-	DeviceDiscovery: undefined
+	// autoScan: start the search on arrival, for a screen that sent the user to connect (#575)
+	DeviceDiscovery: { autoScan?: boolean } | undefined
 	DeviceMonitoringSummary: { deviceId?: string; deploymentId?: string }
 	ProjectVisualizationScreen: { projectId: string }
 	EngineerConsoleScreen: { deviceId: string }

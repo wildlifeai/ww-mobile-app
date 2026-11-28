@@ -35,7 +35,7 @@ import { requestLorawanCheckIn, describeLorawanCheckIn } from '../../../ble/work
 import { useBle } from '../../../hooks/useBle'
 import { useGPSLocation } from '../../../hooks/useGPSLocation'
 import { useDeviceSettings, OP_PARAMETER, FACTORY_DEFAULTS } from '../../../hooks/useDeviceSettings'
-import { useDeploymentProgress } from '../../../hooks/useDeploymentProgress'
+import { FINISH_STEP_COMPLETE, useDeploymentProgress } from '../../../hooks/useDeploymentProgress'
 import { useMonitoringActions, endDeploymentSequence } from '../../../hooks/useMonitoringActions'
 import { useCameraSwitch, CAMERA_VARIANT_LABELS, type CameraVariant } from '../../../hooks/useCameraSwitch'
 import { useDeviceSelfTest } from '../../../hooks/useDeviceSelfTest'
@@ -326,7 +326,7 @@ export const useDevDeployment = ({
                 progress,
                 disconnect: false,
             })
-            progress.setFinishStep('Complete')
+            progress.setFinishStep(FINISH_STEP_COMPLETE)
             progress.setFinishProgress(1.0)
             progress.setIsSuccess(true)
             progress.addLog('Deployment ended')
@@ -839,7 +839,7 @@ export const useDevDeployment = ({
             }
 
             // 9. Done
-            progress.setFinishStep('Complete')
+            progress.setFinishStep(FINISH_STEP_COMPLETE)
             progress.setFinishProgress(1.0)
             progress.setIsSuccess(true)
             progress.addLog('Dev deployment started successfully')

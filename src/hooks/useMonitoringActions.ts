@@ -8,7 +8,7 @@ import { commandRegistry } from '../ble/protocol/commandRegistry'
 import { formatGPSString } from '../utils/gpsUtils'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { OP_PARAMETER, QuiesceOptions } from './useDeviceSettings'
-import { DeploymentProgress } from './useDeploymentProgress'
+import { DeploymentProgress, FINISH_STEP_COMPLETE } from './useDeploymentProgress'
 import { describeFinalLorawanCheckIn, sendFinalLorawanCheckIn } from '../ble/workflows/lorawanPing'
 import { log, logError, logWarn } from '../utils/logger'
 
@@ -249,7 +249,7 @@ export function useMonitoringActions({
                 disconnect: true,
             })
 
-            progress.setFinishStep(cameraAnswered ? 'Complete' : END_DEPLOYMENT_CAMERA_COPY.finalStep)
+            progress.setFinishStep(cameraAnswered ? FINISH_STEP_COMPLETE : END_DEPLOYMENT_CAMERA_COPY.finalStep)
             progress.setFinishProgress(1.0)
             progress.setIsSuccess(true)
             progress.addLog(cameraAnswered ? 'Monitoring stopped successfully' : END_DEPLOYMENT_CAMERA_COPY.endedInApp)

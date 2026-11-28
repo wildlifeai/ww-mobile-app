@@ -29,7 +29,7 @@ import { resolveLorawanPingMinutes } from '../../../utils/projectLorawanPing'
 import { useBle } from '../../../hooks/useBle'
 import { useGPSLocation } from '../../../hooks/useGPSLocation'
 import { useDeviceSettings, OP_PARAMETER } from '../../../hooks/useDeviceSettings'
-import { useDeploymentProgress } from '../../../hooks/useDeploymentProgress'
+import { FINISH_STEP_COMPLETE, useDeploymentProgress } from '../../../hooks/useDeploymentProgress'
 import { useMonitoringActions } from '../../../hooks/useMonitoringActions'
 import * as pipeline from '../../../ble/workflows/deploymentPipeline'
 import { FileTransferError } from '../../../ble/protocol/fileTransfer/fileTransferTypes'
@@ -879,7 +879,7 @@ export const useStartDeployment = ({
                 progress.addLog(describeLorawanCheckIn(await requestLorawanCheckIn(bleSession)))
             }
 
-            progress.setFinishStep('Complete')
+            progress.setFinishStep(FINISH_STEP_COMPLETE)
             progress.setFinishProgress(1.0)
             progress.setIsSuccess(true)
             progress.addLog('Deployment started successfully')

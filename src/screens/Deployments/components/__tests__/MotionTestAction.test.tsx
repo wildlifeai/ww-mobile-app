@@ -111,6 +111,15 @@ describe('MotionTestAction row', () => {
         expect(screen.queryByText('Motion seen')).toBeNull()
     })
 
+    // Photo 1 is the reference, so 20 photos give 19 frames, and a full run
+    // ended at 19 of 20 (#575)
+    it('counts the frames against photos minus one', () => {
+        stream({ isTesting: true, frameCount: 19 })
+        renderAction(42)
+        fireEvent.press(screen.getByLabelText('Test Motion Detection'))
+        expect(screen.getByText('Frame 19/19')).toBeTruthy()
+    })
+
     it('does not restart a finished test when reopened', () => {
         const startTest = stream({ testFinished: true, frameHistory: [] })
         renderAction(42)
