@@ -119,6 +119,7 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
                         onCheck={handleBatteryCheck}
                         isChecking={isCheckingBattery}
                         disabled={checksBlocked}
+                        notConnected={!bleDeviceConnected}
                         onShowHelp={onShowHelp}
                     />
                     <SdCardAction
@@ -126,6 +127,7 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
                         onCheck={handleSdCardCheck}
                         isChecking={isCheckingSdCard}
                         disabled={checksBlocked}
+                        notConnected={!bleDeviceConnected}
                         onShowHelp={onShowHelp}
                     />
                     <SoftwareAction

@@ -22,6 +22,7 @@ import { HelpDialog } from '../../components/ui/HelpDialog'
 import { FinishProgressDialog } from '../Devices/components/FinishProgressDialog'
 import { AdvancedSettingsSection } from './components/AdvancedSettingsSection'
 import { DeploymentMonitorView } from './components/DeploymentMonitorView'
+import { CameraDisconnectedBanner } from './components/CameraDisconnectedBanner'
 
 import { useStartDeployment, cameraFirmwareFrom } from './hooks/useStartDeployment'
 import { useFirmwareStatus } from '../Devices/hooks/useFirmwareStatus'
@@ -69,7 +70,9 @@ export const StartMonitoringDetailsStep = () => {
         deploymentStartTime,
         // DFU control
         isDfuInProgress,
+        connectionLost, isReconnecting, reconnectFailed, handleReconnect,
     } = useStartDeployment({ deviceId, bleDeviceId, projectId, navigation, initPayload })
+    const connectedCamera = bleDevice?.connected ? bleDevice : undefined
 
     useEffect(() => {
         const deviceName = device?.name || bleDevice?.name || 'Device'
@@ -224,6 +227,11 @@ export const StartMonitoringDetailsStep = () => {
                     />
                 )}
 
+                {/* The link dropped during setup: reconnect in place (#571) */}
+                {connectionLost && (
+                    <CameraDisconnectedBanner isReconnecting={isReconnecting} reconnectFailed={reconnectFailed} onReconnect={handleReconnect} />
+                )}
+
                 {/* AI Processor Failure, or no SD card: the critical blocker */}
                 {aiProcessorFailed && (
                     <View style={{ backgroundColor: '#FFEBEE', marginBottom: 16, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#EF5350' }}>
@@ -363,12 +371,13 @@ export const StartMonitoringDetailsStep = () => {
 
                 {/* The camera tested in place: what it sees, what wakes it, and LoRaWAN */}
                 <FieldGroup>
-                <CameraViewAction device={bleDevice} onImageCaptured={handleImageCaptured} onShowHelp={showHelp} />
+                {/* A camera that dropped the link gets no new tests until it is back (#571) */}
+                <CameraViewAction device={connectedCamera} onImageCaptured={handleImageCaptured} onShowHelp={showHelp} />
 
                 {/* Motion projects only: test the detector where the camera points */}
-                <MotionTestAction device={bleDevice} project={project} onShowHelp={showHelp} />
+                <MotionTestAction device={connectedCamera} project={project} onShowHelp={showHelp} />
 
-                {project?.lorawan_required ? <LoRaWANAction device={bleDevice} onShowHelp={showHelp} /> : null}
+                {project?.lorawan_required ? <LoRaWANAction device={connectedCamera} onShowHelp={showHelp} /> : null}
                 </FieldGroup>
 
                 {/* What the person records about the site */}
