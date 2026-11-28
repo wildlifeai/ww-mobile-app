@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { Platform, PermissionsAndroid } from 'react-native'
 import BleManager, { Peripheral } from 'react-native-ble-manager'
 
-import { createBleSession } from '../../../ble/session/createBleSession'
+import { createBleSession, BleSession } from '../../../ble/session/createBleSession'
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { bleEventBus } from '../../../ble/protocol/eventBus'
 import { DfuService } from '../../../services/DfuService'
@@ -304,6 +304,36 @@ interface PassImage {
 interface UseFirmwareUpdateOptions {
     target: FirmwareTarget
     device: ExtendedPeripheral | undefined
+}
+
+/**
+ * What the Bluetooth update does once the camera is back on its new firmware.
+ * The restart cleared the BLE processor's clock (it reads 2024-01-01), and this
+ * reconnect skips the `setutc` a normal connection sends, so set it first: the
+ * AI processor takes the time from the BLE processor at its next wake (#578).
+ * Then read the version the camera now runs. Neither failure stops the update.
+ */
+export async function afterBleRestart(
+    session: Pick<BleSession, 'execute'>,
+    appendLog: (line: string) => void,
+): Promise<string | null> {
+    try {
+        await session.execute(() => commandRegistry.setutc())
+        appendLog('Camera clock set.')
+    } catch (e) {
+        logWarn('[FW Update] Post-DFU setutc failed:', e)
+        appendLog('Could not set the camera clock. The next connection sets it.')
+    }
+    appendLog('Querying new firmware version...')
+    try {
+        const ver = await session.execute(() => commandRegistry.version())
+        appendLog(`New version: ${ver}`)
+        return ver
+    } catch (e) {
+        logWarn('[FW Update] Post-DFU version query failed:', e)
+        appendLog('Version query failed, check manually.')
+        return null
+    }
 }
 
 export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) {
@@ -742,18 +772,10 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         appendLog('Reconnected successfully.')
         await new Promise(r => setTimeout(r, 2000))
 
-        // 7. Verify
+        // 7. Set the clock, then verify
         advancePhase('verifying')
-        appendLog('Querying new firmware version...')
-        try {
-            const session = createBleSession(device)
-            const ver = await session.execute(() => commandRegistry.version())
-            if (!unmountedRef.current) setNewVersion(ver)
-            appendLog(`New version: ${ver}`)
-        } catch (e) {
-            logWarn('[FW Update] Post-DFU version query failed:', e)
-            appendLog('Version query failed — check manually.')
-        }
+        const ver = await afterBleRestart(createBleSession(device), appendLog)
+        if (ver && !unmountedRef.current) setNewVersion(ver)
 
         advancePhase('complete')
     }, [device, latestFirmware, disconnectDevice, connectDevice, advancePhase, appendLog])
