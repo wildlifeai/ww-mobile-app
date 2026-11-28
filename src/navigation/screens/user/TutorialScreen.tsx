@@ -63,7 +63,7 @@ const TUTORIAL_STEPS: TutorialStep[] = [
         id: 'deploy',
         title: 'Start Monitoring',
         description:
-            'When you connect to the Wildlife Watcher you need to specify the associated project for the monitoring and record any notes. You can also preview the field of view of the camera, motion detection and other advanced settings.',
+            'When you connect to a Wildlife Watcher, choose the project it monitors for. Camera View shows what the camera sees and Test Motion Detection what wakes it. Add notes and a site photo, then tap Start Monitoring.',
         images: [require('../../../../assets/tutorial/start_monitoring_page.png')],
     },
     {
