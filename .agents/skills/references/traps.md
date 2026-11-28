@@ -249,8 +249,7 @@ file is the list of things that look like an app bug and are not, and the revers
   below `MIN_BLE_FIRMWARE_FOR_TRANSFER`, so "This camera's BLE firmware is ..., and sending
   files to it needs ..." is the gate working, not a bug: DFU the nRF and retry. When `ver` goes
   unanswered it streams anyway, and "The camera acknowledged N of the M packets sent, then went
-  silent" is the likely old-firmware face. Do not reach for `windowSize: 1` as a fix: it suits
-  that firmware and stalls on 0.30.47 and later. The rules are in
+  silent" is the likely old-firmware face. The rules are in
   [File-Transfer-Protocol.md](../../../documentation/resources/File-Transfer-Protocol.md#the-ble-firmware-floor).
 - **Nothing may be sent while an image is streaming in, and a flow must stop when its screen
   goes.** The nRF forwards any command to the Himax at once, restarts its binary packet

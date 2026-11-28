@@ -217,6 +217,10 @@ day are in [traps.md](traps.md).
   more, so no flow handles it again. A new command that captures, or that changes a saved
   setting, adds both to its `failureRegex` (`^Error:` does), and a flow that follows the text
   stream instead, as the motion test does, ends on the failure line itself.
+  A file transfer gets the same treatment without the words: a `FILE_START` reaching an AI
+  processor on its way to sleep finds the card unmounted and comes back `ftx err 6`, so
+  `runFileTransferPipeline` starts the file once more after the next Sleep (`deviceSleep.ts`,
+  #555). A second `ftx err 6` is a real card problem and is shown.
 - **The focus lens forgets its position when the AI processor sleeps.** `AI vcm` only holds
   while the processor is awake, because the camera powers off with it, so a photo at a lens
   position must follow its `vcm` inside one keepAwake hold. Below about 256 the lens does not

@@ -18,15 +18,19 @@ export const MAX_TRANSFER_SIZE_BYTES = 10 * 1024 * 1024 // 10 MB
 /** Maximum payload bytes per FILE_DATA packet (244 MTU - 3 header). */
 export const MAX_PAYLOAD_BYTES = 241
 
+/**
+ * Smallest sliding window, in packets. BLE firmware at or above
+ * MIN_BLE_FIRMWARE_FOR_TRANSFER acks every 4th data packet (FILETX_ACK_EVERY),
+ * so a window of 4 or fewer waits for an ack that never comes (#574).
+ */
+export const MIN_TRANSFER_WINDOW = 5
+
 // ─── Timeouts ────────────────────────────────────────────────────────
 /** Time to wait for a specific ACK response. */
 export const ACK_TIMEOUT_MS = 10_000
 
 /** Time with zero ftx-prefixed UART activity before declaring device stuck. */
 export const SILENCE_TIMEOUT_MS = 15_000
-
-/** Max consecutive ACK timeouts before auto-abort (Bluetooth unstable). */
-export const MAX_CONSECUTIVE_TIMEOUTS = 3
 
 // ─── nRF52 Error Codes (1-4) ─────────────────────────────────────────
 // HX6538 Error Codes (5-10) — forwarded unchanged by nRF52
@@ -51,7 +55,7 @@ export const ERROR_MESSAGES: Record<number, string> = {
   [FileTxErrorCode.BAD_FILENAME]:     'Invalid filename. Use 8.3 format with uppercase letters and digits.',
   [FileTxErrorCode.I2C_FAIL]:         'Communication with AI processor failed. Try again.',
   [FileTxErrorCode.HX_BAD_FILENAME]:  'AI processor rejected the filename. Use 8.3 format (e.g. OUTPUT.IMG).',
-  [FileTxErrorCode.FILE_OPEN_FAIL]:   'Failed to open or create file on SD card. Check the SD card.',
+  [FileTxErrorCode.FILE_OPEN_FAIL]:   'The camera could not open the file on its SD card. Check the card is in, then power cycle the camera.',
   [FileTxErrorCode.SD_WRITE_FAIL]:    'SD card write failed. Check the SD card and try again.',
   [FileTxErrorCode.SEQUENCE_ERROR]:   'Packet arrived out of order. Transfer aborted.',
   [FileTxErrorCode.CRC_MISMATCH]:     'File corrupted during transfer (CRC mismatch). Try again.',
@@ -90,7 +94,6 @@ export interface FileTransferResult {
 // ─── Transfer error ──────────────────────────────────────────────────
 export type FileTransferFailureReason =
   | 'DEVICE_ERROR'       // ftx err <N>
-  | 'ACK_TIMEOUT'        // expected ACK not received
   | 'DEVICE_SILENT'      // no ftx UART activity
   | 'DISCONNECTED'       // BLE connection lost
   | 'ABORTED'            // user cancelled
@@ -148,12 +151,10 @@ export interface FileTransferOptions {
   onProgress?: (progress: FileTransferProgress) => void
   abortSignal?: AbortSignal
   /**
-   * Window size for pipelining (packets in flight). Defaults to 12.
-   * Firmware at or above MIN_BLE_FIRMWARE_FOR_TRANSFER acks only every 4th
-   * data packet, so values <= 4 (including 1 = stop-and-wait) deadlock
-   * against it - override only for protocol testing against known firmware.
-   * A window of 1 skips the BLE firmware check below: stop-and-wait is what
-   * older firmware can take.
+   * Sliding window size (packets in flight). Defaults to 12; override only
+   * for protocol testing. A window below MIN_TRANSFER_WINDOW is refused with
+   * VALIDATION_FAILED, since it deadlocks against firmware that acks every
+   * 4th packet. There is no stop-and-wait mode (#574).
    */
   windowSize?: number
   /**

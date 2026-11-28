@@ -143,14 +143,32 @@ describe('runFileTransferPipeline and the BLE firmware floor', () => {
         expect(types.filter(t => t === FILE_DATA)).toHaveLength(30)
     })
 
-    it('does not check a stop-and-wait transfer, the one mode firmware below the floor can take', async () => {
-        const types = camera({ ackEvery: 1 })
+})
 
-        const result = await runFileTransferPipeline(PERIPHERAL, { filename: 'TINY.TXT', data: fileOf(3), windowSize: 1 })
+/**
+ * 0.30.47 and later ack every 4th packet, so a window of 4 or fewer waits for
+ * an ack that never comes. Stop-and-wait (a window of 1) went in #574.
+ */
+describe('runFileTransferPipeline window size', () => {
+    it.each([1, 4, 4.5])('refuses a window of %p before anything is sent', async (windowSize) => {
+        const types = camera()
+
+        const transfer = runFileTransferPipeline(PERIPHERAL, { filename: 'TINY.TXT', data: fileOf(3), windowSize })
+
+        await expect(transfer).rejects.toMatchObject({ reason: 'VALIDATION_FAILED' })
+        expect(types).toEqual([])
+        expect(command).not.toHaveBeenCalled()
+        expect(bleTransport.acquireLock).not.toHaveBeenCalled()
+    })
+
+    it('streams with the smallest window it takes, 5', async () => {
+        const types = camera()
+
+        const result = await runFileTransferPipeline(PERIPHERAL, { filename: '1V1.TFL', data: fileOf(30), windowSize: 5, bleFirmwareVersion: '00.30.51' })
 
         expect(result.success).toBe(true)
-        expect(command).not.toHaveBeenCalled()
-        expect(types).toEqual([FILE_START, FILE_DATA, FILE_DATA, FILE_DATA, FILE_END])
+        expect(types.filter(t => t === FILE_DATA)).toHaveLength(30)
+        expect(types[types.length - 1]).toBe(FILE_END)
     })
 })
 
