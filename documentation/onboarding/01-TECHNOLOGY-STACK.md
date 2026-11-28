@@ -297,6 +297,8 @@ For the full BLE module tree see [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md#s
 
 Over-the-air firmware updates using Nordic Semiconductor's DFU protocol. Handles DFU mode transitions, bootloader detection, and firmware image upload.
 
+The update runs as a `connectedDevice` foreground service, so the app declares `FOREGROUND_SERVICE_CONNECTED_DEVICE` (`app.config.ts` and the tracked manifest). Without it Android 14 and later refuse the foreground service, and the library falls back to the background, where Android can stop the update if the phone locks (#577).
+
 **Current limitations:**
 - **ZIP format required** — Must use Nordic DFU-compatible ZIP packages for BLE (nRF) firmware
 - **Himax AI processor** — Separate flow: the `.IMG` is first staged on the SD card via the BLE file-transfer pipeline, then flashed with `AI firmware <file> [crc]` + `reset`. See [Himax-Firmware-Update.md](../resources/Himax-Firmware-Update.md)

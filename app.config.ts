@@ -65,7 +65,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
             "BLUETOOTH",
             "BLUETOOTH_ADMIN",
             "BLUETOOTH_CONNECT",
-            "BLUETOOTH_SCAN"
+            "BLUETOOTH_SCAN",
+            // The Bluetooth firmware update runs as a "connectedDevice" foreground
+            // service (expo-nordic-dfu). Without this Android 14+ refuses it and the
+            // update runs in the background, where Android can stop it (#577).
+            "FOREGROUND_SERVICE",
+            "FOREGROUND_SERVICE_CONNECTED_DEVICE"
         ],
         softwareKeyboardLayoutMode: "pan",
         intentFilters: [
