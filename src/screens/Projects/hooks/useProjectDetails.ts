@@ -15,6 +15,7 @@ import {
 } from "../../../redux/api/projectsApi"
 import { formatUtcMinutes, parseUtcMinutes, resolveProjectFlash } from "../../../utils/projectFlash"
 import { captureMethodLabel } from '../../../utils/captureMethodLabel'
+import { motionSensitivityLabel } from '../../../utils/motionSensitivityLabel'
 
 export interface ProjectFormData {
 	name: string
@@ -144,7 +145,7 @@ export const useProjectDetails = (projectId: string, initialEditMode = false) =>
 	)
 
 	const sensitivityOptions = useMemo(() =>
-		activitySensitivities?.map(as => ({ label: as.value, value: as.id.toString() })) || [],
+		activitySensitivities?.map(as => ({ label: motionSensitivityLabel(as.value), value: as.id.toString() })) || [],
 		[activitySensitivities]
 	)
 

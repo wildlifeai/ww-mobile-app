@@ -1,6 +1,7 @@
 import React from 'react'
 import { StyleSheet, View, ScrollView } from 'react-native'
 import { Modal, Portal, Card, Text, ProgressBar, Button, IconButton, useTheme } from 'react-native-paper'
+import { FINISH_STEP_COMPLETE } from '../../../hooks/useDeploymentProgress'
 // import { WWIcon } from '../../../components/ui/WWIcon'
 
 interface FinishProgressDialogProps {
@@ -28,6 +29,9 @@ export const FinishProgressDialog: React.FC<FinishProgressDialogProps> = ({
 }) => {
     const theme = useTheme()
     const scrollViewRef = React.useRef<ScrollView>(null)
+    // A clean finish is the tick and the title. One with more to say, such as
+    // a camera that did not answer (#293), keeps its step and log (#575).
+    const showDetail = !isComplete || step !== FINISH_STEP_COMPLETE
 
     // Auto-scroll logs to bottom
     React.useEffect(() => {
@@ -69,9 +73,11 @@ export const FinishProgressDialog: React.FC<FinishProgressDialogProps> = ({
                             )}
                         </View>
 
-                        <Text variant="bodyMedium" style={styles.stepText}>
-                            {step}
-                        </Text>
+                        {showDetail && (
+                            <Text variant="bodyMedium" style={styles.stepText}>
+                                {step}
+                            </Text>
+                        )}
 
                         {!isComplete && (
                             <ProgressBar
@@ -81,19 +87,21 @@ export const FinishProgressDialog: React.FC<FinishProgressDialogProps> = ({
                             />
                         )}
 
-                        <View style={styles.logsContainer}>
-                            <ScrollView
-                                ref={scrollViewRef}
-                                style={styles.logsScroll}
-                                contentContainerStyle={styles.logsContent}
-                            >
-                                {logs.map((logEntry, i) => (
-                                    <Text key={`log-${i}-${logEntry.substring(0, 10)}`} variant="bodySmall" style={styles.logLine}>
-                                        {`> ${logEntry}`}
-                                    </Text>
-                                ))}
-                            </ScrollView>
-                        </View>
+                        {showDetail && (
+                            <View style={styles.logsContainer}>
+                                <ScrollView
+                                    ref={scrollViewRef}
+                                    style={styles.logsScroll}
+                                    contentContainerStyle={styles.logsContent}
+                                >
+                                    {logs.map((logEntry, i) => (
+                                        <Text key={`log-${i}-${logEntry.substring(0, 10)}`} variant="bodySmall" style={styles.logLine}>
+                                            {`> ${logEntry}`}
+                                        </Text>
+                                    ))}
+                                </ScrollView>
+                            </View>
+                        )}
 
                         {isComplete && !hideOkButton && (
                             <Button

@@ -3,6 +3,12 @@ import { useState, useCallback, useMemo } from 'react'
 import { log } from '../utils/logger'
 
 /**
+ * The step a flow ends on when nothing went wrong. Its finished dialog then
+ * shows the tick and the title only; any other last step keeps the log (#575).
+ */
+export const FINISH_STEP_COMPLETE = 'Complete'
+
+/**
  * useDeploymentProgress: shared progress dialog state machine.
  *
  * Used by useStartDeployment, useDevDeployment, and useEndDeployment

@@ -8,7 +8,7 @@ import { WWIcon } from '../../../components/ui/WWIcon'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { useMotionDetectionStream, FrameSnapshot } from '../hooks/useMotionDetectionStream'
 import { createBleSession } from '../../../ble/session/createBleSession'
-import { OP_PARAMETER, mdBlockThresholdOf } from '../../../hooks/useDeviceSettings'
+import { FLASH_LED_LABELS, OP_PARAMETER, mdBlockThresholdOf } from '../../../hooks/useDeviceSettings'
 import { log, logWarn } from '../../../utils/logger'
 import { MotionGrid, MiniGrid } from './MotionGrid'
 
@@ -348,16 +348,12 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                             </WWText>
                         )}
 
-                        {/* Flash LED controls */}
+                        {/* Flash LED controls: Off, White, IR, as Capture Picture names them (#575) */}
                         <WWText variant="bodyMedium" style={styles.label}>Flash LED Type</WWText>
                         <SegmentedButtons
                             value={flashLed}
                             onValueChange={setFlashLed}
-                            buttons={[
-                                { value: '0', label: 'Off', disabled },
-                                { value: '1', label: 'Visible', disabled },
-                                { value: '2', label: 'IR', disabled },
-                            ]}
+                            buttons={FLASH_LED_LABELS.map((label, value) => ({ value: value.toString(), label, disabled }))}
                             style={styles.segmented}
                         />
 

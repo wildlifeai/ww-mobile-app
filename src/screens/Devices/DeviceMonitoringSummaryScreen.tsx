@@ -23,6 +23,7 @@ import { useRoute, useNavigation } from '@react-navigation/native'
 import database from '../../database'
 import Deployment from '../../database/models/Deployment'
 import { logError, log } from '../../utils/logger'
+import { formatSessionDate, formatSessionDuration } from '../../utils/sessionTimes'
 
 import { RootStackParamList } from '../../navigation/types'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
@@ -80,36 +81,11 @@ export const DeviceMonitoringSummaryScreen = () => {
 
     const handleConnectToDevice = useCallback(() => {
         log('[DeviceMonitoringSummary] Navigating to scanner')
-        navigation.navigate('DeviceDiscovery')
+        // Already searching when it opens, so Search for Devices is not a second tap (#575)
+        navigation.navigate('DeviceDiscovery', { autoScan: true })
         // Hide the stack header so only the scanner's internal header shows
         navigation.setOptions({ headerShown: false })
     }, [navigation])
-
-    // Date/duration helpers
-    const isValidDate = (date: any) => {
-        if (!date) return false
-        const d = new Date(date)
-        return !isNaN(d.getTime()) && d.getTime() > 946684800000
-    }
-
-    const formatDuration = (start: any, end: any) => {
-        if (!isValidDate(start)) return '--'
-        const startDate = new Date(start)
-        const endDate = isValidDate(end) ? new Date(end) : new Date()
-        const diffMs = endDate.getTime() - startDate.getTime()
-        if (diffMs < 0) return '--'
-
-        const days = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-        const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-
-        if (days > 0) return `${days} day${days !== 1 ? 's' : ''} and ${hours} hour${hours !== 1 ? 's' : ''}`
-        return `${hours} hour${hours !== 1 ? 's' : ''}`
-    }
-
-    const formatDate = (date: any) => {
-        if (!isValidDate(date)) return 'Unknown'
-        return new Date(date).toLocaleDateString()
-    }
 
     // Dynamic styles
     const dynamicStyles = useMemo(() => ({
@@ -193,7 +169,7 @@ export const DeviceMonitoringSummaryScreen = () => {
                                     {isActive ? 'Active for' : 'Duration'}
                                 </Text>
                                 <Text variant="bodyMedium" style={dynamicStyles.value}>
-                                    {formatDuration(displayDeployment.deploymentStart, displayDeployment.deploymentEnd)}
+                                    {formatSessionDuration(displayDeployment.deploymentStart, displayDeployment.deploymentEnd)}
                                 </Text>
                             </View>
 
@@ -201,7 +177,7 @@ export const DeviceMonitoringSummaryScreen = () => {
                             <View style={styles.infoRow}>
                                 <Text variant="bodyMedium" style={dynamicStyles.label}>Started</Text>
                                 <Text variant="bodyMedium" style={dynamicStyles.value}>
-                                    {formatDate(displayDeployment.deploymentStart)}
+                                    {formatSessionDate(displayDeployment.deploymentStart)}
                                 </Text>
                             </View>
 
@@ -210,7 +186,7 @@ export const DeviceMonitoringSummaryScreen = () => {
                                 <View style={styles.infoRow}>
                                     <Text variant="bodyMedium" style={dynamicStyles.label}>Ended</Text>
                                     <Text variant="bodyMedium" style={dynamicStyles.value}>
-                                        {formatDate(displayDeployment.deploymentEnd)}
+                                        {formatSessionDate(displayDeployment.deploymentEnd)}
                                     </Text>
                                 </View>
                             )}

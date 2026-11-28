@@ -26,6 +26,11 @@ interface FirmwareComponentCardProps {
     onUpdate: () => void
 }
 
+/** A known build, nothing newer and nothing unfinished: statusLine's "Up to date" */
+const isUpToDate = (status: FirmwareComponentStatus): boolean =>
+    !!status.currentVersion && status.currentVersion !== 'Unknown'
+    && !status.unfinished && !status.isOutdated && !status.missingVariant
+
 /**
  * "Up to date: 30 Sep build", or "23 Sep build, update available" (#344), or,
  * with one camera's build in the catalogue, "23 Sep build. The colour camera's
@@ -45,6 +50,13 @@ const statusLine = (status: FirmwareComponentStatus): string => {
     return current ? `Up to date: ${current}` : 'Version unknown'
 }
 
+/**
+ * Up to date, the button is a quiet Reinstall rather than a green Update: the
+ * update screen still flashes a build by hand, the same one or a chosen one (#575)
+ */
+const updateLabel = (status: FirmwareComponentStatus): string =>
+    status.unfinished ? 'Finish update' : isUpToDate(status) ? 'Reinstall' : 'Update'
+
 const FirmwareComponentCard = ({ title, status, colors, spacing, isChecking, isConnected, waitsForAi, onUpdate }: FirmwareComponentCardProps) => (
     <View style={[styles.card, { backgroundColor: colors.surfaceVariant, marginBottom: spacing }]}>
         <WWText variant="titleMedium" style={{ color: colors.onSurfaceVariant }}>
@@ -60,12 +72,12 @@ const FirmwareComponentCard = ({ title, status, colors, spacing, isChecking, isC
         )}
         {!waitsForAi && (
             <Button
-                mode="contained"
+                mode={isUpToDate(status) ? 'outlined' : 'contained'}
                 style={styles.marginTop12}
                 onPress={onUpdate}
                 disabled={!isConnected || isChecking}
             >
-                <WWText>{status.unfinished ? 'Finish update' : 'Update'}</WWText>
+                <WWText>{updateLabel(status)}</WWText>
             </Button>
         )}
     </View>

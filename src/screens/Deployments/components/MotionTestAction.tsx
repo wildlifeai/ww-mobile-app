@@ -10,9 +10,12 @@ import ReferenceDataService from '../../../services/ReferenceDataService'
 import { mdSensitivityLevel } from '../../../utils/mdSensitivity'
 import { log, logError, logWarn } from '../../../utils/logger'
 
-/** The deployment's motion test: 20 frames at the 1000 ms a deployment writes to op11 */
+/** The deployment's motion test: 20 photos at the 1000 ms a deployment writes to op11 */
 const CAPTURE_COUNT = 20
 const CAPTURE_INTERVAL_MS = 1000
+// Photo 1 is the reference and has no grid, so 20 photos give 19 frames,
+// as the console's Motion Detection counts them (#563, #575)
+const FRAMES_EXPECTED = CAPTURE_COUNT - 1
 
 interface Props {
     device?: ExtendedPeripheral
@@ -80,7 +83,7 @@ export const MotionTestAction = ({ device, project, onShowHelp }: Props) => {
                 onPress={handleOpen}
                 onHelp={() => onShowHelp(
                     'Test Motion Detection',
-                    `Runs a ${CAPTURE_COUNT}-frame test at your project's sensitivity. Move in front of the camera while it runs. ` +
+                    `Runs a ${FRAMES_EXPECTED}-frame test at your project's sensitivity. Move in front of the camera while it runs. ` +
                     'It cannot be stopped once started: the camera runs the capture itself.\n\n' +
                     "The 16×16 grid is the HM0360 motion detector's own output, read once per frame: the zones where it saw change.",
                 )}
@@ -98,8 +101,8 @@ export const MotionTestAction = ({ device, project, onShowHelp }: Props) => {
                 {sensitivityNote && <Text variant="bodySmall">{sensitivityNote.message}</Text>}
                 {running && (
                     <View style={styles.progress}>
-                        <ProgressBar progress={frameCount / CAPTURE_COUNT} color={theme.colors.primary} />
-                        <Text variant="labelSmall">Frame {frameCount}/{CAPTURE_COUNT}</Text>
+                        <ProgressBar progress={frameCount / FRAMES_EXPECTED} color={theme.colors.primary} />
+                        <Text variant="labelSmall">Frame {frameCount}/{FRAMES_EXPECTED}</Text>
                     </View>
                 )}
                 <View style={styles.grid}>

@@ -85,7 +85,7 @@ Mobile App                     nRF52840                         HX6538
 
 | Screen / module | File | Context |
 |-----------------|------|---------|
-| Firmware Status | `FirmwareStatusScreen.tsx` | Shows BLE + Himax versions, triggers update |
+| Firmware Status | `FirmwareStatusScreen.tsx` | Shows BLE + Himax versions, triggers update; up to date, the button is Reinstall, to flash a build by hand (#575) |
 | Firmware Update | `FirmwareUpdateScreen.tsx` | Update progress UI (presentational): the build picker, the SD-card or cloud source and the transfer cards |
 | Update software | `SoftwareUpdateScreen.tsx` | Start Monitoring's one update for both processors, on the same hook |
 | **Update orchestration** | `screens/Devices/hooks/useFirmwareUpdate.ts` | **The actual flow:** UART phase listener, progress parsing, slot/transfer logic, and the post-update reset/sleep sequence. Start here when changing behaviour. |

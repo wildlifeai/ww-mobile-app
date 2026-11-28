@@ -26,6 +26,7 @@ import { NewProjectBasicInfoSection } from './components/NewProjectBasicInfoSect
 import { NewProjectSettingsSection } from './components/NewProjectSettingsSection'
 import { parseUtcMinutes } from '../../utils/projectFlash'
 import { captureMethodLabel } from '../../utils/captureMethodLabel'
+import { motionSensitivityLabel } from '../../utils/motionSensitivityLabel'
 
 
 interface ProjectFormData {
@@ -122,8 +123,8 @@ export const NewProjectScreen = () => {
 
 	useEffect(() => {
 		if (activitySensitivities?.length && !watch("activity_detection_sensitivity_id")) {
-			// Prefer 'Medium'
-			const defaultSens = activitySensitivities.find(s => s.value === 'Medium') || activitySensitivities[0]
+			// Prefer medium. Stored values are lowercase, so 'Medium' never matched (#575)
+			const defaultSens = activitySensitivities.find(s => s.value?.toLowerCase() === 'medium') || activitySensitivities[0]
 			setValue("activity_detection_sensitivity_id", defaultSens.id.toString())
 		}
 	}, [activitySensitivities, watch, setValue])
@@ -143,7 +144,7 @@ export const NewProjectScreen = () => {
 	const sensitivityOptions = useMemo(
 		() =>
 			activitySensitivities?.map((as) => ({
-				label: as.value,
+				label: motionSensitivityLabel(as.value),
 				value: as.id.toString(),
 			})) || [],
 		[activitySensitivities],

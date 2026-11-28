@@ -353,7 +353,8 @@ file is the list of things that look like an app bug and are not, and the revers
   `npx jest --testMatch "**/src/**/__tests__/**/*.{js,jsx,ts,tsx}" ...`, and check that
   `--listTests` counts every test file on disk. `--testMatch` takes every argument after it as
   another glob, so a file path appended after it runs the whole suite; to run one file, make its
-  name the glob. In the main checkout Jest also picks
+  name the glob, or filter with `--testPathPattern "<name>|<name>"`, a flag, which it does not
+  swallow (28 November 2026). In the main checkout Jest also picks
   up the worktrees' copies of every test, so add `--modulePathIgnorePatterns=<rootDir>/.claude/`
   **after** any test paths: the option swallows the paths that follow it and silently turns
   them into ignore patterns. An isolated agent may not run git against another worktree

@@ -46,6 +46,7 @@ import {
 //   import { TEST_BIT_SAVE_BMP } from '../../hooks/useDeviceSettings'
 import { useExtendedTheme } from '../../theme'
 import { captureMethodLabel } from '../../utils/captureMethodLabel'
+import { motionSensitivityLabel } from '../../utils/motionSensitivityLabel'
 
 /** The AI model dropdown's "None" entry; WWSelect ignores an empty value. */
 const NO_MODEL = '__none__'
@@ -256,7 +257,7 @@ export const DevDeploymentTestScreen = () => {
                                     <WWSelect
                                         label="Motion Sensitivity"
                                         value={motionSensitivityOverride?.toString() || ''}
-                                        options={sensitivityOptions.map(s => ({ label: s.value, value: s.id.toString() }))}
+                                        options={sensitivityOptions.map(s => ({ label: motionSensitivityLabel(s.value), value: s.id.toString() }))}
                                         onChange={(val) => setMotionSensitivityOverride(parseInt(val, 10))}
                                         disabled={submitting}
                                     />

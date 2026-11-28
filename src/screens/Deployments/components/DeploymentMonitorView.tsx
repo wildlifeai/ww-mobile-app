@@ -117,25 +117,25 @@ export const DeploymentMonitorView: React.FC<Props> = ({
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Stats Bar */}
+      {/* Stats Bar: the counts are since this connection, Stored is the camera's total (#575) */}
       <View style={styles.statsContainer}>
         <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
           <MaterialCommunityIcons name="camera" size={24} color={colors.primary} />
           <Text style={[styles.statValue, { color: colors.onSurface }]}>{stats.photoCount}</Text>
-          <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Photos</Text>
+          <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Photos this visit</Text>
         </View>
         {showMotion && (
           <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
             <MaterialCommunityIcons name="run" size={24} color={colors.tertiary || '#FF9800'} />
             <Text style={[styles.statValue, { color: colors.onSurface }]}>{stats.motionCount}</Text>
-            <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Motion</Text>
+            <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Motion this visit</Text>
           </View>
         )}
         {showTimelapse && (
           <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
             <MaterialCommunityIcons name="timer-sand" size={24} color="#9C27B0" />
             <Text style={[styles.statValue, { color: colors.onSurface }]}>{stats.timelapseCount}</Text>
-            <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Timelapse</Text>
+            <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Timelapse this visit</Text>
           </View>
         )}
         {stats.deviceImageCount !== null && (
@@ -216,6 +216,7 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     marginTop: 2,
+    textAlign: 'center',
   },
   timeContainer: {
     flexDirection: 'row',

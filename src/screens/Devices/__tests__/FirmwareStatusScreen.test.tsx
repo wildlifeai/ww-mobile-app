@@ -57,8 +57,43 @@ describe("FirmwareStatusScreen with one camera's build in the catalogue", () => 
 
 		expect(screen.getByText("9 Oct build. The colour camera's new firmware is not available yet")).toBeTruthy()
 		expect(screen.queryByText(/Up to date: 9 Oct|update available/)).toBeNull()
-		// The Engineer Console keeps Update on each card, to flash a build by hand
-		expect(screen.getAllByText("Update")).toHaveLength(2)
+		// The Engineer Console keeps a button on each card, to flash a build by
+		// hand: Update here, Reinstall on the Bluetooth card, which is up to date (#575)
+		expect(screen.getAllByText("Update")).toHaveLength(1)
+		expect(screen.getAllByText("Reinstall")).toHaveLength(1)
+	})
+})
+
+/**
+ * #575: with both cards "Up to date", each still had a green Update. Up to
+ * date, the button is a quiet Reinstall, kept because the update screen is
+ * also where a build is flashed by hand.
+ */
+describe("FirmwareStatusScreen with both processors up to date", () => {
+	afterEach(() => {
+		mockHimax.current = {}
+		mockNavigate.mockClear()
+	})
+
+	it("offers Reinstall, not Update, on each card", () => {
+		mockHimax.current = { currentVersion: "WW500_C02 10:56:08 Oct  9 2026", missingVariant: null }
+		render(<FirmwareStatusScreen />)
+
+		expect(screen.getByText("Up to date: 0.30.57")).toBeTruthy()
+		expect(screen.getByText("Up to date: 9 Oct build")).toBeTruthy()
+		expect(screen.queryByText("Update")).toBeNull()
+		expect(screen.getAllByText("Reinstall")).toHaveLength(2)
+
+		fireEvent.press(screen.getAllByText("Reinstall")[1])
+		expect(mockNavigate).toHaveBeenCalledWith("FirmwareUpdateScreen", expect.objectContaining({ target: "himax" }))
+	})
+
+	it("keeps Update when the version is unknown", () => {
+		mockHimax.current = { currentVersion: "Unknown", missingVariant: null }
+		render(<FirmwareStatusScreen />)
+
+		expect(screen.getByText("Version unknown")).toBeTruthy()
+		expect(screen.getAllByText("Update")).toHaveLength(1)
 	})
 })
 
