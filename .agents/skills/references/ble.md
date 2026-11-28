@@ -61,6 +61,10 @@ day are in [traps.md](traps.md).
   disconnect assume the device is asleep and not advertising until woken by button, motion or
   timer, and budget minutes: after a timeout disconnect on 4 September 2026 the nRF did not
   advertise again for two and a half, and a connect attempt inside that gap simply timed out.
+  The heartbeat is a JS timer, and React Native pauses JS timers while another activity is in
+  front: a permission prompt or the phone camera for the Site Photo is enough to drop the link
+  after 60 s (#571). A screen that sends the person out of the app must expect to come back
+  disconnected; Start Monitoring shows it and offers Reconnect in place.
 - **Ending a deployment does not wait on a sleeping camera.** While monitoring, the Himax may not
   answer the wake at all, and every step then sat out its timeout and retries: about 40 s under a
   "Disconnecting" spinner (#293). `session/endDeploymentSession.ts` probes once, skips every later

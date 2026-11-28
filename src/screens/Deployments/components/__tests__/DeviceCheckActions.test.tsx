@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react-native'
 import { Dialog } from 'react-native-paper'
 
-import { BatteryAction, SdCardAction, SoftwareAction } from '../DeviceCheckActions'
+import { BatteryAction, SdCardAction, SoftwareAction, NOT_CONNECTED_WORDS } from '../DeviceCheckActions'
 import { batteryLowWarning } from '../../../../utils/initWarnings'
 
 const firmware = (extra: Record<string, unknown> = {}) => ({
@@ -91,5 +91,29 @@ describe('SdCardAction', () => {
     it('says the card is nearly full at or below 10% free', () => {
         render(<SdCardAction sdCardStatus={{ total: 32 * GB, free: 2 * GB }} onCheck={jest.fn()} onShowHelp={jest.fn()} />)
         expect(screen.getByText(/Nearly full/)).toBeTruthy()
+    })
+})
+
+// #571: a camera that dropped the link is not asked, and its popup does not
+// pass the last reading off as a new one
+describe('checks while the camera is not connected', () => {
+    it('Battery says it is not connected, shows the last reading as that, and asks nothing', () => {
+        const onCheck = jest.fn()
+        render(<BatteryAction batteryLevel={25} onCheck={onCheck} disabled notConnected onShowHelp={jest.fn()} />)
+        fireEvent.press(screen.getByLabelText('Check Battery Level'))
+        expect(screen.getByText(NOT_CONNECTED_WORDS)).toBeTruthy()
+        expect(screen.getByText('Last reading: 25%')).toBeTruthy()
+        expect(screen.queryByText(batteryLowWarning())).toBeNull()
+        expect(onCheck).not.toHaveBeenCalled()
+    })
+
+    it('SD card says it is not connected and shows the last reading as that', () => {
+        const onCheck = jest.fn()
+        const gb = 1024 * 1024
+        render(<SdCardAction sdCardStatus={{ total: 32 * gb, free: 16 * gb }} onCheck={onCheck} disabled notConnected onShowHelp={jest.fn()} />)
+        fireEvent.press(screen.getByLabelText('Check SD Card'))
+        expect(screen.getByText(NOT_CONNECTED_WORDS)).toBeTruthy()
+        expect(screen.getByText('Last reading: 50% free of 32 GB')).toBeTruthy()
+        expect(onCheck).not.toHaveBeenCalled()
     })
 })

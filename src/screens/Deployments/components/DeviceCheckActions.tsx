@@ -17,6 +17,9 @@ type ShowHelp = (title: string, content: string) => void
 
 /** At or below this the popup says to replace the batteries: Start Monitoring's own rule, the help says above 30%. */
 const BATTERY_LOW_PERCENT = 30
+/** What a check's popup says while the camera is not connected (#571) */
+export const NOT_CONNECTED_WORDS = 'The camera is not connected. Reconnect to check again.'
+
 /** At or below this share free the popup says the card is nearly full */
 const SD_NEARLY_FULL = 0.1
 
@@ -26,10 +29,12 @@ interface BatteryProps {
     isChecking?: boolean
     /** Initialising or not connected: the row shows what it has but cannot ask again */
     disabled?: boolean
+    /** Not connected: the popup says so, and shows the reading as the last one (#571) */
+    notConnected?: boolean
     onShowHelp: ShowHelp
 }
 
-export const BatteryAction = ({ batteryLevel, onCheck, isChecking, disabled, onShowHelp }: BatteryProps) => {
+export const BatteryAction = ({ batteryLevel, onCheck, isChecking, disabled, notConnected, onShowHelp }: BatteryProps) => {
     const theme = useTheme()
     const [open, setOpen] = useState(false)
     const low = batteryLevel !== null && batteryLevel <= BATTERY_LOW_PERCENT
@@ -47,8 +52,11 @@ export const BatteryAction = ({ batteryLevel, onCheck, isChecking, disabled, onS
                 busy={isChecking}
             />
             <ActionDialog visible={open} title="Battery Level" onClose={() => setOpen(false)}>
-                <Text variant="displaySmall">{isChecking ? '…' : batteryLevel !== null ? `${batteryLevel}%` : 'Not read yet'}</Text>
-                {low && !isChecking && (
+                {notConnected && <Text variant="bodyMedium">{NOT_CONNECTED_WORDS}</Text>}
+                <Text variant={notConnected ? 'bodyMedium' : 'displaySmall'}>
+                    {isChecking ? '…' : batteryLevel !== null ? `${notConnected ? 'Last reading: ' : ''}${batteryLevel}%` : 'Not read yet'}
+                </Text>
+                {low && !isChecking && !notConnected && (
                     <Text variant="bodyMedium" style={{ color: theme.colors.error }}>{batteryLowWarning()}</Text>
                 )}
             </ActionDialog>
@@ -62,12 +70,13 @@ interface SdCardProps {
     onCheck: () => void
     isChecking?: boolean
     disabled?: boolean
+    notConnected?: boolean
     onShowHelp: ShowHelp
 }
 
 const gb = (kb: number) => Math.round(kb / 1024 / 1024)
 
-export const SdCardAction = ({ sdCardStatus, onCheck, isChecking, disabled, onShowHelp }: SdCardProps) => {
+export const SdCardAction = ({ sdCardStatus, onCheck, isChecking, disabled, notConnected, onShowHelp }: SdCardProps) => {
     const theme = useTheme()
     const [open, setOpen] = useState(false)
     const share = sdCardStatus && sdCardStatus.total > 0 ? sdCardStatus.free / sdCardStatus.total : null
@@ -85,12 +94,13 @@ export const SdCardAction = ({ sdCardStatus, onCheck, isChecking, disabled, onSh
                 busy={isChecking}
             />
             <ActionDialog visible={open} title="SD Card" onClose={() => setOpen(false)}>
-                <Text variant="titleLarge">
+                {notConnected && <Text variant="bodyMedium">{NOT_CONNECTED_WORDS}</Text>}
+                <Text variant={notConnected ? 'bodyMedium' : 'titleLarge'}>
                     {isChecking ? '…' : sdCardStatus && share !== null
-                        ? `${Math.round(share * 100)}% free of ${gb(sdCardStatus.total)} GB`
+                        ? `${notConnected ? 'Last reading: ' : ''}${Math.round(share * 100)}% free of ${gb(sdCardStatus.total)} GB`
                         : 'Not read yet'}
                 </Text>
-                {share !== null && share <= SD_NEARLY_FULL && !isChecking && (
+                {share !== null && share <= SD_NEARLY_FULL && !isChecking && !notConnected && (
                     <Text variant="bodyMedium" style={{ color: theme.colors.error }}>Nearly full: free up space before deploying.</Text>
                 )}
             </ActionDialog>

@@ -59,6 +59,9 @@ interface UseStartDeploymentParams {
  * they can differ from the connection's `initPayload` (#559). Null asks the
  * camera itself.
  */
+/** How long Reconnect tries before saying the camera did not answer */
+const RECONNECT_TIMEOUT_MS = 20000
+
 export interface CameraFirmware {
     bleVersion: string | null
     aiVersion: string | null
@@ -102,7 +105,7 @@ export const useStartDeployment = ({
     const currentOrganisation = useAppSelector(selectCurrentOrganisation)
 
     // BLE Hooks
-    const { disconnectDevice } = useBle()
+    const { disconnectDevice, connectDevice } = useBle()
     const { quiesceDevice } = useDeviceSettings()
     
     // NEW EVENT-FIRST ARCHITECTURE (SHADOW MODE)
@@ -459,21 +462,37 @@ export const useStartDeployment = ({
                 isNavigatingAway.current = true
                 navigation.navigate('Home')
             } else {
-                Alert.alert(
-                    'Connection Lost',
-                    'Device disconnected unexpectedly during deployment setup.',
-                    [{
-                        text: 'OK', onPress: () => {
-                            isNavigatingAway.current = true
-                            if (navigation.canGoBack()) {
-                                navigation.goBack()
-                            }
-                        }
-                    }]
-                )
+                // During setup the screen says so itself and offers Reconnect, keeping
+                // what was entered (#571). An alert raised while the phone camera was in
+                // front never showed, and its OK went back and lost the form.
+                logWarn('[Deployment] Connection lost during setup; offering Reconnect')
             }
         }
     }, [bleDevice, submitting, navigation, isInitializing, monitoring.isMonitoring])  
+
+    // Reconnect in place after the link dropped during setup (#571). The camera
+    // advertises again only after its middle button, so the screen asks for that
+    // first. Nothing else is written: the connection needs no setup of its own here.
+    const [isReconnecting, setIsReconnecting] = useState(false)
+    const [reconnectFailed, setReconnectFailed] = useState(false)
+    const connectionLost = !!bleDevice && !bleDevice.connected && !monitoring.isMonitoring && !submitting
+    useEffect(() => {
+        if (bleDevice?.connected) setReconnectFailed(false)
+    }, [bleDevice?.connected])
+    const handleReconnect = useCallback(async () => {
+        if (!bleDevice || bleDevice.connected || isReconnecting) return
+        setIsReconnecting(true)
+        setReconnectFailed(false)
+        try {
+            const result = await connectDevice({ ...bleDevice, connected: false }, RECONNECT_TIMEOUT_MS)
+            if (!result?.connected) setReconnectFailed(true)
+        } catch (e) {
+            logWarn('[Deployment] Reconnect failed:', e)
+            setReconnectFailed(true)
+        } finally {
+            setIsReconnecting(false)
+        }
+    }, [bleDevice, isReconnecting, connectDevice])
 
     const handleStartDeployment = useCallback(async (cameraFirmware?: CameraFirmware) => {
         // What the camera runs: the screen's latest reading when it passes one,
@@ -481,7 +500,7 @@ export const useStartDeployment = ({
         const bleVersion = cameraFirmware ? cameraFirmware.bleVersion : initPayload?.deviceFirmwareVersion
         const aiVersion = cameraFirmware ? cameraFirmware.aiVersion : initPayload?.himaxFirmwareVersion
         if (!bleDevice?.connected) {
-            Alert.alert('Device Disconnected', 'Please ensure the device is connected before starting the deployment.', [{ text: 'OK' }])
+            Alert.alert('Camera Not Connected', "Press the camera's middle button, then tap Reconnect at the top of the screen.", [{ text: 'OK' }])
             return
         }
         if (!project || !user) {
@@ -1046,5 +1065,7 @@ export const useStartDeployment = ({
         //   recordJpegOnly, setRecordJpegOnly,
         // DFU control
         isDfuInProgress,
+        // The link dropped during setup, and reconnecting in place (#571)
+        connectionLost, isReconnecting, reconnectFailed, handleReconnect,
     }
 }
